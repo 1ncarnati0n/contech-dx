@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="text-center py-12">
       <h1 className="text-4xl font-bold text-gray-900 mb-4">
-        Contech DX - 건축 설계+시공 디지털 전환 플랫폼
+        Contech DX 건축 설계+시공 디지털 전환 플랫폼
       </h1>
       <p className="text-lg text-gray-600 mb-8">
         게시판, 간트차트 공정관리, 프로젝트 관리, 대시보드, 유저관리 등 건설데이터 구축
