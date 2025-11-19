@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { Building2, FileText, FileSearch, Shield, TestTube, User } from 'lucide-react';
 import LogoutButton from '@/components/auth/LogoutButton';
 import { getCurrentUserProfile, getRoleDisplayName, getRoleBadgeColor, isSystemAdmin } from '@/lib/permissions';
 
@@ -13,19 +14,33 @@ export default async function NavBar() {
   const profile = user ? await getCurrentUserProfile() : null;
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg shadow-sm border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-gray-900">
-              Contech DX
+          {/* Logo & Main Navigation */}
+          <div className="flex items-center gap-8">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-xl font-bold text-slate-900 hover:text-slate-700 transition-colors"
+            >
+              <Building2 className="w-6 h-6 text-orange-600" />
+              <span className="hidden sm:inline">Contech DX</span>
             </Link>
-            <div className="ml-10 flex items-baseline space-x-4">
+
+            <div className="hidden md:flex items-center gap-1">
               <Link
                 href="/posts"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className="flex items-center gap-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-medium transition-all"
               >
+                <FileText className="w-4 h-4" />
                 게시판
+              </Link>
+              <Link
+                href="/file-search"
+                className="flex items-center gap-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+              >
+                <FileSearch className="w-4 h-4" />
+                파일검색
               </Link>
 
               {/* Admin 전용 메뉴 */}
@@ -33,26 +48,30 @@ export default async function NavBar() {
                 <>
                   <Link
                     href="/admin/users"
-                    className="text-purple-700 hover:text-purple-900 px-3 py-2 rounded-md text-sm font-medium"
+                    className="flex items-center gap-2 text-orange-700 hover:text-orange-900 hover:bg-orange-50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                   >
+                    <Shield className="w-4 h-4" />
                     회원 관리
                   </Link>
                   <Link
                     href="/test-connection"
-                    className="text-purple-700 hover:text-purple-900 px-3 py-2 rounded-md text-sm font-medium"
+                    className="flex items-center gap-2 text-cyan-700 hover:text-cyan-900 hover:bg-cyan-50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                   >
+                    <TestTube className="w-4 h-4" />
                     시스템 테스트
                   </Link>
                 </>
               )}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+
+          {/* User Menu */}
+          <div className="flex items-center gap-3">
             {user && profile ? (
               <>
                 {/* 회원 등급 뱃지 */}
                 <span
-                  className={`text-xs px-2 py-1 rounded-full border font-medium ${getRoleBadgeColor(
+                  className={`hidden sm:inline text-xs px-3 py-1 rounded-full border font-medium ${getRoleBadgeColor(
                     profile.role
                   )}`}
                 >
@@ -60,14 +79,17 @@ export default async function NavBar() {
                 </span>
 
                 {/* 이메일 */}
-                <span className="text-sm text-gray-600">{user.email}</span>
+                <span className="hidden lg:inline text-sm text-slate-600 max-w-[150px] truncate">
+                  {user.email}
+                </span>
 
                 {/* 프로필 관리 링크 */}
                 <Link
                   href="/profile"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  className="flex items-center gap-2 text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                 >
-                  내 프로필
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline">프로필</span>
                 </Link>
 
                 <LogoutButton />
@@ -76,13 +98,13 @@ export default async function NavBar() {
               <>
                 <Link
                   href="/login"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                 >
                   로그인
                 </Link>
                 <Link
                   href="/signup"
-                  className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-slate-700 text-white hover:bg-slate-800 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all active:scale-95"
                 >
                   회원가입
                 </Link>
