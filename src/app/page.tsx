@@ -3,12 +3,8 @@ import {
   FileText,
   FileSearch,
   BarChart3,
-  Users,
   ArrowRight,
   CheckCircle2,
-  Zap,
-  Shield,
-  Clock
 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui';
 
@@ -34,20 +30,7 @@ export default function Home() {
       description: 'Gantt 차트 기반 공정 관리 (준비중)',
       href: '#',
       color: 'text-cyan-600 bg-cyan-50',
-    },
-    {
-      icon: Users,
-      title: '유저 관리',
-      description: '권한 기반 회원 관리 시스템',
-      href: '/admin/users',
-      color: 'text-purple-600 bg-purple-50',
-    },
-  ];
-
-  const stats = [
-    { label: '실시간 협업', value: '24/7', icon: Clock },
-    { label: '보안 강화', value: '100%', icon: Shield },
-    { label: '빠른 처리', value: '<2s', icon: Zap },
+    }
   ];
 
   return (
@@ -80,7 +63,7 @@ export default function Home() {
               href="/posts"
               className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-95"
             >
-              시작하기
+              게시판
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
@@ -88,36 +71,15 @@ export default function Home() {
               className="inline-flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-700 px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-95"
             >
               <FileSearch className="w-5 h-5" />
-              AI 검색 체험
+              AI 검색
             </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6"
-              >
-                <stat.icon className="w-8 h-8 text-orange-400 mb-3 mx-auto" />
-                <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                <div className="text-sm text-slate-400">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 mb-3">주요 기능</h2>
-          <p className="text-lg text-slate-600">
-            건설 현장의 디지털 전환을 위한 통합 솔루션
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature) => (
             <Link key={feature.title} href={feature.href}>
               <Card hover className="h-full group">
@@ -140,68 +102,40 @@ export default function Home() {
       <section className="max-w-4xl mx-auto">
         <Card>
           <CardHeader
-            title="개발 로드맵"
+            title="개발 🎯ToDoList"
             description="지속적인 개선과 새로운 기능 추가"
           />
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-slate-900">Gantt 차트 기본공정 mockup앱과 통합</p>
-                  <p className="text-sm text-slate-600">프로젝트 일정 관리 및 공정 추적</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-slate-900">기획 반영한 UX UI 반영하기</p>
-                  <p className="text-sm text-slate-600">사용자 경험 개선 및 디자인 시스템 구축</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-orange-600 mt-0.5" />
                 <div>
                   <p className="font-medium text-slate-900">유저 등급관리 업데이트</p>
                   <p className="text-sm text-slate-600">역할 기반 권한 관리 시스템 고도화</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Gantt 차트 기본공정 mockup앱과 통합</p>
+                  <p className="text-sm text-slate-600">프로젝트 일정 관리 및 공정 추적</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">기획 반영한 UX UI 반영하기</p>
+                  <p className="text-sm text-slate-600">사용자 경험 개선 및 디자인 시스템 구축</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <p className="font-medium text-slate-900">WBS, EVMS, PMIS 개념기반 기획</p>
                   <p className="text-sm text-slate-600">체계적인 프로젝트 관리 도구 개발</p>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* CTA Section */}
-      <section className="max-w-4xl mx-auto text-center">
-        <Card className="bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700">
-          <CardContent className="p-12">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              지금 바로 시작하세요
-            </h2>
-            <p className="text-slate-300 mb-8 text-lg">
-              건설 프로젝트의 효율적인 관리를 경험해보세요
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-700 px-8 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-95"
-              >
-                무료로 시작하기
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-              <Link
-                href="/posts"
-                className="inline-flex items-center gap-2 bg-white/10 text-white hover:bg-white/20 border border-white/20 px-8 py-3 rounded-lg font-medium transition-all"
-              >
-                둘러보기
-              </Link>
             </div>
           </CardContent>
         </Card>
