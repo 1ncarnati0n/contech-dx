@@ -23,7 +23,6 @@ export default async function NavBar() {
               href="/"
               className="flex items-center gap-2 text-xl font-bold text-slate-900 hover:text-slate-700 transition-colors"
             >
-              <Building2 className="w-6 h-6 text-orange-600" />
               <span className="hidden sm:inline">Contech DX</span>
             </Link>
 
@@ -51,14 +50,14 @@ export default async function NavBar() {
                     className="flex items-center gap-2 text-orange-700 hover:text-orange-900 hover:bg-orange-50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                   >
                     <Shield className="w-4 h-4" />
-                    회원 관리
+                    User Admin
                   </Link>
                   <Link
                     href="/test-connection"
                     className="flex items-center gap-2 text-cyan-700 hover:text-cyan-900 hover:bg-cyan-50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                   >
                     <TestTube className="w-4 h-4" />
-                    시스템 테스트
+                    DB Checker
                   </Link>
                 </>
               )}
