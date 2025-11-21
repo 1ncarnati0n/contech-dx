@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { GeminiFileSearchStore } from '@/lib/types';
+import { getErrorMessage } from '@/lib/utils';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -29,21 +31,21 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    const stores = data.fileSearchStores || [];
+    const stores: GeminiFileSearchStore[] = data.fileSearchStores || [];
 
     return NextResponse.json({
       success: true,
-      stores: stores.map((store: any) => ({
+      stores: stores.map((store) => ({
         name: store.name,
         displayName: store.displayName,
         createTime: store.createTime,
       }))
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error listing file search stores:', error);
     return NextResponse.json(
-      { error: error.message || '스토어 목록을 가져오는 중 오류가 발생했습니다.' },
+      { error: getErrorMessage(error) },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, isSystemAdmin, getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions';
+import { getCurrentUserProfile, isSystemAdmin, getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions/server';
 import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';

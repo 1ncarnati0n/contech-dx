@@ -6,7 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
-import { Card, CardHeader, CardContent } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '@/components/ui';
 
 export default function Home() {
   const features = [
@@ -59,20 +59,28 @@ export default function Home() {
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link
-              href="/posts"
-              className="inline-flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-95"
+            <Button
+              variant="outline"
+              size="lg"
+              className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:shadow-xl"
+              asChild
             >
-              게시판
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/file-search"
-              className="inline-flex items-center gap-2 bg-orange-600 text-white hover:bg-orange-700 px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-95"
+              <Link href="/posts" className="flex items-center gap-2">
+                게시판
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </Button>
+            <Button
+              variant="accent"
+              size="lg"
+              className="shadow-lg hover:shadow-xl"
+              asChild
             >
-              <FileSearch className="w-5 h-5" />
-              AI 검색
-            </Link>
+              <Link href="/file-search" className="flex items-center gap-2">
+                <FileSearch className="w-5 h-5" />
+                AI 검색
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -87,10 +95,10 @@ export default function Home() {
                   <div className={`inline-flex p-3 rounded-lg mb-4 ${feature.color}`}>
                     <feature.icon className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2 group-hover:text-slate-700">
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2 group-hover:text-slate-700 dark:group-hover:text-slate-300">
                     {feature.title}
                   </h3>
-                  <p className="text-slate-600">{feature.description}</p>
+                  <p className="text-slate-600 dark:text-slate-400">{feature.description}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -101,39 +109,39 @@ export default function Home() {
       {/* Roadmap Section */}
       <section className="max-w-4xl mx-auto">
         <Card>
-          <CardHeader
-            title="개발 🎯ToDoList"
-            description="지속적인 개선과 새로운 기능 추가"
-          />
+          <CardHeader>
+            <CardTitle>개발 🎯ToDoList</CardTitle>
+            <CardDescription>지속적인 개선과 새로운 기능 추가</CardDescription>
+          </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-orange-600 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-orange-600 dark:text-orange-500 mt-0.5" />
                 <div>
-                  <p className="font-medium text-slate-900">유저 등급관리 업데이트</p>
-                  <p className="text-sm text-slate-600">역할 기반 권한 관리 시스템 고도화</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">유저 등급관리 업데이트</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">역할 기반 권한 관리 시스템 고도화</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-slate-400 dark:text-slate-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-slate-900">Gantt 차트 기본공정 mockup앱과 통합</p>
-                  <p className="text-sm text-slate-600">프로젝트 일정 관리 및 공정 추적</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">Gantt 차트 기본공정 mockup앱과 통합</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">프로젝트 일정 관리 및 공정 추적</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-slate-400 dark:text-slate-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-slate-900">기획 반영한 UX UI 반영하기</p>
-                  <p className="text-sm text-slate-600">사용자 경험 개선 및 디자인 시스템 구축</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">기획 반영한 UX UI 반영하기</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">사용자 경험 개선 및 디자인 시스템 구축</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-slate-400 dark:text-slate-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-slate-900">WBS, EVMS, PMIS 개념기반 기획</p>
-                  <p className="text-sm text-slate-600">체계적인 프로젝트 관리 도구 개발</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">WBS, EVMS, PMIS 개념기반 기획</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">체계적인 프로젝트 관리 도구 개발</p>
                 </div>
               </div>
             </div>
