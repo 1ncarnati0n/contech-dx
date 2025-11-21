@@ -128,10 +128,10 @@ export default function MobileMenu({ user, profile, isAdmin }: MobileMenuProps) 
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-                      {user.email}
+                      {profile.display_name || user.email}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {profile.role}
+                      {user.email} • {profile.role}
                     </p>
                   </div>
                 </div>

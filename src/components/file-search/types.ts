@@ -38,6 +38,17 @@ export interface Message {
 }
 
 /**
+ * 채팅 세션 (LocalStorage 저장용)
+ */
+export interface ChatSession {
+  id: string;          // 세션 고유 ID
+  storeName: string;   // 소속 스토어
+  title: string;       // 채팅방 제목
+  preview: string;     // 마지막 메시지 미리보기
+  updatedAt: number;   // 정렬용 타임스탬프
+}
+
+/**
  * File Search 전체 상태 (UI 전용)
  */
 export interface FileSearchState {
@@ -47,6 +58,8 @@ export interface FileSearchState {
   uploadedFiles: UploadedFile[];
   attachedFiles: File[];
   messages: Message[];
+  sessions: ChatSession[];
+  currentSessionId: string | null;
   query: string;
   isSearching: boolean;
   sidebarOpen: boolean;

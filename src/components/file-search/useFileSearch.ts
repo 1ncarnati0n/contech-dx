@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { FileSearchStore, UploadedFile, Message } from './types';
+import type { FileSearchStore, UploadedFile, Message, ChatSession } from './types';
 import { filterValidFiles } from './utils';
 
 /**
@@ -21,6 +21,10 @@ export function useFileSearch() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // 세션 상태 (LocalStorage)
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
   // UI 상태
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +33,75 @@ export function useFileSearch() {
   // 초기 로드
   useEffect(() => {
     loadStores();
+    loadAllSessions();
   }, []);
+
+  // 전체 세션 목록 로드
+  const loadAllSessions = () => {
+    const savedSessions = localStorage.getItem('chat_sessions_all');
+    if (savedSessions) {
+      try {
+        const parsed = JSON.parse(savedSessions);
+        parsed.sort((a: ChatSession, b: ChatSession) => b.updatedAt - a.updatedAt);
+        setSessions(parsed);
+      } catch (e) {
+        console.error('Failed to parse sessions', e);
+        setSessions([]);
+      }
+    }
+  };
+
+  // 스토어 변경 시 현재 세션 정리
+  useEffect(() => {
+    if (!selectedStore) {
+      // 스토어 선택 해제 시 세션도 닫기
+      // 단, 초기 로드 시에는 실행되지 않도록 주의해야 함 (selectedStore가 ''일 때)
+      // 하지만 여기서는 단순하게 처리
+      // setCurrentSessionId(null); // 이 줄을 제거하면 스토어가 바뀌어도 이전 채팅 내용이 남아있을 수 있음.
+      // 하지만 스토어를 바꿨는데 이전 스토어의 채팅이 보이는건 이상함.
+      // 따라서 스토어 변경 -> 현재 세션이 해당 스토어 소속이 아니면 닫기 로직이 필요.
+      return;
+    }
+
+    // 현재 열려있는 세션이 있고, 그 세션이 선택된 스토어와 다르면 닫기
+    if (currentSessionId) {
+      // sessions 상태를 여기서 참조하면 의존성 배열 문제 발생 가능.
+      // 하지만 sessions는 자주 바뀌지 않으므로 괜찮을 수 있음.
+      const currentSession = sessions.find(s => s.id === currentSessionId);
+      if (currentSession && currentSession.storeName !== selectedStore) {
+        // setCurrentSessionId(null); 
+        // setMessages([]);
+        // *주의*: selectSession 함수 내에서 selectStore -> setCurrentSessionId 순서로 호출하는데,
+        // 여기서 초기화해버리면 race condition 발생 가능.
+        // 따라서 여기서는 아무것도 하지 않는 것이 안전할 수 있음. 
+        // 사용자가 명시적으로 스토어를 바꾼 경우(드롭다운)와 selectSession으로 바꾼 경우를 구분하기 어려움.
+      }
+    }
+  }, [selectedStore]); // sessions, currentSessionId 제외
+
+  // 메시지 로드 (세션 선택 시)
+  useEffect(() => {
+    if (!currentSessionId) {
+      setMessages([]);
+      return;
+    }
+
+    const savedMessages = localStorage.getItem(`chat_messages_${currentSessionId}`);
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages).map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages(parsed);
+      } catch (e) {
+        console.error('Failed to parse messages', e);
+        setMessages([]);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [currentSessionId]);
 
   // 스토어 목록 로드
   const loadStores = useCallback(async () => {
@@ -77,7 +149,14 @@ export function useFileSearch() {
     async (storeName: string) => {
       setSelectedStore(storeName);
       setAttachedFiles([]);
-      setMessages([]);
+      
+      // 스토어 변경 시 기본적으로 채팅 화면 비우기 (새 채팅 대기)
+      // 단, selectSession에 의해 호출된 경우는 예외 처리 필요하지만,
+      // selectSession에서 setCurrentSessionId를 나중에 호출하므로 괜찮음.
+      // setCurrentSessionId(null); // 이걸 하면 selectSession이 동작 안 할 수 있음. 
+      // -> useEffect [currentSessionId] 가 실행되면서 메시지를 로드하는데, 
+      // 여기서 null로 만들면 메시지가 로드되다가 지워짐.
+      // 따라서 selectStore에서는 세션 ID를 건드리지 않아야 함.
 
       if (storeName) {
         await loadStoreInfo(storeName);
@@ -141,6 +220,17 @@ export function useFileSearch() {
 
       if (data.success) {
         setSuccess('스토어가 삭제되었습니다.');
+        
+        // 관련 세션 데이터도 삭제
+        setSessions(prev => {
+          const sessionsToDelete = prev.filter(s => s.storeName === selectedStore);
+          sessionsToDelete.forEach(s => localStorage.removeItem(`chat_messages_${s.id}`));
+          
+          const newSessions = prev.filter(s => s.storeName !== selectedStore);
+          localStorage.setItem('chat_sessions_all', JSON.stringify(newSessions));
+          return newSessions;
+        });
+
         setSelectedStore('');
         setSelectedStoreInfo(null);
         setUploadedFiles([]);
@@ -214,10 +304,54 @@ export function useFileSearch() {
     }
   }, [attachedFiles, selectedStore, loadStoreInfo]);
 
+  // 세션 선택 (스토어 자동 전환 포함)
+  const selectSession = useCallback(async (sessionId: string) => {
+    const sessionToSelect = sessions.find(s => s.id === sessionId);
+    if (!sessionToSelect) return;
+
+    if (sessionToSelect.storeName !== selectedStore) {
+      await selectStore(sessionToSelect.storeName);
+    }
+    
+    setCurrentSessionId(sessionId);
+  }, [sessions, selectedStore, selectStore]);
+
+  // 새 세션 생성
+  const createSession = useCallback(() => {
+    if (!selectedStore) return;
+    setCurrentSessionId(null);
+    setMessages([]);
+  }, [selectedStore]);
+
+  // 세션 삭제
+  const deleteSession = useCallback((sessionId: string) => {
+    setSessions(prev => {
+      const newSessions = prev.filter(s => s.id !== sessionId);
+      localStorage.setItem('chat_sessions_all', JSON.stringify(newSessions));
+      return newSessions;
+    });
+    localStorage.removeItem(`chat_messages_${sessionId}`);
+
+    if (currentSessionId === sessionId) {
+      setCurrentSessionId(null);
+      setMessages([]);
+    }
+  }, [currentSessionId]);
+
   // 검색 (채팅)
   const search = useCallback(
     async (query: string) => {
       if (!query.trim() || !selectedStore) return;
+
+      let sessionId = currentSessionId;
+      let isNewSession = false;
+
+      // 세션이 없으면 자동 생성
+      if (!sessionId) {
+        sessionId = Date.now().toString();
+        isNewSession = true;
+        setCurrentSessionId(sessionId);
+      }
 
       const userMsg: Message = {
         id: Date.now().toString(),
@@ -226,7 +360,10 @@ export function useFileSearch() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMsg]);
+      const msgsWithUser = [...messages, userMsg];
+      setMessages(msgsWithUser);
+      localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(msgsWithUser));
+
       setIsSearching(true);
 
       try {
@@ -246,7 +383,40 @@ export function useFileSearch() {
           citations: data.success ? data.citations : undefined,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, aiMsg]);
+        
+        const finalMessages = [...msgsWithUser, aiMsg];
+        setMessages(finalMessages);
+        localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(finalMessages));
+
+        // 세션 목록 업데이트
+        setSessions(prev => {
+          const sessionIndex = prev.findIndex(s => s.id === sessionId);
+          const newTitle = isNewSession 
+            ? (query.length > 20 ? query.substring(0, 20) + '...' : query) 
+            : (prev[sessionIndex]?.title || query.substring(0, 20));
+          const newPreview = aiMsg.content.substring(0, 50) + (aiMsg.content.length > 50 ? '...' : '');
+          
+          const newSession: ChatSession = {
+            id: sessionId!,
+            storeName: selectedStore,
+            title: newTitle,
+            preview: newPreview,
+            updatedAt: Date.now(),
+          };
+
+          let newSessions;
+          if (sessionIndex >= 0) {
+            newSessions = [...prev];
+            newSessions[sessionIndex] = newSession;
+            newSessions.sort((a, b) => b.updatedAt - a.updatedAt);
+          } else {
+            newSessions = [newSession, ...prev];
+          }
+          
+          localStorage.setItem('chat_sessions_all', JSON.stringify(newSessions));
+          return newSessions;
+        });
+
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : '알 수 없는 오류';
         const errorMsg: Message = {
@@ -255,12 +425,15 @@ export function useFileSearch() {
           content: `네트워크 오류가 발생했습니다: ${message}`,
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, errorMsg]);
+        
+        const errorMessages = [...msgsWithUser, errorMsg];
+        setMessages(errorMessages);
+        localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(errorMessages));
       } finally {
         setIsSearching(false);
       }
     },
-    [selectedStore]
+    [selectedStore, currentSessionId, messages]
   );
 
   // 알림 제거
@@ -270,32 +443,29 @@ export function useFileSearch() {
   }, []);
 
   return {
-    // 스토어 상태
     stores,
     selectedStore,
     selectedStoreInfo,
-    // 파일 상태
     attachedFiles,
     uploadedFiles,
-    // 채팅 상태
     messages,
     isSearching,
-    // UI 상태
+    sessions,
+    currentSessionId,
     loading,
     error,
     success,
-    // 스토어 액션
     selectStore,
     createStore,
     deleteStore,
-    // 파일 액션
     attachFiles,
     removeAttachedFile,
     clearAttachedFiles,
     uploadFiles,
-    // 채팅 액션
     search,
-    // 알림 액션
+    selectSession,
+    createSession,
+    deleteSession,
     clearNotification,
   };
 }

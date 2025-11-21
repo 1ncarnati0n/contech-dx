@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState, memo, useCallback } from 'react';
+import { useRef, useEffect, useState, memo } from 'react';
 import {
   MessageSquare,
   Send,
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
 import type { Message, FileSearchStore } from './types';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -60,7 +62,7 @@ export default function ChatArea({
       } w-full`}
     >
       {/* Header */}
-      <header className="h-20 bg-white border-b border-slate-200 p-4 flex items-center gap-4 shadow-sm z-10">
+      <header className="h-20 bg-white border-b border-slate-200 p-4 flex items-center gap-4 z-10">
         <Button variant="ghost" size="sm" onClick={onToggleSidebar}>
           <Menu className="w-5 h-5" />
         </Button>
@@ -175,8 +177,87 @@ const MessageBubble = memo(function MessageBubble({
             : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
         }`}
       >
-        <div className="whitespace-pre-wrap leading-relaxed text-sm">
-          {message.content}
+        <div className="text-sm leading-relaxed">
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ) : (
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // 기본 링크 스타일
+                a: ({node, ...props}) => (
+                  <a target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all" {...props} />
+                ),
+                // 테이블 스타일 강화
+                table: ({node, ...props}) => (
+                  <div className="overflow-x-auto my-4 rounded-lg border border-slate-200">
+                    <table className="w-full text-sm text-left text-slate-700" {...props} />
+                  </div>
+                ),
+                thead: ({node, ...props}) => (
+                  <thead className="text-xs text-slate-700 uppercase bg-slate-50" {...props} />
+                ),
+                tbody: ({node, ...props}) => (
+                  <tbody className="divide-y divide-slate-100" {...props} />
+                ),
+                th: ({node, ...props}) => (
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap" {...props} />
+                ),
+                td: ({node, ...props}) => (
+                  <td className="px-4 py-3" {...props} />
+                ),
+                tr: ({node, ...props}) => (
+                  <tr className="bg-white hover:bg-slate-50 transition-colors" {...props} />
+                ),
+                // 리스트 스타일
+                ul: ({node, ...props}) => (
+                  <ul className="list-disc list-outside ml-5 space-y-1 my-3" {...props} />
+                ),
+                ol: ({node, ...props}) => (
+                  <ol className="list-decimal list-outside ml-5 space-y-1 my-3" {...props} />
+                ),
+                li: ({node, ...props}) => (
+                  <li className="pl-1" {...props} />
+                ),
+                // 인용구 스타일
+                blockquote: ({node, ...props}) => (
+                  <blockquote className="border-l-4 border-slate-300 pl-4 italic text-slate-600 my-4 bg-slate-50 py-2 pr-2 rounded-r" {...props} />
+                ),
+                // 헤딩 스타일
+                h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 border-b pb-2 border-slate-100" {...props} />,
+                h3: ({node, ...props}) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800" {...props} />,
+                // 코드 블록 스타일
+                code: ({node, className, children, ...props}: any) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const isInline = !match && !String(children).includes('\n');
+                  
+                  return isInline ? (
+                    <code className="bg-slate-100 text-red-500 rounded px-1.5 py-0.5 font-mono text-xs font-medium border border-slate-200" {...props}>
+                      {children}
+                    </code>
+                  ) : (
+                    <div className="relative my-4 rounded-lg overflow-hidden bg-slate-900 shadow-md">
+                      <div className="flex items-center justify-between px-4 py-2 bg-slate-800 text-slate-400 text-xs">
+                        <span>Code</span>
+                      </div>
+                      <pre className="p-4 overflow-x-auto bg-slate-900 text-slate-50 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                        <code className="font-mono text-xs leading-relaxed" {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    </div>
+                  );
+                },
+                // 문단 간격
+                p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+                // 구분선
+                hr: ({node, ...props}) => <hr className="my-6 border-slate-200" {...props} />,
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          )}
         </div>
 
         {/* Citations */}
