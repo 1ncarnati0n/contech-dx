@@ -1,19 +1,56 @@
+'use client';
+
 import * as React from "react"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50",
-      className
-    )}
-    {...props}
-  />
-))
+  React.HTMLAttributes<HTMLDivElement> & { hover?: boolean }
+>(({ className, hover, children, ...props }, ref) => {
+  const baseClassName = cn(
+    "rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50",
+    className
+  );
+
+  if (hover) {
+    return (
+      <motion.div
+        ref={ref}
+        className={baseClassName}
+        initial="rest"
+        whileHover="hover"
+        variants={{
+          rest: {
+            y: 0,
+            boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
+          },
+          hover: {
+            y: -4,
+            boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+            transition: {
+              duration: 0.2,
+              ease: [0.4, 0, 0.2, 1],
+            },
+          },
+        }}
+        {...(props as any)}
+      >
+        {children}
+      </motion.div>
+    );
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={baseClassName}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+})
 Card.displayName = "Card"
 
 const CardHeader = React.forwardRef<

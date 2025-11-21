@@ -1,0 +1,291 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  FolderPlus,
+  Upload,
+  Trash2,
+  X,
+  FileType,
+  Database,
+} from 'lucide-react';
+import { Button, Input } from '@/components/ui';
+import { formatFileSize, getFileIcon, ALLOWED_EXTENSIONS } from './utils';
+import type { FileSearchStore, UploadedFile } from './types';
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+  stores: FileSearchStore[];
+  selectedStore: string;
+  selectedStoreInfo: FileSearchStore | null;
+  uploadedFiles: UploadedFile[];
+  attachedFiles: File[];
+  loading: boolean;
+  onSelectStore: (storeName: string) => void;
+  onCreateStore: (displayName: string) => Promise<boolean>;
+  onDeleteStore: () => void;
+  onAttachFiles: (files: File[]) => void;
+  onRemoveAttachedFile: (index: number) => void;
+  onClearAttachedFiles: () => void;
+  onUploadFiles: () => void;
+}
+
+export default function Sidebar({
+  isOpen,
+  onClose,
+  stores,
+  selectedStore,
+  selectedStoreInfo,
+  uploadedFiles,
+  attachedFiles,
+  loading,
+  onSelectStore,
+  onCreateStore,
+  onDeleteStore,
+  onAttachFiles,
+  onRemoveAttachedFile,
+  onClearAttachedFiles,
+  onUploadFiles,
+}: SidebarProps) {
+  const [newStoreName, setNewStoreName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleCreateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await onCreateStore(newStoreName);
+    if (success) {
+      setNewStoreName('');
+    }
+  };
+
+  const handleDeleteStore = () => {
+    if (confirm('정말 삭제하시겠습니까?')) {
+      onDeleteStore();
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    onAttachFiles(files);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      onAttachFiles(Array.from(e.target.files));
+    }
+  };
+
+  return (
+    <div
+      className={`absolute inset-y-0 left-0 z-30 w-80 bg-slate-50 border-r border-slate-200 transform transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      } flex flex-col`}
+    >
+      {/* Header */}
+      <div className="h-20 p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+        <h2 className="font-bold text-lg flex items-center gap-2 text-slate-800">
+          <Database className="w-5 h-5 text-orange-600" />
+          스토어 관리
+        </h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="lg:hidden"
+        >
+          <X className="w-5 h-5" />
+        </Button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Store Selector */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">
+            현재 스토어
+          </label>
+          <select
+            value={selectedStore}
+            onChange={(e) => onSelectStore(e.target.value)}
+            className="w-full p-2 border rounded-md text-sm"
+          >
+            <option value="">-- 선택하세요 --</option>
+            {stores.map((s) => (
+              <option key={s.name} value={s.name}>
+                {s.displayName}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* New Store */}
+        <form onSubmit={handleCreateStore} className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">
+            새 스토어 만들기
+          </label>
+          <div className="flex gap-2">
+            <Input
+              value={newStoreName}
+              onChange={(e) => setNewStoreName(e.target.value)}
+              placeholder="이름 입력"
+              className="h-9 text-sm"
+            />
+            <Button
+              type="submit"
+              disabled={loading || !newStoreName.trim()}
+              size="sm"
+              variant="primary"
+              className="h-9 px-3"
+            >
+              <FolderPlus className="w-4 h-4" />
+            </Button>
+          </div>
+        </form>
+
+        {/* Store Info & Files */}
+        {selectedStoreInfo && (
+          <div className="space-y-4 border-t border-slate-200 pt-4">
+            {/* Store Info Card */}
+            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-semibold text-sm">
+                  {selectedStoreInfo.displayName}
+                </h3>
+                <span className="text-xs text-slate-500">
+                  {formatFileSize(selectedStoreInfo.sizeBytes || 0)}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                <div className="bg-green-50 p-1 rounded text-green-700">
+                  <div className="font-bold">
+                    {selectedStoreInfo.activeDocumentsCount || 0}
+                  </div>
+                  <div>활성</div>
+                </div>
+                <div className="bg-orange-50 p-1 rounded text-orange-700">
+                  <div className="font-bold">
+                    {selectedStoreInfo.pendingDocumentsCount || 0}
+                  </div>
+                  <div>처리중</div>
+                </div>
+                <div className="bg-red-50 p-1 rounded text-red-700">
+                  <div className="font-bold">
+                    {selectedStoreInfo.failedDocumentsCount || 0}
+                  </div>
+                  <div>실패</div>
+                </div>
+              </div>
+              <Button
+                onClick={handleDeleteStore}
+                variant="danger"
+                size="sm"
+                className="w-full mt-3 h-7 text-xs"
+              >
+                <Trash2 className="w-3 h-3 mr-1" /> 스토어 삭제
+              </Button>
+            </div>
+
+            {/* File Upload Area */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                isDragging
+                  ? 'border-orange-500 bg-orange-50'
+                  : 'border-slate-300 bg-slate-50'
+              }`}
+            >
+              <p className="text-xs text-slate-600 mb-2">
+                파일을 드래그하거나 선택하세요
+              </p>
+              <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 text-white rounded text-xs hover:bg-slate-800">
+                <Upload className="w-3 h-3" /> 파일 선택
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept={ALLOWED_EXTENSIONS.join(',')}
+                />
+              </label>
+            </div>
+
+            {/* Attached Files List */}
+            {attachedFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs text-slate-600">
+                  <span>대기중 ({attachedFiles.length})</span>
+                  <button
+                    onClick={onClearAttachedFiles}
+                    className="text-red-500 hover:underline"
+                  >
+                    비우기
+                  </button>
+                </div>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {attachedFiles.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center text-xs bg-white p-1.5 rounded border"
+                    >
+                      <span className="truncate flex-1">{f.name}</span>
+                      <button onClick={() => onRemoveAttachedFile(i)}>
+                        <X className="w-3 h-3 text-slate-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  onClick={onUploadFiles}
+                  disabled={loading}
+                  className="w-full h-8 text-xs"
+                  variant="accent"
+                >
+                  업로드 시작
+                </Button>
+              </div>
+            )}
+
+            {/* Uploaded Files List */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                <FileType className="w-3 h-3" /> 업로드된 파일 (
+                {uploadedFiles.length})
+              </h4>
+              <div className="max-h-48 overflow-y-auto space-y-1">
+                {uploadedFiles.map((f, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 text-xs bg-white p-2 rounded border border-slate-100"
+                  >
+                    <span>{getFileIcon(f.mimeType)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{f.displayName}</div>
+                      <div className="text-[10px] text-slate-400">
+                        {formatFileSize(f.sizeBytes)} • {f.state}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

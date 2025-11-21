@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions';
+import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 

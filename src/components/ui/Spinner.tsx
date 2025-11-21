@@ -30,21 +30,26 @@ const spinnerVariants = cva(
 export interface SpinnerProps extends VariantProps<typeof spinnerVariants> {
   text?: string;
   className?: string;
+  fullScreen?: boolean;
 }
 
 const Spinner = React.forwardRef<
   HTMLDivElement,
   SpinnerProps & React.HTMLAttributes<HTMLDivElement>
->(({ size, variant, text, className, ...props }, ref) => {
+>(({ size, variant, text, className, fullScreen, ...props }, ref) => {
   return (
     <div
       ref={ref}
-      className={cn('flex flex-col items-center justify-center gap-3', className)}
+      className={cn(
+        'flex flex-col items-center justify-center gap-3',
+        fullScreen && 'fixed inset-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm',
+        className
+      )}
       {...props}
     >
       <Loader2 className={cn(spinnerVariants({ size, variant }))} strokeWidth={2.5} />
       {text && (
-        <p className={cn('text-sm font-medium', spinnerVariants.variant({ variant }))}>
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
           {text}
         </p>
       )}

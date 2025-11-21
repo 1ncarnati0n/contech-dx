@@ -56,6 +56,20 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const Comp = asChild ? Slot : "button";
 
+    // asChild 사용 시 children을 그대로 전달 (Slot은 단일 자식만 허용)
+    if (asChild) {
+      return (
+        <Comp
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </Comp>
+      );
+    }
+
+    // 일반 버튼일 때는 loading, icon 등을 렌더링
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
