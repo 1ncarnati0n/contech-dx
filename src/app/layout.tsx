@@ -6,7 +6,7 @@ import { Toaster } from '@/components/ui/Toaster';
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
-  description: '라온아크테크 건축직영공사 공정관리 시스템빌드',
+  description: '라온아크테크 건축공정관리 시스템빌드',
 };
 
 export default function RootLayout({

@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & { hover?: boolean }
 >(({ className, hover, children, ...props }, ref) => {
   const baseClassName = cn(
-    "rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50",
+    "rounded-lg border border-primary-200 bg-white text-primary-900 shadow-sm dark:border-primary-700 dark:bg-primary-800 dark:text-primary-50",
     className
   );
 
@@ -83,7 +83,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-slate-500 dark:text-slate-400", className)}
+    className={cn("text-sm text-primary-500 dark:text-primary-400", className)}
     {...props}
   />
 ))

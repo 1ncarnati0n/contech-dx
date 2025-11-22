@@ -27,7 +27,7 @@ export default function Home() {
     {
       icon: BarChart3,
       title: '프로젝트 관리',
-      description: 'Gantt 차트 기반 공정 관리 (준비중)',
+      description: 'Gantt 차트, WBS기반 공정 관리 (준비중)',
       href: '#',
       color: 'text-cyan-600 bg-cyan-50',
     }
@@ -55,7 +55,7 @@ export default function Home() {
           </p>
 
           <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">
-            게시판, 간트차트 공정관리, 프로젝트 관리, 대시보드, 유저관리 등 건설데이터 구축
+            WBS기반 공정관리, 프로젝트 대시보드, AX기반 효율화 등 건설데이터 구축
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center">
