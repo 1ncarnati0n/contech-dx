@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   Editor,
   Gantt,
@@ -23,6 +23,7 @@ import { CELL_HEIGHT, CELL_WIDTH_MAP, TASK_TYPES } from "./taskConfig";
 import { useGanttSchedule } from "./useGanttSchedule";
 import type { ViewType } from "./types";
 import { isWeekend, isKoreanHoliday } from "@/data/koreanHolidays";
+import type { Task, Link } from "@/lib/gantt/types";
 
 const START_COLUMN_WIDTH = 100;
 
@@ -30,6 +31,14 @@ interface ScaleConfig {
   unit: "year" | "month" | "week" | "day" | "hour";
   step: number;
   format: string;
+}
+
+interface GanttChartProps {
+  ganttChartId: string;
+  tasks?: Task[];
+  links?: Link[];
+  scales?: any[];
+  onGanttReady?: (api: any) => void;
 }
 
 const TIME_SCALE_CONFIGS: Record<ViewType, { scales: ScaleConfig[] }> = {
@@ -61,6 +70,7 @@ const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
   day: "2-digit",
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const formatDisplayEnd = (task: Record<string, any>): string => {
   const exclusiveEnd =
     task.end instanceof Date ? task.end : task.end ? new Date(task.end as string) : undefined;
@@ -80,9 +90,10 @@ const formatDisplayEnd = (task: Record<string, any>): string => {
   return dateFormatter.format(inclusive);
 };
 
-export function GanttChart() {
+export function GanttChart({ ganttChartId, tasks, links, scales: _scales, onGanttReady }: GanttChartProps) {
   const [viewType, setViewType] = useState<ViewType>("day");
   const [showBaselines, setShowBaselines] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [ganttApi, setGanttApi] = useState<any | null>(null);
   const {
     schedule,
@@ -90,7 +101,8 @@ export function GanttChart() {
     saveState,
     hasChanges,
     handleSave,
-    initGantt } = useGanttSchedule();
+    initGantt,
+  } = useGanttSchedule(ganttChartId);
 
   const columns = useMemo<IColumnConfig[]>(() => {
     return defaultColumns.map((column) => {
@@ -113,6 +125,7 @@ export function GanttChart() {
           header: "종료",
           width: START_COLUMN_WIDTH,
           format: "yyyy-MM-dd",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           template: (_: unknown, task: Record<string, any>) => formatDisplayEnd(task),
         };
       }
@@ -131,10 +144,21 @@ export function GanttChart() {
 
   const scales = useMemo(() => TIME_SCALE_CONFIGS[viewType].scales, [viewType]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleInit = (api: any) => {
     initGantt(api);
     setGanttApi(api);
+    if (onGanttReady) {
+      onGanttReady(api);
+    }
   };
+
+  // Props 사용 (unused-vars 방지 및 추후 구현 대비)
+  useEffect(() => {
+    if (tasks || links) {
+      // TODO: Implement data injection from props
+    }
+  }, [tasks, links]);
 
   // Toolbar 버튼 설정 - 한글화 및 아이콘 커스터마이징
   const toolbarItems = useMemo(() => {
@@ -243,6 +267,7 @@ export function GanttChart() {
                     cellWidth={CELL_WIDTH_MAP[viewType]}
                     cellHeight={CELL_HEIGHT}
                     highlightTime={highlightTime}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     {...({ baselines: showBaselines } as any)}
                   />
                 </Tooltip>

@@ -31,6 +31,7 @@ const STATUS_COLORS = {
   completed: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
   on_hold: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
   cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  dummy: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-2 border-dashed border-purple-400',
 };
 
 const STATUS_LABELS = {
@@ -39,6 +40,7 @@ const STATUS_LABELS = {
   completed: '완료',
   on_hold: '보류',
   cancelled: '취소',
+  dummy: '🧪 테스트',
 };
 
 export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Props) {
@@ -65,7 +67,8 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
   };
 
   const handleDelete = async () => {
-    if (!confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
+    if (typeof window === 'undefined') return;
+    if (!window.confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
 
     try {
       setIsDeleting(true);
@@ -73,14 +76,15 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
       router.push('/projects');
     } catch (error) {
       console.error('Failed to delete project:', error);
-      alert('프로젝트 삭제에 실패했습니다.');
+      window.alert('프로젝트 삭제에 실패했습니다.');
     } finally {
       setIsDeleting(false);
     }
   };
 
   const handleCreateGanttChart = async () => {
-    const name = prompt('Gantt 차트 이름을 입력하세요:');
+    if (typeof window === 'undefined') return;
+    const name = window.prompt('Gantt 차트 이름을 입력하세요:');
     if (!name) return;
 
     try {
@@ -95,7 +99,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
       router.push(`/projects/${project.id}/gantt/${newChart.id}`);
     } catch (error) {
       console.error('Failed to create gantt chart:', error);
-      alert('Gantt 차트 생성에 실패했습니다.');
+      window.alert('Gantt 차트 생성에 실패했습니다.');
     } finally {
       setIsCreating(false);
     }

@@ -183,17 +183,25 @@ export async function createProject(
     created_by: user?.id,
   };
 
+  // Clean data: Remove undefined values and empty strings
+  const cleanedProject = Object.fromEntries(
+    Object.entries(projectData).filter(([_, v]) => v !== undefined && v !== '')
+  );
+
+  console.log('🔧 Cleaned project data for Supabase:', cleanedProject);
+
   const { data, error } = await supabase
     .from('projects')
-    .insert(projectData)
+    .insert(cleanedProject)
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating project:', error);
+    console.error('❌ Error creating project:', error);
     throw new Error('Failed to create project');
   }
 
+  console.log('✅ Project created successfully:', data.id);
   return data as Project;
 }
 

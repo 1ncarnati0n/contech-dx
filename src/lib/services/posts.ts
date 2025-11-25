@@ -1,6 +1,5 @@
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
-import type { Post } from '@/lib/types';
 
 /**
  * 게시글 목록 조회 (서버 사이드)

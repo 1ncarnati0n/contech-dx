@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+interface GeminiDocument {
+  name: string;
+  displayName?: string;
+  mimeType?: string;
+  sizeBytes?: string | number;
+  createTime?: string;
+  updateTime?: string;
+  state?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { storeName } = await request.json();
@@ -40,7 +50,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     // 문서 목록 포맷팅
-    const documents = (data.documents || []).map((doc: any) => ({
+    const documents = (data.documents || []).map((doc: GeminiDocument) => ({
       name: doc.name,
       displayName: doc.displayName || '이름 없음',
       mimeType: doc.mimeType || 'unknown',
@@ -56,10 +66,11 @@ export async function POST(request: NextRequest) {
       nextPageToken: data.nextPageToken,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error listing documents:', error);
+    const errorMessage = error instanceof Error ? error.message : '문서 목록 조회 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: error.message || '문서 목록 조회 중 오류가 발생했습니다.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

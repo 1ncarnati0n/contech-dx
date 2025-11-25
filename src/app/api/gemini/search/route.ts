@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+interface CitationSource {
+  startIndex?: number;
+  endIndex?: number;
+  uri?: string;
+  license?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { query, storeName } = await request.json();
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       answer: text,
-      citations: citations.map((citation: any) => ({
+      citations: citations.map((citation: CitationSource) => ({
         startIndex: citation.startIndex,
         endIndex: citation.endIndex,
         uri: citation.uri,
@@ -78,10 +85,11 @@ export async function POST(request: NextRequest) {
       }))
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error searching:', error);
+    const errorMessage = error instanceof Error ? error.message : '검색 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: error.message || '검색 중 오류가 발생했습니다.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

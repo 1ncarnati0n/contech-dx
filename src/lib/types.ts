@@ -292,7 +292,7 @@ export interface MobileMenuProps {
 /**
  * 프로젝트 상태
  */
-export type ProjectStatus = 'planning' | 'active' | 'completed' | 'on_hold' | 'cancelled';
+export type ProjectStatus = 'planning' | 'active' | 'completed' | 'on_hold' | 'cancelled' | 'dummy';
 
 /**
  * 프로젝트 멤버 역할

@@ -3,18 +3,24 @@ import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Database, 
-  Key, 
-  Globe, 
-  ShieldCheck, 
+import {
+  CheckCircle2,
+  XCircle,
+  Database,
+  Key,
+  Globe,
+  ShieldCheck,
   Activity,
   Table as TableIcon,
   AlertTriangle,
   ExternalLink
 } from 'lucide-react';
+
+interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  error: unknown | null;
+}
 
 export default async function TestConnectionPage() {
   // Admin만 접근 가능
@@ -28,21 +34,21 @@ export default async function TestConnectionPage() {
   // 환경변수 확인 (보안상 일부만 표시)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const hasAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
+
   // URL 표시용 (프로토콜 제외 및 단축)
-  const displayUrl = supabaseUrl 
-    ? supabaseUrl.replace(/^https?:\/\//, '') 
+  const displayUrl = supabaseUrl
+    ? supabaseUrl.replace(/^https?:\/\//, '')
     : '설정되지 않음';
 
   // 연결 테스트
-  let connectionTest = {
+  let connectionTest: ConnectionTestResult = {
     success: false,
     message: '',
-    error: null as any,
+    error: null,
   };
 
   try {
-    const { data, error } = await supabase.from('posts').select('count');
+    const { error } = await supabase.from('posts').select('count');
 
     if (error) {
       connectionTest = {
@@ -57,7 +63,7 @@ export default async function TestConnectionPage() {
         error: null,
       };
     }
-  } catch (err: any) {
+  } catch (err) {
     connectionTest = {
       success: false,
       message: '연결 시도 중 에러 발생',
@@ -115,7 +121,7 @@ export default async function TestConnectionPage() {
               </p>
             </div>
           </CardContent>
-          {!connectionTest.success && connectionTest.error && (
+          {!connectionTest.success && connectionTest.error !== null && (
             <div className="px-6 pb-6">
               <div className="bg-red-100/50 dark:bg-red-950/50 rounded-lg p-4 text-xs font-mono text-red-800 dark:text-red-300 overflow-x-auto border border-red-200 dark:border-red-900">
                 {JSON.stringify(connectionTest.error, null, 2)}
@@ -147,7 +153,7 @@ export default async function TestConnectionPage() {
                 </div>
                 <div className={`w-2 h-2 rounded-full ${supabaseUrl ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500'}`} />
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
                   <Key className="w-4 h-4 text-slate-400" />
@@ -194,7 +200,7 @@ export default async function TestConnectionPage() {
                     )}
                   </div>
                 ))}
-                
+
                 <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>전체 상태</span>
@@ -221,11 +227,11 @@ export default async function TestConnectionPage() {
                       시스템이 정상적으로 작동하지 않을 경우 다음 단계를 확인해주세요.
                     </p>
                   </div>
-                  
+
                   <div className="grid gap-2 md:grid-cols-2">
-                    <a 
-                      href="https://supabase.com/dashboard" 
-                      target="_blank" 
+                    <a
+                      href="https://supabase.com/dashboard"
+                      target="_blank"
                       rel="noreferrer"
                       className="flex items-center justify-between p-3 bg-white dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800 hover:border-amber-300 transition-colors group"
                     >

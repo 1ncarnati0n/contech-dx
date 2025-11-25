@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { ArrowLeft } from 'lucide-react';
+import { Card } from '@/components/ui';
 import { GanttWrapper } from '@/components/gantt/GanttWrapper';
 import type { Project } from '@/lib/types';
 import type { GanttChart } from '@/lib/services/ganttCharts';
@@ -24,33 +24,11 @@ export function GanttChartPageClient({
 }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [links, setLinks] = useState<GanttLink[]>(initialLinks);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      // TODO: Implement save functionality
-      console.log('Saving tasks:', tasks);
-      console.log('Saving links:', links);
-      
-      // Mock save
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      setHasChanges(false);
-      alert('저장되었습니다!');
-    } catch (error) {
-      console.error('Failed to save:', error);
-      alert('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   if (!isClient) {
     return (
@@ -84,32 +62,13 @@ export function GanttChartPageClient({
             </p>
           )}
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={!hasChanges || isSaving}
-          className="gap-2"
-        >
-          <Save className="w-4 h-4" />
-          {isSaving ? '저장 중...' : hasChanges ? '저장' : '저장됨'}
-        </Button>
       </div>
-
-      {/* Info Banner */}
-      {hasChanges && (
-        <Card className="p-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              변경사항이 있습니다. 저장 버튼을 눌러 저장하세요.
-            </p>
-          </div>
-        </Card>
-      )}
 
       {/* Gantt Chart */}
       <Card className="p-0 overflow-hidden">
         <div className="h-[calc(100vh-300px)] min-h-[600px]">
           <GanttWrapper
+            ganttChartId={ganttChart.id}
             tasks={tasks}
             links={links}
             scales={[

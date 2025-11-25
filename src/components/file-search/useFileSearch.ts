@@ -89,6 +89,7 @@ export function useFileSearch() {
     const savedMessages = localStorage.getItem(`chat_messages_${currentSessionId}`);
     if (savedMessages) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parsed = JSON.parse(savedMessages).map((m: any) => ({
           ...m,
           timestamp: new Date(m.timestamp),
@@ -149,7 +150,7 @@ export function useFileSearch() {
     async (storeName: string) => {
       setSelectedStore(storeName);
       setAttachedFiles([]);
-      
+
       // 스토어 변경 시 기본적으로 채팅 화면 비우기 (새 채팅 대기)
       // 단, selectSession에 의해 호출된 경우는 예외 처리 필요하지만,
       // selectSession에서 setCurrentSessionId를 나중에 호출하므로 괜찮음.
@@ -220,12 +221,12 @@ export function useFileSearch() {
 
       if (data.success) {
         setSuccess('스토어가 삭제되었습니다.');
-        
+
         // 관련 세션 데이터도 삭제
         setSessions(prev => {
           const sessionsToDelete = prev.filter(s => s.storeName === selectedStore);
           sessionsToDelete.forEach(s => localStorage.removeItem(`chat_messages_${s.id}`));
-          
+
           const newSessions = prev.filter(s => s.storeName !== selectedStore);
           localStorage.setItem('chat_sessions_all', JSON.stringify(newSessions));
           return newSessions;
@@ -312,7 +313,7 @@ export function useFileSearch() {
     if (sessionToSelect.storeName !== selectedStore) {
       await selectStore(sessionToSelect.storeName);
     }
-    
+
     setCurrentSessionId(sessionId);
   }, [sessions, selectedStore, selectStore]);
 
@@ -383,7 +384,7 @@ export function useFileSearch() {
           citations: data.success ? data.citations : undefined,
           timestamp: new Date(),
         };
-        
+
         const finalMessages = [...msgsWithUser, aiMsg];
         setMessages(finalMessages);
         localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(finalMessages));
@@ -391,11 +392,11 @@ export function useFileSearch() {
         // 세션 목록 업데이트
         setSessions(prev => {
           const sessionIndex = prev.findIndex(s => s.id === sessionId);
-          const newTitle = isNewSession 
-            ? (query.length > 20 ? query.substring(0, 20) + '...' : query) 
+          const newTitle = isNewSession
+            ? (query.length > 20 ? query.substring(0, 20) + '...' : query)
             : (prev[sessionIndex]?.title || query.substring(0, 20));
           const newPreview = aiMsg.content.substring(0, 50) + (aiMsg.content.length > 50 ? '...' : '');
-          
+
           const newSession: ChatSession = {
             id: sessionId!,
             storeName: selectedStore,
@@ -412,7 +413,7 @@ export function useFileSearch() {
           } else {
             newSessions = [newSession, ...prev];
           }
-          
+
           localStorage.setItem('chat_sessions_all', JSON.stringify(newSessions));
           return newSessions;
         });
@@ -425,7 +426,7 @@ export function useFileSearch() {
           content: `네트워크 오류가 발생했습니다: ${message}`,
           timestamp: new Date(),
         };
-        
+
         const errorMessages = [...msgsWithUser, errorMsg];
         setMessages(errorMessages);
         localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(errorMessages));

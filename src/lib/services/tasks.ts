@@ -272,3 +272,73 @@ export async function createTasksBatch(
   });
 }
 
+/**
+ * Batch upsert tasks
+ */
+export async function upsertTasksBatch(
+  tasks: Array<Partial<Task>>,
+  ganttChartId: string
+): Promise<Task[]> {
+  const supabase = createClient();
+
+  const taskDtos: Array<Partial<TaskDTO>> = tasks.map((task) => ({
+    id: typeof task.id === "string" && task.id.length > 10 ? task.id : undefined, // Only use ID if it looks like a UUID
+    gantt_chart_id: ganttChartId,
+    text: task.text,
+    type: task.type,
+    start_date: typeof task.start === "string" ? task.start : task.start?.toISOString().split("T")[0],
+    end_date: task.end ? (typeof task.end === "string" ? task.end : task.end.toISOString().split("T")[0]) : undefined,
+    progress: task.progress ?? 0,
+    parent_id: task.parent !== undefined ? String(task.parent) : undefined,
+    position: task.position ?? 0,
+    open: task.open ?? true,
+    assigned_to: task.assigned !== undefined ? String(task.assigned) : undefined,
+    category: task.category,
+    work_type: task.workType,
+  }));
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .upsert(taskDtos, { onConflict: "id" })
+    .select();
+
+  if (error) {
+    console.error("Error upserting tasks batch:", error);
+    throw new Error("Failed to upsert tasks batch");
+  }
+
+  return (data as TaskDTO[]).map((taskDto) => {
+    const task: Partial<Task> = {
+      id: taskDto.id,
+      text: taskDto.text,
+      type: taskDto.type,
+      start: taskDto.start_date,
+      end: taskDto.end_date,
+      progress: taskDto.progress,
+      parent: taskDto.parent_id,
+      position: taskDto.position,
+      open: taskDto.open,
+      assigned: taskDto.assigned_to,
+      category: taskDto.category,
+      workType: taskDto.work_type,
+    };
+
+    return decorateTask(task);
+  });
+}
+
+/**
+ * Batch delete tasks
+ */
+export async function deleteTasksBatch(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const supabase = createClient();
+  const { error } = await supabase.from("tasks").delete().in("id", ids);
+
+  if (error) {
+    console.error("Error deleting tasks batch:", error);
+    throw new Error("Failed to delete tasks batch");
+  }
+}
+

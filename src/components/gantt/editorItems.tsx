@@ -32,6 +32,7 @@ const AssignedCombo = ({ value, options, onChange }: AssignedComboProps) => {
       onChange={onChange}
       placeholder="담당자를 선택하세요"
     >
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {renderOption as any}
     </Combo>
   );
@@ -39,8 +40,8 @@ const AssignedCombo = ({ value, options, onChange }: AssignedComboProps) => {
 
 // Ensure this runs on client only, though nextjs client components will handle it
 if (typeof window !== 'undefined') {
-    registerEditorItem("radio", RadioButtonGroup);
-    registerEditorItem("assigned-combo", AssignedCombo);
+  registerEditorItem("radio", RadioButtonGroup);
+  registerEditorItem("assigned-combo", AssignedCombo);
 }
 
 const createEditorItems = () => {
@@ -48,6 +49,7 @@ const createEditorItems = () => {
     .filter((item) => item.key !== "duration")
     .map((item) => {
       const overrides = FIELD_OVERRIDES[item.key as string];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const next: Record<string, any> = { ...item };
 
       // 각 필드에 고유 id 할당 (중복 id 방지)

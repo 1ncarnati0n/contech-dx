@@ -4,8 +4,17 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
-import type { Link } from "@/lib/gantt/types";
+import type { Link, LinkType } from "@/lib/gantt/types";
 import { getMockLinks } from "./mockStorage";
+
+// Database schema for links (different from storage DTO)
+interface LinkRecord {
+  id: string;
+  gantt_chart_id: string;
+  source: string;
+  target: string;
+  type: string;
+}
 
 // Check if Supabase is configured
 const USE_MOCK =
@@ -35,7 +44,7 @@ export async function getLinks(ganttChartId: string): Promise<Link[]> {
     return mockLinks.map(linkDtoToLink);
   }
 
-  return (data as any[]).map(linkDtoToLink);
+  return (data as LinkRecord[]).map(linkDtoToLink);
 }
 
 /**
@@ -101,7 +110,7 @@ export async function updateLink(
 ): Promise<Link> {
   const supabase = createClient();
 
-  const linkDto: any = {};
+  const linkDto: Partial<LinkRecord> = {};
   if (updates.source !== undefined) linkDto.source = String(updates.source);
   if (updates.target !== undefined) linkDto.target = String(updates.target);
   if (updates.type !== undefined) linkDto.type = updates.type;
@@ -161,17 +170,62 @@ export async function createLinksBatch(
     throw new Error("Failed to create links batch");
   }
 
-  return (data as any[]).map(linkDtoToLink);
+  return (data as LinkRecord[]).map(linkDtoToLink);
 }
 
 /**
  * Convert DTO to Link
  */
-function linkDtoToLink(linkDto: any): Link {
+function linkDtoToLink(linkDto: LinkRecord): Link {
   return {
     id: linkDto.id,
     source: linkDto.source,
     target: linkDto.target,
-    type: linkDto.type || "e2s",
+    type: (linkDto.type as LinkType) || "e2s",
   };
+}
+
+/**
+ * Batch upsert links
+ */
+export async function upsertLinksBatch(
+  links: Array<Partial<Link>>,
+  ganttChartId: string
+): Promise<Link[]> {
+  const supabase = createClient();
+
+  const linkDtos = links.map((link) => ({
+    id: typeof link.id === "string" && link.id.length > 10 ? link.id : undefined,
+    gantt_chart_id: ganttChartId,
+    source: String(link.source),
+    target: String(link.target),
+    type: link.type || "e2s",
+  }));
+
+  const { data, error } = await supabase
+    .from("links")
+    .upsert(linkDtos, { onConflict: "id" })
+    .select();
+
+  if (error) {
+    console.error("Error upserting links batch:", error);
+    throw new Error("Failed to upsert links batch");
+  }
+
+  return (data as LinkRecord[]).map(linkDtoToLink);
+}
+
+/**
+ * Batch delete links
+ */
+export async function deleteLinksBatch(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const supabase = createClient();
+  const { error } = await supabase.from("links").delete().in("id", ids);
+
+  if (error) {
+    console.error("Error deleting links batch:", error);
+    throw new Error("Failed to delete links batch");
+  }
 }

@@ -5,15 +5,19 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 export default function ThemeToggle() {
-  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  // 컴포넌트가 마운트된 후에만 테마를 표시 (hydration 에러 방지)
+  // Update mounted in a controlled way
+  const [isMounted, setIsMounted] = useState(false);
+
+  // This useEffect runs after the first render, setting isMounted to true
+  // This is a common pattern to prevent hydration mismatches in Next.js
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
-  if (!mounted) {
+  if (!isMounted) {
     return (
       <button
         className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"

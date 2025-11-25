@@ -4,7 +4,16 @@
  */
 
 import type { GanttChart } from './ganttCharts';
-import type { Task } from '@/lib/gantt/types';
+import type { Task, TaskDTO, TaskType, TaskId } from '@/lib/gantt/types';
+
+// DTO for link storage
+interface LinkDTO {
+  id: string;
+  gantt_chart_id: string;
+  source: string;
+  target: string;
+  type: string;
+}
 
 // Check if running in browser
 const isBrowser = typeof window !== 'undefined';
@@ -38,7 +47,7 @@ export function getMockGanttChart(id: string): GanttChart | null {
 
 export function createMockGanttChart(chart: Omit<GanttChart, 'id' | 'created_at' | 'updated_at'>): GanttChart {
   if (!isBrowser) throw new Error('Cannot create in non-browser environment');
-  
+
   const newChart: GanttChart = {
     ...chart,
     id: `mock-chart-${Date.now()}`,
@@ -57,21 +66,21 @@ export function createMockGanttChart(chart: Omit<GanttChart, 'id' | 'created_at'
 
 export function updateMockGanttChart(id: string, updates: Partial<GanttChart>): GanttChart {
   if (!isBrowser) throw new Error('Cannot update in non-browser environment');
-  
+
   const data = localStorage.getItem(STORAGE_KEYS.ganttCharts);
   if (!data) throw new Error('No charts found');
-  
+
   const all = JSON.parse(data) as GanttChart[];
   const index = all.findIndex((chart) => chart.id === id);
-  
+
   if (index === -1) throw new Error('Chart not found');
-  
+
   all[index] = {
     ...all[index],
     ...updates,
     updated_at: new Date().toISOString(),
   };
-  
+
   localStorage.setItem(STORAGE_KEYS.ganttCharts, JSON.stringify(all));
   console.log('✅ Mock Gantt Chart updated:', id);
   return all[index];
@@ -79,14 +88,14 @@ export function updateMockGanttChart(id: string, updates: Partial<GanttChart>): 
 
 export function deleteMockGanttChart(id: string): void {
   if (!isBrowser) return;
-  
+
   const data = localStorage.getItem(STORAGE_KEYS.ganttCharts);
   if (!data) return;
-  
+
   const all = JSON.parse(data) as GanttChart[];
   const filtered = all.filter((chart) => chart.id !== id);
   localStorage.setItem(STORAGE_KEYS.ganttCharts, JSON.stringify(filtered));
-  
+
   console.log('✅ Mock Gantt Chart deleted:', id);
 }
 
@@ -102,25 +111,24 @@ export function getMockTasks(ganttChartId: string): Task[] {
     initializeSampleTasks(ganttChartId);
     const newData = localStorage.getItem(STORAGE_KEYS.tasks);
     if (!newData) return [];
-    const all = JSON.parse(newData) as any[];
+    const all = JSON.parse(newData) as TaskDTO[];
     return all
-      .filter((task: any) => task.gantt_chart_id === ganttChartId)
+      .filter((task) => task.gantt_chart_id === ganttChartId)
       .map(taskDtoToTask);
   }
-  const all = JSON.parse(data) as any[];
+  const all = JSON.parse(data) as TaskDTO[];
   return all
-    .filter((task: any) => task.gantt_chart_id === ganttChartId)
+    .filter((task) => task.gantt_chart_id === ganttChartId)
     .map(taskDtoToTask);
 }
 
-function taskDtoToTask(taskDto: any): Task {
+function taskDtoToTask(taskDto: TaskDTO): Task {
   return {
     id: taskDto.id,
     text: taskDto.text,
-    type: taskDto.type || 'task',
+    type: taskDto.type as TaskType,
     start: new Date(taskDto.start_date),
     end: taskDto.end_date ? new Date(taskDto.end_date) : undefined,
-    duration: taskDto.duration,
     progress: taskDto.progress || 0,
     parent: taskDto.parent_id,
   };
@@ -204,7 +212,7 @@ function initializeSampleTasks(ganttChartId: string): void {
 // Links Mock Storage
 // ============================================
 
-export function getMockLinks(ganttChartId: string): any[] {
+export function getMockLinks(ganttChartId: string): LinkDTO[] {
   if (!isBrowser) return [];
   const data = localStorage.getItem(STORAGE_KEYS.links);
   if (!data) {
@@ -212,11 +220,11 @@ export function getMockLinks(ganttChartId: string): any[] {
     initializeSampleLinks(ganttChartId);
     const newData = localStorage.getItem(STORAGE_KEYS.links);
     if (!newData) return [];
-    const all = JSON.parse(newData) as any[];
-    return all.filter((link: any) => link.gantt_chart_id === ganttChartId);
+    const all = JSON.parse(newData) as LinkDTO[];
+    return all.filter((link) => link.gantt_chart_id === ganttChartId);
   }
-  const all = JSON.parse(data) as any[];
-  return all.filter((link: any) => link.gantt_chart_id === ganttChartId);
+  const all = JSON.parse(data) as LinkDTO[];
+  return all.filter((link) => link.gantt_chart_id === ganttChartId);
 }
 
 function initializeSampleLinks(ganttChartId: string): void {
