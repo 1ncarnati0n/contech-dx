@@ -24,8 +24,7 @@ INSERT INTO projects (
   contract_amount,
   start_date,
   end_date,
-  status,
-  created_by
+  status
 ) VALUES (
   'a0000000-0000-0000-0000-000000000100',
   '서울 강남 오피스 빌딩 신축 - 지하 골조공사',
