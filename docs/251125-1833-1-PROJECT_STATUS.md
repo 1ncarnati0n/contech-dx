@@ -426,3 +426,4 @@ SELECT COUNT(*) FROM links WHERE gantt_chart_id = '<gantt_chart_id>';
 🚀 **현재 우선순위**: 프로젝트 CRUD 안정화 → Dummy Gantt 차트 테스트
 
 
+

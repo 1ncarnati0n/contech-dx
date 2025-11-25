@@ -99,6 +99,44 @@ export function deleteMockGanttChart(id: string): void {
   console.log('✅ Mock Gantt Chart deleted:', id);
 }
 
+/**
+ * 프로젝트에 대한 기본 Mock Gantt Chart 초기화
+ * 이미 차트가 있으면 첫 번째 반환, 없으면 새로 생성
+ */
+export function initializeMockGanttChart(projectId: string): GanttChart {
+  if (!isBrowser) {
+    throw new Error('Cannot initialize in non-browser environment');
+  }
+
+  const existingCharts = getMockGanttCharts(projectId);
+
+  // 이미 차트가 있으면 첫 번째 반환
+  if (existingCharts.length > 0) {
+    console.log('ℹ️  Mock Gantt Chart already exists:', existingCharts[0].id);
+    return existingCharts[0];
+  }
+
+  // 없으면 새로 생성
+  const newChart: GanttChart = {
+    id: `mock-chart-${projectId}-1`,
+    project_id: projectId,
+    name: '기본 공정표',
+    description: '프로젝트 기본 Gantt Chart',
+    start_date: '2024-01-01',
+    end_date: '2024-12-31',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const data = localStorage.getItem(STORAGE_KEYS.ganttCharts);
+  const all = data ? JSON.parse(data) as GanttChart[] : [];
+  all.push(newChart);
+  localStorage.setItem(STORAGE_KEYS.ganttCharts, JSON.stringify(all));
+
+  console.log('✅ Mock Gantt Chart auto-created:', newChart.id);
+  return newChart;
+}
+
 // ============================================
 // Tasks Mock Storage
 // ============================================

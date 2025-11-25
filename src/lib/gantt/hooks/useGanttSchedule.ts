@@ -10,7 +10,7 @@ import { useSummaryProgress } from "./useSummaryProgress";
 import type { GanttApi, Schedule, SaveState } from "../types";
 
 export interface UseGanttScheduleResult {
-  schedule: Schedule | null;
+  schedule: Schedule; // null 제거
   isLoading: boolean;
   saveState: SaveState;
   hasChanges: boolean;

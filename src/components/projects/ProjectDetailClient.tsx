@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -19,6 +19,7 @@ import type { Project } from '@/lib/types';
 import type { GanttChart } from '@/lib/services/ganttCharts';
 import { deleteProject } from '@/lib/services/projects';
 import { createGanttChart } from '@/lib/services/ganttCharts';
+import { initializeMockGanttChart } from '@/lib/services/mockStorage';
 
 interface Props {
   project: Project;
@@ -48,6 +49,22 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
   const [ganttCharts, setGanttCharts] = useState(initialCharts);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Mock 프로젝트의 경우 Gantt Chart 자동 생성
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Mock 프로젝트이고 차트가 없는 경우
+    if (project.id.startsWith('mock-') && ganttCharts.length === 0) {
+      try {
+        const autoChart = initializeMockGanttChart(project.id);
+        setGanttCharts([autoChart]);
+        console.log('✅ Auto-initialized Gantt Chart:', autoChart.id);
+      } catch (error) {
+        console.error('Failed to auto-initialize Gantt Chart:', error);
+      }
+    }
+  }, [project.id, ganttCharts.length]);
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return '-';
@@ -160,7 +177,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
           {/* Location */}
           {project.location && (
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+              <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">위치</div>
                 <div className="text-gray-900 dark:text-white">{project.location}</div>
@@ -171,7 +188,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
           {/* Client */}
           {project.client && (
             <div className="flex items-start gap-3">
-              <Building2 className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+              <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">발주처</div>
                 <div className="text-gray-900 dark:text-white">{project.client}</div>
@@ -181,7 +198,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
 
           {/* Contract Amount */}
           <div className="flex items-start gap-3">
-            <DollarSign className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+            <DollarSign className="w-5 h-5 text-gray-400 mt-0.5" />
             <div>
               <div className="text-sm text-gray-500 dark:text-gray-400">계약금액</div>
               <div className="text-gray-900 dark:text-white font-semibold">
@@ -192,7 +209,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
 
           {/* Dates */}
           <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+            <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
             <div>
               <div className="text-sm text-gray-500 dark:text-gray-400">공사기간</div>
               <div className="text-gray-900 dark:text-white">
@@ -245,7 +262,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
                 className="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-3">
-                  <GanttChartIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <GanttChartIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 dark:text-white truncate">
                       {chart.name}

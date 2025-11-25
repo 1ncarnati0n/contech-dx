@@ -11,8 +11,18 @@ import { getTasks, upsertTasksBatch, deleteTasksBatch } from "@/lib/services/tas
 import { getLinks, upsertLinksBatch, deleteLinksBatch } from "@/lib/services/links";
 import { convertMockTasksToSupabase, convertMockLinksToSupabase } from "../utils/mockDataConverter";
 
+// 빈 스케줄 초기값
+const EMPTY_SCHEDULE: Schedule = {
+  tasks: [],
+  links: [],
+  scales: [
+    { unit: "month" as const, step: 1, format: "M월" },
+    { unit: "day" as const, step: 1, format: "d" },
+  ],
+};
+
 interface UseGanttDataResult {
-  schedule: Schedule | null;
+  schedule: Schedule; // null 제거
   isLoading: boolean;
   saveState: SaveState;
   hasChanges: boolean;
@@ -29,14 +39,7 @@ export function useGanttData(
   const currentLinksRef = useRef<Link[]>([]);
   const scalesRef = useRef<Array<Record<string, unknown>>>([]);
 
-  const [schedule, setSchedule] = useState<Schedule | null>({
-    tasks: [],
-    links: [],
-    scales: [
-      { unit: "month" as const, step: 1, format: "M월" },
-      { unit: "day" as const, step: 1, format: "d" },
-    ],
-  });
+  const [schedule, setSchedule] = useState<Schedule>(EMPTY_SCHEDULE);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [hasChanges, setHasChanges] = useState<boolean>(false);
@@ -211,11 +214,7 @@ export function useGanttData(
         console.error("Error loading data:", error);
         if (isMounted) {
           // 에러 발생 시에도 빈 배열로 초기화하여 렌더링 에러 방지
-          const emptyScales = [
-            { unit: "month" as const, step: 1, format: "M월" },
-            { unit: "day" as const, step: 1, format: "d" },
-          ];
-          setSchedule({ tasks: [], links: [], scales: emptyScales });
+          setSchedule(EMPTY_SCHEDULE);
         }
         toast.error("데이터 로딩 실패");
       } finally {
