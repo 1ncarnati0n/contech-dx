@@ -111,8 +111,9 @@ export async function POST(request: NextRequest) {
       try {
         const result = await uploadSingleFile(file, storeName, apiKey);
         uploadedFiles.push(result);
-      } catch (error: any) {
-        errors.push({ fileName: file.name, error: error.message });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+        errors.push({ fileName: file.name, error: errorMessage });
       }
     }
 
@@ -123,10 +124,11 @@ export async function POST(request: NextRequest) {
       message: `${uploadedFiles.length}개 파일 업로드 성공${errors.length > 0 ? `, ${errors.length}개 실패` : ''}`,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error uploading files:', error);
+    const errorMessage = error instanceof Error ? error.message : '파일 업로드 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: error.message || '파일 업로드 중 오류가 발생했습니다.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

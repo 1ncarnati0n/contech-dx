@@ -4,15 +4,21 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { ProjectCard } from './ProjectCard';
+import { ProjectCreateModal } from './ProjectCreateModal';
 import type { Project, ProjectStatus } from '@/lib/types';
 import { getProjects } from '@/lib/services/projects';
 
-export function ProjectList() {
+interface ProjectListProps {
+  isAdmin?: boolean;
+}
+
+export function ProjectList({ isAdmin = false }: ProjectListProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Load projects
   useEffect(() => {
@@ -22,6 +28,20 @@ export function ProjectList() {
   // Filter projects
   useEffect(() => {
     let filtered = [...projects];
+
+    // Debug: Log admin status and projects
+    console.log('🔍 ProjectList Debug:');
+    console.log('  - isAdmin:', isAdmin);
+    console.log('  - Total projects:', projects.length);
+    console.log('  - Projects:', projects.map(p => ({ name: p.name, status: p.status })));
+
+    // Admin filter: Hide dummy projects from non-admin users
+    if (!isAdmin) {
+      console.log('  ⚠️  Non-admin user: Filtering out dummy projects');
+      filtered = filtered.filter((p) => p.status !== 'dummy');
+    } else {
+      console.log('  ✅ Admin user: Showing all projects including dummy');
+    }
 
     // Search filter
     if (searchQuery) {
@@ -40,8 +60,9 @@ export function ProjectList() {
       filtered = filtered.filter((p) => p.status === statusFilter);
     }
 
+    console.log('  - Filtered projects:', filtered.length);
     setFilteredProjects(filtered);
-  }, [projects, searchQuery, statusFilter]);
+  }, [projects, searchQuery, statusFilter, isAdmin]);
 
   const loadProjects = async () => {
     try {
@@ -57,8 +78,16 @@ export function ProjectList() {
   };
 
   const handleCreateClick = () => {
-    // TODO: Open create modal
-    alert('프로젝트 생성 모달 구현 예정');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleCreateSuccess = () => {
+    // Reload projects after successful creation
+    loadProjects();
   };
 
   return (
@@ -144,6 +173,14 @@ export function ProjectList() {
           ))}
         </div>
       )}
+
+      {/* Create Modal */}
+      <ProjectCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={handleModalClose}
+        onSuccess={handleCreateSuccess}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { useSummaryProgress } from "./useSummaryProgress";
 import type { GanttApi, Schedule, SaveState } from "../types";
 
 export interface UseGanttScheduleResult {
-  schedule: Schedule | null;
+  schedule: Schedule; // null 제거
   isLoading: boolean;
   saveState: SaveState;
   hasChanges: boolean;
@@ -22,7 +22,7 @@ export interface UseGanttScheduleResult {
  * Gantt Schedule Hook
  * 데이터 로딩, 저장, 이벤트 처리, Summary 진행률 계산을 통합 관리
  */
-export function useGanttSchedule(): UseGanttScheduleResult {
+export function useGanttSchedule(ganttChartId: string): UseGanttScheduleResult {
   const apiRef = useRef<GanttApi | null>(null);
 
   // Data Hook
@@ -34,7 +34,7 @@ export function useGanttSchedule(): UseGanttScheduleResult {
     handleSave,
     syncFromApi,
     markAsChanged,
-  } = useGanttData(apiRef);
+  } = useGanttData(apiRef, ganttChartId);
 
   // Summary Progress Hook
   const { recalcSummaryProgress, recalcAllSummaryTasks } = useSummaryProgress(apiRef);

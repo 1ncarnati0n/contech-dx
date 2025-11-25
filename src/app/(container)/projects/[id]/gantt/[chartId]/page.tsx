@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 import { getProject } from '@/lib/services/projects';
 import { getGanttChart } from '@/lib/services/ganttCharts';
-import { getTasks } from '@/lib/services/tasks';
-import { getLinks } from '@/lib/services/links';
 import { GanttChartPageClient } from '@/components/projects/GanttChartPageClient';
 
 interface Props {
@@ -10,14 +9,14 @@ interface Props {
 }
 
 export default async function GanttChartPage({ params }: Props) {
+  const supabase = await createClient();
   const { id, chartId } = await params;
 
-  // Load data
-  const [project, ganttChart, tasks, links] = await Promise.all([
-    getProject(id),
-    getGanttChart(chartId),
-    getTasks(chartId),
-    getLinks(chartId),
+  // Only load basic project and gantt chart info
+  // Tasks and links will be loaded client-side to properly handle Mock data
+  const [project, ganttChart] = await Promise.all([
+    getProject(id, supabase),
+    getGanttChart(chartId, supabase),
   ]);
 
   if (!project || !ganttChart) {
@@ -28,8 +27,7 @@ export default async function GanttChartPage({ params }: Props) {
     <GanttChartPageClient
       project={project}
       ganttChart={ganttChart}
-      initialTasks={tasks}
-      initialLinks={links}
+    // Remove initialTasks and initialLinks - they'll be loaded client-side
     />
   );
 }

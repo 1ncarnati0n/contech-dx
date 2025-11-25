@@ -4,13 +4,25 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import axios from "axios";
+import { toast } from "sonner";
 import { decorateTask } from "../utils/decorators";
-import { serializeSchedule } from "../utils/serializers";
 import type { Schedule, SaveState, Task, Link, GanttApi } from "../types";
+import { getTasks, upsertTasksBatch, deleteTasksBatch } from "@/lib/services/tasks";
+import { getLinks, upsertLinksBatch, deleteLinksBatch } from "@/lib/services/links";
+import { convertMockTasksToSupabase, convertMockLinksToSupabase } from "../utils/mockDataConverter";
+
+// 빈 스케줄 초기값
+const EMPTY_SCHEDULE: Schedule = {
+  tasks: [],
+  links: [],
+  scales: [
+    { unit: "month" as const, step: 1, format: "M월" },
+    { unit: "day" as const, step: 1, format: "d" },
+  ],
+};
 
 interface UseGanttDataResult {
-  schedule: Schedule | null;
+  schedule: Schedule; // null 제거
   isLoading: boolean;
   saveState: SaveState;
   hasChanges: boolean;
@@ -19,12 +31,15 @@ interface UseGanttDataResult {
   markAsChanged: () => void;
 }
 
-export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): UseGanttDataResult {
+export function useGanttData(
+  apiRef: React.MutableRefObject<GanttApi | null>,
+  ganttChartId: string
+): UseGanttDataResult {
   const currentTasksRef = useRef<Task[]>([]);
   const currentLinksRef = useRef<Link[]>([]);
   const scalesRef = useRef<Array<Record<string, unknown>>>([]);
 
-  const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [schedule, setSchedule] = useState<Schedule>(EMPTY_SCHEDULE);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [hasChanges, setHasChanges] = useState<boolean>(false);
@@ -76,10 +91,10 @@ export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): U
     setSchedule((prev) =>
       prev
         ? {
-            ...prev,
-            tasks: decoratedTasks,
-            links,
-          }
+          ...prev,
+          tasks: decoratedTasks,
+          links,
+        }
         : prev
     );
   }, [apiRef]);
@@ -89,8 +104,9 @@ export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): U
    */
   const handleSave = useCallback(async () => {
     const api = apiRef.current;
-    if (!api) {
-      console.error("Gantt API is not ready");
+    if (!api || !ganttChartId) {
+      console.error("Gantt API is not ready or ID is missing");
+      toast.error("저장할 수 없습니다: API 미준비 또는 ID 누락");
       return;
     }
 
@@ -99,47 +115,43 @@ export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): U
       syncFromApi();
 
       const tasksToSave = currentTasksRef.current;
-      if (tasksToSave.length === 0) {
-        throw new Error("No tasks to save");
-      }
+      const linksToSave = currentLinksRef.current;
 
-      let linksToSave = currentLinksRef.current;
-      try {
-        const stores = typeof api.getStores === "function" ? api.getStores() : null;
-        const dataStore = stores?.data;
-        const state = dataStore?.getState ? dataStore.getState() : null;
-        if (state?.links) {
-          linksToSave = state.links.map((link) => ({ ...link })) as Link[];
-          currentLinksRef.current = linksToSave;
-        }
-      } catch (error) {
-        console.warn("Falling back to cached links while saving:", error);
-      }
+      // 1. Get existing IDs to handle deletions
+      const existingTasks = await getTasks(ganttChartId);
+      const existingLinks = await getLinks(ganttChartId);
 
-      const payload = serializeSchedule(
-        tasksToSave,
-        linksToSave,
-        (schedule?.scales ?? scalesRef.current) as Array<Record<string, unknown>>
-      );
+      const existingTaskIds = new Set(existingTasks.map((t) => t.id));
+      const existingLinkIds = new Set(existingLinks.map((l) => l.id));
 
-      // API call to Next.js route
-      await axios.post("/api/mock", payload, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const currentTaskIds = new Set(tasksToSave.map((t) => t.id));
+      const currentLinkIds = new Set(linksToSave.map((l) => l.id));
+
+      // 2. Calculate IDs to delete
+      const tasksToDelete = [...existingTaskIds].filter((id) => !currentTaskIds.has(id));
+      const linksToDelete = [...existingLinkIds].filter((id) => !currentLinkIds.has(id));
+
+      // 3. Perform batch operations
+      await Promise.all([
+        deleteTasksBatch(tasksToDelete.map(String)),
+        deleteLinksBatch(linksToDelete.map(String)),
+        upsertTasksBatch(tasksToSave, ganttChartId),
+        upsertLinksBatch(linksToSave, ganttChartId),
+      ]);
 
       setSaveState("saved");
       setHasChanges(false);
+      toast.success("저장되었습니다");
+
       window.setTimeout(() => {
         setSaveState("idle");
       }, 1500);
     } catch (error) {
       console.error("Save error:", error);
       setSaveState("error");
-      alert("저장 중 오류가 발생했습니다: " + (error as Error).message);
+      toast.error("저장 중 오류가 발생했습니다");
     }
-  }, [apiRef, schedule?.scales, syncFromApi]);
+  }, [apiRef, ganttChartId, syncFromApi]);
 
   /**
    * 초기 데이터 로딩
@@ -148,32 +160,63 @@ export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): U
     let isMounted = true;
 
     const loadData = async () => {
+      if (!ganttChartId) return;
+
       setIsLoading(true);
 
       try {
-        // API call to Next.js route
-        const response = await axios.get("/api/mock");
-        const data = response.data;
+        let [tasks, links] = await Promise.all([
+          getTasks(ganttChartId),
+          getLinks(ganttChartId),
+        ]);
+
+        if (tasks.length === 0 && links.length === 0) {
+          console.log("Seeding mock data for Gantt Chart:", ganttChartId);
+          try {
+            const { tasks: mockTasks, idMapping } = convertMockTasksToSupabase(ganttChartId);
+            const mockLinks = convertMockLinksToSupabase(ganttChartId, idMapping);
+
+            // Upsert to DB sequentially to avoid FK constraints
+            const seededTasks = await upsertTasksBatch(mockTasks, ganttChartId);
+            const seededLinks = await upsertLinksBatch(mockLinks, ganttChartId);
+
+            console.log("Seeded tasks:", seededTasks?.length);
+            console.log("Seeded links:", seededLinks?.length);
+
+            tasks = seededTasks;
+            links = seededLinks;
+            toast.success("샘플 데이터가 로드되었습니다");
+          } catch (seedError) {
+            console.error("Failed to seed mock data:", seedError);
+            toast.error("샘플 데이터 로딩 실패");
+          }
+        }
+
         if (!isMounted) {
           return;
         }
 
-        const tasks = (data.tasks ?? []).map((task: unknown) => decorateTask(task as Partial<Task>));
-        const links = (data.links ?? []).map((link: unknown) => link as Link);
-        const scales = (data.scales ?? []).map((scale: unknown) => scale as Record<string, unknown>);
+        // Mock scales for now (or fetch from DB if we store them)
+        const scales = [
+          { unit: "month" as const, step: 1, format: "M월" },
+          { unit: "day" as const, step: 1, format: "d" },
+        ];
 
         scalesRef.current = scales;
         currentTasksRef.current = tasks;
         currentLinksRef.current = links;
 
-        setSchedule({ tasks, links, scales });
+        console.log("Setting schedule with:", { tasks: tasks?.length, links: links?.length });
+        setSchedule({ tasks: tasks || [], links: links || [], scales });
         setHasChanges(false);
         setSaveState("idle");
       } catch (error) {
         console.error("Error loading data:", error);
         if (isMounted) {
-          setSchedule(null);
+          // 에러 발생 시에도 빈 배열로 초기화하여 렌더링 에러 방지
+          setSchedule(EMPTY_SCHEDULE);
         }
+        toast.error("데이터 로딩 실패");
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -186,7 +229,7 @@ export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): U
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [ganttChartId]);
 
   return {
     schedule,
@@ -198,4 +241,3 @@ export function useGanttData(apiRef: React.MutableRefObject<GanttApi | null>): U
     markAsChanged,
   };
 }
-

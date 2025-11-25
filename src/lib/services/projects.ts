@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Project,
   CreateProjectDTO,
@@ -94,13 +95,13 @@ function initializeMockProjects(): void {
 /**
  * Get all projects
  */
-export async function getProjects(): Promise<Project[]> {
+export async function getProjects(supabaseClient?: SupabaseClient): Promise<Project[]> {
   if (USE_MOCK) {
     initializeMockProjects();
     return getMockProjects();
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from('projects')
@@ -119,13 +120,13 @@ export async function getProjects(): Promise<Project[]> {
 /**
  * Get a single project by ID
  */
-export async function getProject(id: string): Promise<Project | null> {
+export async function getProject(id: string, supabaseClient?: SupabaseClient): Promise<Project | null> {
   if (USE_MOCK) {
     const projects = getMockProjects();
     return projects.find((p) => p.id === id) || null;
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from('projects')
@@ -183,17 +184,25 @@ export async function createProject(
     created_by: user?.id,
   };
 
+  // Clean data: Remove undefined values and empty strings
+  const cleanedProject = Object.fromEntries(
+    Object.entries(projectData).filter(([_, v]) => v !== undefined && v !== '')
+  );
+
+  console.log('🔧 Cleaned project data for Supabase:', cleanedProject);
+
   const { data, error } = await supabase
     .from('projects')
-    .insert(projectData)
+    .insert(cleanedProject)
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating project:', error);
+    console.error('❌ Error creating project:', error);
     throw new Error('Failed to create project');
   }
 
+  console.log('✅ Project created successfully:', data.id);
   return data as Project;
 }
 

@@ -57,9 +57,8 @@ export default function ChatArea({
 
   return (
     <div
-      className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarOpen ? 'lg:ml-80' : 'lg:ml-0'
-      } w-full`}
+      className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : 'lg:ml-0'
+        } w-full`}
     >
       {/* Header */}
       <header className="h-20 bg-white border-b border-slate-200 p-4 flex items-center gap-4 z-10">
@@ -112,11 +111,10 @@ export default function ChatArea({
               type="submit"
               disabled={!selectedStore || !query.trim() || isSearching}
               size="sm"
-              className={`mb-1 rounded-lg transition-all ${
-                query.trim()
+              className={`mb-1 rounded-lg transition-all ${query.trim()
                   ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
                   : 'bg-slate-200 text-slate-400'
-              }`}
+                }`}
             >
               <Send className="w-4 h-4" />
             </Button>
@@ -171,67 +169,67 @@ const MessageBubble = memo(function MessageBubble({
         </div>
       )}
       <div
-        className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
-          isUser
+        className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${isUser
             ? 'bg-slate-800 text-white rounded-tr-none'
             : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
-        }`}
+          }`}
       >
         <div className="text-sm leading-relaxed">
           {isUser ? (
             <div className="whitespace-pre-wrap">{message.content}</div>
           ) : (
-            <ReactMarkdown 
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 // 기본 링크 스타일
-                a: ({node, ...props}) => (
+                a: ({ node: _node, ...props }) => (
                   <a target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all" {...props} />
                 ),
                 // 테이블 스타일 강화
-                table: ({node, ...props}) => (
+                table: ({ node: _node, ...props }) => (
                   <div className="overflow-x-auto my-4 rounded-lg border border-slate-200">
                     <table className="w-full text-sm text-left text-slate-700" {...props} />
                   </div>
                 ),
-                thead: ({node, ...props}) => (
+                thead: ({ node: _node, ...props }) => (
                   <thead className="text-xs text-slate-700 uppercase bg-slate-50" {...props} />
                 ),
-                tbody: ({node, ...props}) => (
+                tbody: ({ node: _node, ...props }) => (
                   <tbody className="divide-y divide-slate-100" {...props} />
                 ),
-                th: ({node, ...props}) => (
+                th: ({ node: _node, ...props }) => (
                   <th className="px-4 py-3 font-semibold whitespace-nowrap" {...props} />
                 ),
-                td: ({node, ...props}) => (
+                td: ({ node: _node, ...props }) => (
                   <td className="px-4 py-3" {...props} />
                 ),
-                tr: ({node, ...props}) => (
+                tr: ({ node: _node, ...props }) => (
                   <tr className="bg-white hover:bg-slate-50 transition-colors" {...props} />
                 ),
                 // 리스트 스타일
-                ul: ({node, ...props}) => (
+                ul: ({ node: _node, ...props }) => (
                   <ul className="list-disc list-outside ml-5 space-y-1 my-3" {...props} />
                 ),
-                ol: ({node, ...props}) => (
+                ol: ({ node: _node, ...props }) => (
                   <ol className="list-decimal list-outside ml-5 space-y-1 my-3" {...props} />
                 ),
-                li: ({node, ...props}) => (
+                li: ({ node: _node, ...props }) => (
                   <li className="pl-1" {...props} />
                 ),
                 // 인용구 스타일
-                blockquote: ({node, ...props}) => (
+                blockquote: ({ node: _node, ...props }) => (
                   <blockquote className="border-l-4 border-slate-300 pl-4 italic text-slate-600 my-4 bg-slate-50 py-2 pr-2 rounded-r" {...props} />
                 ),
                 // 헤딩 스타일
-                h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900" {...props} />,
-                h2: ({node, ...props}) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 border-b pb-2 border-slate-100" {...props} />,
-                h3: ({node, ...props}) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800" {...props} />,
+                h1: ({ node: _node, ...props }) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900" {...props} />,
+                h2: ({ node: _node, ...props }) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 border-b pb-2 border-slate-100" {...props} />,
+                h3: ({ node: _node, ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800" {...props} />,
                 // 코드 블록 스타일
-                code: ({node, className, children, ...props}: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                code: ({ node: _node, className, children, ...props }: any) => {
                   const match = /language-(\w+)/.exec(className || '');
                   const isInline = !match && !String(children).includes('\n');
-                  
+
                   return isInline ? (
                     <code className="bg-slate-100 text-red-500 rounded px-1.5 py-0.5 font-mono text-xs font-medium border border-slate-200" {...props}>
                       {children}
@@ -250,9 +248,9 @@ const MessageBubble = memo(function MessageBubble({
                   );
                 },
                 // 문단 간격
-                p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+                p: ({ node: _node, ...props }) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
                 // 구분선
-                hr: ({node, ...props}) => <hr className="my-6 border-slate-200" {...props} />,
+                hr: ({ node: _node, ...props }) => <hr className="my-6 border-slate-200" {...props} />,
               }}
             >
               {message.content}

@@ -6,9 +6,24 @@
 import { createClient } from '@/lib/supabase/client';
 import type {
   ProjectMember,
+  ProjectMemberRole,
   AddProjectMemberDTO,
   UpdateProjectMemberRoleDTO,
 } from '@/lib/types';
+
+// Database record type with joined profile data
+interface ProjectMemberRecord {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: ProjectMemberRole;
+  created_at: string;
+  user?: {
+    email: string;
+    display_name: string;
+    avatar_url?: string;
+  };
+}
 
 // Check if Supabase is configured
 const USE_MOCK =
@@ -106,7 +121,7 @@ export async function getProjectMembers(
   }
 
   // Transform the joined data
-  return (data as any[]).map((item) => ({
+  return (data as ProjectMemberRecord[]).map((item) => ({
     id: item.id,
     project_id: item.project_id,
     user_id: item.user_id,
@@ -170,7 +185,7 @@ export async function addProjectMember(
   }
 
   // Transform the joined data
-  const item = data as any;
+  const item = data as ProjectMemberRecord;
   return {
     id: item.id,
     project_id: item.project_id,
@@ -230,7 +245,7 @@ export async function updateProjectMemberRole(
   }
 
   // Transform the joined data
-  const item = data as any;
+  const item = data as ProjectMemberRecord;
   return {
     id: item.id,
     project_id: item.project_id,

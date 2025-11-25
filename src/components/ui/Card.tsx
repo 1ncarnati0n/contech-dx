@@ -34,6 +34,7 @@ const Card = React.forwardRef<
             },
           },
         }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {...(props as any)}
       >
         {children}

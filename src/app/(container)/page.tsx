@@ -28,7 +28,7 @@ export default function Home() {
       icon: BarChart3,
       title: '프로젝트 관리',
       description: 'Gantt 차트, WBS기반 공정 관리',
-      href: '/gantt-test',
+      href: '/projects',
       color: 'text-cyan-600 bg-cyan-50',
     }
   ];
@@ -87,7 +87,7 @@ export default function Home() {
               className="shadow-lg hover:shadow-xl"
               asChild
             >
-              <Link href="/gantt-test" className="flex items-center gap-2">
+              <Link href="/projects" className="flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
                 Gantt 차트
               </Link>

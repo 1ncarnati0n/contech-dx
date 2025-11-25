@@ -4,14 +4,14 @@ import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import UpdateRoleButton from '@/components/admin/UpdateRoleButton';
-import { Card, CardContent} from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { 
-  Shield, 
-  Users, 
-  UserCheck, 
-  Crown, 
-  Calendar, 
+import {
+  Shield,
+  Users,
+  UserCheck,
+  Crown,
+  Calendar,
   Mail,
   User as UserIcon,
   ShieldCheck
@@ -176,6 +176,7 @@ export default async function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     <Badge variant={getRoleBadgeColor(user.role) as any} className="capitalize">
                       {getRoleDisplayName(user.role)}
                     </Badge>
