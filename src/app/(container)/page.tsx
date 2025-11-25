@@ -27,8 +27,8 @@ export default function Home() {
     {
       icon: BarChart3,
       title: '프로젝트 관리',
-      description: 'Gantt 차트, WBS기반 공정 관리 (준비중)',
-      href: '#',
+      description: 'Gantt 차트, WBS기반 공정 관리',
+      href: '/gantt-test',
       color: 'text-cyan-600 bg-cyan-50',
     }
   ];
@@ -81,6 +81,17 @@ export default function Home() {
                 AI 검색
               </Link>
             </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              className="shadow-lg hover:shadow-xl"
+              asChild
+            >
+              <Link href="/gantt-test" className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Gantt 차트
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -123,10 +134,10 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 dark:text-slate-600 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-orange-600 dark:text-orange-500 mt-0.5" />
                 <div>
                   <p className="font-medium text-slate-900 dark:text-slate-100">Gantt 차트 기본공정 mockup앱과 통합</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">프로젝트 일정 관리 및 공정 추적</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">프로젝트 일정 관리 및 공정 추적 ✅ 완료</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
