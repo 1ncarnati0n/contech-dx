@@ -284,3 +284,96 @@ export interface MobileMenuProps {
   profile: Profile | null;
   isAdmin: boolean;
 }
+
+// ============================================
+// 프로젝트 관리 타입
+// ============================================
+
+/**
+ * 프로젝트 상태
+ */
+export type ProjectStatus = 'planning' | 'active' | 'completed' | 'on_hold' | 'cancelled';
+
+/**
+ * 프로젝트 멤버 역할
+ */
+export type ProjectMemberRole = 'pm' | 'engineer' | 'supervisor' | 'worker' | 'member';
+
+/**
+ * 프로젝트 타입
+ */
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  location?: string;
+  client?: string;
+  contract_amount?: number;
+  start_date: string;  // ISO 8601 date string
+  end_date?: string;
+  status: ProjectStatus;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * 프로젝트 생성 DTO
+ */
+export interface CreateProjectDTO {
+  name: string;
+  description?: string;
+  location?: string;
+  client?: string;
+  contract_amount?: number;
+  start_date: string;
+  end_date?: string;
+  status?: ProjectStatus;
+}
+
+/**
+ * 프로젝트 수정 DTO
+ */
+export interface UpdateProjectDTO {
+  name?: string;
+  description?: string;
+  location?: string;
+  client?: string;
+  contract_amount?: number;
+  start_date?: string;
+  end_date?: string;
+  status?: ProjectStatus;
+}
+
+/**
+ * 프로젝트 멤버 타입
+ */
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: ProjectMemberRole;
+  created_at: string;
+  // Joined data
+  user?: {
+    email: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
+}
+
+/**
+ * 프로젝트 멤버 추가 DTO
+ */
+export interface AddProjectMemberDTO {
+  project_id: string;
+  user_id: string;
+  role?: ProjectMemberRole;
+}
+
+/**
+ * 프로젝트 멤버 역할 수정 DTO
+ */
+export interface UpdateProjectMemberRoleDTO {
+  role: ProjectMemberRole;
+}

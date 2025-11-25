@@ -1,0 +1,436 @@
+:root {
+  /* ========== Color Palette (Premium & Modern) ========== */
+  --color-primary: #3b82f6;
+  /* Blue 500 */
+  --color-primary-dark: #2563eb;
+  /* Blue 600 */
+  --color-primary-light: #eff6ff;
+  /* Blue 50 */
+
+  --color-danger: #ef4444;
+  /* Red 500 */
+  --color-danger-light: #fef2f2;
+  /* Red 50 */
+
+  --color-success: #10b981;
+  /* Emerald 500 */
+  --color-warning: #f59e0b;
+  /* Amber 500 */
+
+  --color-text-main: #1e293b;
+  /* Slate 800 */
+  --color-text-sub: #64748b;
+  /* Slate 500 */
+
+  --color-border: #e2e8f0;
+  /* Slate 200 */
+  --color-bg-main: #ffffff;
+  --color-bg-sub: #f8fafc;
+  /* Slate 50 */
+
+  /* ========== Task Type Colors (Restored Original Palette) ========== */
+  /* Standard Task (Default) */
+  --task-default-bg: #ff826b;
+  --task-default-progress: #d6412a;
+  --task-default-border: #d6412a;
+
+  /* Summary Task */
+  --task-summary-bg: #e7e7e7b4;
+  --task-summary-progress: #8d8d8d8c;
+  --task-summary-border: #000000;
+
+  /* Urgent */
+  --task-urgent-bg: #ffbbad68;
+  --task-urgent-progress: #ff592ba3;
+  --task-urgent-border: #ff592ba3;
+  --task-urgent-text: #212121;
+
+  /* Narrow (Indirect) */
+  --task-narrow-bg: #676a81;
+  --task-narrow-progress: #1a2630;
+  --task-narrow-border: #63667a;
+  --task-narrow-link-bg: #384047;
+
+  /* Round (Indirect Dependent) */
+  --task-round-bg: #a7b7ff;
+  --task-round-progress: #6c8fd7;
+  --task-round-text: #0f172a;
+
+  /* Progress (Other) */
+  --task-progress-bg: rgba(57, 57, 255, 0.079);
+  --task-progress-bar: #2680ff;
+  --task-progress-border: #2680ff;
+
+  /* Milestone */
+  --milestone-color: #003cffc0;
+  --milestone-border: #003cffc0;
+  --milestone-shadow: 0 2px 4px rgba(0, 60, 255, 0.2);
+
+  /* ========== Dimensions & Spacing ========== */
+  --gantt-border-radius: 8px;
+  --task-border-radius: 4px;
+  --gantt-header-height: 40px;
+  --gantt-row-height: 40px;
+
+  /* ========== Gantt Wrapper ========== */
+  --gantt-border-color: var(--color-border);
+  --gantt-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --gantt-min-height: 600px;
+
+  /* ========== Grid & Scale ========== */
+  --grid-font-size: 0.85rem;
+  --grid-header-bg: var(--color-bg-sub);
+  --grid-hover-bg: var(--color-primary-light);
+  --scale-font-size: 0.75rem;
+  --scale-bg: var(--color-bg-sub);
+
+  /* ========== Baseline ========== */
+  --baseline-bg: #475569;
+  --baseline-opacity: 0.6;
+}
+
+/* ========================================
+   Gantt Wrapper & Layout
+======================================== */
+
+.gantt-wrapper {
+  min-height: var(--gantt-min-height);
+  border: 1px solid var(--gantt-border-color);
+  border-radius: var(--gantt-border-radius);
+  overflow: hidden;
+  box-shadow: var(--gantt-shadow);
+  background-color: var(--color-bg-main);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Header Styling */
+.gantt-wrapper .wx-grid-header,
+.gantt-wrapper .wx-time-scale-header {
+  background-color: var(--grid-header-bg);
+  font-weight: 600;
+  color: var(--color-text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+}
+
+/* Grid Rows */
+.gantt-wrapper .wx-grid-row,
+.gantt-wrapper .wx-grid-cell {
+  font-size: var(--grid-font-size);
+  color: var(--color-text-main);
+  border-bottom-color: var(--color-border);
+  border-right-color: var(--color-border);
+}
+
+.gantt-wrapper .wx-grid-row:hover {
+  background-color: var(--grid-hover-bg);
+}
+
+/* Scale */
+.gantt-wrapper .wx-gantt-scale {
+  font-size: var(--scale-font-size);
+  color: var(--color-text-sub);
+  background-color: var(--scale-bg);
+}
+
+/* ========================================
+   Willow Theme Customization (Deep Integration)
+======================================== */
+
+.wx-willow-theme {
+  /* Summary Task Overrides */
+  --wx-gantt-summary-color: var(--task-summary-bg);
+  --wx-gantt-summary-fill-color: var(--task-summary-progress);
+  --wx-gantt-summary-border: 1px solid var(--task-summary-border);
+  --wx-gantt-summary-height: 18px;
+  /* Restored height */
+  --wx-gantt-summary-bracket-size: 8px;
+
+  /* Default Task Overrides */
+  --wx-gantt-task-color: var(--task-default-bg);
+  --wx-gantt-task-fill-color: var(--task-default-progress);
+  --wx-gantt-task-border: 1px solid black;
+  /* Restored black border */
+  --wx-gantt-task-border-radius: 4px;
+  /* Modern touch: Rounded corners */
+
+  /* Link Lines */
+  --wx-gantt-link-color: #3f3f3f;
+
+  /* Selection */
+  --wx-gantt-select-color: #eaedf5;
+
+  /* Milestone Overrides */
+  --wx-gantt-milestone-color: var(--milestone-color);
+  --wx-gantt-milestone-border-radius: 3px;
+}
+
+/* ========================================
+   Task Bars (Enhanced)
+======================================== */
+
+/* General Task Bar Styling */
+.wx-gantt .wx-bar.wx-task {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  /* Modern touch: Subtle shadow */
+  background-image: var(--wx-gantt-task-color);
+  transition: transform 0.1s ease;
+}
+
+.wx-gantt .wx-bar.wx-task:hover {
+  transform: translateY(-1px);
+  z-index: 2;
+}
+
+/* Summary Task - Distinct Group Look */
+.wx-gantt .wx-bar.wx-summary {
+  border-radius: 0;
+  box-shadow: none;
+  /* Remove default bracket look if desired, or refine it */
+}
+
+/* ========================================
+   Custom Task Types (Restored & Polished)
+======================================== */
+
+/* 1. Urgent Task */
+.wx-gantt .wx-bar.wx-task.urgent {
+  background-color: var(--task-urgent-bg);
+  background-image: none;
+  border: 1px solid var(--task-urgent-border);
+  color: var(--task-urgent-text);
+  font-weight: normal;
+}
+
+.wx-gantt .wx-bar.wx-task.urgent .wx-progress-percent {
+  background-color: var(--task-urgent-progress);
+}
+
+/* 2. Narrow Task */
+.wx-gantt .wx-bar.wx-task.narrow {
+  background-color: var(--task-narrow-bg);
+  border: 1px solid var(--task-narrow-border);
+  height: 10px !important;
+  /* Restored height */
+  margin-top: 10px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.wx-gantt .wx-bar.wx-task.narrow .wx-progress-percent {
+  background-color: var(--task-narrow-progress);
+}
+
+.wx-gantt .wx-bar.wx-task.narrow .wx-content {
+  display: none;
+  /* Hide text inside bar */
+}
+
+.wx-gantt .wx-bar.wx-task.narrow .wx-link {
+  background-color: var(--task-narrow-link-bg);
+  border-radius: 0;
+}
+
+.wx-gantt .wx-bar.wx-task.narrow .wx-link .wx-inner {
+  border-radius: 0;
+}
+
+/* 3. Progress Task */
+.wx-gantt .wx-bar.wx-task.progress {
+  background-color: var(--task-progress-bg);
+  border: 1px solid var(--task-progress-border);
+  border-radius: 50px;
+  /* Pill shape */
+  color: var(--color-text-main);
+}
+
+.wx-gantt .wx-bar.wx-task.progress .wx-progress-percent {
+  background-color: var(--task-progress-bar);
+  border-radius: 999px;
+}
+
+.wx-gantt .wx-bar.wx-task.progress .wx-progress-wrapper {
+  border-radius: 50px;
+}
+
+/* 4. Round Task */
+.wx-gantt .wx-bar.wx-task.round {
+  background-color: var(--task-round-bg);
+  border: 1px solid black;
+  color: var(--task-round-text);
+  border-radius: 999px;
+}
+
+.wx-gantt .wx-bar.wx-task.round .wx-progress-percent {
+  background-color: var(--task-round-progress);
+}
+
+/* ========================================
+   Milestones (Fixed Geometry)
+======================================== */
+
+.wx-gantt .wx-bar.wx-milestone {
+  /* Remove rotation and use clip-path for diamond shape */
+  transform: none !important;
+  background-color: var(--milestone-color);
+  border: none;
+  /* Borders don't work well with clip-path, use drop-shadow if needed */
+  border-radius: 0;
+
+  /* Create Diamond Shape */
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+
+  /* Ensure it's a square to look like a proper diamond */
+  width: 24px !important;
+  /* Force square size */
+  height: 24px !important;
+  margin-top: 6px;
+  /* Center vertically in row */
+}
+
+.wx-gantt .wx-bar.wx-milestone .wx-content {
+  transform: none !important;
+  /* No counter-rotation needed */
+
+  /* Position text outside the clipped area so it's visible */
+  position: absolute;
+  left: 28px;
+  /* Place text to the right of the diamond */
+  top: 50%;
+  transform: translateY(-50%) !important;
+  /* Center text vertically */
+
+  color: #333;
+  font-weight: 700;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* ========================================
+   Tooltips
+======================================== */
+
+.wx-task-tooltip {
+  background-color: white;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  min-width: 200px;
+  color: var(--color-text-main);
+  font-size: 0.85rem;
+  z-index: 100;
+}
+
+.wx-task-tooltip .tooltip-header {
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-primary-dark);
+}
+
+.wx-task-tooltip .tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.wx-task-tooltip .tooltip-label {
+  color: var(--color-text-sub);
+  font-size: 0.75rem;
+}
+
+.wx-task-tooltip .tooltip-value {
+  font-weight: 500;
+}
+
+/* ========================================
+   Weekend & Holidays
+======================================== */
+
+.wx-weekend {
+  background-color: #f1f5f9 !important;
+  /* Slate 100 */
+  background-image: repeating-linear-gradient(45deg,
+      transparent,
+      transparent 10px,
+      rgba(0, 0, 0, 0.02) 10px,
+      rgba(0, 0, 0, 0.02) 20px);
+}
+
+.wx-holiday {
+  background-color: #fef2f2 !important;
+  /* Red 50 */
+  background-image: repeating-linear-gradient(-45deg,
+      transparent,
+      transparent 10px,
+      rgba(239, 68, 68, 0.05) 10px,
+      rgba(239, 68, 68, 0.05) 20px);
+}
+
+/* ========================================
+   Toolbar & Editor (Refined)
+======================================== */
+.wx-toolbar {
+  background: white;
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px 16px;
+  gap: 8px;
+}
+
+.wx-toolbar .wx-button {
+  border-radius: 6px;
+  font-weight: 500;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+  background: white;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wx-toolbar .wx-button:hover {
+  background: var(--color-bg-sub);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.wx-toolbar .wx-button[type="primary"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.wx-toolbar .wx-button[type="primary"]:hover {
+  background: var(--color-primary-dark);
+}
+
+/* ========================================
+   Miscellaneous
+======================================== */
+
+.wx-sections {
+  background-color: rgb(255, 255, 255);
+  border: 1px solid var(--color-border);
+  padding: 1rem;
+  border-radius: 0.4rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wx-sections > div {
+  width: 100%;
+}
+
+
+
+
+
+

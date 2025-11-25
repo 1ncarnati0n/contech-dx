@@ -9,12 +9,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-slate-700 text-white hover:bg-slate-800 hover:shadow-md focus:ring-slate-500",
-        secondary: "bg-cyan-600 text-white hover:bg-cyan-700 hover:shadow-md focus:ring-cyan-500",
-        accent: "bg-orange-600 text-white hover:bg-orange-700 hover:shadow-md focus:ring-orange-500",
-        outline: "bg-white text-slate-700 border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 focus:ring-slate-500",
-        ghost: "bg-transparent text-slate-700 hover:bg-slate-100 focus:ring-slate-500",
-        danger: "bg-red-600 text-white hover:bg-red-700 hover:shadow-md focus:ring-red-500",
+        primary: "bg-primary-600 text-white hover:bg-primary-700 hover:shadow-md focus:ring-primary-500 dark:bg-primary-600 dark:hover:bg-primary-500",
+        secondary: "bg-secondary-500 text-white hover:bg-secondary-600 hover:shadow-md focus:ring-secondary-500",
+        accent: "bg-accent-600 text-white hover:bg-accent-700 hover:shadow-md focus:ring-accent-500",
+        outline: "bg-transparent text-primary-700 border-2 border-primary-200 hover:bg-primary-50 hover:border-primary-300 focus:ring-primary-500 dark:text-primary-200 dark:border-primary-700 dark:hover:bg-primary-800 dark:hover:border-primary-600",
+        ghost: "bg-transparent text-primary-700 hover:bg-primary-100 focus:ring-primary-500 dark:text-primary-200 dark:hover:bg-primary-800",
+        danger: "bg-error-600 text-white hover:bg-error-700 hover:shadow-md focus:ring-error-500",
       },
       size: {
         sm: "px-3 py-1.5 text-sm",
@@ -31,7 +31,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;

@@ -1,196 +1,196 @@
 @import "tailwindcss";
+@source "../../src";
+@plugin "@tailwindcss/typography";
 
-:root {
-  /* Base Colors */
-  --background: #ffffff;
-  --foreground: #0f172a;
+@variant dark (&:where(.dark, .dark *));
 
-  /* Primary Colors - Blue Gray (전문성, 신뢰감) */
-  --primary-50: #f8fafc;
-  --primary-100: #f1f5f9;
-  --primary-200: #e2e8f0;
-  --primary-300: #cbd5e1;
-  --primary-400: #94a3b8;
-  --primary-500: #64748b;
-  --primary-600: #475569;
-  --primary-700: #334155;
-  --primary-800: #1e293b;
-  --primary-900: #0f172a;
+@theme {
+  /* Base Colors - OpenAI Style (High Contrast) */
+  --color-background: #ffffff;
+  --color-foreground: #000000;
 
-  /* Accent Colors - Orange (건설/안전) */
-  --accent-50: #fff7ed;
-  --accent-100: #ffedd5;
-  --accent-200: #fed7aa;
-  --accent-300: #fdba74;
-  --accent-400: #fb923c;
-  --accent-500: #f97316;
-  --accent-600: #ea580c;
-  --accent-700: #c2410c;
-  --accent-800: #9a3412;
-  --accent-900: #7c2d12;
+  /* Primary Colors - Neutral (Clean, Minimal) */
+  --color-primary-50: #fafafa;
+  --color-primary-100: #f5f5f5;
+  --color-primary-200: #e5e5e5;
+  --color-primary-300: #d4d4d4;
+  --color-primary-400: #a3a3a3;
+  --color-primary-500: #737373;
+  --color-primary-600: #525252;
+  --color-primary-700: #404040;
+  --color-primary-800: #262626;
+  --color-primary-900: #171717;
+  --color-primary-950: #0a0a0a;
 
-  /* Secondary Colors - Cyan (디지털, 혁신) */
-  --secondary-50: #ecfeff;
-  --secondary-100: #cffafe;
-  --secondary-200: #a5f3fc;
-  --secondary-300: #67e8f9;
-  --secondary-400: #22d3ee;
-  --secondary-500: #06b6d4;
-  --secondary-600: #0891b2;
-  --secondary-700: #0e7490;
-  --secondary-800: #155e75;
-  --secondary-900: #164e63;
+  /* Admin Colors - Orange (Maintained) */
+  --color-admin-50: #fff7ed;
+  --color-admin-100: #ffedd5;
+  --color-admin-200: #fed7aa;
+  --color-admin-300: #fdba74;
+  --color-admin-400: #fb923c;
+  --color-admin-500: #f97316;
+  --color-admin-600: #ea580c;
+  --color-admin-700: #c2410c;
+  --color-admin-800: #9a3412;
+  --color-admin-900: #7c2d12;
+
+  /* Secondary Colors - Orange (Maintained) */
+  --color-secondary-50: #fff7ed;
+  --color-secondary-100: #ffedd5;
+  --color-secondary-200: #fed7aa;
+  --color-secondary-300: #fdba74;
+  --color-secondary-400: #fb923c;
+  --color-secondary-500: #f97316;
+  --color-secondary-600: #ea580c;
+  --color-secondary-700: #c2410c;
+  --color-secondary-800: #9a3412;
+  --color-secondary-900: #7c2d12;
+
+  /* Accent Colors - Vivid Blue (Requested) */
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-200: #bfdbfe;
+  --color-accent-300: #93c5fd;
+  --color-accent-400: #60a5fa;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+  --color-accent-700: #1d4ed8;
+  --color-accent-800: #1e40af;
+  --color-accent-900: #1e3a8a;
 
   /* Success - Green */
-  --success-50: #f0fdf4;
-  --success-500: #10b981;
-  --success-600: #059669;
-  --success-700: #047857;
+  --color-success-50: #f0fdf4;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
 
   /* Error - Red */
-  --error-50: #fef2f2;
-  --error-500: #ef4444;
-  --error-600: #dc2626;
-  --error-700: #b91c1c;
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
 
   /* Warning - Amber */
-  --warning-50: #fffbeb;
-  --warning-500: #f59e0b;
-  --warning-600: #d97706;
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
 
-  /* Shadows */
+  /* Shadows - Subtle & Diffused */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-DEFAULT: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-  /* Border Radius */
-  --radius-sm: 0.25rem;
-  --radius: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
+  /* Border Radius - Slightly more squared for technical feel */
+  --radius-sm: 0.125rem;
+  --radius-DEFAULT: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Animations */
+  --animate-fade-in: fadeIn 0.3s ease-out;
+  --animate-slide-up: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-spin: spin 1s linear infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* 
+  Root Variables & Dark Mode 
+*/
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
+/* Dark mode - Pure Black for OLED/Premium feel */
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  
+  /* Adjust shadows for dark mode */
+  --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+  --shadow-DEFAULT: 0 1px 3px 0 rgb(255 255 255 / 0.1), 0 1px 2px -1px rgb(255 255 255 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(255 255 255 / 0.1), 0 2px 4px -2px rgb(255 255 255 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(255 255 255 / 0.1), 0 4px 6px -4px rgb(255 255 255 / 0.1);
+}
 
-    /* Adjust shadows for dark mode */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+/* Base Styles */
+@layer base {
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1; /* More technical font features */
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    @apply bg-accent-200 text-accent-900;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Component Styles */
+@layer components {
+  /* Card Component - Minimalist */
+  .card {
+    @apply bg-white dark:bg-primary-900 rounded-lg border border-primary-200 dark:border-primary-800 transition-all duration-200;
+    /* Removed default shadow for cleaner look, added hover effect */
+  }
+
+  .card-hover {
+    @apply hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm;
+  }
+
+  /* Glassmorphism Effect - Subtle */
+  .glass {
+    @apply bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-primary-100 dark:border-primary-800;
+  }
+
+  /* Button Component - OpenAI Style */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm;
+    @apply border border-primary-200 dark:border-primary-800 bg-white dark:bg-primary-900 text-primary-900 dark:text-primary-100;
+    @apply hover:bg-primary-50 dark:hover:bg-primary-800;
+    @apply active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply bg-primary-900 text-white border-transparent hover:bg-black dark:bg-white dark:text-black dark:hover:bg-primary-100;
+  }
+
+  .btn-accent {
+    @apply bg-accent-600 text-white border-transparent hover:bg-accent-700 dark:bg-accent-600 dark:hover:bg-accent-500;
+  }
+  
+  .btn-admin {
+    @apply bg-admin-500 text-white border-transparent hover:bg-admin-600 dark:bg-admin-600 dark:hover:bg-admin-500;
+  }
+
+  /* Loading Spinner */
+  .spinner {
+    @apply w-5 h-5 rounded-full border-2 border-primary-200 border-t-accent-600 animate-spin;
+  }
 }
 
-/* Smooth scroll behavior */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Selection colors */
-::selection {
-  background-color: var(--accent-200);
-  color: var(--primary-900);
-}
-
-/* Utility Classes */
-.card {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  transition: all var(--transition-base);
-}
-
-.card-hover:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-
-.glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Legacy Button (기존 호환성) */
-.btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--primary-300);
-  border-radius: var(--radius);
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 1rem;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-
-.btn:hover:not(:disabled) {
-  background: var(--primary-700);
-  color: white;
-  border-color: var(--primary-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Focus styles */
-*:focus-visible {
-  outline: 2px solid var(--accent-500);
-  outline-offset: 2px;
-}
-
-/* Loading spinner */
+/* Keyframes */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.spinner {
-  border: 2px solid var(--primary-200);
-  border-top-color: var(--accent-500);
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  animation: spin 0.6s linear infinite;
-}
-
-/* Fade in animation */
 @keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -202,18 +202,32 @@ html {
 }
 
 .fade-in {
-  animation: fadeIn var(--transition-base) ease-out;
+  animation: fadeIn 0.3s ease-out;
 }
 
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .card {
-    background: var(--primary-800);
-    box-shadow: var(--shadow-md);
+.slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Keyframes */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 
-  .glass {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+.fade-in {
+  animation: fadeIn 0.25s ease-out;
 }

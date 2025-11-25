@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import '../styles/globals.css';
+import '../styles/gantt.css';
+import '../styles/svar-gantt-fixed.css';
 import NavBar from '@/components/layout/NavBar';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { Toaster } from '@/components/ui/Toaster';
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
-  description: '라온아크테크 건축직영공사 공정관리 시스템빌드',
+  description: '라온아크테크 건축공정관리 시스템빌드',
 };
 
 export default function RootLayout({

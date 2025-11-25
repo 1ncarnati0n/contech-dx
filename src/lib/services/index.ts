@@ -46,3 +46,54 @@ export {
   type UploadedFile,
   type SearchMessage,
 } from './gemini';
+
+// Project 서비스
+export {
+  getProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+  getProjectsByStatus,
+  getProjectsByUser,
+} from './projects';
+
+// Project Members 서비스
+export {
+  getProjectMembers,
+  addProjectMember,
+  updateProjectMemberRole,
+  removeProjectMember,
+  isProjectMember,
+  getUserRoleInProject,
+} from './projectMembers';
+
+// Gantt Charts 서비스
+export {
+  getGanttCharts,
+  getGanttChart,
+  createGanttChart,
+  updateGanttChart,
+  deleteGanttChart,
+  getGanttChartsByProject,
+} from './ganttCharts';
+
+// Tasks 서비스
+export {
+  getTasks,
+  getTask,
+  createTask,
+  updateTask,
+  deleteTask,
+  createTasksBatch,
+} from './tasks';
+
+// Links 서비스
+export {
+  getLinks,
+  getLink,
+  createLink,
+  updateLink,
+  deleteLink,
+  createLinksBatch,
+} from './links';
