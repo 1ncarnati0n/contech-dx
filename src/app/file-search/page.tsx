@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import {
   Sidebar,
   ChatArea,
@@ -10,6 +11,17 @@ import {
 
 export default function FileSearchPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkPermission = async () => {
+      const profile = await getCurrentUserProfile();
+      if (profile && isSystemAdmin(profile)) {
+        setIsAdmin(true);
+      }
+    };
+    checkPermission();
+  }, []);
 
   const {
     // 스토어 상태
@@ -22,6 +34,8 @@ export default function FileSearchPage() {
     // 채팅 상태
     messages,
     isSearching,
+    sessions,
+    currentSessionId,
     // UI 상태
     loading,
     error,
@@ -37,6 +51,9 @@ export default function FileSearchPage() {
     uploadFiles,
     // 채팅 액션
     search,
+    selectSession,
+    createSession,
+    deleteSession,
     // 알림 액션
     clearNotification,
   } = useFileSearch();
@@ -61,6 +78,7 @@ export default function FileSearchPage() {
         uploadedFiles={uploadedFiles}
         attachedFiles={attachedFiles}
         loading={loading}
+        isAdmin={isAdmin}
         onSelectStore={selectStore}
         onCreateStore={createStore}
         onDeleteStore={deleteStore}
@@ -68,6 +86,11 @@ export default function FileSearchPage() {
         onRemoveAttachedFile={removeAttachedFile}
         onClearAttachedFiles={clearAttachedFiles}
         onUploadFiles={uploadFiles}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        onSelectSession={selectSession}
+        onCreateSession={createSession}
+        onDeleteSession={deleteSession}
       />
 
       {/* Main Chat Area */}

@@ -1,7 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { 
+  CheckCircle2, 
+  XCircle, 
+  Database, 
+  Key, 
+  Globe, 
+  ShieldCheck, 
+  Activity,
+  Table as TableIcon,
+  AlertTriangle,
+  ExternalLink
+} from 'lucide-react';
 
 export default async function TestConnectionPage() {
   // Admin만 접근 가능
@@ -15,10 +28,11 @@ export default async function TestConnectionPage() {
   // 환경변수 확인 (보안상 일부만 표시)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const hasAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const anonKeyPrefix = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(
-    0,
-    20
-  );
+  
+  // URL 표시용 (프로토콜 제외 및 단축)
+  const displayUrl = supabaseUrl 
+    ? supabaseUrl.replace(/^https?:\/\//, '') 
+    : '설정되지 않음';
 
   // 연결 테스트
   let connectionTest = {
@@ -39,7 +53,7 @@ export default async function TestConnectionPage() {
     } else {
       connectionTest = {
         success: true,
-        message: 'Supabase 연결 성공!',
+        message: '정상 연결됨',
         error: null,
       };
     }
@@ -53,189 +67,182 @@ export default async function TestConnectionPage() {
 
   // 테이블 존재 확인
   const tableTests = [];
+  const requiredTables = ['posts', 'comments', 'profiles'];
 
-  // posts 테이블 확인
-  const { error: postsError } = await supabase
-    .from('posts')
-    .select('id')
-    .limit(1);
-  tableTests.push({
-    name: 'posts',
-    exists: !postsError,
-    error: postsError,
-  });
+  for (const table of requiredTables) {
+    const { error } = await supabase.from(table).select('id').limit(1);
+    tableTests.push({
+      name: table,
+      exists: !error,
+      error: error
+    });
+  }
 
-  // comments 테이블 확인
-  const { error: commentsError } = await supabase
-    .from('comments')
-    .select('id')
-    .limit(1);
-  tableTests.push({
-    name: 'comments',
-    exists: !commentsError,
-    error: commentsError,
-  });
-
-  // profiles 테이블 확인
-  const { error: profilesError } = await supabase
-    .from('profiles')
-    .select('id')
-    .limit(1);
-  tableTests.push({
-    name: 'profiles',
-    exists: !profilesError,
-    error: profilesError,
-  });
+  const allTablesExist = tableTests.every(t => t.exists);
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Supabase 연결 테스트</h1>
-
-      {/* 환경변수 확인 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">환경변수 상태</h2>
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <span className="font-medium w-48">SUPABASE_URL:</span>
-            <span className="text-gray-700">{supabaseUrl || '❌ 없음'}</span>
+    <div className="max-w-3xl mx-auto py-10 px-4">
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+            <ShieldCheck className="w-6 h-6 text-slate-700 dark:text-slate-300" />
           </div>
-          <div className="flex items-center">
-            <span className="font-medium w-48">SUPABASE_ANON_KEY:</span>
-            <span className="text-gray-700">
-              {hasAnonKey ? `✅ 설정됨 (${anonKeyPrefix}...)` : '❌ 없음'}
-            </span>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">시스템 상태 진단</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Supabase 연결 및 데이터베이스 상태를 점검합니다.</p>
           </div>
         </div>
       </div>
 
-      {/* 연결 테스트 결과 */}
-      <div
-        className={`rounded-lg shadow-md p-6 mb-6 ${
-          connectionTest.success
-            ? 'bg-green-50 border-2 border-green-200'
-            : 'bg-red-50 border-2 border-red-200'
-        }`}
-      >
-        <h2 className="text-xl font-semibold mb-4">
-          {connectionTest.success ? '✅ 연결 상태' : '❌ 연결 상태'}
-        </h2>
-        <p
-          className={`text-lg mb-2 ${
-            connectionTest.success ? 'text-green-700' : 'text-red-700'
-          }`}
-        >
-          {connectionTest.message}
-        </p>
-        {connectionTest.error && (
-          <details className="mt-4">
-            <summary className="cursor-pointer font-semibold text-sm">
-              에러 상세 정보
-            </summary>
-            <pre className="mt-2 bg-gray-100 p-3 rounded text-xs overflow-auto">
-              {JSON.stringify(connectionTest.error, null, 2)}
-            </pre>
-          </details>
-        )}
-      </div>
-
-      {/* 테이블 존재 확인 */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">데이터베이스 테이블</h2>
-        <div className="space-y-3">
-          {tableTests.map((test) => (
-            <div
-              key={test.name}
-              className={`p-4 rounded-lg ${
-                test.exists ? 'bg-green-50' : 'bg-red-50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">
-                  {test.exists ? '✅' : '❌'} {test.name} 테이블
-                </span>
-                <span className="text-sm text-gray-600">
-                  {test.exists ? '존재함' : '존재하지 않음'}
-                </span>
-              </div>
-              {!test.exists && test.error && (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm text-red-600">
-                    에러 보기
-                  </summary>
-                  <pre className="mt-2 bg-red-100 p-2 rounded text-xs overflow-auto">
-                    {JSON.stringify(test.error, null, 2)}
-                  </pre>
-                </details>
-              )}
+      <div className="space-y-6">
+        {/* 1. 연결 상태 카드 */}
+        <Card className={connectionTest.success ? "border-green-200 bg-green-50/50 dark:bg-green-900/10 dark:border-green-900" : "border-red-200 bg-red-50/50 dark:bg-red-900/10 dark:border-red-900"}>
+          <CardContent className="p-6 flex flex-col md:flex-row md:items-center gap-5">
+            <div className={`p-3 w-fit rounded-full ${connectionTest.success ? "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400" : "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400"}`}>
+              {connectionTest.success ? <CheckCircle2 className="w-8 h-8" /> : <XCircle className="w-8 h-8" />}
             </div>
-          ))}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className={`text-lg font-bold ${connectionTest.success ? "text-green-800 dark:text-green-400" : "text-red-800 dark:text-red-400"}`}>
+                  {connectionTest.success ? "Supabase 연결 성공" : "연결 실패"}
+                </h2>
+                <Badge variant={connectionTest.success ? "success" : "error"}>
+                  {connectionTest.success ? "Operational" : "Critical"}
+                </Badge>
+              </div>
+              <p className={`text-sm ${connectionTest.success ? "text-green-600 dark:text-green-300/80" : "text-red-600 dark:text-red-300/80"}`}>
+                {connectionTest.message}
+              </p>
+            </div>
+          </CardContent>
+          {!connectionTest.success && connectionTest.error && (
+            <div className="px-6 pb-6">
+              <div className="bg-red-100/50 dark:bg-red-950/50 rounded-lg p-4 text-xs font-mono text-red-800 dark:text-red-300 overflow-x-auto border border-red-200 dark:border-red-900">
+                {JSON.stringify(connectionTest.error, null, 2)}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* 2. 상세 설정 정보 그리드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 환경 변수 */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="w-4 h-4 text-slate-500" />
+                환경 설정
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <Globe className="w-4 h-4 text-slate-400" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">URL Endpoint</span>
+                    <span className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate max-w-[150px]" title={supabaseUrl}>
+                      {displayUrl}
+                    </span>
+                  </div>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${supabaseUrl ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500'}`} />
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <Key className="w-4 h-4 text-slate-400" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Anon Key</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300">
+                      {hasAnonKey ? 'Key 설정 완료' : 'Key 미설정'}
+                    </span>
+                  </div>
+                </div>
+                <Badge variant={hasAnonKey ? "outline" : "error"}>
+                  {hasAnonKey ? "Configured" : "Missing"}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 데이터베이스 스키마 */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Database className="w-4 h-4 text-slate-500" />
+                스키마 상태
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {tableTests.map((table) => (
+                  <div key={table.name} className="flex items-center justify-between group py-1">
+                    <div className="flex items-center gap-3">
+                      <TableIcon className={`w-4 h-4 ${table.exists ? 'text-slate-400' : 'text-red-400'}`} />
+                      <span className={`text-sm font-medium ${table.exists ? 'text-slate-700 dark:text-slate-300' : 'text-red-600 dark:text-red-400'}`}>
+                        {table.name}
+                      </span>
+                    </div>
+                    {table.exists ? (
+                      <Badge variant="success" className="h-5 px-2 text-[10px]">
+                        Found
+                      </Badge>
+                    ) : (
+                      <Badge variant="error" className="h-5 px-2 text-[10px] gap-1">
+                        Missing
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+                
+                <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>전체 상태</span>
+                    <span className={allTablesExist ? "text-emerald-600 font-medium" : "text-amber-600 font-medium"}>
+                      {allTablesExist ? "정상" : "테이블 생성 필요"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* 3. 문제 해결 가이드 (이슈가 있을 때만 표시) */}
+        {(!connectionTest.success || !allTablesExist) && (
+          <Card className="bg-amber-50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-900/50">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-3 w-full">
+                  <div>
+                    <h3 className="font-bold text-amber-800 dark:text-amber-500">문제 해결 가이드</h3>
+                    <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                      시스템이 정상적으로 작동하지 않을 경우 다음 단계를 확인해주세요.
+                    </p>
+                  </div>
+                  
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <a 
+                      href="https://supabase.com/dashboard" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-3 bg-white dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800 hover:border-amber-300 transition-colors group"
+                    >
+                      <span className="text-sm font-medium text-amber-900 dark:text-amber-100">Supabase 대시보드 접속</span>
+                      <ExternalLink className="w-4 h-4 text-amber-500 group-hover:text-amber-600" />
+                    </a>
+                    <div className="p-3 bg-white dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
+                      <span className="text-xs font-medium text-amber-900 dark:text-amber-100 block mb-1">SQL Editor 실행</span>
+                      <span className="text-xs text-amber-600 dark:text-amber-400">schema.sql 파일의 내용을 실행하여 테이블을 생성하세요.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      {/* 해결 방법 안내 */}
-      {!connectionTest.success && (
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 mt-6">
-          <h2 className="text-xl font-semibold mb-4">해결 방법</h2>
-          <ol className="list-decimal ml-5 space-y-2">
-            <li>
-              Supabase Dashboard (
-              <a
-                href="https://supabase.com/dashboard"
-                target="_blank"
-                className="text-blue-600 hover:underline"
-              >
-                supabase.com/dashboard
-              </a>
-              )에 접속
-            </li>
-            <li>
-              프로젝트 선택 → Project Settings → API 탭에서 URL과 anon key
-              복사
-            </li>
-            <li>.env.local 파일에 올바른 값 입력 (따옴표 없이)</li>
-            <li>
-              SQL Editor에서 schema.sql 실행 (테이블이 없는 경우)
-            </li>
-            <li>개발 서버 재시작 (npm run dev)</li>
-          </ol>
-        </div>
-      )}
-
-      {connectionTest.success &&
-        tableTests.some((t) => !t.exists) && (
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mt-6">
-            <h2 className="text-xl font-semibold mb-4">
-              ⚠️ 테이블 생성 필요
-            </h2>
-            <p className="mb-4">
-              Supabase 연결은 성공했지만 일부 테이블이 존재하지 않습니다.
-            </p>
-            <ol className="list-decimal ml-5 space-y-2">
-              <li>Supabase Dashboard → SQL Editor 접속</li>
-              <li>프로젝트의 schema.sql 파일 내용 복사</li>
-              <li>SQL Editor에 붙여넣고 Run 실행</li>
-              <li>이 페이지 새로고침하여 재확인</li>
-            </ol>
-          </div>
-        )}
-
-      {connectionTest.success &&
-        tableTests.every((t) => t.exists) && (
-          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mt-6 text-center">
-            <h2 className="text-2xl font-bold text-green-700 mb-2">
-              🎉 모든 설정 완료!
-            </h2>
-            <p className="text-green-600 mb-4">
-              Supabase 연결과 데이터베이스가 정상적으로 설정되었습니다.
-            </p>
-            <Link
-              href="/posts"
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-            >
-              게시판으로 이동
-            </Link>
-          </div>
-        )}
     </div>
   );
 }
