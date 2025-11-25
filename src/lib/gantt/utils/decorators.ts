@@ -22,6 +22,13 @@ const TYPE_COLORS: Record<string, { bar: string; progress: string }> = {
 export function decorateTask(task: Partial<Task>): Task {
   const decorated: Partial<Task> = { ...task };
 
+  // 🔧 Remove all null values (Gantt library can't handle null)
+  Object.keys(decorated).forEach((key) => {
+    if (decorated[key as keyof Task] === null) {
+      delete decorated[key as keyof Task];
+    }
+  });
+
   // Convert dates to Date objects
   const start = toDateOrUndefined(decorated.start);
   if (start) {

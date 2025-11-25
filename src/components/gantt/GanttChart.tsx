@@ -104,6 +104,14 @@ export function GanttChart({ ganttChartId, tasks, links, scales: _scales, onGant
     initGantt,
   } = useGanttSchedule(ganttChartId);
 
+  console.log("GanttChart render:", {
+    scheduleExists: !!schedule,
+    tasksIsArray: Array.isArray(schedule?.tasks),
+    tasksLen: schedule?.tasks?.length,
+    linksIsArray: Array.isArray(schedule?.links),
+    linksLen: schedule?.links?.length
+  });
+
   const columns = useMemo<IColumnConfig[]>(() => {
     return defaultColumns.map((column) => {
       if (column.id === "text") {
@@ -252,40 +260,74 @@ export function GanttChart({ ganttChartId, tasks, links, scales: _scales, onGant
           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
             데이터를 불러오는 중...
           </div>
-        ) : schedule ? (
-          <>
-            <ContextMenu api={ganttApi}>
-              <WillowTheme>
-                <Tooltip api={ganttApi ?? undefined} content={TaskTooltip}>
-                  <Gantt
-                    init={handleInit}
-                    tasks={schedule.tasks}
-                    links={schedule.links}
-                    scales={scales}
-                    columns={columns}
-                    taskTypes={TASK_TYPES}
-                    cellWidth={CELL_WIDTH_MAP[viewType]}
-                    cellHeight={CELL_HEIGHT}
-                    highlightTime={highlightTime}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    {...({ baselines: showBaselines } as any)}
-                  />
-                </Tooltip>
-              </WillowTheme>
-            </ContextMenu>
-            {ganttApi && (
-              <Editor
-                api={ganttApi}
-                items={editorItems}
-                topBar={editorTopBar}
-              />
-            )}
-          </>
-        ) : (
+        ) : !schedule ? (
           <div className="p-4 text-red-500">
-            데이터를 불러오지 못했습니다.
+            데이터를 불러오지 못했습니다. (schedule is null)
           </div>
-        )}
+        ) : !Array.isArray(schedule.tasks) || !Array.isArray(schedule.links) ? (
+          <div className="p-4 text-red-500">
+            데이터 형식이 올바르지 않습니다. (Tasks: {typeof schedule.tasks}, Links: {typeof schedule.links})
+          </div>
+        ) : (() => {
+          // 🔍 Phase 1: 데이터 흐름 추적
+          console.log("=== Gantt Render Debug ===", {
+            schedule,
+            tasks: schedule?.tasks,
+            links: schedule?.links,
+            tasksType: typeof schedule?.tasks,
+            linksType: typeof schedule?.links,
+            tasksIsArray: Array.isArray(schedule?.tasks),
+            linksIsArray: Array.isArray(schedule?.links),
+            tasksLength: schedule?.tasks?.length,
+            linksLength: schedule?.links?.length,
+            scales,
+            scalesType: typeof scales,
+            scalesIsArray: Array.isArray(scales),
+            columns,
+            columnsType: typeof columns,
+            columnsIsArray: Array.isArray(columns),
+            isLoading,
+          });
+
+          const ganttProps = {
+            init: handleInit,
+            tasks: schedule.tasks ?? [],
+            links: schedule.links ?? [],
+            scales,
+            columns,
+            taskTypes: TASK_TYPES,
+            cellWidth: CELL_WIDTH_MAP[viewType],
+            cellHeight: CELL_HEIGHT,
+            highlightTime,
+          };
+
+          console.log("Gantt props:", ganttProps);
+          console.log("Gantt props.tasks sample:", ganttProps.tasks.slice(0, 2));
+          console.log("Gantt props.links sample:", ganttProps.links.slice(0, 2));
+
+          return (
+            <>
+              <ContextMenu api={ganttApi}>
+                <WillowTheme>
+                  <Tooltip api={ganttApi ?? undefined} content={TaskTooltip}>
+                    <Gantt
+                      {...ganttProps}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      {...({ baselines: showBaselines } as any)}
+                    />
+                  </Tooltip>
+                </WillowTheme>
+              </ContextMenu>
+              {ganttApi && (
+                <Editor
+                  api={ganttApi}
+                  items={editorItems}
+                  topBar={editorTopBar}
+                />
+              )}
+            </>
+          );
+        })()}
       </div>
     </section>
   );

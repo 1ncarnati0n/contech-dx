@@ -52,12 +52,12 @@ export default function AdminDropdown() {
               DB Checker
             </Link>
             <Link
-              href="/gantt-test"
+              href="/projects"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
             >
               <GanttChart className="w-4 h-4" />
-              Gantt 테스트
+              Projects
             </Link>
           </div>
         </div>

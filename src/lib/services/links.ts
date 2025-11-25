@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Link, LinkType } from "@/lib/gantt/types";
 import { getMockLinks } from "./mockStorage";
 
@@ -25,13 +26,13 @@ const USE_MOCK =
 /**
  * Get all links for a Gantt chart
  */
-export async function getLinks(ganttChartId: string): Promise<Link[]> {
+export async function getLinks(ganttChartId: string, supabaseClient?: SupabaseClient): Promise<Link[]> {
   if (USE_MOCK) {
     const mockLinks = getMockLinks(ganttChartId);
     return mockLinks.map(linkDtoToLink);
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from("links")
@@ -50,8 +51,8 @@ export async function getLinks(ganttChartId: string): Promise<Link[]> {
 /**
  * Get a single link by ID
  */
-export async function getLink(id: string | number): Promise<Link | null> {
-  const supabase = createClient();
+export async function getLink(id: string | number, supabaseClient?: SupabaseClient): Promise<Link | null> {
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from("links")
@@ -208,7 +209,7 @@ export async function upsertLinksBatch(
     .select();
 
   if (error) {
-    console.error("Error upserting links batch:", error);
+    console.error("Error upserting links batch:", JSON.stringify(error, null, 2));
     throw new Error("Failed to upsert links batch");
   }
 

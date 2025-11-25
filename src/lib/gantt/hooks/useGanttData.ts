@@ -29,7 +29,14 @@ export function useGanttData(
   const currentLinksRef = useRef<Link[]>([]);
   const scalesRef = useRef<Array<Record<string, unknown>>>([]);
 
-  const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [schedule, setSchedule] = useState<Schedule | null>({
+    tasks: [],
+    links: [],
+    scales: [
+      { unit: "month" as const, step: 1, format: "M월" },
+      { unit: "day" as const, step: 1, format: "d" },
+    ],
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [hasChanges, setHasChanges] = useState<boolean>(false);
@@ -166,11 +173,12 @@ export function useGanttData(
             const { tasks: mockTasks, idMapping } = convertMockTasksToSupabase(ganttChartId);
             const mockLinks = convertMockLinksToSupabase(ganttChartId, idMapping);
 
-            // Upsert to DB
-            const [seededTasks, seededLinks] = await Promise.all([
-              upsertTasksBatch(mockTasks, ganttChartId),
-              upsertLinksBatch(mockLinks, ganttChartId),
-            ]);
+            // Upsert to DB sequentially to avoid FK constraints
+            const seededTasks = await upsertTasksBatch(mockTasks, ganttChartId);
+            const seededLinks = await upsertLinksBatch(mockLinks, ganttChartId);
+
+            console.log("Seeded tasks:", seededTasks?.length);
+            console.log("Seeded links:", seededLinks?.length);
 
             tasks = seededTasks;
             links = seededLinks;
@@ -195,13 +203,19 @@ export function useGanttData(
         currentTasksRef.current = tasks;
         currentLinksRef.current = links;
 
-        setSchedule({ tasks, links, scales });
+        console.log("Setting schedule with:", { tasks: tasks?.length, links: links?.length });
+        setSchedule({ tasks: tasks || [], links: links || [], scales });
         setHasChanges(false);
         setSaveState("idle");
       } catch (error) {
         console.error("Error loading data:", error);
         if (isMounted) {
-          setSchedule(null);
+          // 에러 발생 시에도 빈 배열로 초기화하여 렌더링 에러 방지
+          const emptyScales = [
+            { unit: "month" as const, step: 1, format: "M월" },
+            { unit: "day" as const, step: 1, format: "d" },
+          ];
+          setSchedule({ tasks: [], links: [], scales: emptyScales });
         }
         toast.error("데이터 로딩 실패");
       } finally {

@@ -35,16 +35,26 @@ export function convertMockTasksToSupabase(ganttChartId: string): {
       parentId = idMapping.get(task.parent);
     }
 
+    // Sanitize type for DB constraint
+    const originalType = task.type;
+    let mappedType = originalType;
+    // Assuming DB allows 'task', 'milestone', 'summary', 'project'
+    // Map custom types (urgent, narrow, round, progress) to 'task'
+    if (!['task', 'milestone', 'summary', 'project'].includes(originalType)) {
+      mappedType = 'task';
+    }
+
     return {
       id: idMapping.get(task.id)!,
       text: task.text,
-      type: task.type as TaskType,
+      type: mappedType as TaskType,
       start: task.start,
       end: task.end || undefined,
       progress: task.progress || 0,
       parent: parentId,
       position: index,
       open: task.open !== undefined ? task.open : true,
+      category: originalType !== mappedType ? originalType : undefined, // Store original type if mapped
     };
   });
 

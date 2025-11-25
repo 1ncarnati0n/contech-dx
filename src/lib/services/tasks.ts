@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TaskDTO, Task } from "@/lib/gantt/types";
 import { decorateTask } from "@/lib/gantt/utils";
 import { getMockTasks } from "./mockStorage";
@@ -17,12 +18,12 @@ const USE_MOCK =
 /**
  * Get all tasks for a Gantt chart
  */
-export async function getTasks(ganttChartId: string): Promise<Task[]> {
+export async function getTasks(ganttChartId: string, supabaseClient?: SupabaseClient): Promise<Task[]> {
   if (USE_MOCK) {
     return getMockTasks(ganttChartId);
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from("tasks")
@@ -59,8 +60,8 @@ export async function getTasks(ganttChartId: string): Promise<Task[]> {
 /**
  * Get a single task by ID
  */
-export async function getTask(id: string | number): Promise<Task | null> {
-  const supabase = createClient();
+export async function getTask(id: string | number, supabaseClient?: SupabaseClient): Promise<Task | null> {
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from("tasks")
@@ -248,7 +249,7 @@ export async function createTasksBatch(
     .select();
 
   if (error) {
-    console.error("Error creating tasks batch:", error);
+    console.error("Error creating tasks batch:", JSON.stringify(error, null, 2));
     throw new Error("Failed to create tasks batch");
   }
 
@@ -303,7 +304,7 @@ export async function upsertTasksBatch(
     .select();
 
   if (error) {
-    console.error("Error upserting tasks batch:", error);
+    console.error("Error upserting tasks batch:", JSON.stringify(error, null, 2));
     throw new Error("Failed to upsert tasks batch");
   }
 

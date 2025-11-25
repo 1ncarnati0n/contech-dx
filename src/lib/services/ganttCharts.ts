@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getMockGanttCharts,
   getMockGanttChart,
@@ -54,12 +55,12 @@ export interface UpdateGanttChartDTO {
 /**
  * Get all Gantt charts for a project
  */
-export async function getGanttCharts(projectId: string): Promise<GanttChart[]> {
+export async function getGanttCharts(projectId: string, supabaseClient?: SupabaseClient): Promise<GanttChart[]> {
   if (USE_MOCK) {
     return getMockGanttCharts(projectId);
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from("gantt_charts")
@@ -85,12 +86,12 @@ export async function getGanttChartsByProject(projectId: string): Promise<GanttC
 /**
  * Get a single Gantt chart by ID
  */
-export async function getGanttChart(id: string): Promise<GanttChart | null> {
+export async function getGanttChart(id: string, supabaseClient?: SupabaseClient): Promise<GanttChart | null> {
   if (USE_MOCK) {
     return getMockGanttChart(id);
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from("gantt_charts")
@@ -220,7 +221,7 @@ export async function createSampleGanttChartForDummyProject(
     // 4. mock.json Links 변환 및 생성
     // 실제 생성된 Task ID로 다시 매핑 필요
     const realIdMapping = new Map<string, string>();
-    
+
     // mockData의 temp ID → 실제 생성된 UUID 매핑
     tasksData.forEach((taskData, index) => {
       // taskData의 원래 temp ID를 찾아야 함

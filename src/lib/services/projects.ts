@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Project,
   CreateProjectDTO,
@@ -94,13 +95,13 @@ function initializeMockProjects(): void {
 /**
  * Get all projects
  */
-export async function getProjects(): Promise<Project[]> {
+export async function getProjects(supabaseClient?: SupabaseClient): Promise<Project[]> {
   if (USE_MOCK) {
     initializeMockProjects();
     return getMockProjects();
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from('projects')
@@ -119,13 +120,13 @@ export async function getProjects(): Promise<Project[]> {
 /**
  * Get a single project by ID
  */
-export async function getProject(id: string): Promise<Project | null> {
+export async function getProject(id: string, supabaseClient?: SupabaseClient): Promise<Project | null> {
   if (USE_MOCK) {
     const projects = getMockProjects();
     return projects.find((p) => p.id === id) || null;
   }
 
-  const supabase = createClient();
+  const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
     .from('projects')
