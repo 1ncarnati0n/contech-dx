@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { X, Loader2 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { createProject } from '@/lib/services/projects';
-import { createSampleGanttChartForDummyProject } from '@/lib/services/ganttCharts';
 import type { ProjectStatus } from '@/lib/types';
 
 interface ProjectFormData {
@@ -35,7 +34,7 @@ export function ProjectCreateModal({
 }: ProjectCreateModalProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const {
     register,
     handleSubmit,
@@ -70,21 +69,7 @@ export function ProjectCreateModal({
       // Create project
       const newProject = await createProject(cleanedData);
 
-      // If dummy project, create sample Gantt chart with mock.json data
-      if (data.status === 'dummy') {
-        console.log('🎯 Dummy 프로젝트 생성: 샘플 Gantt 차트 자동 생성 중...');
-        try {
-          await createSampleGanttChartForDummyProject(newProject.id);
-          console.log('✅ 샘플 Gantt 차트 생성 완료!');
-          if (typeof window !== 'undefined') {
-            // Alert 대신 콘솔 로그만 출력
-            console.log('🎉 테스트 프로젝트와 샘플 Gantt 차트(18개 Task, 5개 Link)가 생성되었습니다!');
-          }
-        } catch (ganttError) {
-          console.error('샘플 Gantt 차트 생성 실패:', ganttError);
-          // Gantt 차트 생성 실패해도 프로젝트는 생성되었으므로 계속 진행
-        }
-      }
+      console.log('✅ Project created:', newProject.id);
 
       // Reset form
       reset();

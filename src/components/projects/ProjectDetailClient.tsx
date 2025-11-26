@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,21 +9,15 @@ import {
   DollarSign,
   MapPin,
   Building2,
-  Plus,
-  GanttChart as GanttChartIcon,
   Edit,
   Trash2,
 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import type { Project } from '@/lib/types';
-import type { GanttChart } from '@/lib/services/ganttCharts';
 import { deleteProject } from '@/lib/services/projects';
-import { createGanttChart } from '@/lib/services/ganttCharts';
-import { initializeMockGanttChart } from '@/lib/services/mockStorage';
 
 interface Props {
   project: Project;
-  ganttCharts: GanttChart[];
 }
 
 const STATUS_COLORS = {
@@ -44,27 +38,9 @@ const STATUS_LABELS = {
   dummy: '🧪 테스트',
 };
 
-export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Props) {
+export function ProjectDetailClient({ project }: Props) {
   const router = useRouter();
-  const [ganttCharts, setGanttCharts] = useState(initialCharts);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-
-  // Mock 프로젝트의 경우 Gantt Chart 자동 생성
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Mock 프로젝트이고 차트가 없는 경우
-    if (project.id.startsWith('mock-') && ganttCharts.length === 0) {
-      try {
-        const autoChart = initializeMockGanttChart(project.id);
-        setGanttCharts([autoChart]);
-        console.log('✅ Auto-initialized Gantt Chart:', autoChart.id);
-      } catch (error) {
-        console.error('Failed to auto-initialize Gantt Chart:', error);
-      }
-    }
-  }, [project.id, ganttCharts.length]);
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return '-';
@@ -99,28 +75,7 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
     }
   };
 
-  const handleCreateGanttChart = async () => {
-    if (typeof window === 'undefined') return;
-    const name = window.prompt('Gantt 차트 이름을 입력하세요:');
-    if (!name) return;
 
-    try {
-      setIsCreating(true);
-      const newChart = await createGanttChart({
-        project_id: project.id,
-        name,
-        start_date: project.start_date,
-        end_date: project.end_date || undefined,
-      });
-      setGanttCharts([newChart, ...ganttCharts]);
-      router.push(`/projects/${project.id}/gantt/${newChart.id}`);
-    } catch (error) {
-      console.error('Failed to create gantt chart:', error);
-      window.alert('Gantt 차트 생성에 실패했습니다.');
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -226,62 +181,6 @@ export function ProjectDetailClient({ project, ganttCharts: initialCharts }: Pro
         </div>
       </Card>
 
-      {/* Gantt Charts */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Gantt 차트 ({ganttCharts.length})
-          </h2>
-          <Button
-            onClick={handleCreateGanttChart}
-            disabled={isCreating}
-            size="sm"
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {isCreating ? '생성 중...' : '새 차트'}
-          </Button>
-        </div>
-
-        {ganttCharts.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-            <GanttChartIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              아직 Gantt 차트가 없습니다
-            </p>
-            <Button onClick={handleCreateGanttChart} disabled={isCreating} size="sm">
-              첫 Gantt 차트 만들기
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ganttCharts.map((chart) => (
-              <Link
-                key={chart.id}
-                href={`/projects/${project.id}/gantt/${chart.id}`}
-                className="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all"
-              >
-                <div className="flex items-start gap-3">
-                  <GanttChartIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                      {chart.name}
-                    </h3>
-                    {chart.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mt-1">
-                        {chart.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                      생성일: {new Date(chart.created_at).toLocaleDateString('ko-KR')}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </Card>
     </div>
   );
 }
