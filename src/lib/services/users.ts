@@ -1,6 +1,6 @@
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
-import type { Profile, UserRole } from '@/lib/types';
+import type { UserRole } from '@/lib/types';
 
 /**
  * 모든 사용자 목록 조회 (서버 사이드 - Admin 전용)

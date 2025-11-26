@@ -1,0 +1,83 @@
+SVAR React Gantt Library License Information
+
+This skill provides guidance and examples for using the SVAR React Gantt library.
+
+======================
+SVAR React Gantt License
+======================
+
+SVAR React Gantt (@svar-ui/react-gantt) is distributed under the GNU General Public License v3.0 (GPLv3).
+
+Key Points:
+- ✅ Free to use in open-source projects
+- ✅ Can be modified and distributed
+- ⚠️ Commercial/Proprietary use requires a separate license
+- ⚠️ Must disclose source code when distributing
+- ⚠️ Must include license and copyright notice
+
+For non-open source projects, contact SVAR team for commercial licensing:
+📧 Email: support@svar.dev
+🌐 Website: https://svar.dev
+
+Full GPL v3.0 License Text:
+https://www.gnu.org/licenses/gpl-3.0.en.html
+
+======================
+This Skill License
+======================
+
+This Claude Skill ("svar-react-gantt") is created as an educational and productivity tool to help developers use the SVAR React Gantt library effectively.
+
+The skill itself (documentation, examples, and guidance) is provided "as-is" for educational purposes.
+
+Author: Created by AI Assistant
+Version: 1.0.0
+Based on: SVAR React Gantt v2.3.3 Official Documentation
+
+======================
+Third-Party Dependencies
+======================
+
+When using SVAR React Gantt, you may also use:
+
+@svar-ui/gantt-data-provider
+- License: GNU GPLv3
+- Purpose: Backend data synchronization
+
+Other dependencies are documented in the package.json of the SVAR React Gantt library.
+
+======================
+Disclaimer
+======================
+
+This skill is not officially endorsed by SVAR or XB Software.
+It is a community-created resource based on publicly available documentation.
+
+For official support and information:
+- Official Documentation: https://docs.svar.dev/react/gantt/
+- GitHub Repository: https://github.com/svar-widgets/gantt
+- Official Website: https://svar.dev
+
+======================
+Important Notes
+======================
+
+1. Always check the latest license terms at the official SVAR website
+2. Evaluate your project's licensing needs before using in production
+3. Consider purchasing a commercial license for proprietary projects
+4. Attribute properly when using in open-source projects
+
+For questions about licensing, contact:
+📧 support@svar.dev
+
+======================
+Version History
+======================
+
+v1.0.0 (2024) - Initial skill release based on SVAR React Gantt v2.3.3
+
+======================
+
+© 2025 XB Software Sp. z o.o.
+SVAR and related trademarks are property of XB Software Sp. z o.o.
+

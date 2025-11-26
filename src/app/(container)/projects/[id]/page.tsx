@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 import { getProject } from '@/lib/services/projects';
-import { getGanttCharts } from '@/lib/services/ganttCharts';
 import { ProjectDetailClient } from '@/components/projects/ProjectDetailClient';
 
 interface Props {
@@ -8,18 +8,17 @@ interface Props {
 }
 
 export default async function ProjectDetailPage({ params }: Props) {
+  const supabase = await createClient();
   const { id } = await params;
-  
+
   // Load project data
-  const project = await getProject(id);
+  const project = await getProject(id, supabase);
 
   if (!project) {
     notFound();
   }
 
-  // Load gantt charts for this project
-  const ganttCharts = await getGanttCharts(id);
-
-  return <ProjectDetailClient project={project} ganttCharts={ganttCharts} />;
+  return <ProjectDetailClient project={project} />;
 }
+
 

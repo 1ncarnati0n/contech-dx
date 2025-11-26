@@ -81,7 +81,7 @@ export default function LoginForm() {
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="사번@gumgwang.co.kr"
                   {...field}
                 />
               </FormControl>

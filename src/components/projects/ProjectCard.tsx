@@ -15,6 +15,7 @@ const STATUS_COLORS = {
   completed: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
   on_hold: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
   cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  dummy: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-2 border-dashed border-purple-400',
 };
 
 const STATUS_LABELS = {
@@ -23,6 +24,7 @@ const STATUS_LABELS = {
   completed: '완료',
   on_hold: '보류',
   cancelled: '취소',
+  dummy: '🧪 테스트',
 };
 
 export function ProjectCard({ project }: ProjectCardProps) {

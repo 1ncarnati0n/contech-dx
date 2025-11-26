@@ -53,10 +53,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting file search store:', error);
+    const errorMessage = error instanceof Error ? error.message : '스토어 조회 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: error.message || '스토어 조회 중 오류가 발생했습니다.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

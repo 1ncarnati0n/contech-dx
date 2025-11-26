@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { FileText, FileSearch, GanttChart, FolderKanban } from 'lucide-react';
+import { FileText, FileSearch, FolderKanban } from 'lucide-react';
 import ThemeToggle from '@/components/layout/ThemeToggle';
 import MobileMenu from '@/components/layout/MobileMenu';
 import UserDropdown from '@/components/layout/UserDropdown';
@@ -51,13 +51,6 @@ export default async function NavBar() {
               >
                 <FolderKanban className="w-4 h-4" />
                 프로젝트
-              </Link>
-              <Link
-                href="/gantt-test"
-                className="flex items-center gap-2 text-primary-600 dark:text-primary-300 hover:text-primary-900 dark:hover:text-white hover:bg-primary-50 dark:hover:bg-primary-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-              >
-                <GanttChart className="w-4 h-4" />
-                Gantt 차트
               </Link>
 
               {/* Admin 전용 메뉴 */}

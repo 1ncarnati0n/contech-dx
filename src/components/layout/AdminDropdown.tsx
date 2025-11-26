@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Shield, TestTube, ChevronDown, Settings } from 'lucide-react';
+import { Shield, TestTube, ChevronDown, Settings, GanttChart } from 'lucide-react';
 
 export default function AdminDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,12 +23,12 @@ export default function AdminDropdown() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${isOpen
-            ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-800'
+          ? 'bg-admin-100 text-admin-900 dark:bg-admin-900/40 dark:text-admin-100'
+          : 'text-admin-600 hover:text-admin-900 hover:bg-admin-50 dark:text-admin-400 dark:hover:text-admin-100 dark:hover:bg-admin-900/20'
           }`}
       >
         <Settings className="w-4 h-4" />
-        Admin
+        관리자 페이지
         <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -38,7 +38,7 @@ export default function AdminDropdown() {
             <Link
               href="/admin/users"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-300 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
             >
               <Shield className="w-4 h-4" />
               User Manage
@@ -46,10 +46,18 @@ export default function AdminDropdown() {
             <Link
               href="/test-connection"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-300 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
             >
               <TestTube className="w-4 h-4" />
               DB Checker
+            </Link>
+            <Link
+              href="/projects"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-300 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
+            >
+              <GanttChart className="w-4 h-4" />
+              Projects
             </Link>
           </div>
         </div>
