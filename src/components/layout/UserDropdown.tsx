@@ -59,8 +59,8 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-3 pl-1 pr-2 py-1.5 rounded-full transition-all group border ${isOpen
-            ? 'bg-primary-100 border-primary-200 dark:bg-primary-800 dark:border-primary-700'
-            : 'border-transparent hover:bg-primary-100 dark:hover:bg-primary-800 hover:border-primary-200 dark:hover:border-primary-700'
+          ? 'bg-primary-100 border-primary-200 dark:bg-primary-800 dark:border-primary-700'
+          : 'border-transparent hover:bg-primary-100 dark:hover:bg-primary-800 hover:border-primary-200 dark:hover:border-primary-700'
           }`}
       >
         {/* 등급 뱃지 */}
@@ -103,16 +103,7 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
               프로필 설정
             </Link>
 
-            {isAdmin && (
-              <Link
-                href="/admin/users"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
-              >
-                <Shield className="w-4 h-4" />
-                관리자 페이지
-              </Link>
-            )}
+
           </div>
 
           <div className="border-t border-primary-100 dark:border-primary-800 my-1 mx-1" />
@@ -121,7 +112,7 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
             <button
               onClick={handleLogout}
               disabled={loading}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded-lg transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary-600 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 rounded-lg transition-colors"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

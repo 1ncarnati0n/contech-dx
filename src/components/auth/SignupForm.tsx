@@ -19,6 +19,9 @@ import { toast } from 'sonner';
 
 const signupSchema = z
   .object({
+    name: z
+      .string()
+      .min(1, '이름을 입력해주세요'),
     email: z
       .string()
       .min(1, '이메일을 입력해주세요')
@@ -45,6 +48,7 @@ export default function SignupForm() {
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -58,6 +62,9 @@ export default function SignupForm() {
         password: data.password,
         options: {
           emailRedirectTo: `${location.origin}/auth/callback`,
+          data: {
+            display_name: data.name,
+          },
         },
       });
 
@@ -92,14 +99,31 @@ export default function SignupForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <FormField
           control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>이름 <span className="text-xs text-slate-500 font-normal">(본명으로 입력해주세요)</span></FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="홍길동"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>이메일</FormLabel>
+              <FormLabel>이메일 <span className="text-xs text-slate-500 font-normal">(소속회사 도메인 권장)</span></FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="사번@gumgwang.co.kr"
                   {...field}
                 />
               </FormControl>

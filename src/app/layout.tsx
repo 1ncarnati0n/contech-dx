@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import '../styles/globals.css';
-import '../styles/gantt.css';
-import '../styles/svar-gantt-fixed.css';
 import NavBar from '@/components/layout/NavBar';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { Toaster } from '@/components/ui/Toaster';
