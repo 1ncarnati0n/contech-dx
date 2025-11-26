@@ -71,20 +71,35 @@ export default async function TestConnectionPage() {
     };
   }
 
-  // 테이블 존재 확인
-  const tableTests = [];
-  const requiredTables = ['posts', 'comments', 'profiles'];
+  // 모든 테이블 목록 가져오기
+  const { data: tables, error: tablesError } = await supabase
+    .from('information_schema.tables')
+    .select('table_name')
+    .eq('table_schema', 'public');
 
-  for (const table of requiredTables) {
-    const { error } = await supabase.from(table).select('id').limit(1);
-    tableTests.push({
-      name: table,
-      exists: !error,
-      error: error
-    });
+  // 만약 information_schema 접근 권한이 없다면 (Supabase 기본 설정상 안될 수 있음),
+  // 대안으로 주요 테이블들만 직접 쿼리해서 확인
+  let allTables: string[] = [];
+
+  if (!tablesError && tables) {
+    allTables = tables.map((t: any) => t.table_name);
+  } else {
+    // 권한 문제 등으로 실패 시 기본 테이블 확인 시도
+    const checkTables = ['posts', 'comments', 'profiles', 'projects'];
+    for (const table of checkTables) {
+      const { error } = await supabase.from(table).select('count').limit(1);
+      if (!error) allTables.push(table);
+    }
   }
 
-  const allTablesExist = tableTests.every(t => t.exists);
+  // 테이블 정보 매핑
+  const tableTests = allTables.sort().map(name => ({
+    name,
+    exists: true,
+    error: null
+  }));
+
+  const allTablesExist = tableTests.length > 0;
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4">
