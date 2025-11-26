@@ -61,7 +61,6 @@ export function ProjectCreateModal({
         client: data.client?.trim() || undefined,
         contract_amount: data.contract_amount || undefined,
         end_date: data.end_date?.trim() || undefined, // Empty string → undefined
-        created_by: 'mock-user-id', // TODO: Get from auth context
       };
 
       console.log('📝 Creating project with cleaned data:', cleanedData);
@@ -83,7 +82,7 @@ export function ProjectCreateModal({
       }
 
       // Navigate to project detail
-      router.push(`/projects/${newProject.id}`);
+      router.push(`/projects/${newProject.project_number || newProject.id}`);
       router.refresh();
     } catch (error) {
       console.error('Failed to create project:', error);

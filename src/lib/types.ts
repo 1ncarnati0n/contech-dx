@@ -304,6 +304,7 @@ export type ProjectMemberRole = 'pm' | 'engineer' | 'supervisor' | 'worker' | 'm
  */
 export interface Project {
   id: string;
+  project_number: number;
   name: string;
   description?: string;
   location?: string;
