@@ -92,55 +92,59 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      {/* Header & Controls */}
+      <div className="flex flex-col md:flex-row gap-6 items-start md:items-end justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            프로젝트 목록
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+            프로젝트
           </h1>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">
-            총 {filteredProjects.length}개의 프로젝트
+          <p className="mt-2 text-slate-600 dark:text-slate-400">
+            진행 중인 프로젝트 현황과 공정률을 한눈에 확인하세요.
           </p>
         </div>
-        <Button onClick={handleCreateClick} className="gap-2">
+
+        <Button onClick={handleCreateClick} className="gap-2 shadow-lg shadow-primary-500/20 hover:shadow-primary-500/30 transition-all">
           <Plus className="w-4 h-4" />
           새 프로젝트
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="프로젝트 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 p-1">
+        {/* Search */}
+        <div className="flex-1 relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+          <input
+            type="text"
+            placeholder="프로젝트명, 위치, 발주처 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all shadow-sm"
+          />
+        </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">모든 상태</option>
-              <option value="planning">기획</option>
-              <option value="active">진행중</option>
-              <option value="completed">완료</option>
-              <option value="on_hold">보류</option>
-              <option value="cancelled">취소</option>
-            </select>
+        {/* Status Filter */}
+        <div className="relative min-w-[160px]">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
+            className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all shadow-sm cursor-pointer"
+          >
+            <option value="all">모든 상태</option>
+            <option value="planning">기획 단계</option>
+            <option value="active">공사 진행중</option>
+            <option value="completed">공사 완료</option>
+            <option value="on_hold">공사 중지</option>
+            <option value="cancelled">취소됨</option>
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Project Grid */}
       {loading ? (

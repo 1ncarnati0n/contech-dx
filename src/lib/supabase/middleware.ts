@@ -58,7 +58,33 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Session refresh (중요!)
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Route protection logic
+  const path = request.nextUrl.pathname;
+
+  // 1. Public paths that don't require authentication
+  const publicPaths = ['/login', '/signup', '/auth/callback', '/'];
+  const isPublicPath = publicPaths.some(p => path === p || path.startsWith('/auth/'));
+
+  // 2. Auth paths (login/signup) - redirect to projects if already logged in
+  const isAuthPath = ['/login', '/signup'].includes(path);
+
+  if (!user && !isPublicPath) {
+    // Redirect unauthenticated users to login
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAuthPath) {
+    // Redirect authenticated users to projects
+    const url = request.nextUrl.clone();
+    url.pathname = '/projects';
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }

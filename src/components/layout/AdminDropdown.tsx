@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Shield, TestTube, ChevronDown, Settings, GanttChart } from 'lucide-react';
+import { Shield, TestTube, ChevronDown, Settings } from 'lucide-react';
 
 export default function AdminDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,14 +50,6 @@ export default function AdminDropdown() {
             >
               <TestTube className="w-4 h-4" />
               DB Checker
-            </Link>
-            <Link
-              href="/projects"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-300 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
-            >
-              <GanttChart className="w-4 h-4" />
-              Projects
             </Link>
           </div>
         </div>

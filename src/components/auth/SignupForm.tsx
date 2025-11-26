@@ -25,7 +25,17 @@ const signupSchema = z
     email: z
       .string()
       .min(1, '이메일을 입력해주세요')
-      .email('올바른 이메일 형식이 아닙니다'),
+      .email('올바른 이메일 형식이 아닙니다')
+      .refine((email) => {
+        const allowedDomains = [
+          'laonarctec.co.kr',
+          'gumgwang.co.kr',
+          'namkwang.co.kr',
+          'kukdong.co.kr'
+        ];
+        const domain = email.split('@')[1];
+        return allowedDomains.includes(domain);
+      }, '허용되지 않은 이메일 도메인입니다. (laonarctec.co.kr, gumgwang.co.kr, namkwang.co.kr, kukdong.co.kr 만 가능)'),
     password: z
       .string()
       .min(6, '비밀번호는 최소 6자 이상이어야 합니다')
