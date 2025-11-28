@@ -24,7 +24,7 @@ export default async function NavBar() {
           {/* Logo & Main Navigation */}
           <div className="flex items-center gap-8">
             <Link
-              href="/"
+              href={user ? '/home' : '/'}
               className="flex items-center gap-2 text-xl font-bold text-primary-900 dark:text-white hover:text-primary-700 dark:hover:text-primary-200 transition-colors"
             >
               <span className="hidden sm:inline">Contech DX</span>

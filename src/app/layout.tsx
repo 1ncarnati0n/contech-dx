@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import '../styles/globals.css';
 import NavBar from '@/components/layout/NavBar';
 import NavBarWrapper from '@/components/layout/NavBarWrapper';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { Toaster } from '@/components/ui/Toaster';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
@@ -17,17 +20,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+      <body className={`${inter.variable} font-sans min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
         >
           <NavBarWrapper>
             <NavBar />
           </NavBarWrapper>
-          <main className="min-h-[calc(100vh-4rem)] px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+          <main className="pt-16 min-h-screen bg-white dark:bg-black text-primary-950 dark:text-primary-50 transition-colors">
             {children}
           </main>
           <Toaster />

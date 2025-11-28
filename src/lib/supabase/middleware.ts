@@ -79,11 +79,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPath) {
-    // Redirect authenticated users to projects
-    const url = request.nextUrl.clone();
-    url.pathname = '/projects';
-    return NextResponse.redirect(url);
+  if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup') || request.nextUrl.pathname === '/')) {
+    // 3. 인증된 사용자가 로그인/회원가입/루트 페이지 접근 시 /home으로 리다이렉트
+    return NextResponse.redirect(new URL('/home', request.url));
+  }
+
+  // 4. 루트 페이지('/')는 공개 접근 허용 (위에서 처리되지 않은 비로그인 사용자)
+  if (request.nextUrl.pathname === '/') {
+    return response;
   }
 
   return response;

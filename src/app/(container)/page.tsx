@@ -1,164 +1,145 @@
+'use client';
+
 import Link from 'next/link';
-import {
-  FileText,
-  FileSearch,
-  BarChart3,
-  ArrowRight,
-  CheckCircle2,
-} from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '@/components/ui';
+import { motion } from 'framer-motion';
+import { ArrowRight, Building2, ShieldCheck, Zap } from 'lucide-react';
+import { Button } from '@/components/ui';
 
 export default function Home() {
-  const features = [
-    {
-      icon: FileText,
-      title: '게시판',
-      description: '팀원들과 정보를 공유하고 소통하세요',
-      href: '/posts',
-      color: 'text-blue-600 bg-blue-50',
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
     },
-    {
-      icon: FileSearch,
-      title: 'AI 문서 검색',
-      description: 'Gemini AI 기반 문서 검색 및 RAG',
-      href: '/file-search',
-      color: 'text-orange-600 bg-orange-50',
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: [0.215, 0.61, 0.355, 1] as const, // Cubic bezier for smooth motion
+      },
     },
-    {
-      icon: BarChart3,
-      title: '프로젝트 관리',
-      description: 'Gantt 차트, WBS기반 공정 관리',
-      href: '/projects',
-      color: 'text-cyan-600 bg-cyan-50',
-    }
-  ];
+  };
 
   return (
-    <div className="space-y-16 pb-16">
-      {/* Hero Section */}
-      <section className="relative -mt-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      {/* Background Effects */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080801a_1px,transparent_1px),linear-gradient(to_bottom,#8080801a_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-primary-200/40 via-transparent to-transparent dark:from-primary-900/20 dark:via-transparent dark:to-transparent blur-3xl" />
+      </div>
 
-        <div className="relative max-w-7xl mx-auto text-center">
-          <div className="inline-block mb-4 px-4 py-2 bg-orange-600/20 border border-orange-600/30 rounded-full text-orange-400 text-sm font-medium">
-            건축 디지털 전환 플랫폼
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative z-10 max-w-4xl mx-auto px-4 text-center"
+      >
+        {/* Badge */}
+        <motion.div variants={itemVariants} className="mb-8 flex justify-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 dark:bg-white/5 border border-primary-200 dark:border-white/10 backdrop-blur-md text-sm text-primary-600 dark:text-primary-200 shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Enterprise Grade Platform
           </div>
+        </motion.div>
 
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300">
-            Contech DX
-          </h1>
+        {/* Hero Title */}
+        <motion.h1
+          variants={itemVariants}
+          className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 dark:text-white mb-6"
+        >
+          Contech DX
+          <br />
+          <span className="text-4xl md:text-6xl font-medium text-primary-500 dark:text-primary-400 bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400 dark:from-white dark:via-white dark:to-white/50">
+            Intelligent Construction
+          </span>
+        </motion.h1>
 
-          <p className="text-xl md:text-2xl text-slate-300 mb-8 max-w-3xl mx-auto">
-            건축 설계 + 시공 디지털 전환 플랫폼
-          </p>
+        {/* Description */}
+        <motion.p
+          variants={itemVariants}
+          className="text-lg md:text-xl text-slate-600 dark:text-primary-400 max-w-2xl mx-auto mb-12 leading-relaxed"
+        >
+          데이터 기반의 의사결정, 실시간 공정 관리, 그리고 AI 문서 검색.
+          <br className="hidden sm:block" />
+          건설 현장의 디지털 혁신을 위한 통합 플랫폼입니다.
+        </motion.p>
 
-          <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">
-            WBS기반 공정관리, 프로젝트 대시보드, AX기반 효율화 등 건설데이터 구축
-          </p>
-
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Button
-              variant="outline"
-              size="lg"
-              className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:shadow-xl"
-              asChild
-            >
-              <Link href="/posts" className="flex items-center gap-2">
-                게시판
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </Button>
-            <Button
-              variant="accent"
-              size="lg"
-              className="shadow-lg hover:shadow-xl"
-              asChild
-            >
-              <Link href="/file-search" className="flex items-center gap-2">
-                <FileSearch className="w-5 h-5" />
-                AI 검색
-              </Link>
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              className="shadow-lg hover:shadow-xl"
-              asChild
-            >
-              <Link href="/projects" className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Gantt 차트
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature) => (
-            <Link key={feature.title} href={feature.href}>
-              <Card hover className="h-full group">
-                <CardContent className="p-6">
-                  <div className={`inline-flex p-3 rounded-lg mb-4 ${feature.color}`}>
-                    <feature.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2 group-hover:text-slate-700 dark:group-hover:text-slate-300">
-                    {feature.title}
-                  </h3>
-                  <p className="text-slate-600 dark:text-slate-400">{feature.description}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Roadmap Section */}
-      <section className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>개발 🎯ToDoList</CardTitle>
-            <CardDescription>지속적인 개선과 새로운 기능 추가</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-orange-600 dark:text-orange-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">유저 등급관리 업데이트</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">역할 기반 권한 관리 시스템 고도화</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-orange-600 dark:text-orange-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">Gantt 차트 기본공정 mockup앱과 통합</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">프로젝트 일정 관리 및 공정 추적 ✅ 완료</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 dark:text-slate-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">기획 반영한 UX UI 반영하기</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">사용자 경험 개선 및 디자인 시스템 구축</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-slate-400 dark:text-slate-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">WBS, EVMS, PMIS 개념기반 기획</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">체계적인 프로젝트 관리 도구 개발</p>
-                </div>
-              </div>
+        {/* Action Card */}
+        <motion.div
+          variants={itemVariants}
+          className="p-1 rounded-2xl bg-gradient-to-b from-white/50 to-white/20 dark:from-white/10 dark:to-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl dark:shadow-2xl max-w-sm mx-auto"
+        >
+          <div className="bg-white/60 dark:bg-slate-950/80 rounded-xl p-6 space-y-4 backdrop-blur-sm">
+            <div className="space-y-2">
+              <h3 className="text-slate-900 dark:text-white font-medium">Member Access</h3>
+              <p className="text-sm text-slate-500 dark:text-primary-500">
+                승인된 임직원 및 관계자 전용
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </section>
+
+            <div className="grid gap-3">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-primary-100 border-none shadow-lg"
+                asChild
+              >
+                <Link href="/home" className="flex items-center justify-center gap-2">
+                  플랫폼 입장하기
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-white/5"
+                asChild
+              >
+                <Link href="/login">
+                  관리자 로그인
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Footer Features */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center"
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">WBS 공정 관리</p>
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
+              <Zap className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">실시간 대시보드</p>
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">엔터프라이즈 보안</p>
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
