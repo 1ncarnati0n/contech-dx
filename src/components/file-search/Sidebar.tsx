@@ -2,21 +2,18 @@
 
 import { useState } from 'react';
 import {
-  FolderPlus,
   Upload,
   Trash2,
   X,
-  FileType,
-  Database,
   Plus,
-  History,
-  MessageSquare
+  MessageSquare,
+  ChevronDown,
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
-import { formatFileSize, getFileIcon, ALLOWED_EXTENSIONS } from './utils';
+import { formatFileSize, ALLOWED_EXTENSIONS } from './utils';
 import type { FileSearchStore, UploadedFile, ChatSession } from './types';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -70,6 +67,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [newStoreName, setNewStoreName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [isStoreExpanded, setIsStoreExpanded] = useState(true);
 
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,278 +108,179 @@ export default function Sidebar({
 
   return (
     <div
-      className={`absolute inset-y-0 left-0 z-30 w-80 bg-slate-50 dark:bg-primary-900 border-r border-slate-200 dark:border-primary-800 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+      className={`absolute inset-y-0 left-0 z-30 w-80 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col`}
     >
-      {/* Header */}
-      <div className="h-20 p-4 border-b border-slate-200 dark:border-primary-800 flex items-center justify-between bg-white dark:bg-primary-900 shrink-0">
-        <h2 className="font-bold text-lg flex items-center gap-2 text-slate-800 dark:text-white">
-          <Database className="w-5 h-5 text-orange-600 dark:text-orange-500" />
-          스토어 관리
-        </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="lg:hidden text-slate-500 dark:text-primary-400"
-        >
+      {/* Mobile Header */}
+      <div className="lg:hidden p-4 pb-0 flex justify-end shrink-0">
+        <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="w-5 h-5" />
         </Button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* New Store (Admin Only) */}
-        {isAdmin && (
-          <form onSubmit={handleCreateStore} className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 dark:text-primary-300">
-              새 스토어 만들기
-            </label>
-            <div className="flex gap-2">
-              <Input
-                value={newStoreName}
-                onChange={(e) => setNewStoreName(e.target.value)}
-                placeholder="이름 입력"
-                className="h-9 text-sm bg-white dark:bg-primary-800 border-slate-200 dark:border-primary-700 text-slate-900 dark:text-white"
-              />
-              <Button
-                type="submit"
-                disabled={loading || !newStoreName.trim()}
-                size="sm"
-                variant="primary"
-                className="h-9 px-3"
-              >
-                <FolderPlus className="w-4 h-4" />
-              </Button>
-            </div>
-          </form>
-        )}
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
 
-        {/* Store Selector */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-primary-300">
-            현재 스토어
-          </label>
-          <select
-            value={selectedStore}
-            onChange={(e) => onSelectStore(e.target.value)}
-            className="w-full p-2 border rounded-md text-sm bg-white dark:bg-primary-800 border-slate-200 dark:border-primary-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+        {/* 1. Store & Files Section (Top) */}
+        <div className="space-y-3">
+          <button
+            onClick={() => setIsStoreExpanded(!isStoreExpanded)}
+            className="flex items-center justify-between w-full text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2 hover:text-zinc-800 dark:hover:text-zinc-200"
           >
-            <option value="">-- 선택하세요 --</option>
-            {stores.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.displayName}
-              </option>
-            ))}
-          </select>
-        </div>
+            <span>문서 스토어 설정</span>
+            {isStoreExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          </button>
 
-        {/* File Management (Selected Store Only) */}
-        {selectedStoreInfo && (
-          <div className="space-y-4 border-t border-slate-200 dark:border-primary-800 pt-4">
-            {/* Store Info Card */}
-            <div className="bg-white dark:bg-primary-800 p-3 rounded-lg border border-slate-200 dark:border-primary-700 shadow-sm">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                  {selectedStoreInfo.displayName}
-                </h3>
-                <span className="text-xs text-slate-500 dark:text-primary-400">
-                  {formatFileSize(selectedStoreInfo.sizeBytes || 0)}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-xs text-center">
-                <div className="bg-green-50 dark:bg-green-900/30 p-1 rounded text-green-700 dark:text-green-400">
-                  <div className="font-bold">
-                    {selectedStoreInfo.activeDocumentsCount || 0}
-                  </div>
-                  <div>활성</div>
-                </div>
-                <div className="bg-orange-50 dark:bg-orange-900/30 p-1 rounded text-orange-700 dark:text-orange-400">
-                  <div className="font-bold">
-                    {selectedStoreInfo.pendingDocumentsCount || 0}
-                  </div>
-                  <div>처리중</div>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/30 p-1 rounded text-red-700 dark:text-red-400">
-                  <div className="font-bold">
-                    {selectedStoreInfo.failedDocumentsCount || 0}
-                  </div>
-                  <div>실패</div>
-                </div>
-              </div>
-              {isAdmin && (
-                <Button
-                  onClick={handleDeleteStore}
-                  variant="danger"
-                  size="sm"
-                  className="w-full mt-3 h-7 text-xs"
+          {isStoreExpanded && (
+            <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+              {/* Store Selector */}
+              <div className="space-y-2">
+                <select
+                  value={selectedStore}
+                  onChange={(e) => onSelectStore(e.target.value)}
+                  className="w-full p-2 rounded-lg text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none"
                 >
-                  <Trash2 className="w-3 h-3 mr-1" /> 스토어 삭제
-                </Button>
+                  <option value="">스토어 선택...</option>
+                  {stores.map((s) => (
+                    <option key={s.name} value={s.name}>
+                      {s.displayName}
+                    </option>
+                  ))}
+                </select>
+
+                {isAdmin && (
+                  <form onSubmit={handleCreateStore} className="flex gap-2">
+                    <Input
+                      value={newStoreName}
+                      onChange={(e) => setNewStoreName(e.target.value)}
+                      placeholder="새 스토어 이름"
+                      className="h-8 text-xs bg-white dark:bg-zinc-800"
+                    />
+                    <Button type="submit" size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!newStoreName.trim()}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </form>
+                )}
+              </div>
+
+              {/* Selected Store Info */}
+              {selectedStoreInfo && (
+                <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-lg p-3 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">{selectedStoreInfo.displayName}</span>
+                    <span>{formatFileSize(selectedStoreInfo.sizeBytes || 0)}</span>
+                  </div>
+
+                  {/* File Upload Area */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border border-dashed rounded-lg p-3 text-center transition-colors ${isDragging
+                        ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20'
+                        : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600'
+                      }`}
+                  >
+                    <label className="cursor-pointer flex flex-col items-center gap-1">
+                      <Upload className="w-4 h-4 text-zinc-400" />
+                      <span className="text-xs text-zinc-500">파일 추가</span>
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept={ALLOWED_EXTENSIONS.join(',')}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Attached Files */}
+                  {attachedFiles.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] text-zinc-500">
+                        <span>대기중 ({attachedFiles.length})</span>
+                        <button onClick={onClearAttachedFiles} className="text-red-500 hover:underline">비우기</button>
+                      </div>
+                      {attachedFiles.map((f, i) => (
+                        <div key={i} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-1.5 rounded border border-zinc-200 dark:border-zinc-700">
+                          <span className="truncate flex-1">{f.name}</span>
+                          <button onClick={() => onRemoveAttachedFile(i)}>
+                            <X className="w-3 h-3 text-zinc-400" />
+                          </button>
+                        </div>
+                      ))}
+                      <Button onClick={onUploadFiles} disabled={loading} size="sm" className="w-full h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
+                        업로드
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Uploaded Files Count */}
+                  <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                    <FileText className="w-3 h-3" />
+                    <span>업로드된 파일: {uploadedFiles.length}개</span>
+                  </div>
+                </div>
               )}
             </div>
+          )}
+        </div>
 
-            {/* File Upload Area */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${isDragging
-                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                  : 'border-slate-300 dark:border-primary-700 bg-slate-50 dark:bg-primary-800/50'
-                }`}
-            >
-              <p className="text-xs text-slate-600 dark:text-primary-400 mb-2">
-                파일을 드래그하거나 선택하세요
-              </p>
-              <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 dark:bg-primary-700 text-white rounded text-xs hover:bg-slate-800 dark:hover:bg-primary-600">
-                <Upload className="w-3 h-3" /> 파일 선택
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept={ALLOWED_EXTENSIONS.join(',')}
-                />
-              </label>
-            </div>
+        <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-4" />
 
-            {/* Attached Files List */}
-            {attachedFiles.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs text-slate-600 dark:text-primary-400">
-                  <span>대기중 ({attachedFiles.length})</span>
-                  <button
-                    onClick={onClearAttachedFiles}
-                    className="text-red-500 hover:underline"
-                  >
-                    비우기
-                  </button>
-                </div>
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {attachedFiles.map((f, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center text-xs bg-white dark:bg-primary-800 p-1.5 rounded border border-slate-200 dark:border-primary-700 text-slate-900 dark:text-white"
-                    >
-                      <span className="truncate flex-1">{f.name}</span>
-                      <button onClick={() => onRemoveAttachedFile(i)}>
-                        <X className="w-3 h-3 text-slate-400 dark:text-primary-500" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  onClick={onUploadFiles}
-                  disabled={loading}
-                  className="w-full h-8 text-xs"
-                  variant="accent"
-                >
-                  업로드 시작
-                </Button>
-              </div>
-            )}
-
-            {/* Uploaded Files List */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-slate-700 dark:text-primary-300 flex items-center gap-1">
-                <FileType className="w-3 h-3" /> 업로드된 파일 (
-                {uploadedFiles.length})
-              </h4>
-              <div className="max-h-48 overflow-y-auto space-y-1">
-                {uploadedFiles.map((f, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 text-xs bg-white dark:bg-primary-800 p-2 rounded border border-slate-100 dark:border-primary-700 text-slate-900 dark:text-white"
-                  >
-                    <span className="text-slate-500 dark:text-primary-400">{getFileIcon(f.mimeType)}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate font-medium">{f.displayName}</div>
-                      <div className="text-[10px] text-slate-400 dark:text-primary-500">
-                        {formatFileSize(f.sizeBytes)} • {f.state}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Chat Sessions List */}
-        <div className="border-t border-slate-200 dark:border-primary-800 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-bold text-slate-500 dark:text-primary-400 uppercase tracking-wider">
-              대화 목록
-            </h3>
-            <Button
-              onClick={onCreateSession}
-              disabled={!selectedStore}
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={!selectedStore ? "스토어를 먼저 선택해주세요" : "새 채팅 시작"}
-            >
-              <Plus className="w-4 h-4 mr-1" /> 새 채팅
-            </Button>
-          </div>
-
-          <div className="space-y-2 pb-4">
+        {/* 2. History Section (Bottom of scrollable area) */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2">
+            최근 대화
+          </h3>
+          <div className="space-y-1">
             {sessions.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 dark:text-primary-500 text-sm border border-dashed border-slate-200 dark:border-primary-700 rounded-lg bg-slate-50/50 dark:bg-primary-800/20">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                <p>저장된 대화가 없습니다.</p>
+              <div className="text-center py-8 text-zinc-400 dark:text-zinc-500 text-sm">
+                <p>대화 내역이 없습니다.</p>
               </div>
             ) : (
               sessions.map(session => {
-                const sessionStore = stores.find(s => s.name === session.storeName);
                 const isCurrent = currentSessionId === session.id;
-
                 return (
                   <div
                     key={session.id}
                     onClick={() => onSelectSession?.(session.id)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all group relative ${isCurrent
-                        ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 ring-1 ring-cyan-200 dark:ring-cyan-800 shadow-sm'
-                        : 'bg-white dark:bg-primary-800 border-slate-200 dark:border-primary-700 hover:border-cyan-200 dark:hover:border-cyan-800 hover:bg-slate-50 dark:hover:bg-primary-700'
+                    className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${isCurrent
+                        ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                       }`}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className={`font-medium text-sm truncate flex-1 pr-2 ${isCurrent ? 'text-cyan-900 dark:text-cyan-100' : 'text-slate-900 dark:text-white'
-                        }`}>
-                        {session.title || '새로운 대화'}
-                      </h4>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('대화를 삭제하시겠습니까?')) onDeleteSession?.(session.id);
-                        }}
-                        className="text-slate-300 hover:text-red-500 dark:text-primary-600 dark:hover:text-red-400 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="삭제"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-slate-500 dark:text-primary-400 truncate mb-2 min-h-[1.2em]">
-                      {session.preview || '대화 내용 없음'}
-                    </p>
-
-                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100/50 dark:border-primary-700/50">
-                      <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-primary-700 text-slate-600 dark:text-primary-300 rounded border border-slate-200 dark:border-primary-600 truncate max-w-[100px]">
-                        {sessionStore?.displayName || '삭제된 스토어'}
-                      </span>
-                      <span className="text-[10px] text-slate-400 dark:text-primary-500 flex items-center gap-1 ml-auto">
-                        <History className="w-3 h-3" />
-                        {formatDistanceToNow(session.updatedAt, { addSuffix: true, locale: ko })}
-                      </span>
-                    </div>
+                    <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
+                    <span className="truncate flex-1">
+                      {session.title || '새로운 대화'}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('대화를 삭제하시겠습니까?')) onDeleteSession?.(session.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 );
               })
             )}
           </div>
         </div>
+      </div>
+
+      {/* Footer: New Chat Button */}
+      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 z-10">
+        <Button
+          onClick={onCreateSession}
+          disabled={!selectedStore}
+          className="w-full justify-start gap-2 h-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-sm"
+        >
+          <Plus className="w-5 h-5" />
+          <span>새로운 대화</span>
+        </Button>
       </div>
     </div>
   );
