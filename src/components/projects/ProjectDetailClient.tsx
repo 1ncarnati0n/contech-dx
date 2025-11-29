@@ -18,51 +18,17 @@ import { Button, Card } from '@/components/ui';
 import type { Project } from '@/lib/types';
 import { deleteProject } from '@/lib/services/projects';
 import { ProjectSidebar } from './ProjectSidebar';
+import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
 
 interface Props {
   project: Project;
 }
-
-const STATUS_COLORS = {
-  planning: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-  active: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-  completed: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-  on_hold: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-  cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-  dummy: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-2 border-dashed border-purple-400',
-};
-
-const STATUS_LABELS = {
-  planning: '기획',
-  active: '진행중',
-  completed: '완료',
-  on_hold: '보류',
-  cancelled: '취소',
-  dummy: '🧪 테스트',
-};
 
 export function ProjectDetailClient({ project }: Props) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   const handleDelete = async () => {
     if (typeof window === 'undefined') return;
@@ -73,7 +39,7 @@ export function ProjectDetailClient({ project }: Props) {
       await deleteProject(project.id);
       router.push('/projects');
     } catch (error) {
-      console.error('Failed to delete project:', error);
+      logger.error('Failed to delete project:', error);
       window.alert('프로젝트 삭제에 실패했습니다.');
     } finally {
       setIsDeleting(false);
@@ -139,9 +105,9 @@ export function ProjectDetailClient({ project }: Props) {
                       {project.name}
                     </h2>
                     <span
-                      className={`px-3 py-1 text-sm font-medium rounded-full ${STATUS_COLORS[project.status]}`}
+                      className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColors(project.status)}`}
                     >
-                      {STATUS_LABELS[project.status]}
+                      {getStatusLabel(project.status)}
                     </span>
                   </div>
                   {project.description && (
@@ -199,7 +165,7 @@ export function ProjectDetailClient({ project }: Props) {
                   <div>
                     <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">계약금액</div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {formatCurrency(project.contract_amount)}
+                      {formatCurrency(project.contract_amount, { notation: 'standard' })}
                     </div>
                   </div>
                 </Card>
@@ -211,7 +177,7 @@ export function ProjectDetailClient({ project }: Props) {
                   <div>
                     <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">공사기간</div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {formatDate(project.start_date)}
+                      {formatDate(project.start_date, 'long')}
                     </div>
                   </div>
                 </Card>
@@ -243,4 +209,3 @@ export function ProjectDetailClient({ project }: Props) {
     </div>
   );
 }
-

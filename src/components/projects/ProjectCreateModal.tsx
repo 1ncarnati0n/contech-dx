@@ -7,6 +7,7 @@ import { X, Loader2 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { createProject } from '@/lib/services/projects';
 import type { ProjectStatus } from '@/lib/types';
+import { logger } from '@/lib/utils/logger';
 
 interface ProjectFormData {
   name: string;
@@ -63,12 +64,12 @@ export function ProjectCreateModal({
         end_date: data.end_date?.trim() || undefined, // Empty string → undefined
       };
 
-      console.log('📝 Creating project with cleaned data:', cleanedData);
+      logger.debug('📝 Creating project with cleaned data:', cleanedData);
 
       // Create project
       const newProject = await createProject(cleanedData);
 
-      console.log('✅ Project created:', newProject.id);
+      logger.info('✅ Project created:', newProject.id);
 
       // Reset form
       reset();
@@ -85,7 +86,7 @@ export function ProjectCreateModal({
       router.push(`/projects/${newProject.project_number || newProject.id}`);
       router.refresh();
     } catch (error) {
-      console.error('Failed to create project:', error);
+      logger.error('Failed to create project:', error);
       if (typeof window !== 'undefined') {
         window.alert('프로젝트 생성에 실패했습니다.');
       }

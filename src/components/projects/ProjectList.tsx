@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { ProjectCard } from './ProjectCard';
 import { ProjectCreateModal } from './ProjectCreateModal';
 import type { Project, ProjectStatus } from '@/lib/types';
 import { getProjects } from '@/lib/services/projects';
+import { logger, getStatusOptions } from '@/lib/utils/index';
 
 interface ProjectListProps {
   isAdmin?: boolean;
@@ -14,36 +15,45 @@ interface ProjectListProps {
 
 export function ProjectList({ isAdmin = false }: ProjectListProps) {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Load projects
-  useEffect(() => {
-    loadProjects();
+  // 프로젝트 로드
+  const loadProjects = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getProjects();
+      setProjects(data);
+    } catch (error) {
+      logger.error('Failed to load projects:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Filter projects
+  // 초기 로드
   useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  // 필터링된 프로젝트 (useMemo로 최적화)
+  const filteredProjects = useMemo(() => {
     let filtered = [...projects];
 
-    // Debug: Log admin status and projects
-    console.log('🔍 ProjectList Debug:');
-    console.log('  - isAdmin:', isAdmin);
-    console.log('  - Total projects:', projects.length);
-    console.log('  - Projects:', projects.map(p => ({ name: p.name, status: p.status })));
+    logger.debug('🔍 ProjectList Filter:', {
+      isAdmin,
+      totalProjects: projects.length,
+    });
 
-    // Admin filter: Hide dummy projects from non-admin users
+    // Admin 필터: 비관리자는 dummy 프로젝트 숨김
     if (!isAdmin) {
-      console.log('  ⚠️  Non-admin user: Filtering out dummy projects');
       filtered = filtered.filter((p) => p.status !== 'dummy');
-    } else {
-      console.log('  ✅ Admin user: Showing all projects including dummy');
+      logger.debug('  ⚠️ Non-admin user: Filtering out dummy projects');
     }
 
-    // Search filter
+    // 검색 필터
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -55,27 +65,19 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       );
     }
 
-    // Status filter
+    // 상태 필터
     if (statusFilter !== 'all') {
       filtered = filtered.filter((p) => p.status === statusFilter);
     }
 
-    console.log('  - Filtered projects:', filtered.length);
-    setFilteredProjects(filtered);
+    logger.debug('  - Filtered projects:', filtered.length);
+    return filtered;
   }, [projects, searchQuery, statusFilter, isAdmin]);
 
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      const data = await getProjects();
-      setProjects(data);
-      setFilteredProjects(data);
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 상태 옵션 (관리자는 테스트 상태 포함)
+  const statusOptions = useMemo(() => {
+    return getStatusOptions(isAdmin);
+  }, [isAdmin]);
 
   const handleCreateClick = () => {
     setIsCreateModalOpen(true);
@@ -86,7 +88,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
   };
 
   const handleCreateSuccess = () => {
-    // Reload projects after successful creation
     loadProjects();
   };
 
@@ -132,11 +133,11 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
             className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all shadow-sm cursor-pointer"
           >
             <option value="all">모든 상태</option>
-            <option value="planning">기획 단계</option>
-            <option value="active">공사 진행중</option>
-            <option value="completed">공사 완료</option>
-            <option value="on_hold">공사 중지</option>
-            <option value="cancelled">취소됨</option>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,4 +189,3 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
     </div>
   );
 }
-

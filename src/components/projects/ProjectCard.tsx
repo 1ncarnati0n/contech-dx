@@ -1,55 +1,38 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { Building2, Calendar, DollarSign, MapPin, Users } from 'lucide-react';
-import { Card } from '@/components/ui';
+import { Building2, Calendar, DollarSign, MapPin } from 'lucide-react';
 import type { Project } from '@/lib/types';
+import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
 
 interface ProjectCardProps {
   project: Project;
 }
 
-const STATUS_COLORS = {
-  planning: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-  active: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-  completed: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-  on_hold: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-  cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-  dummy: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-2 border-dashed border-purple-400',
-};
-
-const STATUS_LABELS = {
-  planning: '기획',
-  active: '진행중',
-  completed: '완료',
-  on_hold: '보류',
-  cancelled: '취소',
-  dummy: '🧪 테스트',
-};
+/**
+ * 프로젝트 ID를 기반으로 결정론적 해시값 생성
+ * 매 렌더링마다 동일한 값을 반환하여 UI 안정성 보장
+ */
+function generateStableHash(id: string): number {
+  const hash = id.split('').reduce((acc, char) => {
+    acc = ((acc << 5) - acc) + char.charCodeAt(0);
+    return acc & acc;
+  }, 0);
+  return Math.abs(hash);
+}
 
 export function ProjectCard({ project }: ProjectCardProps) {
-  // Mock data for UI visualization (since these fields don't exist in DB yet)
+  // 프로젝트 ID 기반 결정론적 값 생성 (매 렌더링마다 동일)
+  const stableValues = useMemo(() => {
+    const hash = generateStableHash(project.id);
+    return {
+      progress: hash % 100,
+      teamCount: (hash % 10) + 2,
+    };
+  }, [project.id]);
+
   const mockImage = `https://source.unsplash.com/800x600/?construction,building,architecture&sig=${project.id}`;
-  const mockProgress = Math.floor(Math.random() * 100);
-  const mockTeamCount = Math.floor(Math.random() * 10) + 2;
-
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(amount);
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   return (
     <Link href={`/projects/${project.project_number || project.id}`} className="block h-full group">
@@ -64,9 +47,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
           />
           <div className="absolute top-3 right-3">
             <span
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg shadow-sm backdrop-blur-md ${STATUS_COLORS[project.status]}`}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg shadow-sm backdrop-blur-md ${getStatusColors(project.status)}`}
             >
-              {STATUS_LABELS[project.status]}
+              {getStatusLabel(project.status)}
             </span>
           </div>
         </div>
@@ -87,12 +70,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-medium">
               <span className="text-slate-600 dark:text-slate-400">공정률</span>
-              <span className="text-primary-600 dark:text-primary-400">{mockProgress}%</span>
+              <span className="text-primary-600 dark:text-primary-400">{stableValues.progress}%</span>
             </div>
             <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary-500 rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${mockProgress}%` }}
+                style={{ width: `${stableValues.progress}%` }}
               />
             </div>
           </div>
@@ -124,7 +107,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 </div>
               ))}
               <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-slate-500 font-medium">
-                +{mockTeamCount}
+                +{stableValues.teamCount}
               </div>
             </div>
 
@@ -140,4 +123,3 @@ export function ProjectCard({ project }: ProjectCardProps) {
     </Link>
   );
 }
-
