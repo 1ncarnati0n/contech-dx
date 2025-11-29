@@ -22,14 +22,14 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
     const isMinimalNav = pathname === '/' || pathname === '/login' || pathname === '/signup';
 
     return (
-        <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-black/90 backdrop-blur-lg shadow-sm border-b border-primary-200 dark:border-primary-800 transition-colors">
+        <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-lg shadow-sm border-b border-zinc-200 dark:border-zinc-800 transition-colors">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16 items-center">
                     {/* Logo & Main Navigation */}
                     <div className="flex items-center gap-8">
                         <Link
                             href={user ? '/home' : '/'}
-                            className="flex items-center gap-2 text-xl font-bold text-primary-900 dark:text-white hover:text-primary-700 dark:hover:text-primary-200 transition-colors"
+                            className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
                         >
                             <span className="hidden sm:inline">Contech DX</span>
                         </Link>
@@ -38,21 +38,21 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
                             <div className="hidden md:flex items-center gap-1">
                                 <Link
                                     href="/posts"
-                                    className="flex items-center gap-2 text-primary-600 dark:text-primary-300 hover:text-primary-900 dark:hover:text-white hover:bg-primary-50 dark:hover:bg-primary-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FileText className="w-4 h-4" />
                                     게시판
                                 </Link>
                                 <Link
                                     href="/file-search"
-                                    className="flex items-center gap-2 text-primary-600 dark:text-primary-300 hover:text-primary-900 dark:hover:text-white hover:bg-primary-50 dark:hover:bg-primary-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FileSearch className="w-4 h-4" />
                                     파일검색
                                 </Link>
                                 <Link
                                     href="/projects"
-                                    className="flex items-center gap-2 text-primary-600 dark:text-primary-300 hover:text-primary-900 dark:hover:text-white hover:bg-primary-50 dark:hover:bg-primary-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FolderKanban className="w-4 h-4" />
                                     프로젝트
@@ -84,13 +84,13 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
                                 <>
                                     <Link
                                         href="/login"
-                                        className="text-primary-600 dark:text-primary-300 hover:text-primary-900 dark:hover:text-white hover:bg-primary-50 dark:hover:bg-primary-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                        className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                     >
                                         로그인
                                     </Link>
                                     <Link
                                         href="/signup"
-                                        className="bg-primary-900 dark:bg-white text-white dark:text-black hover:bg-black dark:hover:bg-primary-200 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all active:scale-95"
+                                        className="bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-black dark:hover:bg-zinc-200 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all active:scale-95"
                                     >
                                         회원가입
                                     </Link>

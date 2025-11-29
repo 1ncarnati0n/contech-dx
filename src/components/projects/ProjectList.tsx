@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ProjectCard } from './ProjectCard';
 import { ProjectCreateModal } from './ProjectCreateModal';
 import type { Project, ProjectStatus } from '@/lib/types';
@@ -151,13 +152,13 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="h-64 animate-pulse">
+            <Card key={i} className="h-64">
               <div className="p-6 space-y-4">
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="space-y-2 pt-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
                 </div>
               </div>
             </Card>

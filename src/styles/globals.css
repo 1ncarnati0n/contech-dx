@@ -5,9 +5,12 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Base Colors - Professional Minimalism */
-  --color-background: #ffffff;
-  --color-foreground: #09090b; /* Zinc-950 for high contrast text */
+  /* 
+     IMPORTANT: Map theme colors to CSS variables.
+     This allows dynamic runtime switching (dark mode) without recompiling CSS.
+  */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
   /* Primary Colors - Zinc (Neutral, Professional) */
   --color-primary-50: #fafafa;
@@ -22,7 +25,7 @@
   --color-primary-900: #18181b;
   --color-primary-950: #09090b;
 
-  /* Admin Colors - Orange (Maintained but refined) */
+  /* Admin Colors - Orange */
   --color-admin-50: #fff7ed;
   --color-admin-100: #ffedd5;
   --color-admin-200: #fed7aa;
@@ -34,19 +37,7 @@
   --color-admin-800: #9a3412;
   --color-admin-900: #7c2d12;
 
-  /* Secondary Colors - Same as Admin for consistency if needed, or define separately */
-  --color-secondary-50: #fff7ed;
-  --color-secondary-100: #ffedd5;
-  --color-secondary-200: #fed7aa;
-  --color-secondary-300: #fdba74;
-  --color-secondary-400: #fb923c;
-  --color-secondary-500: #f97316;
-  --color-secondary-600: #ea580c;
-  --color-secondary-700: #c2410c;
-  --color-secondary-800: #9a3412;
-  --color-secondary-900: #7c2d12;
-
-  /* Accent Colors - Vivid Blue (Refined for professional look) */
+  /* Accent Colors - Vivid Blue */
   --color-accent-50: #eff6ff;
   --color-accent-100: #dbeafe;
   --color-accent-200: #bfdbfe;
@@ -75,14 +66,14 @@
   --color-warning-500: #f59e0b;
   --color-warning-600: #d97706;
 
-  /* Shadows - Refined for depth without clutter */
+  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-DEFAULT: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-  /* Border Radius - Consistent & Modern */
+  /* Border Radius */
   --radius-sm: 0.25rem;
   --radius-DEFAULT: 0.5rem;
   --radius-md: 0.75rem;
@@ -102,27 +93,27 @@
   Root Variables & Dark Mode 
 */
 :root {
-  --background: var(--color-background);
-  --foreground: var(--color-foreground);
+  --background: #ffffff;
+  --foreground: #09090b; /* Zinc-950 */
 }
 
-/* Dark mode - Pure Black for OLED/Premium feel */
+/* Dark mode - Zinc-900 for softer, premium dark theme */
 .dark {
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #18181b; /* Zinc-900 */
+  --foreground: #fafafa; /* Zinc-50 */
   
   /* Adjust shadows for dark mode */
-  --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
-  --shadow-DEFAULT: 0 1px 3px 0 rgb(255 255 255 / 0.1), 0 1px 2px -1px rgb(255 255 255 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(255 255 255 / 0.1), 0 2px 4px -2px rgb(255 255 255 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(255 255 255 / 0.1), 0 4px 6px -4px rgb(255 255 255 / 0.1);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-DEFAULT: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
 }
 
 /* Base Styles */
 @layer base {
   body {
-    @apply bg-(--background) text-(--foreground) antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1; /* More technical font features */
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   }
 
   html {
@@ -136,31 +127,30 @@
 
 /* Component Styles */
 @layer components {
-  /* Card Component - Minimalist */
+  /* Card Component */
   .card {
-    @apply bg-white dark:bg-primary-900/50 rounded-xl border border-primary-200 dark:border-primary-800 transition-all duration-200;
-    /* Removed default shadow for cleaner look, added hover effect */
+    @apply bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 transition-all duration-200;
   }
 
   .card-hover {
-    @apply hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm;
+    @apply hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm;
   }
 
-  /* Glassmorphism Effect - Subtle */
+  /* Glassmorphism */
   .glass {
-    @apply bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-primary-100 dark:border-primary-800;
+    @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800;
   }
 
-  /* Button Component - OpenAI Style */
+  /* Buttons */
   .btn {
     @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm;
-    @apply border border-primary-200 dark:border-primary-800 bg-white dark:bg-primary-900 text-primary-900 dark:text-primary-100;
-    @apply hover:bg-primary-50 dark:hover:bg-primary-800;
+    @apply border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100;
+    @apply hover:bg-zinc-50 dark:hover:bg-zinc-800;
     @apply active:scale-[0.98];
   }
 
   .btn-primary {
-    @apply bg-primary-900 text-white border-transparent hover:bg-black dark:bg-white dark:text-black dark:hover:bg-primary-100 shadow-sm;
+    @apply bg-zinc-900 text-white border-transparent hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-sm;
   }
 
   .btn-accent {
@@ -173,7 +163,7 @@
 
   /* Loading Spinner */
   .spinner {
-    @apply w-5 h-5 rounded-full border-2 border-primary-200 border-t-accent-600 animate-spin;
+    @apply w-5 h-5 rounded-full border-2 border-zinc-200 border-t-accent-600 animate-spin;
   }
 }
 

@@ -60,7 +60,7 @@ export default function LoginForm() {
         description: '환영합니다.',
       });
 
-      router.push('/posts');
+      router.push('/home');
       router.refresh();
     } catch (err) {
       toast.error('오류 발생', {
