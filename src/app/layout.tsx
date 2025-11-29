@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '../styles/globals.css';
 import NavBar from '@/components/layout/NavBar';
-import NavBarWrapper from '@/components/layout/NavBarWrapper';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { Toaster } from '@/components/ui/Toaster';
 
@@ -26,9 +25,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
         >
-          <NavBarWrapper>
-            <NavBar />
-          </NavBarWrapper>
+          <NavBar />
           <main className="pt-16 min-h-screen bg-white dark:bg-black text-primary-950 dark:text-primary-50 transition-colors">
             {children}
           </main>

@@ -96,8 +96,8 @@ export default function Home() {
                 className="w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-primary-100 border-none shadow-lg"
                 asChild
               >
-                <Link href="/home" className="flex items-center justify-center gap-2">
-                  플랫폼 입장하기
+                <Link href="/login" className="flex items-center justify-center gap-2">
+                  로그인
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
@@ -107,8 +107,8 @@ export default function Home() {
                 className="w-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-white/5"
                 asChild
               >
-                <Link href="/login">
-                  관리자 로그인
+                <Link href="/signup">
+                  회원가입
                 </Link>
               </Button>
             </div>

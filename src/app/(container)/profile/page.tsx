@@ -30,7 +30,7 @@ export default async function ProfilePage() {
     .eq('author_id', profile.id);
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2 text-slate-900 dark:text-white">내 프로필</h1>
         <p className="text-slate-600 dark:text-primary-400">계정 정보를 관리합니다</p>

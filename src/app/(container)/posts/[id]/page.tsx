@@ -39,7 +39,7 @@ export default async function PostDetailPage({ params }: PageProps) {
   const isAuthor = user?.id === post.author_id;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       {/* 게시글 내용 */}
       <div className="bg-white rounded-lg shadow-md p-8 mb-6">
         <div className="mb-6">

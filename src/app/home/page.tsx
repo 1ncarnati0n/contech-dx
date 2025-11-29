@@ -78,7 +78,7 @@ export default function HomePage() {
     ];
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -152,7 +152,7 @@ export default function HomePage() {
                             <Card key={activity.id} hover className="group">
                                 <CardContent className="p-4 flex items-center gap-4">
                                     <div className={`w-2 h-2 rounded-full ${activity.status === 'success' ? 'bg-emerald-500' :
-                                            activity.status === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                                        activity.status === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
                                         }`} />
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-primary-900 dark:text-primary-100">
