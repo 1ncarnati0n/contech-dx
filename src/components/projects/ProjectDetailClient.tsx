@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -14,6 +14,7 @@ import {
   Menu,
   Settings,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button, Card } from '@/components/ui';
 import type { Project } from '@/lib/types';
 import { deleteProject } from '@/lib/services/projects';
@@ -30,27 +31,38 @@ export function ProjectDetailClient({ project }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (typeof window === 'undefined') return;
     if (!window.confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
 
     try {
       setIsDeleting(true);
       await deleteProject(project.id);
+      toast.success('프로젝트가 삭제되었습니다.');
       router.push('/projects');
     } catch (error) {
       logger.error('Failed to delete project:', error);
-      window.alert('프로젝트 삭제에 실패했습니다.');
+      toast.error('프로젝트 삭제 실패', {
+        description: '프로젝트 삭제에 실패했습니다. 다시 시도해주세요.',
+      });
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [project.id, router]);
+
+  const handleSidebarToggle = useCallback(() => {
+    setSidebarOpen(prev => !prev);
+  }, []);
+
+  const handleSidebarClose = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <ProjectSidebar
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onClose={handleSidebarClose}
         project={project}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -66,7 +78,7 @@ export function ProjectDetailClient({ project }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onClick={handleSidebarToggle}
               className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             >
               <Menu className="w-5 h-5" />

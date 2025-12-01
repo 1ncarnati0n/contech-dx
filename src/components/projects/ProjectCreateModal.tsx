@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button, Card } from '@/components/ui';
 import { createProject } from '@/lib/services/projects';
 import type { ProjectStatus } from '@/lib/types';
@@ -48,9 +49,7 @@ export function ProjectCreateModal({
     },
   });
 
-  if (!isOpen) return null;
-
-  const onSubmit = async (data: ProjectFormData) => {
+  const onSubmit = useCallback(async (data: ProjectFormData) => {
     try {
       setIsSubmitting(true);
 
@@ -82,25 +81,29 @@ export function ProjectCreateModal({
         onSuccess();
       }
 
+      toast.success('프로젝트가 생성되었습니다.');
+
       // Navigate to project detail
       router.push(`/projects/${newProject.project_number || newProject.id}`);
       router.refresh();
     } catch (error) {
       logger.error('Failed to create project:', error);
-      if (typeof window !== 'undefined') {
-        window.alert('프로젝트 생성에 실패했습니다.');
-      }
+      toast.error('프로젝트 생성 실패', {
+        description: '프로젝트 생성에 실패했습니다. 다시 시도해주세요.',
+      });
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [reset, onClose, onSuccess, router]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (!isSubmitting) {
       reset();
       onClose();
     }
-  };
+  }, [isSubmitting, reset, onClose]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

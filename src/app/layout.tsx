@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import '../styles/globals.css';
 import NavBar from '@/components/layout/NavBar';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
@@ -26,7 +27,9 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
         >
-          <LoadingBar />
+          <Suspense fallback={null}>
+            <LoadingBar />
+          </Suspense>
           <NavBar />
           <main className="pt-16 min-h-screen bg-background text-foreground transition-colors">
             {children}

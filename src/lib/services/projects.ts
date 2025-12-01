@@ -146,13 +146,26 @@ export async function deleteProject(id: string): Promise<void> {
 }
 
 /**
- * Get projects by status
+ * Get projects by status (서버 사이드 필터링)
  */
 export async function getProjectsByStatus(
-  status: string
+  status: string,
+  supabaseClient?: SupabaseClient
 ): Promise<Project[]> {
-  const allProjects = await getProjects();
-  return allProjects.filter((p) => p.status === status);
+  const supabase = supabaseClient || createClient();
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('status', status)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    logger.error('Error fetching projects by status:', error);
+    return [];
+  }
+
+  return data as Project[];
 }
 
 /**

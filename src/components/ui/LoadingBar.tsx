@@ -23,8 +23,8 @@ export default function LoadingBar() {
     if (!isLoading) return null;
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-[100] h-0.5 bg-transparent">
-            <div className="h-full bg-cyan-500 animate-[loading_1s_ease-in-out_infinite]" style={{ width: '100%' }} />
+        <div className="fixed top-16 left-0 right-0 z-[100] h-0.5 bg-transparent">
+            <div className="h-full bg-black dark:bg-white animate-[loading_1s_ease-in-out_infinite]" style={{ width: '100%' }} />
             <style jsx>{`
         @keyframes loading {
           0% { transform: translateX(-100%); }
