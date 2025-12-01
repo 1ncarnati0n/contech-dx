@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
-    ArrowRight,
     BarChart2,
     Database,
     Bot,
@@ -39,28 +38,14 @@ export default function HomePage() {
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">
                             건설 산업의 <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">
-                                디지털 혁신
+                                DX
                             </span>을 주도합니다
                         </h1>
 
                         <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-                            WBS 공정관리부터 AI 기반 문서 분석까지.<br className="hidden md:block" />
-                            데이터 중심의 의사결정으로 건설 프로젝트의 성공을 보장합니다.
+                            WBS 공정관리부터 AI 기반 문서 분석까지, 데이터 중심의 의사결정.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                            <Link href="/projects">
-                                <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100">
-                                    프로젝트 시작하기
-                                    <ArrowRight className="ml-2 w-5 h-5" />
-                                </Button>
-                            </Link>
-                            <Link href="/file-search">
-                                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                                    AI 기능 체험하기
-                                </Button>
-                            </Link>
-                        </div>
                     </motion.div>
                 </div>
 
@@ -83,14 +68,14 @@ export default function HomePage() {
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                         <FeatureCard
                             icon={<Calendar className="w-8 h-8 text-blue-500" />}
-                            title="Smart WBS"
-                            description="체계적인 작업 분류 체계(WBS)를 통해 복잡한 공정을 직관적으로 관리하고 일정을 최적화합니다."
+                            title="WBS 공정관리 앱"
+                            description="체계적인 건설전문 WBS 간트앱을 통해 복잡한 공정을 직관적으로 관리하고 일정을 최적화합니다."
                             delay={0.1}
                         />
                         <FeatureCard
-                            icon={<TrendingUp className="w-8 h-8 text-green-500" />}
-                            title="Advanced EVMS"
-                            description="비용과 일정을 통합 관리하여 프로젝트의 성과를 실시간으로 측정하고 예측합니다."
+                            icon={<Bot className="w-8 h-8 text-cyan-500" />}
+                            title="AI RAG 분석"
+                            description="RAG 기술이 적용된 AI가 건설산업에 관련한 문서들을 분석하여 핵심 정보를 요약 제공합니다."
                             delay={0.2}
                         />
                         <FeatureCard
@@ -100,9 +85,9 @@ export default function HomePage() {
                             delay={0.3}
                         />
                         <FeatureCard
-                            icon={<Bot className="w-8 h-8 text-cyan-500" />}
-                            title="AI RAG Analysis"
-                            description="RAG 기술이 적용된 AI가 방대한 시방서와 계약서를 분석하여 핵심 정보를 요약 제공합니다."
+                            icon={<TrendingUp className="w-8 h-8 text-green-500" />}
+                            title="EVMS 원가관리"
+                            description="비용과 일정을 통합 관리하여 프로젝트의 성과를 실시간으로 측정하고 예측합니다."
                             delay={0.4}
                         />
                     </div>
@@ -177,8 +162,7 @@ export default function HomePage() {
             </section>
 
             {/* CTA Section */}
-            <section className="py-24 bg-zinc-900 dark:bg-zinc-950 text-white relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-800 via-zinc-900 to-zinc-950" />
+            <section className="py-24 bg-zinc-200 dark:bg-zinc-950 text-white relative overflow-hidden">
                 <div className="container mx-auto px-4 text-center relative z-10">
                     <h2 className="text-3xl md:text-4xl font-bold mb-6">
                         건설 프로젝트의 새로운 기준
@@ -186,11 +170,6 @@ export default function HomePage() {
                     <p className="text-zinc-400 mb-10 max-w-2xl mx-auto">
                         지금 바로 ConTech DX와 함께 디지털 전환을 시작하세요.
                     </p>
-                    <Link href="/signup">
-                        <Button size="lg" className="h-14 px-10 text-lg rounded-full bg-cyan-600 hover:bg-cyan-500 text-white border-none">
-                            무료로 시작하기
-                        </Button>
-                    </Link>
                 </div>
             </section>
         </div>
