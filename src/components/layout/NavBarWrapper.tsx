@@ -2,15 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 
-export default function NavBarWrapper({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function NavBarWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const isAuthPage = pathname === '/login' || pathname === '/signup';
+    const isLandingPage = pathname === '/';
 
-    if (isAuthPage) {
+    if (isLandingPage) {
         return null;
     }
 

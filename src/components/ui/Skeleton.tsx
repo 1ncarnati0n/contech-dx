@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 const skeletonVariants = cva(
-  'animate-pulse bg-slate-200 dark:bg-slate-800 rounded',
+  'animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded',
   {
     variants: {
       variant: {
@@ -22,7 +22,7 @@ const skeletonVariants = cva(
 
 export interface SkeletonProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof skeletonVariants> {
+  VariantProps<typeof skeletonVariants> {
   count?: number;
 }
 

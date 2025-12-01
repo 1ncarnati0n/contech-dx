@@ -23,8 +23,8 @@ export default function AdminDropdown() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${isOpen
-          ? 'bg-admin-100 text-admin-900 dark:bg-admin-900/40 dark:text-admin-100'
-          : 'text-admin-600 hover:text-admin-900 hover:bg-admin-50 dark:text-admin-400 dark:hover:text-admin-100 dark:hover:bg-admin-900/20'
+          ? 'bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100'
+          : 'text-orange-600 hover:text-orange-900 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-100 dark:hover:bg-orange-900/20'
           }`}
       >
         <Settings className="w-4 h-4" />
@@ -33,12 +33,12 @@ export default function AdminDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-1 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 py-1 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="p-1 space-y-0.5">
             <Link
               href="/admin/users"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-300 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
             >
               <Shield className="w-4 h-4" />
               User Manage
@@ -46,7 +46,7 @@ export default function AdminDropdown() {
             <Link
               href="/test-connection"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-admin-700 dark:text-admin-300 hover:bg-admin-50 dark:hover:bg-admin-900/20 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
             >
               <TestTube className="w-4 h-4" />
               DB Checker
@@ -57,4 +57,3 @@ export default function AdminDropdown() {
     </div>
   );
 }
-

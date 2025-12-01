@@ -2,6 +2,8 @@
  * File Search 헬퍼 유틸리티
  */
 
+import { ALLOWED_FILE_TYPES } from '@/lib/constants';
+
 /**
  * 바이트를 읽기 쉬운 파일 크기로 변환
  */
@@ -25,15 +27,16 @@ export function getFileIcon(mimeType: string): string {
 }
 
 /**
- * 허용된 파일 확장자 목록
+ * 허용된 파일 확장자 목록 (constants.ts에서 가져옴)
+ * @deprecated 직접 ALLOWED_FILE_TYPES 사용을 권장
  */
-export const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.doc', '.txt', '.json', '.csv', '.xlsx'];
+export const ALLOWED_EXTENSIONS = ALLOWED_FILE_TYPES;
 
 /**
  * 파일이 업로드 가능한지 확인
  */
 export function isValidFile(file: File): boolean {
-  return ALLOWED_EXTENSIONS.some((ext) =>
+  return ALLOWED_FILE_TYPES.some((ext) =>
     file.name.toLowerCase().endsWith(ext)
   );
 }

@@ -1,36 +1,36 @@
-import { Card, CardContent, Skeleton } from '@/components/ui';
-import { FileText } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui';
 
 export default function PostsLoading() {
   return (
-    <div>
-      {/* Header */}
+    <div className="space-y-6">
+      {/* Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-3">
-            <FileText className="w-8 h-8 text-slate-700 dark:text-slate-300" />
-            게시판
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-2">
-            팀원들과 정보를 공유하고 소통하세요
-          </p>
+        <div className="space-y-2">
+          <div className="h-8 w-32 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+          <div className="h-4 w-48 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
         </div>
-        <Skeleton variant="button" className="w-28 h-10" />
+        <div className="h-10 w-24 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
       </div>
 
       {/* Posts List Skeleton */}
       <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {[1, 2, 3, 4, 5].map((i) => (
           <Card key={i}>
             <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <Skeleton variant="title" className="w-2/3" />
-                <Skeleton className="w-5 h-5 rounded-md" />
-              </div>
-              <Skeleton variant="text" count={2} />
-              <div className="mt-4 flex items-center gap-4">
-                <Skeleton className="w-24 h-4" />
-                <Skeleton className="w-32 h-4" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-16 bg-zinc-200 dark:bg-zinc-800 rounded-full animate-pulse" />
+                    <div className="h-6 w-48 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                  </div>
+                  <div className="h-4 w-full bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-4 w-2/3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                  <div className="flex items-center gap-4 pt-2">
+                    <div className="h-4 w-20 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                    <div className="h-4 w-20 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-10 w-10 bg-zinc-200 dark:bg-zinc-800 rounded-full animate-pulse" />
               </div>
             </CardContent>
           </Card>
