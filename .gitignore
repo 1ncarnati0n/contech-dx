@@ -43,3 +43,7 @@ next-env.d.ts
 # claude
 .claude
 .claude/skills
+
+# Gemini
+.gemini 
+GEMINI.md

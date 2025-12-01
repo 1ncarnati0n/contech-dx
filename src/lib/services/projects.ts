@@ -10,6 +10,10 @@ import type {
   CreateProjectDTO,
   UpdateProjectDTO,
 } from '@/lib/types';
+<<<<<<< HEAD
+=======
+import { logger } from '@/lib/utils/logger';
+>>>>>>> staging
 
 // ============================================
 // Service Functions
@@ -27,7 +31,11 @@ export async function getProjects(supabaseClient?: SupabaseClient): Promise<Proj
     .order('created_at', { ascending: false });
 
   if (error) {
+<<<<<<< HEAD
     console.error('Error fetching projects:', error);
+=======
+    logger.error('Error fetching projects:', error);
+>>>>>>> staging
     return [];
   }
 
@@ -55,7 +63,7 @@ export async function getProject(idOrNumber: string, supabaseClient?: SupabaseCl
     if (error.code === 'PGRST116') {
       return null;
     }
-    console.error('Error fetching project:', error);
+    logger.error('Error fetching project:', error);
     return null;
   }
 
@@ -86,7 +94,7 @@ export async function createProject(
     Object.entries(projectData).filter(([_, v]) => v !== undefined && v !== '')
   );
 
-  console.log('🔧 Cleaned project data for Supabase:', cleanedProject);
+  logger.debug('🔧 Cleaned project data for Supabase:', cleanedProject);
 
   const { data, error } = await supabase
     .from('projects')
@@ -95,11 +103,11 @@ export async function createProject(
     .single();
 
   if (error) {
-    console.error('❌ Error creating project:', error);
+    logger.error('❌ Error creating project:', error);
     throw new Error('Failed to create project');
   }
 
-  console.log('✅ Project created successfully:', data.id);
+  logger.info('✅ Project created successfully:', data.id);
   return data as Project;
 }
 
@@ -123,7 +131,7 @@ export async function updateProject(
     .single();
 
   if (error) {
-    console.error('Error updating project:', error);
+    logger.error('Error updating project:', error);
     throw new Error('Failed to update project');
   }
 
@@ -139,19 +147,32 @@ export async function deleteProject(id: string): Promise<void> {
   const { error } = await supabase.from('projects').delete().eq('id', id);
 
   if (error) {
-    console.error('Error deleting project:', error);
+    logger.error('Error deleting project:', error);
     throw new Error('Failed to delete project');
   }
 }
 
 /**
- * Get projects by status
+ * Get projects by status (서버 사이드 필터링)
  */
 export async function getProjectsByStatus(
-  status: string
+  status: string,
+  supabaseClient?: SupabaseClient
 ): Promise<Project[]> {
-  const allProjects = await getProjects();
-  return allProjects.filter((p) => p.status === status);
+  const supabase = supabaseClient || createClient();
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('status', status)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    logger.error('Error fetching projects by status:', error);
+    return [];
+  }
+
+  return data as Project[];
 }
 
 /**
@@ -167,10 +188,9 @@ export async function getProjectsByUser(userId: string): Promise<Project[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching user projects:', error);
+    logger.error('Error fetching user projects:', error);
     return [];
   }
 
   return data as Project[];
 }
-

@@ -9,11 +9,17 @@ import {
     MapPin,
     Building2,
     Calendar,
+<<<<<<< HEAD
     ChevronLeft,
     Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import type { Project } from '@/lib/types';
+=======
+} from 'lucide-react';
+import type { Project } from '@/lib/types';
+import { formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
+>>>>>>> staging
 
 interface ProjectSidebarProps {
     isOpen: boolean;
@@ -38,6 +44,7 @@ export function ProjectSidebar({
         { id: 'settings', label: '설정', icon: Settings },
     ];
 
+<<<<<<< HEAD
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('ko-KR', {
             year: 'numeric',
@@ -46,6 +53,8 @@ export function ProjectSidebar({
         });
     };
 
+=======
+>>>>>>> staging
     return (
         <>
             {/* Mobile Overlay */}
@@ -66,6 +75,7 @@ export function ProjectSidebar({
                         {project.name}
                     </h2>
                     <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+<<<<<<< HEAD
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${project.status === 'active' ? 'bg-green-50 text-green-600 border-green-200' :
                                 project.status === 'planning' ? 'bg-blue-50 text-blue-600 border-blue-200' :
                                     project.status === 'completed' ? 'bg-slate-50 text-slate-600 border-slate-200' :
@@ -74,6 +84,10 @@ export function ProjectSidebar({
                             {project.status === 'active' ? '진행중' :
                                 project.status === 'planning' ? '기획' :
                                     project.status === 'completed' ? '완료' : project.status}
+=======
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColors(project.status)}`}>
+                            {getStatusLabel(project.status)}
+>>>>>>> staging
                         </span>
                         <span>#{project.project_number}</span>
                     </div>
@@ -120,7 +134,11 @@ export function ProjectSidebar({
                         )}
                         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                             <Calendar className="w-3.5 h-3.5 shrink-0" />
+<<<<<<< HEAD
                             <span>{formatDate(project.start_date)} 시작</span>
+=======
+                            <span>{formatDate(project.start_date, 'long')} 시작</span>
+>>>>>>> staging
                         </div>
                     </div>
                 </div>

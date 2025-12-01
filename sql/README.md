@@ -264,7 +264,3 @@ SELECT COUNT(*) FROM links;
 **작성자**: AI Assistant  
 **버전**: 1.0  
 **최종 업데이트**: 2025-11-25
-
-
-
-

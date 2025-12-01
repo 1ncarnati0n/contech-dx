@@ -1,18 +1,17 @@
 /**
  * Container Route Group Layout
  *
- * 현재는 단순 passthrough로 동작합니다.
- * Root layout의 <main>에서 이미 max-w-7xl, padding 등이 적용됨.
- *
- * 향후 이 그룹에만 적용할 공통 기능이 있다면 여기에 추가:
- * - 인증 체크 wrapper
- * - 특정 그룹 전용 사이드바
- * - 그룹 전용 breadcrumb 등
+ * 공통 레이아웃 컨테이너를 적용하여 모든 하위 페이지(projects, posts 등)가
+ * 동일한 마진과 패딩을 가지도록 합니다.
  */
 export default function ContainerLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    return <>{children}</>;
+    return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            {children}
+        </div>
+    );
 }

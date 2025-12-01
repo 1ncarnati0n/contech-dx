@@ -59,7 +59,7 @@ export default function FileSearchPage() {
   } = useFileSearch();
 
   return (
-    <div className="fixed inset-0 top-16 flex bg-slate-100 overflow-hidden">
+    <div className="fixed inset-0 top-16 flex bg-background overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
