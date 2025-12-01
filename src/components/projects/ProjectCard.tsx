@@ -23,22 +23,6 @@ function generateStableHash(id: string): number {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
-<<<<<<< HEAD
-  // Mock data for UI visualization (since these fields don't exist in DB yet)
-  const mockImage = `https://source.unsplash.com/800x600/?construction,building,architecture&sig=${project.id}`;
-  const mockProgress = Math.floor(Math.random() * 100);
-  const mockTeamCount = Math.floor(Math.random() * 10) + 2;
-
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '-';
-    return new Intl.NumberFormat('ko-KR', {
-      style: 'currency',
-      currency: 'KRW',
-      notation: 'compact',
-      maximumFractionDigits: 1,
-    }).format(amount);
-  };
-=======
   // 프로젝트 ID 기반 결정론적 값 생성 (매 렌더링마다 동일)
   const stableValues = useMemo(() => {
     const hash = generateStableHash(project.id);
@@ -47,7 +31,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
       teamCount: (hash % 10) + 2,
     };
   }, [project.id]);
->>>>>>> staging
 
   const mockImage = `https://source.unsplash.com/800x600/?construction,building,architecture&sig=${project.id}`;
 
@@ -64,11 +47,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           />
           <div className="absolute top-3 right-3">
             <span
-<<<<<<< HEAD
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg shadow-sm backdrop-blur-md ${STATUS_COLORS[project.status]}`}
-=======
               className={`px-2.5 py-1 text-xs font-semibold rounded-lg shadow-sm backdrop-blur-md ${getStatusColors(project.status)}`}
->>>>>>> staging
             >
               {getStatusLabel(project.status)}
             </span>
@@ -91,20 +70,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-medium">
               <span className="text-slate-600 dark:text-slate-400">공정률</span>
-<<<<<<< HEAD
-              <span className="text-primary-600 dark:text-primary-400">{mockProgress}%</span>
-=======
               <span className="text-primary-600 dark:text-primary-400">{stableValues.progress}%</span>
->>>>>>> staging
             </div>
             <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary-500 rounded-full transition-all duration-1000 ease-out"
-<<<<<<< HEAD
-                style={{ width: `${mockProgress}%` }}
-=======
                 style={{ width: `${stableValues.progress}%` }}
->>>>>>> staging
               />
             </div>
           </div>
@@ -136,11 +107,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 </div>
               ))}
               <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] text-slate-500 font-medium">
-<<<<<<< HEAD
-                +{mockTeamCount}
-=======
                 +{stableValues.teamCount}
->>>>>>> staging
               </div>
             </div>
 

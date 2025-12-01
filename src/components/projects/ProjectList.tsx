@@ -134,19 +134,11 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
             className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all shadow-sm cursor-pointer"
           >
             <option value="all">모든 상태</option>
-<<<<<<< HEAD
-            <option value="planning">기획 단계</option>
-            <option value="active">공사 진행중</option>
-            <option value="completed">공사 완료</option>
-            <option value="on_hold">공사 중지</option>
-            <option value="cancelled">취소됨</option>
-=======
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
->>>>>>> staging
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

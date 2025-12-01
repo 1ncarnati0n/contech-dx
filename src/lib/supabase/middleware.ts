@@ -58,11 +58,6 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Session refresh (중요!)
-<<<<<<< HEAD
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-=======
   // 에러 발생 시 gracefully 처리하여 무효한 토큰으로 인한 에러 방지
   let user = null;
   try {
@@ -79,7 +74,6 @@ export async function updateSession(request: NextRequest) {
     // 예기치 않은 에러 처리
     console.error('[Middleware] Unexpected auth error:', error);
   }
->>>>>>> staging
 
   // Route protection logic
   const path = request.nextUrl.pathname;
@@ -88,12 +82,6 @@ export async function updateSession(request: NextRequest) {
   const publicPaths = ['/login', '/signup', '/auth/callback', '/'];
   const isPublicPath = publicPaths.some(p => path === p || path.startsWith('/auth/'));
 
-<<<<<<< HEAD
-  // 2. Auth paths (login/signup) - redirect to projects if already logged in
-  const isAuthPath = ['/login', '/signup'].includes(path);
-
-=======
->>>>>>> staging
   if (!user && !isPublicPath) {
     // Redirect unauthenticated users to login
     const url = request.nextUrl.clone();
@@ -101,13 +89,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-<<<<<<< HEAD
-  if (user && isAuthPath) {
-    // Redirect authenticated users to projects
-    const url = request.nextUrl.clone();
-    url.pathname = '/projects';
-    return NextResponse.redirect(url);
-=======
   if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup') || request.nextUrl.pathname === '/')) {
     // 3. 인증된 사용자가 로그인/회원가입/루트 페이지 접근 시 /home으로 리다이렉트
     return NextResponse.redirect(new URL('/home', request.url));
@@ -116,7 +97,6 @@ export async function updateSession(request: NextRequest) {
   // 4. 루트 페이지('/')는 공개 접근 허용 (위에서 처리되지 않은 비로그인 사용자)
   if (request.nextUrl.pathname === '/') {
     return response;
->>>>>>> staging
   }
 
   return response;

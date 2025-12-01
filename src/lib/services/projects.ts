@@ -10,10 +10,7 @@ import type {
   CreateProjectDTO,
   UpdateProjectDTO,
 } from '@/lib/types';
-<<<<<<< HEAD
-=======
 import { logger } from '@/lib/utils/logger';
->>>>>>> staging
 
 // ============================================
 // Service Functions
@@ -31,11 +28,7 @@ export async function getProjects(supabaseClient?: SupabaseClient): Promise<Proj
     .order('created_at', { ascending: false });
 
   if (error) {
-<<<<<<< HEAD
-    console.error('Error fetching projects:', error);
-=======
     logger.error('Error fetching projects:', error);
->>>>>>> staging
     return [];
   }
 

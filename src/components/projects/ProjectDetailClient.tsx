@@ -19,10 +19,7 @@ import { Button, Card } from '@/components/ui';
 import type { Project } from '@/lib/types';
 import { deleteProject } from '@/lib/services/projects';
 import { ProjectSidebar } from './ProjectSidebar';
-<<<<<<< HEAD
-=======
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
->>>>>>> staging
 
 interface Props {
   project: Project;
@@ -53,8 +50,6 @@ export function ProjectDetailClient({ project }: Props) {
     }
   }, [project.id, router]);
 
-<<<<<<< HEAD
-=======
   const handleSidebarToggle = useCallback(() => {
     setSidebarOpen(prev => !prev);
   }, []);
@@ -63,16 +58,11 @@ export function ProjectDetailClient({ project }: Props) {
     setSidebarOpen(false);
   }, []);
 
->>>>>>> staging
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <ProjectSidebar
         isOpen={sidebarOpen}
-<<<<<<< HEAD
-        onClose={() => setSidebarOpen(false)}
-=======
         onClose={handleSidebarClose}
->>>>>>> staging
         project={project}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -88,11 +78,7 @@ export function ProjectDetailClient({ project }: Props) {
             <Button
               variant="ghost"
               size="sm"
-<<<<<<< HEAD
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-=======
               onClick={handleSidebarToggle}
->>>>>>> staging
               className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             >
               <Menu className="w-5 h-5" />
@@ -131,15 +117,9 @@ export function ProjectDetailClient({ project }: Props) {
                       {project.name}
                     </h2>
                     <span
-<<<<<<< HEAD
-                      className={`px-3 py-1 text-sm font-medium rounded-full ${STATUS_COLORS[project.status]}`}
-                    >
-                      {STATUS_LABELS[project.status]}
-=======
                       className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColors(project.status)}`}
                     >
                       {getStatusLabel(project.status)}
->>>>>>> staging
                     </span>
                   </div>
                   {project.description && (
@@ -197,11 +177,7 @@ export function ProjectDetailClient({ project }: Props) {
                   <div>
                     <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">계약금액</div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-white">
-<<<<<<< HEAD
-                      {formatCurrency(project.contract_amount)}
-=======
                       {formatCurrency(project.contract_amount, { notation: 'standard' })}
->>>>>>> staging
                     </div>
                   </div>
                 </Card>
@@ -213,11 +189,7 @@ export function ProjectDetailClient({ project }: Props) {
                   <div>
                     <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">공사기간</div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-white">
-<<<<<<< HEAD
-                      {formatDate(project.start_date)}
-=======
                       {formatDate(project.start_date, 'long')}
->>>>>>> staging
                     </div>
                   </div>
                 </Card>
