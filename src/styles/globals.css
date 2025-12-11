@@ -111,8 +111,12 @@
 
 /* Base Styles */
 @layer base {
+  html, body {
+    @apply m-0 p-0 bg-background text-foreground;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   }
 
