@@ -137,12 +137,13 @@ export function DataInputPage({ projectId }: Props) {
             standard: 0,
             floor1: 0,
             floor2: 0,
+            floor3: 0,
             top: 0,
             ph: 0,
           },
         };
       }
-      
+
       for (let i = 0; i < additionalCount; i++) {
         const buildingName = `${nextNumber + i}동`;
         

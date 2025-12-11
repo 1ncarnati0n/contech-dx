@@ -23,15 +23,15 @@ export {
   getCommentsByUserId,
 } from './comments';
 
-// Users 서비스
+// Users 서비스 (클라이언트 전용)
 export {
-  getAllUsers,
-  getUserById,
-  getCurrentUser,
   updateUserRole,
   updateUserProfile,
-  getUserRoleStats,
-} from './users';
+  promoteCurrentUserToAdmin,
+} from './users.client';
+
+// Users 서비스 (서버 전용) - 서버 컴포넌트에서만 import 가능
+// import { getAllUsers, getUserById, getCurrentUser, getUserRoleStats } from '@/lib/services/users.server';
 
 // Gemini AI 서비스
 export {

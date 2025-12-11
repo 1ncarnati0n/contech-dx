@@ -1090,7 +1090,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         
                         {/* 첫 번째 공정 열만 헤더 표시 (일수, 셀렉트박스, 버튼) */}
                         {processColumns.length > 0 && (
-                          <Fragment key={`header-${processColumns[0].category}-${processColumns[0].floorLabel || ''}-${processColumns[0].colIndex}`}>
+                          <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
                             {/* 일수 열 */}
                             <th className="px-2 py-3 text-center text-sm font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800">
                               순작업일수
@@ -1298,9 +1298,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                     // 수량 참조를 층별로 조정
                                     if (item.quantityReference) {
                                       const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                      if (refMatch) {
+                                      if (refMatch && row.floorLabel) {
                                         const [, col] = refMatch;
-                                        
+
                                         if (row.category === '지하골조') {
                                           // 지하골조는 floorLabel 그대로 사용 (B1, B2 등)
                                           quantity = getQuantityFromFloor(building, row.floorLabel, 
@@ -1671,10 +1671,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                               // 수량 참조를 층별로 조정
                                               if (item.quantityReference) {
                                                 const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                if (refMatch) {
+                                                if (refMatch && expandedRow.floorLabel) {
                                                   const [, col, baseRow] = refMatch;
                                                   const baseRowNum = parseInt(baseRow, 10);
-                                                  
+
                                                   if (expandedRow.category === '지하골조') {
                                                     // 지하골조는 floorLabel 그대로 사용 (B1, B2 등)
                                                     quantity = getQuantityFromFloor(building, expandedRow.floorLabel, 

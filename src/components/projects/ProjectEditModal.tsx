@@ -30,7 +30,7 @@ const projectSchema = z.object({
     status: z.enum(['announcement', 'bidding', 'award', 'construction_start', 'completion']),
     location: z.string().optional(),
     client: z.string().optional(),
-    contract_amount: z.coerce.number().optional(),
+    contract_amount: z.number().optional(),
     start_date: z.string().min(1, '시작일을 선택해주세요'),
     end_date: z.string().optional(),
 });

@@ -686,7 +686,7 @@ function generateFloors(
     floor4?: number;
     floor5?: number;
     top?: number;
-    ph?: number;
+    ph?: number | number[];
   }
 ): Floor[] {
   const floors: Floor[] = [];
