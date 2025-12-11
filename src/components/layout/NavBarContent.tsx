@@ -37,25 +37,25 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
                         {!isMinimalNav && (
                             <div className="hidden md:flex items-center gap-1">
                                 <Link
-                                    href="/posts"
+                                    href="/projects"
                                     className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
-                                    <FileText className="w-4 h-4" />
-                                    게시판
+                                    <FolderKanban className="w-4 h-4" />
+                                    공정관리
                                 </Link>
                                 <Link
                                     href="/file-search"
                                     className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FileSearch className="w-4 h-4" />
-                                    파일검색
+                                    AI 문서분석
                                 </Link>
                                 <Link
-                                    href="/projects"
+                                    href="/posts"
                                     className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
-                                    <FolderKanban className="w-4 h-4" />
-                                    프로젝트
+                                    <FileText className="w-4 h-4" />
+                                    게시판
                                 </Link>
 
                                 {/* Admin 전용 메뉴 */}

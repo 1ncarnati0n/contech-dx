@@ -32,6 +32,7 @@ interface SidebarProps {
   onRemoveAttachedFile: (index: number) => void;
   onClearAttachedFiles: () => void;
   onUploadFiles: () => void;
+  onDeleteFile?: (fileName: string) => void;
 
   // 채팅 세션 관련 props
   sessions?: ChatSession[];
@@ -58,6 +59,7 @@ export default function Sidebar({
   onRemoveAttachedFile,
   onClearAttachedFiles,
   onUploadFiles,
+  onDeleteFile,
 
   sessions = [],
   currentSessionId,
@@ -127,7 +129,7 @@ export default function Sidebar({
             onClick={() => setIsStoreExpanded(!isStoreExpanded)}
             className="flex items-center justify-between w-full text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2 hover:text-zinc-800 dark:hover:text-zinc-200"
           >
-            <span>문서 스토어 설정</span>
+            <span>문서함 설정</span>
             {isStoreExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </button>
 
@@ -148,19 +150,17 @@ export default function Sidebar({
                   ))}
                 </select>
 
-                {isAdmin && (
-                  <form onSubmit={handleCreateStore} className="flex gap-2">
-                    <Input
-                      value={newStoreName}
-                      onChange={(e) => setNewStoreName(e.target.value)}
-                      placeholder="새 스토어 이름"
-                      className="h-8 text-xs bg-white dark:bg-zinc-800"
-                    />
-                    <Button type="submit" size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!newStoreName.trim()}>
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </form>
-                )}
+                <form onSubmit={handleCreateStore} className="flex gap-2">
+                  <Input
+                    value={newStoreName}
+                    onChange={(e) => setNewStoreName(e.target.value)}
+                    placeholder="새 문서함 이름"
+                    className="h-8 text-xs bg-white dark:bg-zinc-800"
+                  />
+                  <Button type="submit" size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!newStoreName.trim()}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </form>
               </div>
 
               {/* Selected Store Info */}
@@ -215,11 +215,44 @@ export default function Sidebar({
                     </div>
                   )}
 
-                  {/* Uploaded Files Count */}
-                  <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                    <FileText className="w-3 h-3" />
-                    <span>업로드된 파일: {uploadedFiles.length}개</span>
-                  </div>
+                  {/* Uploaded Files List */}
+                  {uploadedFiles.length > 0 && (
+                    <div className="space-y-1 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                      <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                        <FileText className="w-3 h-3" />
+                        <span>업로드된 파일 ({uploadedFiles.length}개)</span>
+                      </div>
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {uploadedFiles.map((file) => (
+                          <div key={file.name} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-1.5 rounded border border-zinc-200 dark:border-zinc-700">
+                            <div className="flex-1 min-w-0">
+                              <div className="truncate text-zinc-700 dark:text-zinc-300">{file.displayName}</div>
+                              <div className="text-[10px] text-zinc-400">{formatFileSize(file.sizeBytes)}</div>
+                            </div>
+                            {onDeleteFile && (
+                              <button
+                                onClick={() => {
+                                  if (confirm('파일을 삭제하시겠습니까?')) {
+                                    onDeleteFile(file.name);
+                                  }
+                                }}
+                                className="ml-2 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                title="파일 삭제"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {uploadedFiles.length === 0 && (
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                      <FileText className="w-3 h-3" />
+                      <span>업로드된 파일: 0개</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

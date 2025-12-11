@@ -21,35 +21,30 @@ interface ProjectStatusConfig {
  * 프로젝트 상태별 설정
  */
 export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, ProjectStatusConfig> = {
-  planning: {
-    label: '기획',
+  announcement: {
+    label: '공모',
     colors: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+    icon: '📢',
+  },
+  bidding: {
+    label: '입찰',
+    colors: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
     icon: '📋',
   },
-  active: {
-    label: '진행중',
+  award: {
+    label: '수주',
     colors: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-    icon: '🚧',
-  },
-  completed: {
-    label: '완료',
-    colors: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
     icon: '✅',
   },
-  on_hold: {
-    label: '보류',
-    colors: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-    icon: '⏸️',
+  construction_start: {
+    label: '착공',
+    colors: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+    icon: '🚧',
   },
-  cancelled: {
-    label: '취소',
-    colors: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-    icon: '❌',
-  },
-  dummy: {
-    label: '🧪 테스트',
-    colors: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-2 border-dashed border-purple-400',
-    icon: '🧪',
+  completion: {
+    label: '준공',
+    colors: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
+    icon: '🏗️',
   },
 } as const;
 
@@ -58,7 +53,8 @@ export const PROJECT_STATUS_CONFIG: Record<ProjectStatus, ProjectStatusConfig> =
  * @param status - 프로젝트 상태
  * @returns 한글 라벨
  */
-export function getStatusLabel(status: ProjectStatus): string {
+export function getStatusLabel(status: ProjectStatus | null | undefined): string {
+  if (!status) return '알 수 없음';
   return PROJECT_STATUS_CONFIG[status]?.label ?? '알 수 없음';
 }
 
@@ -67,8 +63,9 @@ export function getStatusLabel(status: ProjectStatus): string {
  * @param status - 프로젝트 상태
  * @returns Tailwind CSS 클래스 문자열
  */
-export function getStatusColors(status: ProjectStatus): string {
-  return PROJECT_STATUS_CONFIG[status]?.colors ?? '';
+export function getStatusColors(status: ProjectStatus | null | undefined): string {
+  if (!status) return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+  return PROJECT_STATUS_CONFIG[status]?.colors ?? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
 }
 
 /**
@@ -86,10 +83,7 @@ export function getStatusIcon(status: ProjectStatus): string {
  * @returns 상태 배열
  */
 export function getAllProjectStatuses(includeTest = false): ProjectStatus[] {
-  const statuses: ProjectStatus[] = ['planning', 'active', 'completed', 'on_hold', 'cancelled'];
-  if (includeTest) {
-    statuses.push('dummy');
-  }
+  const statuses: ProjectStatus[] = ['announcement', 'bidding', 'award', 'construction_start', 'completion'];
   return statuses;
 }
 

@@ -44,6 +44,7 @@ export function useFileSearch() {
     sessions,
     currentSessionId,
     search,
+    stopSearch,
     selectSession,
     createSession,
     deleteSession,
@@ -54,6 +55,7 @@ export function useFileSearch() {
   const fileManagement = useFileManagement({
     selectedStore,
     onUploadSuccess: () => loadStoreInfo(selectedStore),
+    onDeleteSuccess: () => loadStoreInfo(selectedStore),
   });
   const {
     attachedFiles,
@@ -64,6 +66,7 @@ export function useFileSearch() {
     removeAttachedFile,
     clearAttachedFiles,
     uploadFiles,
+    deleteFile,
     clearNotification: clearFileNotification,
   } = fileManagement;
 
@@ -133,9 +136,11 @@ export function useFileSearch() {
     removeAttachedFile,
     clearAttachedFiles,
     uploadFiles,
+    deleteFile,
     
     // 채팅 액션
     search,
+    stopSearch,
     selectSession,
     createSession,
     deleteSession,

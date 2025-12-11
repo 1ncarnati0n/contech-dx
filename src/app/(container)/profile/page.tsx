@@ -16,6 +16,10 @@ export default async function ProfilePage() {
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  
+  // 회원가입 시 등록한 이름과 직위 정보 가져오기
+  const signupName = user?.user_metadata?.display_name || user?.user_metadata?.name || null;
+  const signupPosition = user?.user_metadata?.position || null;
 
   // 사용자가 작성한 게시글 수
   const { count: postCount } = await supabase
@@ -115,7 +119,11 @@ export default async function ProfilePage() {
         <div className="md:col-span-2">
           <div className="bg-white dark:bg-primary-900/50 rounded-lg shadow-md p-6 border border-slate-200 dark:border-primary-800">
             <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">프로필 편집</h2>
-            <ProfileEditForm profile={profile} />
+            <ProfileEditForm 
+              profile={profile} 
+              signupName={signupName}
+              signupPosition={signupPosition}
+            />
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, FileText, FileSearch, Shield, TestTube, User, LogOut } from 'lucide-react';
+import { Menu, X, FileText, FileSearch, FolderKanban, Shield, TestTube, User, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Profile } from '@/lib/types';
@@ -69,12 +69,12 @@ export default function MobileMenu({ user, profile, isAdmin }: MobileMenuProps) 
             <div className="space-y-2">
               {/* 메인 메뉴 */}
               <Link
-                href="/posts"
+                href="/projects"
                 onClick={closeMenu}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
               >
-                <FileText className="w-5 h-5" />
-                <span className="font-medium">게시판</span>
+                <FolderKanban className="w-5 h-5" />
+                <span className="font-medium">공정관리</span>
               </Link>
 
               <Link
@@ -83,7 +83,16 @@ export default function MobileMenu({ user, profile, isAdmin }: MobileMenuProps) 
                 className="flex items-center gap-3 px-4 py-3 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
               >
                 <FileSearch className="w-5 h-5" />
-                <span className="font-medium">파일검색</span>
+                <span className="font-medium">AI 문서분석</span>
+              </Link>
+
+              <Link
+                href="/posts"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
+              >
+                <FileText className="w-5 h-5" />
+                <span className="font-medium">게시판</span>
               </Link>
 
               {/* 관리자 메뉴 */}
