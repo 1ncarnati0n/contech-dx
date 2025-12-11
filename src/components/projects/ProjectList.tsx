@@ -48,11 +48,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       totalProjects: projects.length,
     });
 
-    // Admin 필터: 비관리자는 dummy 프로젝트 숨김
-    if (!isAdmin) {
-      filtered = filtered.filter((p) => p.status !== 'dummy');
-      logger.debug('  ⚠️ Non-admin user: Filtering out dummy projects');
-    }
 
     // 검색 필터
     if (searchQuery) {

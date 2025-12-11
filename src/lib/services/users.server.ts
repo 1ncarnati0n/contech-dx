@@ -1,6 +1,4 @@
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { createClient as createBrowserClient } from '@/lib/supabase/client';
-import type { UserRole } from '@/lib/types';
 
 /**
  * 모든 사용자 목록 조회 (서버 사이드 - Admin 전용)
@@ -53,54 +51,6 @@ export async function getCurrentUser() {
     .from('profiles')
     .select('*')
     .eq('id', authUser.id)
-    .single();
-
-  return { user, error };
-}
-
-/**
- * 사용자 역할 업데이트 (클라이언트 사이드 - Admin 전용)
- * @param userId 사용자 ID
- * @param newRole 새로운 역할
- * @returns 업데이트된 사용자와 에러
- */
-export async function updateUserRole(userId: string, newRole: UserRole) {
-  const supabase = createBrowserClient();
-
-  const { data: user, error } = await supabase
-    .from('profiles')
-    .update({ role: newRole })
-    .eq('id', userId)
-    .select()
-    .single();
-
-  return { user, error };
-}
-
-/**
- * 사용자 프로필 업데이트 (클라이언트 사이드)
- * @param userId 사용자 ID
- * @param updates 업데이트할 필드들
- * @returns 업데이트된 사용자와 에러
- */
-export async function updateUserProfile(
-  userId: string,
-  updates: {
-    display_name?: string;
-    avatar_url?: string;
-    bio?: string;
-  }
-) {
-  const supabase = createBrowserClient();
-
-  const { data: user, error } = await supabase
-    .from('profiles')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .select()
     .single();
 
   return { user, error };

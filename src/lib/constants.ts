@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
   GEMINI_GET_STORE: '/api/gemini/get-store',
   GEMINI_LIST_FILES: '/api/gemini/list-files',
   GEMINI_UPLOAD_FILE: '/api/gemini/upload-file',
+  GEMINI_DELETE_FILE: '/api/gemini/delete-file',
   GEMINI_SEARCH: '/api/gemini/search',
 
   // Auth

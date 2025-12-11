@@ -7,10 +7,27 @@ import type { Profile } from '@/lib/types';
 
 interface ProfileEditFormProps {
   profile: Profile;
+  signupName?: string | null;
+  signupPosition?: string | null;
 }
 
-export default function ProfileEditForm({ profile }: ProfileEditFormProps) {
-  const [displayName, setDisplayName] = useState(profile.display_name || '');
+export default function ProfileEditForm({ profile, signupName, signupPosition }: ProfileEditFormProps) {
+  // display_name이 없고 회원가입 시 등록한 정보가 있으면 자동 입력
+  const getInitialDisplayName = () => {
+    if (profile.display_name) {
+      return profile.display_name;
+    }
+    // 회원가입 시 등록한 이름과 직위를 조합
+    if (signupName && signupPosition) {
+      return `${signupName} ${signupPosition}`;
+    }
+    if (signupName) {
+      return signupName;
+    }
+    return '';
+  };
+
+  const [displayName, setDisplayName] = useState(getInitialDisplayName());
   const [bio, setBio] = useState(profile.bio || '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -143,7 +160,7 @@ export default function ProfileEditForm({ profile }: ProfileEditFormProps) {
         <button
           type="button"
           onClick={() => {
-            setDisplayName(profile.display_name || '');
+            setDisplayName(getInitialDisplayName());
             setBio(profile.bio || '');
             setError(null);
             setSuccess(null);

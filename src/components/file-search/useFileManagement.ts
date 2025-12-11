@@ -7,13 +7,14 @@ import { filterValidFiles } from './utils';
 interface UseFileManagementOptions {
   selectedStore: string;
   onUploadSuccess?: () => void;
+  onDeleteSuccess?: () => void;
 }
 
 /**
  * 파일 관리 훅
  * 파일 첨부, 업로드 로직을 담당합니다.
  */
-export function useFileManagement({ selectedStore, onUploadSuccess }: UseFileManagementOptions) {
+export function useFileManagement({ selectedStore, onUploadSuccess, onDeleteSuccess }: UseFileManagementOptions) {
   // 파일 상태
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   
@@ -76,6 +77,39 @@ export function useFileManagement({ selectedStore, onUploadSuccess }: UseFileMan
     }
   }, [attachedFiles, selectedStore, onUploadSuccess]);
 
+  // 파일 삭제
+  const deleteFile = useCallback(async (fileName: string): Promise<boolean> => {
+    if (!selectedStore || !fileName) return false;
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch(API_ENDPOINTS.GEMINI_DELETE_FILE, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeName: selectedStore, fileName }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('파일이 삭제되었습니다.');
+        onDeleteSuccess?.();
+        return true;
+      } else {
+        setError(data.error || '파일 삭제 실패');
+        return false;
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '알 수 없는 오류';
+      setError(message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedStore, onDeleteSuccess]);
+
   // 알림 제거
   const clearNotification = useCallback(() => {
     setError('');
@@ -93,6 +127,7 @@ export function useFileManagement({ selectedStore, onUploadSuccess }: UseFileMan
     removeAttachedFile,
     clearAttachedFiles,
     uploadFiles,
+    deleteFile,
     clearNotification,
   };
 }
