@@ -44,7 +44,7 @@ export function ProjectCreateModal({
     reset,
   } = useForm<ProjectFormData>({
     defaultValues: {
-      status: 'planning',
+      status: 'announcement',
       start_date: new Date().toISOString().split('T')[0],
     },
   });
@@ -88,9 +88,19 @@ export function ProjectCreateModal({
       router.refresh();
     } catch (error) {
       logger.error('Failed to create project:', error);
-      toast.error('프로젝트 생성 실패', {
-        description: '프로젝트 생성에 실패했습니다. 다시 시도해주세요.',
-      });
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+      
+      if (errorMessage.includes('status') || errorMessage.includes('CHECK') || errorMessage.includes('check constraint')) {
+        toast.error('데이터베이스 스키마 업데이트 필요', {
+          description: '프로젝트 상태 값이 변경되었습니다. Supabase SQL Editor에서 마이그레이션을 실행해주세요.',
+          duration: 10000,
+        });
+        console.error('⚠️ 마이그레이션 필요: sql/migrations/update-project-status-values.sql 파일을 Supabase SQL Editor에서 실행하세요.');
+      } else {
+        toast.error('프로젝트 생성 실패', {
+          description: errorMessage || '프로젝트 생성에 실패했습니다. 다시 시도해주세요.',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -172,7 +182,7 @@ export function ProjectCreateModal({
               {/* Client */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  클라이언트
+                  발주처
                 </label>
                 <input
                   type="text"
@@ -235,14 +245,11 @@ export function ProjectCreateModal({
                 {...register('status', { required: true })}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="planning">기획</option>
-                <option value="active">진행중</option>
-                <option value="completed">완료</option>
-                <option value="on_hold">보류</option>
-                <option value="cancelled">취소</option>
-                {isAdmin && (
-                  <option value="dummy">🧪 테스트 (관리자 전용)</option>
-                )}
+                <option value="announcement">공모</option>
+                <option value="bidding">입찰</option>
+                <option value="award">수주</option>
+                <option value="construction_start">착공</option>
+                <option value="completion">준공</option>
               </select>
             </div>
 

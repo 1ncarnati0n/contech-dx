@@ -47,3 +47,6 @@ next-env.d.ts
 # Gemini
 .gemini 
 GEMINI.md
+
+# cursor
+.cursor/

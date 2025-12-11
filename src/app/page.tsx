@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Building2, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Building2, ShieldCheck, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui';
 
 export default function Home() {
@@ -118,25 +118,51 @@ export default function Home() {
         {/* Footer Features */}
         <motion.div
           variants={itemVariants}
-          className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center"
+          className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto"
         >
-          <div className="flex flex-col items-center gap-3">
-            <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
-              <Building2 className="w-6 h-6" />
+          {/* Feature 1 */}
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 hover:border-primary-200 dark:hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 rounded-xl bg-primary-50 dark:bg-white/5 text-primary-600 dark:text-primary-300 group-hover:scale-110 transition-transform duration-300">
+                <Building2 className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">직영공사 관리</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  프로젝트의 모든 작업을 체계적으로 분류하고<br className="hidden xl:block" /> 효율적으로 관리하여 공기를 준수합니다.
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">WBS 공정 관리</p>
           </div>
-          <div className="flex flex-col items-center gap-3">
-            <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
-              <Zap className="w-6 h-6" />
+
+          {/* Feature 2 */}
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 hover:border-primary-200 dark:hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 rounded-xl bg-primary-50 dark:bg-white/5 text-primary-600 dark:text-primary-300 group-hover:scale-110 transition-transform duration-300">
+                <LineChart className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">EVMS 원가관리(예정)</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  비용과 일정을 통합 관리하여 프로젝트의<br className="hidden xl:block" /> 성과를 실시간으로 측정하고 예측합니다.
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">실시간 대시보드</p>
           </div>
-          <div className="flex flex-col items-center gap-3">
-            <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
-              <ShieldCheck className="w-6 h-6" />
+
+          {/* Feature 3 */}
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 hover:border-primary-200 dark:hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 rounded-xl bg-primary-50 dark:bg-white/5 text-primary-600 dark:text-primary-300 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">건설 데이터 구축</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  현장의 다양한 데이터를 디지털화하고<br className="hidden xl:block" /> 지속 가능한 지식 자산으로 구축합니다.
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">건설 데이터 구축</p>
           </div>
         </motion.div>
       </motion.div>

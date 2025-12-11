@@ -10,7 +10,8 @@ import {
   ExternalLink,
   Loader2,
   Sparkles,
-  Paperclip
+  Paperclip,
+  Square
 } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
 import type { Message, FileSearchStore } from './types';
@@ -25,6 +26,7 @@ interface ChatAreaProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onSearch: (query: string) => void;
+  onStopSearch?: () => void;
 }
 
 export default function ChatArea({
@@ -35,6 +37,7 @@ export default function ChatArea({
   sidebarOpen,
   onToggleSidebar,
   onSearch,
+  onStopSearch,
 }: ChatAreaProps) {
   const [query, setQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -136,17 +139,29 @@ export default function ChatArea({
                     <Paperclip className="w-4 h-4" />
                   </Button>
                 </div>
-                <Button
-                  type="submit"
-                  disabled={!selectedStore || !query.trim() || isSearching}
-                  size="sm"
-                  className={`rounded-full w-8 h-8 p-0 flex items-center justify-center transition-all ${query.trim()
-                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
-                      : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400'
-                    }`}
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
+                {isSearching && onStopSearch ? (
+                  <Button
+                    type="button"
+                    onClick={onStopSearch}
+                    size="sm"
+                    className="rounded-full w-8 h-8 p-0 flex items-center justify-center transition-all bg-red-600 hover:bg-red-700 text-white"
+                    title="답변 생성 정지"
+                  >
+                    <Square className="w-3 h-3 fill-white" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!selectedStore || !query.trim() || isSearching}
+                    size="sm"
+                    className={`rounded-full w-8 h-8 p-0 flex items-center justify-center transition-all ${query.trim()
+                        ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                        : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400'
+                      }`}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
             <div className="text-center mt-3">
@@ -179,7 +194,7 @@ const EmptyState = memo(function EmptyState({
           안녕하세요! 무엇을 도와드릴까요?
         </h2>
         <p className="text-zinc-500 dark:text-zinc-400">
-          선택된 문서 스토어 기반으로 답변해드립니다.
+          선택된 문서함 기반으로 AI가 답변해드립니다.
         </p>
       </div>
       {!selectedStore && (

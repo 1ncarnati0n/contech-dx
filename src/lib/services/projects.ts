@@ -78,7 +78,7 @@ export async function createProject(
 
   const projectData = {
     ...project,
-    status: project.status || 'planning',
+    status: project.status || 'announcement',
     created_by: user?.id,
   };
 
@@ -97,7 +97,14 @@ export async function createProject(
 
   if (error) {
     logger.error('❌ Error creating project:', error);
-    throw new Error('Failed to create project');
+    logger.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      cleanedProject,
+    });
+    throw new Error(`Failed to create project: ${error.message || error.code || 'Unknown error'}`);
   }
 
   logger.info('✅ Project created successfully:', data.id);
@@ -121,11 +128,15 @@ export async function updateProject(
     })
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('Error updating project:', error);
     throw new Error('Failed to update project');
+  }
+
+  if (!data) {
+    throw new Error('Project not found or permission denied');
   }
 
   return data as Project;

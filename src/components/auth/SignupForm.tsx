@@ -22,6 +22,15 @@ const signupSchema = z
     name: z
       .string()
       .min(1, '이름을 입력해주세요'),
+    affiliation: z
+      .string()
+      .min(1, '소속을 입력해주세요'),
+    department: z
+      .string()
+      .min(1, '부서를 입력해주세요'),
+    position: z
+      .string()
+      .min(1, '직위를 입력해주세요'),
     email: z
       .string()
       .min(1, '이메일을 입력해주세요')
@@ -59,6 +68,9 @@ export default function SignupForm() {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       name: '',
+      affiliation: '',
+      department: '',
+      position: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -74,6 +86,9 @@ export default function SignupForm() {
           emailRedirectTo: `${location.origin}/auth/callback`,
           data: {
             display_name: data.name,
+            affiliation: data.affiliation,
+            department: data.department,
+            position: data.position,
           },
         },
       });
@@ -118,6 +133,49 @@ export default function SignupForm() {
                   placeholder="홍길동"
                   {...field}
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="affiliation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>소속</FormLabel>
+                <FormControl>
+                  <Input placeholder="소속 입력" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="department"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>부서</FormLabel>
+                <FormControl>
+                  <Input placeholder="부서 입력" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="position"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>직위</FormLabel>
+              <FormControl>
+                <Input placeholder="직위 입력" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

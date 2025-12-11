@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '@/lib/constants';
 import type { Message, ChatSession } from './types';
 
@@ -26,6 +26,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
   // 채팅 상태
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 세션 상태 (LocalStorage)
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -150,11 +151,21 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
 
       setIsSearching(true);
 
+      // 이전 요청 취소
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // 새로운 AbortController 생성
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
       try {
         const response = await fetch(API_ENDPOINTS.GEMINI_SEARCH, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query, storeName: selectedStore }),
+          signal: abortController.signal,
         });
         const data = await response.json();
 
@@ -202,6 +213,20 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
         });
 
       } catch (err: unknown) {
+        // AbortError는 정상적인 취소이므로 에러 메시지 표시하지 않음
+        if (err instanceof Error && err.name === 'AbortError') {
+          const cancelMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'model',
+            content: '답변 생성이 취소되었습니다.',
+            timestamp: new Date(),
+          };
+          const cancelMessages = [...msgsWithUser, cancelMsg];
+          setMessages(cancelMessages);
+          localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(cancelMessages));
+          return;
+        }
+
         const message = err instanceof Error ? err.message : '알 수 없는 오류';
         const errorMsg: Message = {
           id: (Date.now() + 1).toString(),
@@ -215,10 +240,20 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
         localStorage.setItem(`chat_messages_${sessionId}`, JSON.stringify(errorMessages));
       } finally {
         setIsSearching(false);
+        abortControllerRef.current = null;
       }
     },
     [selectedStore, currentSessionId, messages]
   );
+
+  // 검색 정지
+  const stopSearch = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsSearching(false);
+    }
+  }, []);
 
   return {
     // 상태
@@ -228,6 +263,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
     currentSessionId,
     // 액션
     search,
+    stopSearch,
     selectSession,
     createSession,
     deleteSession,

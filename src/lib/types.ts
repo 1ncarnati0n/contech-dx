@@ -292,7 +292,7 @@ export interface MobileMenuProps {
 /**
  * 프로젝트 상태
  */
-export type ProjectStatus = 'planning' | 'active' | 'completed' | 'on_hold' | 'cancelled' | 'dummy';
+export type ProjectStatus = 'announcement' | 'bidding' | 'award' | 'construction_start' | 'completion';
 
 /**
  * 프로젝트 멤버 역할
@@ -377,4 +377,283 @@ export interface AddProjectMemberDTO {
  */
 export interface UpdateProjectMemberRoleDTO {
   role: ProjectMemberRole;
+}
+
+// ============================================
+// 골조 직영공사 데이터 입력 타입
+// ============================================
+
+/**
+ * 코어 타입
+ */
+export type CoreType = '중복도(판상형)' | '타워형' | '편복도';
+
+/**
+ * 구조형식 타입
+ */
+export type SlabType = '벽식구조' | 'RC구조' | '벽식구조(내부기둥)';
+
+/**
+ * 층 레벨 타입
+ */
+export type LevelType = '지하' | '지상';
+
+/**
+ * 층 분류 타입
+ */
+export type FloorClass = '지하층' | '일반층' | '셋팅층' | '기준층' | '최상층' | 'PH층';
+
+/**
+ * 단위세대 타입 패턴
+ */
+export interface UnitTypePattern {
+  from: number;
+  to: number;
+  type: string; // "59A", "84A" 등
+  coreNumber?: number; // 코어 번호 (1, 2, 3, 4... 높은층 순서)
+}
+
+/**
+ * 동 기본 정보 메타데이터
+ */
+export interface BuildingMeta {
+  totalUnits: number;
+  unitTypePattern: UnitTypePattern[];
+  coreCount: number;
+  coreType: CoreType;
+  slabType: SlabType;
+  floorCount: {
+    basement: number;
+    ground: number; // 전체 지상층 수 (코어별 입력이 없을 때 사용)
+    ph: number;
+    coreGroundFloors?: number[]; // 코어별 지상층 수 (코어1, 코어2, ... 순서, 높은층 순서)
+    pilotisCount?: number; // 필로티 수량
+  };
+  heights: {
+    basement2: number; // 지하2층 층고
+    basement1: number; // 지하1층 층고
+    standard: number; // 기준층 층고
+    floor1: number; // 1층 층고
+    floor2: number; // 2층 층고
+    floor3: number; // 3층 층고
+    floor4?: number; // 4층 층고
+    floor5?: number; // 5층 층고
+    top: number; // 최상층 층고
+    ph: number | number[]; // PH층 층고 (단일 값 또는 배열)
+  };
+  standardFloorCycle?: number; // 기준층 공정사이클
+}
+
+/**
+ * 층 정보
+ */
+export interface Floor {
+  id: string;
+  buildingId: string;
+  floorLabel: string; // "B2", "B1", "1F", "PH1" 등
+  floorNumber: number; // 정렬용 (-2, -1, 1, 2, ...)
+  levelType: LevelType;
+  floorClass: FloorClass;
+  height: number | null; // 층고(m)
+}
+
+/**
+ * 공종별 데이터
+ */
+export interface TradeData {
+  // 갱폼
+  gangForm?: {
+    areaM2: number;
+    productivity: number;
+    workers: number;
+    cost: number;
+  };
+  
+  // 알폼
+  alForm?: {
+    areaM2: number;
+    productivity: number;
+    workers: number;
+    cost: number;
+  };
+  
+  // 형틀
+  formwork?: {
+    areaM2: number;
+    productivity: number;
+    workers: number;
+    cost: number;
+  };
+  
+  // 해체/정리
+  stripClean?: {
+    areaM2: number;
+    productivityM2: number;
+    workers: number;
+    cost: number;
+  };
+  
+  // 철근
+  rebar?: {
+    ton: number;
+    productivity: number;
+    workers: number;
+    cost: number;
+  };
+  
+  // 콘크리트
+  concrete?: {
+    volumeM3: number;
+    equipmentCount: number;
+    productivityM3: number;
+    workers: number;
+    cost: number;
+  };
+}
+
+/**
+ * 층별 공종 데이터
+ */
+export interface FloorTrade {
+  id: string;
+  floorId: string;
+  buildingId: string;
+  tradeGroup: string; // '버림', '기초', '아파트' 등
+  trades: TradeData;
+}
+
+/**
+ * 동(Building) 타입
+ */
+export interface Building {
+  id: string;
+  projectId: string;
+  buildingName: string;
+  buildingNumber: number;
+  meta: BuildingMeta;
+  floors: Floor[];
+  floorTrades: FloorTrade[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * 동 생성 DTO
+ */
+export interface CreateBuildingDTO {
+  projectId: string;
+  buildingName: string;
+  buildingNumber: number;
+  meta: BuildingMeta;
+}
+
+/**
+ * 동 수정 DTO
+ */
+export interface UpdateBuildingDTO {
+  buildingName?: string;
+  meta?: Partial<BuildingMeta>;
+}
+
+/**
+ * 층 수정 DTO
+ */
+export interface UpdateFloorDTO {
+  floorClass?: FloorClass;
+  height?: number | null;
+}
+
+/**
+ * 층별 공종 데이터 수정 DTO
+ */
+export interface UpdateFloorTradeDTO {
+  floorId: string;
+  tradeGroup: string;
+  trades: Partial<TradeData>;
+}
+
+/**
+ * 단가 항목 (계획 내역 / 실행 내역)
+ */
+export interface UnitRateItem {
+  id: string;              // 내부용 PK
+  trade: string;           // 공종 (형틀/갱폼/알폼/해체정리/철근/타설 등)
+  category: string;        // 구분 (거푸집 설치-합판 등)
+  spec: string;            // 규격 (없으면 빈 문자열)
+  unit: string;            // 단위 (M2, M, TON, 개, M3 등)
+  quantity: number;        // 수량
+  materialUnit: number;    // 재료비단가
+  materialAmount: number;  // 재료비 금액 = quantity * materialUnit
+  laborUnit: number;       // 노무비단가
+  laborAmount: number;     // 노무비 금액 = quantity * laborUnit
+}
+
+/**
+ * 단가 입력 타입 (계획 내역 / 실행 내역)
+ */
+export type UnitRateType = 'planned' | 'executed';
+
+// ============================================
+// 동별 공정 계획 타입
+// ============================================
+
+/**
+ * 공정 구분 타입
+ */
+export type ProcessCategory = '버림' | '기초' | '지하골조' | '셋팅층' | '기준층' | 'PH층';
+
+/**
+ * 공정 타입 (표준공정 또는 사이클)
+ */
+export type ProcessType = 
+  | '표준공정'
+  | '5일 사이클'
+  | '6일 사이클'
+  | '7일 사이클'
+  | '8일 사이클'
+  | '지하외벽 합벽 적용'
+  | '일체타설 적용'
+  | string; // 기타 커스텀 타입
+
+/**
+ * 동별 공정 계획
+ */
+export interface BuildingProcessPlan {
+  id: string;
+  buildingId: string;
+  projectId: string;
+  // 구분별 공정 정보
+  processes: {
+    [category in ProcessCategory]?: {
+      days: number; // 공정일수 (간트차트에서 duration으로 사용)
+      processType: ProcessType; // 선택된 공정 타입 (기본값, 층별 설정이 없을 때 사용)
+      floors?: { [floorLabel: string]: { processType: ProcessType } }; // 층별 공정 타입 (지하골조, PH층 등)
+    };
+  };
+  totalDays: number; // 구분공정 합계일수 (간트차트에서 전체 일정 계산에 사용)
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * 동별 공정 계획 생성/수정 DTO
+ */
+export interface CreateBuildingProcessPlanDTO {
+  buildingId: string;
+  projectId: string;
+  processes: {
+    [category in ProcessCategory]?: {
+      days?: number;
+      processType: ProcessType;
+    };
+  };
+}
+
+export interface UpdateBuildingProcessPlanDTO {
+  processes?: {
+    [category in ProcessCategory]?: {
+      days?: number;
+      processType?: ProcessType;
+    };
+  };
 }

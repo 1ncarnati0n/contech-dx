@@ -138,3 +138,34 @@ export async function getUserRoleStats() {
 
   return { stats, error: null };
 }
+
+/**
+ * 현재 로그인된 사용자를 관리자로 승격 (클라이언트 사이드)
+ * 개발/테스트 목적으로만 사용해야 합니다.
+ * @returns 성공 여부와 업데이트된 사용자 정보
+ */
+export async function promoteCurrentUserToAdmin() {
+  try {
+    const response = await fetch('/api/users/promote-to-admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || '권한 업데이트에 실패했습니다.', user: null };
+    }
+
+    return { success: true, user: data.user, error: null };
+  } catch (error) {
+    console.error('권한 업데이트 중 오류:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+      user: null,
+    };
+  }
+}
