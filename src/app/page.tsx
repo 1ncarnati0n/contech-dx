@@ -71,9 +71,9 @@ export default function Home() {
           variants={itemVariants}
           className="text-lg md:text-xl text-slate-600 dark:text-primary-400 max-w-2xl mx-auto mb-12 leading-relaxed"
         >
-          데이터 기반의 의사결정, 실시간 공정 관리, 그리고 AI 문서 검색.
+          데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색.
           <br className="hidden sm:block" />
-          건설 현장의 디지털 혁신을 위한 통합 플랫폼입니다.
+          건설 산업의 디지털 전환(DX)을 위한 통합 플랫폼입니다.
         </motion.p>
 
         {/* Action Card */}
@@ -136,7 +136,7 @@ export default function Home() {
             <div className="p-3 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 text-primary-600 dark:text-primary-300 shadow-sm">
               <ShieldCheck className="w-6 h-6" />
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">엔터프라이즈 보안</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-primary-300">건설 데이터 구축</p>
           </div>
         </motion.div>
       </motion.div>
