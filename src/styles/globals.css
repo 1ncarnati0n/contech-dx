@@ -95,6 +95,22 @@
 :root {
   --background: #ffffff;
   --foreground: #09090b; /* Zinc-950 */
+  --grid-color: #71717a; /* Zinc-500 for light mode */
+}
+
+/* Grid Background Pattern */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url('/grid.svg');
+  background-size: 40px 40px;
+  background-repeat: repeat;
+  pointer-events: none;
+  opacity: 1;
+  mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, #000 70%, transparent 110%);
 }
 
 /* Dark mode - Zinc-900 for softer, premium dark theme */
