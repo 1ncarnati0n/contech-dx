@@ -24,8 +24,8 @@ export interface ProcessItem {
   equipmentCalculationBase?: number; // I열 값 (예: 650)
   // 장비기반 인원수 (K*5 또는 K*6)
   equipmentWorkersPerUnit?: number; // 4, 5, 6 등
-  // 층별 구분 (지하골조, 기준층, PH층 등에서 사용)
-  floorLabel?: string; // "B2", "B1", "1F", "PH1" 등
+  // 층별 구분 (지하골조, 기준층, 옥탑층 등에서 사용)
+  floorLabel?: string; // "B2", "B1", "1F", "옥탑1" 등
 }
 
 /**
@@ -772,12 +772,12 @@ export const PROCESS_MODULES: ProcessModule[] = [
   },
 
   // ============================================
-  // PH층 - 표준공정
+  // 옥탑층 - 표준공정
   // ============================================
   {
     id: 'ph-standard',
     name: '표준공정',
-    category: 'PH층',
+    category: '옥탑층',
     items: [
       {
         id: 'ph-meokmaekim',
@@ -793,7 +793,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         id: 'ph-wall-rebar',
         workItem: '3.옹벽철근 조립',
         unit: 'ton',
-        quantityReference: 'F26*0.5', // 동,층별물량표!F26*0.5 (PH1층 철근)
+        quantityReference: 'F26*0.5', // 동,층별물량표!F26*0.5 (옥탑1층 철근)
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,

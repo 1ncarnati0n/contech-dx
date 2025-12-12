@@ -88,8 +88,14 @@ async function loadFromFile(): Promise<MockDataStore> {
   }
 
   try {
-    const fs = await import('fs/promises');
-    const path = await import('path');
+    // 서버 환경에서만 동적으로 import (클라이언트 번들에서 제외)
+    const fs = await import('fs/promises').catch(() => null);
+    const path = await import('path').catch(() => null);
+    
+    if (!fs || !path) {
+      logger.debug('File system modules not available, returning empty data');
+      return { buildings: [], floors: [], floorTrades: [] };
+    }
     
     const mockDataPath = path.join(process.cwd(), 'mock.json');
     
@@ -122,8 +128,14 @@ async function saveToFile(data: MockDataStore): Promise<void> {
   }
 
   try {
-    const fs = await import('fs/promises');
-    const path = await import('path');
+    // 서버 환경에서만 동적으로 import (클라이언트 번들에서 제외)
+    const fs = await import('fs/promises').catch(() => null);
+    const path = await import('path').catch(() => null);
+    
+    if (!fs || !path) {
+      logger.debug('File system modules not available, cannot save to file');
+      return;
+    }
     
     const mockDataPath = path.join(process.cwd(), 'mock.json');
     const jsonContent = JSON.stringify(data, null, 2);
@@ -132,7 +144,7 @@ async function saveToFile(data: MockDataStore): Promise<void> {
     logger.debug('Data saved to mock.json');
   } catch (error) {
     logger.error('Error saving to file:', error);
-    throw error;
+    // 클라이언트 환경에서 호출될 수 있으므로 에러를 throw하지 않음
   }
 }
 

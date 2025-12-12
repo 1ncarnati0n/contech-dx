@@ -99,7 +99,7 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
   if (buildings.length === 0) {
     return null;
   }
-
+  
   return (
     <div className="space-y-4">
       {/* 탭 헤더 */}

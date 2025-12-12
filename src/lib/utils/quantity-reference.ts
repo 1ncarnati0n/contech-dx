@@ -139,7 +139,7 @@ export function getQuantityFromFloor(
  * 엑셀 참조 패턴에 따른 물량 가져오기
  * 물량입력 데이터(building.floorTrades)를 기반으로 수량을 가져옵니다.
  * 엑셀 열 구조: B=갱폼, C=알폼, D=형틀, E=해체/정리, F=철근, G=콘크리트
- * 행 구조: 행 6=버림, 행 7=기초, 행 8=B2, 행 9=B1, 행 11=1층, 행 12=2층, 행 13=3층, 행 14=4층, 행 26=PH1층, 행 27=PH2층, 행 28=PH3층
+ * 행 구조: 행 6=버림, 행 7=기초, 행 8=B2, 행 9=B1, 행 11=1층, 행 12=2층, 행 13=3층, 행 14=4층, 행 26=옥탑1층, 행 27=옥탑2층, 행 28=옥탑3층
  * 
  * @param building - 동 정보 (floorTrades 포함)
  * @param reference - 참조 패턴 (예: 'D6', 'G6', 'F7*0.45', 'E14+E16')
@@ -254,7 +254,7 @@ export function getQuantityByReference(
         return false;
       });
       if (floor) {
-        // 일반층도 셋팅층과 동일한 tradeGroup 사용 (공정 타입은 PH층 사용)
+        // 일반층도 셋팅층과 동일한 tradeGroup 사용 (공정 타입은 옥탑층 사용)
         tradeGroup = '셋팅층';
         floorLabel = floor.floorLabel;
       }
@@ -289,7 +289,7 @@ export function getQuantityByReference(
         return false;
       });
       if (floor) {
-        // 일반층도 셋팅층과 동일한 tradeGroup 사용 (공정 타입은 PH층 사용)
+        // 일반층도 셋팅층과 동일한 tradeGroup 사용 (공정 타입은 옥탑층 사용)
         tradeGroup = '셋팅층';
         floorLabel = floor.floorLabel;
       } else {
@@ -363,25 +363,25 @@ export function getQuantityByReference(
       }
     }
   } else if (rowNum === 26) {
-    // PH1층 (행 26)
-    tradeGroup = 'PH층';
-    const phFloors = building.floors.filter(f => f.floorLabel.includes('PH'));
+    // 옥탑1층 (행 26)
+    tradeGroup = '옥탑층';
+    const phFloors = building.floors.filter(f => f.floorLabel.includes('옥탑'));
     if (phFloors.length >= 1) {
-      floorLabel = phFloors[0].floorLabel; // PH1층
+      floorLabel = phFloors[0].floorLabel; // 옥탑1층
     }
   } else if (rowNum === 27) {
-    // PH2층 (행 27)
-    tradeGroup = 'PH층';
-    const phFloors = building.floors.filter(f => f.floorLabel.includes('PH'));
+    // 옥탑2층 (행 27)
+    tradeGroup = '옥탑층';
+    const phFloors = building.floors.filter(f => f.floorLabel.includes('옥탑'));
     if (phFloors.length >= 2) {
-      floorLabel = phFloors[1].floorLabel; // PH2층
+      floorLabel = phFloors[1].floorLabel; // 옥탑2층
     }
   } else if (rowNum === 28) {
-    // PH3층 (행 28)
-    tradeGroup = 'PH층';
-    const phFloors = building.floors.filter(f => f.floorLabel.includes('PH'));
+    // 옥탑3층 (행 28)
+    tradeGroup = '옥탑층';
+    const phFloors = building.floors.filter(f => f.floorLabel.includes('옥탑'));
     if (phFloors.length >= 3) {
-      floorLabel = phFloors[2].floorLabel; // PH3층
+      floorLabel = phFloors[2].floorLabel; // 옥탑3층
     }
   }
   

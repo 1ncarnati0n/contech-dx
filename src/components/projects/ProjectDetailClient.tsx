@@ -23,7 +23,7 @@ import { deleteProject, getProject } from '@/lib/services/projects';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, BuildingProcessPlanPage } from '@/components/buildings';
+import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, BuildingProcessPlanPage, BasementProcessPlanPage, BuildingFrameStructurePage, GeologicalDataPage } from '@/components/buildings';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
 
 interface Props {
@@ -38,11 +38,15 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+  }, []);
+  
   // 프로젝트 데이터 동기화 (서버에서 업데이트된 데이터 반영)
   useEffect(() => {
     setProject(initialProject);
   }, [initialProject]);
-
+  
   const handleDelete = useCallback(async () => {
     if (typeof window === 'undefined') return;
     if (!window.confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
@@ -103,7 +107,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         onClose={handleSidebarClose}
         project={project}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
 
       <div
@@ -127,6 +131,8 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                 {activeTab === 'overview' && '프로젝트 개요'}
                 {activeTab === 'data_input' && '동 기본 정보'}
                 {activeTab === 'quantity_input' && '물량 입력'}
+                {activeTab === 'frame_structure' && '동별 골구조도'}
+                {activeTab === 'geological_data' && '지질자료 입력'}
                 {activeTab === 'price_input' && '단가 입력'}
                 {activeTab === 'building_process_plan' && '동별 공정계획'}
                 {activeTab === 'gantt_chart' && '간트차트'}
@@ -268,6 +274,18 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
             </div>
           )}
 
+          {activeTab === 'frame_structure' && (
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+              <BuildingFrameStructurePage projectId={project.id} />
+            </div>
+          )}
+
+          {activeTab === 'geological_data' && (
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+              <GeologicalDataPage projectId={project.id} />
+            </div>
+          )}
+
           {activeTab === 'planned_unit_rate' && (
             <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
               <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
@@ -298,6 +316,12 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
             </div>
           )}
 
+          {activeTab === 'basement_process_plan' && (
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+              <BasementProcessPlanPage projectId={project.id} />
+            </div>
+          )}
+
           {activeTab === 'gantt_chart' && (
             <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
               <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
@@ -310,7 +334,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
             </div>
           )}
 
-          {activeTab !== 'overview' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'gantt_chart' && (
+          {activeTab !== 'overview' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'frame_structure' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && (
             <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                 <Settings className="w-8 h-8 text-slate-300 dark:text-slate-600" />

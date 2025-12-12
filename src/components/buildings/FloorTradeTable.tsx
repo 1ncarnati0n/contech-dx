@@ -126,8 +126,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         }
       }
       
-      // PH층 추가 (공통)
-      const phFloors = floors.filter(f => f.floorClass === 'PH층');
+      // 옥탑층 추가 (공통)
+      const phFloors = floors.filter(f => f.floorClass === '옥탑층');
       phFloors.forEach(floor => {
         result.push({ type: 'floor', label: floor.floorLabel, floor });
       });
@@ -193,8 +193,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         }
       }
       
-      // PH층 추가
-      const phFloors = floors.filter(f => f.floorClass === 'PH층');
+      // 옥탑층 추가
+      const phFloors = floors.filter(f => f.floorClass === '옥탑층');
       phFloors.forEach(floor => {
         result.push({ type: 'floor', label: floor.floorLabel, floor });
       });

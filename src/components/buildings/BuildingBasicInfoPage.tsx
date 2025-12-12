@@ -52,6 +52,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
     }
   }, [isInitialized, loadBuildings]);
 
+  
 
   // 동 이름에서 번호 추출 및 다음 번호 찾기
   const getNextBuildingNumber = useCallback((existingBuildings: Building[]): number => {
@@ -121,6 +122,9 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
             standard: 0,
             floor1: 0,
             floor2: 0,
+            floor3: 0,
+            floor4: 0,
+            floor5: 0,
             top: 0,
             ph: 0,
           },
@@ -353,7 +357,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
   }, [projectId, buildings, activeBuildingIndex]);
 
   const activeBuilding = buildings[activeBuildingIndex];
-
+  
   return (
     <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8">
       {/* 동 수 입력 및 복사 영역 */}
@@ -441,7 +445,6 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
         >
           {activeBuilding && (
             <div className="space-y-6">
-
               {/* 동 기본 정보 카드 */}
               <BuildingBasicInfo
                 building={activeBuilding}

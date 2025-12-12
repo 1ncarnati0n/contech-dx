@@ -17,6 +17,7 @@ import {
     DollarSign,
     Building,
     BarChart3,
+    Layers,
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
@@ -37,7 +38,7 @@ export function ProjectSidebar({
     onTabChange,
 }: ProjectSidebarProps) {
     const [isDataInputExpanded, setIsDataInputExpanded] = useState(
-        activeTab === 'data_input' || activeTab === 'quantity_input'
+        activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'frame_structure' || activeTab === 'geological_data'
     );
     const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(
         activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
@@ -53,16 +54,19 @@ export function ProjectSidebar({
 
     const dataInputSubItems = [
         { id: 'data_input', label: '동 기본 정보', icon: Database },
+        { id: 'frame_structure', label: '동별 골구조도', icon: Layers },
+        { id: 'geological_data', label: '지질자료 입력', icon: MapPin },
         { id: 'quantity_input', label: '물량 입력', icon: Package },
     ];
 
     const processPlanSubItems = [
         { id: 'building_process_plan', label: '동별 공정계획', icon: Building },
+        { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building },
         { id: 'gantt_chart', label: '간트차트', icon: BarChart3 },
     ];
 
-    const isDataInputActive = activeTab === 'data_input' || activeTab === 'quantity_input';
-    const isProcessPlanActive = activeTab === 'building_process_plan' || activeTab === 'gantt_chart';
+    const isDataInputActive = activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'frame_structure' || activeTab === 'geological_data';
+    const isProcessPlanActive = activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
     const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
 
     // activeTab이 변경될 때 확장 상태 업데이트
@@ -145,7 +149,9 @@ export function ProjectSidebar({
                                     return (
                                         <button
                                             key={item.id}
-                                            onClick={() => onTabChange(item.id)}
+                                            onClick={() => {
+                                                onTabChange(item.id);
+                                            }}
                                             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
                                                 ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
                                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'

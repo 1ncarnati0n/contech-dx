@@ -30,9 +30,17 @@ export function BuildingBasicInfo({
   onGenerationComplete,
   onBeforeRegenerate
 }: BuildingBasicInfoProps) {
-  const [buildingName, setBuildingName] = useState(building.buildingName);
-  const [totalUnits, setTotalUnits] = useState(building.meta.totalUnits);
-  const [coreCount, setCoreCount] = useState(building.meta.coreCount || 0);
+  
+  const [buildingName, setBuildingName] = useState(building?.buildingName || '');
+  const [totalUnits, setTotalUnits] = useState(building?.meta?.totalUnits || 0);
+  const [coreCount, setCoreCount] = useState(building?.meta?.coreCount || 0);
+  const [coreType, setCoreType] = useState<CoreType>(building?.meta?.coreType || '중복도(판상형)');
+  const [slabType, setSlabType] = useState<SlabType>(building?.meta?.slabType || '벽식구조');
+  const [basementCount, setBasementCount] = useState(building?.meta?.floorCount?.basement || 0);
+  const [groundCount, setGroundCount] = useState(building?.meta?.floorCount?.ground || 0);
+  const [coreGroundFloors, setCoreGroundFloors] = useState<number[]>(
+    building?.meta?.floorCount?.coreGroundFloors || []
+  );
   
   // 코어 개수 변경 시 coreGroundFloors 배열 초기화
   useEffect(() => {
@@ -57,51 +65,108 @@ export function BuildingBasicInfo({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coreCount]);
-  const [coreType, setCoreType] = useState<CoreType>(building.meta.coreType || '중복도(판상형)');
-  const [slabType, setSlabType] = useState<SlabType>(building.meta.slabType || '벽식구조');
-  const [basementCount, setBasementCount] = useState(building.meta.floorCount.basement);
-  const [groundCount, setGroundCount] = useState(building.meta.floorCount.ground);
-  const [coreGroundFloors, setCoreGroundFloors] = useState<number[]>(
-    building.meta.floorCount.coreGroundFloors || []
+  const [coreBasementFloors, setCoreBasementFloors] = useState<number[]>(
+    building?.meta?.floorCount?.coreBasementFloors || []
   );
-  const [phCount, setPhCount] = useState(building.meta.floorCount.ph);
-  const [pilotisCount, setPilotisCount] = useState(building.meta.floorCount.pilotisCount || 0);
+  const [corePhFloors, setCorePhFloors] = useState<number[]>(
+    building?.meta?.floorCount?.corePhFloors || []
+  );
+  const [phCount, setPhCount] = useState(building?.meta?.floorCount?.ph || 0);
+  const [pilotisCount, setPilotisCount] = useState(building?.meta?.floorCount?.pilotisCount || 0);
+  const [corePilotisCounts, setCorePilotisCounts] = useState<number[]>(
+    building?.meta?.floorCount?.corePilotisCounts || []
+  );
   const [unitTypePattern, setUnitTypePattern] = useState<UnitTypePattern[]>(
-    building.meta.unitTypePattern || []
+    building?.meta?.unitTypePattern || []
   );
-  // PH층 층고를 배열로 관리 (기존 단일 값이면 배열로 변환)
-  const initialPhHeights = Array.isArray(building.meta.heights.ph) 
-    ? building.meta.heights.ph 
-    : building.meta.floorCount.ph > 0 
-      ? Array(building.meta.floorCount.ph).fill(building.meta.heights.ph || 2650)
+  // 옥탑층 층고를 배열로 관리 (기존 단일 값이면 배열로 변환)
+  const initialPhHeights = Array.isArray(building?.meta?.heights?.ph) 
+    ? building?.meta?.heights?.ph 
+    : (building?.meta?.floorCount?.ph || 0) > 0 
+      ? Array(building?.meta?.floorCount?.ph || 0).fill(building?.meta?.heights?.ph || 2650)
       : [2650];
   
   const [heights, setHeights] = useState({
-    ...building.meta.heights,
-    floor4: building.meta.heights.floor4 || 2850,
-    floor5: building.meta.heights.floor5 || 2850,
+    basement2: building?.meta?.heights?.basement2 || 3500,
+    basement1: building?.meta?.heights?.basement1 || 5400,
+    standard: building?.meta?.heights?.standard || 2850,
+    floor1: building?.meta?.heights?.floor1 || 3050,
+    floor2: building?.meta?.heights?.floor2 || 2850,
+    floor3: building?.meta?.heights?.floor3 || 2850,
+    floor4: building?.meta?.heights?.floor4 || 2850,
+    floor5: building?.meta?.heights?.floor5 || 2850,
+    top: building?.meta?.heights?.top || 3050,
     ph: initialPhHeights,
   });
-  const [standardFloorCycle, setStandardFloorCycle] = useState(building.meta.standardFloorCycle || 0);
+  const [standardFloorCycle, setStandardFloorCycle] = useState(building?.meta?.standardFloorCycle || 0);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMountRef = useRef(true);
   const buildingNotFoundRef = useRef(false); // building이 없을 때 추적
   const prevValuesRef = useRef({
-    buildingName: building.buildingName,
-    totalUnits: building.meta.totalUnits,
-    coreCount: building.meta.coreCount || 0,
-    coreType: building.meta.coreType || '중복도(판상형)',
-    slabType: building.meta.slabType || '벽식구조',
-    basementCount: building.meta.floorCount.basement,
-    groundCount: building.meta.floorCount.ground,
-    coreGroundFloors: building.meta.floorCount.coreGroundFloors || [],
-    phCount: building.meta.floorCount.ph,
-    pilotisCount: building.meta.floorCount.pilotisCount || 0,
-    unitTypePattern: building.meta.unitTypePattern || [],
-    heights: building.meta.heights,
-    standardFloorCycle: building.meta.standardFloorCycle || 0,
+    buildingName: building?.buildingName || '',
+    totalUnits: building?.meta?.totalUnits || 0,
+    coreCount: building?.meta?.coreCount || 0,
+    coreType: building?.meta?.coreType || '중복도(판상형)',
+    slabType: building?.meta?.slabType || '벽식구조',
+    basementCount: building?.meta?.floorCount?.basement || 0,
+    groundCount: building?.meta?.floorCount?.ground || 0,
+    coreGroundFloors: building?.meta?.floorCount?.coreGroundFloors || [],
+    coreBasementFloors: building?.meta?.floorCount?.coreBasementFloors || [],
+    corePhFloors: building?.meta?.floorCount?.corePhFloors || [],
+    phCount: building?.meta?.floorCount?.ph || 0,
+    pilotisCount: building?.meta?.floorCount?.pilotisCount || 0,
+    corePilotisCounts: building?.meta?.floorCount?.corePilotisCounts || [],
+    unitTypePattern: building?.meta?.unitTypePattern || [],
+    heights: building?.meta?.heights || {},
+    standardFloorCycle: building?.meta?.standardFloorCycle || 0,
   });
+
+  // 코어개수 계산: 단위세대 구성에서 고유한 코어 개수 계산 (-1, -2, -3이 붙은 코어 제외)
+  const calculatedCoreCount = useMemo(() => {
+    if (unitTypePattern.length === 0) return 0;
+    
+    // 코어1이 처음 나오는지 추적
+    let hasFirstCore1 = false;
+    // 코어2가 있는지 추적
+    let hasCore2 = false;
+    
+    unitTypePattern.forEach((pattern, index) => {
+      const coreNum = pattern.coreNumber || 1;
+      
+      if (coreNum === 1) {
+        // 코어1이 처음 나오는 경우만 카운트 (-1, -2 등이 붙은 코어는 제외)
+        if (!hasFirstCore1) {
+          // 이전에 코어1이 있었는지 확인
+          const previousCore1Count = unitTypePattern
+            .slice(0, index)
+            .filter(p => p.coreNumber === 1).length;
+          
+          // 이전에 코어1이 없었다면 첫 번째 코어1
+          if (previousCore1Count === 0) {
+            hasFirstCore1 = true;
+          }
+        }
+      } else if (coreNum === 2) {
+        hasCore2 = true;
+      }
+    });
+    
+    let count = 0;
+    if (hasFirstCore1) count++;
+    if (hasCore2) count++;
+    
+    return count;
+  }, [unitTypePattern]);
+
+  // 단위세대 구성이 변경될 때 코어개수 자동 업데이트
+  useEffect(() => {
+    // 단위세대 구성이 있으면 계산된 값으로 업데이트
+    if (unitTypePattern.length > 0 && calculatedCoreCount !== coreCount) {
+      setCoreCount(calculatedCoreCount);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calculatedCoreCount, unitTypePattern.length]); // coreCount는 dependency에 포함하지 않음 (무한 루프 방지)
 
   // 세대수 카운트 계산: (코어별 호수 * 코어별 층수) - 필로티 세대수
   const totalUnitCount = useMemo(() => {
@@ -140,24 +205,34 @@ export function BuildingBasicInfo({
       total += unitCount * floorCount;
     });
     
-    // 필로티 세대수 제외
-    return total - pilotisCount;
-  }, [unitTypePattern, coreCount, coreGroundFloors, groundCount, pilotisCount]);
+    // 필로티 세대수 제외 (코어별 합계)
+    const totalPilotisCount = corePilotisCounts.length > 0 
+      ? corePilotisCounts.reduce((sum, count) => sum + count, 0)
+      : pilotisCount;
+    return total - totalPilotisCount;
+  }, [unitTypePattern, coreCount, coreGroundFloors, groundCount, pilotisCount, corePilotisCounts]);
 
   useEffect(() => {
-    setBuildingName(building.buildingName);
-    setTotalUnits(building.meta.totalUnits);
-    setCoreCount(building.meta.coreCount || 0);
+    if (!building || !building.meta) {
+      return;
+    }
+    try {
+      setBuildingName(building.buildingName);
+      setTotalUnits(building.meta.totalUnits);
+      setCoreCount(building.meta.coreCount || 0);
     setCoreType(building.meta.coreType || '중복도(판상형)');
     setSlabType(building.meta.slabType || '벽식구조');
     setBasementCount(building.meta.floorCount.basement);
     setGroundCount(building.meta.floorCount.ground);
     setCoreGroundFloors(building.meta.floorCount.coreGroundFloors || []);
+    setCoreBasementFloors(building.meta.floorCount.coreBasementFloors || []);
+    setCorePhFloors(building.meta.floorCount.corePhFloors || []);
     setPhCount(building.meta.floorCount.ph);
     setPilotisCount(building.meta.floorCount.pilotisCount || 0);
+    setCorePilotisCounts(building.meta.floorCount.corePilotisCounts || []);
     setUnitTypePattern(building.meta.unitTypePattern || []);
     setStandardFloorCycle(building.meta.standardFloorCycle || 0);
-    // PH층 층고를 배열로 변환 (기존 단일 값이면 배열로, 이미 배열이면 그대로)
+    // 옥탑층 층고를 배열로 변환 (기존 단일 값이면 배열로, 이미 배열이면 그대로)
     const phHeights = Array.isArray(building.meta.heights.ph) 
       ? building.meta.heights.ph 
       : building.meta.floorCount.ph > 0 
@@ -186,8 +261,11 @@ export function BuildingBasicInfo({
       basementCount: building.meta.floorCount.basement,
       groundCount: building.meta.floorCount.ground,
       coreGroundFloors: building.meta.floorCount.coreGroundFloors || [],
+      coreBasementFloors: building.meta.floorCount.coreBasementFloors || [],
+      corePhFloors: building.meta.floorCount.corePhFloors || [],
       phCount: building.meta.floorCount.ph,
       pilotisCount: building.meta.floorCount.pilotisCount || 0,
+      corePilotisCounts: building.meta.floorCount.corePilotisCounts || [],
       unitTypePattern: building.meta.unitTypePattern || [],
       heights: building.meta.heights,
       standardFloorCycle: building.meta.standardFloorCycle || 0,
@@ -195,6 +273,9 @@ export function BuildingBasicInfo({
     isInitialMountRef.current = true;
     // building이 변경되면 buildingNotFoundRef 리셋
     buildingNotFoundRef.current = false;
+    } catch (error) {
+      console.error('Error syncing building data:', error);
+    }
   }, [building]);
 
 
@@ -323,6 +404,8 @@ export function BuildingBasicInfo({
     basementCount,
     groundCount,
     coreGroundFloors,
+    coreBasementFloors,
+    corePhFloors,
     phCount,
     pilotisCount,
     heights,
@@ -346,8 +429,11 @@ export function BuildingBasicInfo({
       basementCount !== prev.basementCount ||
       groundCount !== prev.groundCount ||
       JSON.stringify(coreGroundFloors) !== JSON.stringify(prev.coreGroundFloors) ||
+      JSON.stringify(coreBasementFloors) !== JSON.stringify(prev.coreBasementFloors) ||
+      JSON.stringify(corePhFloors) !== JSON.stringify(prev.corePhFloors) ||
       phCount !== prev.phCount ||
       pilotisCount !== prev.pilotisCount ||
+      JSON.stringify(corePilotisCounts) !== JSON.stringify(prev.corePilotisCounts) ||
       standardFloorCycle !== prev.standardFloorCycle;
       // heights는 수동 저장이므로 자동 저장에서 제외
 
@@ -362,9 +448,12 @@ export function BuildingBasicInfo({
         basementCount,
         groundCount,
         coreGroundFloors,
-        phCount,
-        pilotisCount,
-        heights: prev.heights, // heights는 이전 값 유지 (수동 저장 전까지)
+        coreBasementFloors,
+      corePhFloors,
+      phCount,
+      pilotisCount,
+      corePilotisCounts,
+      heights: prev.heights, // heights는 이전 값 유지 (수동 저장 전까지)
         standardFloorCycle: prev.standardFloorCycle, // standardFloorCycle도 이전 값 유지
       };
       autoSave();
@@ -378,11 +467,12 @@ export function BuildingBasicInfo({
     unitTypePattern,
     basementCount,
     groundCount,
-    coreGroundFloors,
-    phCount,
-    pilotisCount,
-    standardFloorCycle,
-    autoSave,
+      coreGroundFloors,
+      phCount,
+      pilotisCount,
+      corePilotisCounts,
+      standardFloorCycle,
+      autoSave,
   ]);
 
   // 동 정보 저장 함수 (층 생성 포함)
@@ -421,7 +511,10 @@ export function BuildingBasicInfo({
         groundCount !== latestBuilding.meta.floorCount.ground ||
         phCount !== latestBuilding.meta.floorCount.ph ||
         pilotisCount !== latestBuilding.meta.floorCount.pilotisCount ||
-        JSON.stringify(coreGroundFloors) !== JSON.stringify(latestBuilding.meta.floorCount.coreGroundFloors || []);
+        JSON.stringify(corePilotisCounts) !== JSON.stringify(latestBuilding.meta.floorCount.corePilotisCounts || []) ||
+        JSON.stringify(coreGroundFloors) !== JSON.stringify(latestBuilding.meta.floorCount.coreGroundFloors || []) ||
+        JSON.stringify(coreBasementFloors) !== JSON.stringify(latestBuilding.meta.floorCount.coreBasementFloors || []) ||
+        JSON.stringify(corePhFloors) !== JSON.stringify(latestBuilding.meta.floorCount.corePhFloors || []);
       
       // 층고 변경 여부 확인 (기준층 범위 변경 가능성 때문에)
       const heightsChanged = 
@@ -455,7 +548,10 @@ export function BuildingBasicInfo({
           ground: groundCount,
           ph: phCount,
           coreGroundFloors: coreGroundFloors.length > 0 ? coreGroundFloors : undefined,
+          coreBasementFloors: coreBasementFloors.length > 0 ? coreBasementFloors : undefined,
+          corePhFloors: corePhFloors.length > 0 ? corePhFloors : undefined,
           pilotisCount: pilotisCount > 0 ? pilotisCount : undefined,
+          corePilotisCounts: corePilotisCounts.length > 0 ? corePilotisCounts : undefined,
         },
         heights,
         standardFloorCycle,
@@ -500,8 +596,11 @@ export function BuildingBasicInfo({
         basementCount,
         groundCount,
         coreGroundFloors,
+        coreBasementFloors,
+        corePhFloors,
         phCount,
         pilotisCount,
+        corePilotisCounts,
         heights,
         standardFloorCycle,
       };
@@ -561,29 +660,73 @@ export function BuildingBasicInfo({
   }, []);
 
 
+  // Early return if building or meta is missing
+  if (!building || !building.meta) {
+    return <div className="p-4 text-red-500">Building data is missing</div>;
+  }
+  
   return (
     <Card>
       <CardHeader>
         <CardTitle>동 기본 정보</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* 구조 정보 */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">구조 정보</h3>
+          
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                코어 개수
+              </label>
+              <Input
+                type="number"
+                min="0"
+                value={coreCount || ''}
+                readOnly
+                className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed"
+                title="단위세대 구성 입력에서 자동으로 계산됩니다"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                단위세대 구성에서 자동 계산 (-1, -2, -3 접미사 코어 제외)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                코어 타입
+              </label>
+              <select
+                value={coreType}
+                onChange={(e) => setCoreType(e.target.value as CoreType)}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="중복도(판상형)">중복도(판상형)</option>
+                <option value="타워형">타워형</option>
+                <option value="편복도">편복도</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                구조형식
+              </label>
+              <select
+                value={slabType}
+                onChange={(e) => setSlabType(e.target.value as SlabType)}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="벽식구조">벽식구조</option>
+                <option value="RC구조">RC구조</option>
+                <option value="벽식구조(내부기둥)">벽식구조(내부기둥)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* 단위세대 정보 */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">단위세대 정보</h3>
           
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              총 호수
-            </label>
-            <Input
-              type="number"
-              min="0"
-              value={totalUnits || ''}
-              onChange={(e) => setTotalUnits(e.target.value === '' ? 0 : Number(e.target.value))}
-              className="max-w-xs"
-            />
-          </div>
-
           {/* 단위세대 패턴 입력 */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -620,6 +763,28 @@ export function BuildingBasicInfo({
 
                 const currentCoreDisplayName = getCoreDisplayName(pattern.coreNumber || 1, index);
                 
+                // corePilotisCounts 배열 인덱스 계산 (세대수 계산 로직과 동일)
+                const getPilotisCountIndex = () => {
+                  const coreNum = pattern.coreNumber || 1;
+                  if (coreNum === 1) {
+                    // 코어1인 경우: 현재까지의 코어1 개수 - 1 (0-based)
+                    const core1Index = unitTypePattern
+                      .slice(0, index + 1)
+                      .filter(p => p.coreNumber === 1).length - 1;
+                    return core1Index;
+                  } else if (coreNum === 2) {
+                    // 코어2인 경우: 코어1 개수 뒤에 위치
+                    const core1Count = unitTypePattern.filter(p => p.coreNumber === 1).length;
+                    return core1Count;
+                  }
+                  return 0;
+                };
+                
+                const pilotisCountIndex = getPilotisCountIndex();
+                const currentPilotisCount = corePilotisCounts.length > pilotisCountIndex 
+                  ? corePilotisCounts[pilotisCountIndex] ?? 0
+                  : 0;
+                
                 return (
                 <div key={index} className="flex items-center gap-2 p-3 border border-slate-200 dark:border-slate-700 rounded-lg">
                   <select
@@ -653,6 +818,151 @@ export function BuildingBasicInfo({
                     onChange={(e) => updateUnitTypePattern(index, 'type', e.target.value)}
                     className="w-32"
                   />
+                  {/* 코어별 층수 입력창 */}
+                  {(() => {
+                    const coreNum = pattern.coreNumber || 1;
+                    let coreIndex = 0;
+                    
+                    if (coreNum === 1) {
+                      // 코어1인 경우: 현재까지의 코어1 개수 - 1 (0-based)
+                      coreIndex = unitTypePattern
+                        .slice(0, index + 1)
+                        .filter(p => p.coreNumber === 1).length - 1;
+                    } else if (coreNum === 2) {
+                      // 코어2인 경우: 코어1 개수 뒤에 위치
+                      const core1Count = unitTypePattern.filter(p => p.coreNumber === 1).length;
+                      coreIndex = core1Count;
+                    }
+                    
+                    const currentBasementFloors = coreBasementFloors.length > coreIndex 
+                      ? coreBasementFloors[coreIndex] ?? basementCount ?? 0
+                      : basementCount ?? 0;
+                    const currentGroundFloors = coreGroundFloors.length > coreIndex 
+                      ? coreGroundFloors[coreIndex] ?? groundCount ?? 0
+                      : groundCount ?? 0;
+                    const currentPhFloors = corePhFloors.length > coreIndex 
+                      ? corePhFloors[coreIndex] ?? phCount ?? 0
+                      : phCount ?? 0;
+                    
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1">
+                          <div className="flex flex-col gap-0.5">
+                            <Input
+                              type="number"
+                              placeholder="지하"
+                              min="0"
+                              value={currentBasementFloors || ''}
+                              onChange={(e) => {
+                                const newCoreBasementFloors = [...coreBasementFloors];
+                                const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                while (newCoreBasementFloors.length <= coreIndex) {
+                                  newCoreBasementFloors.push(basementCount ?? 0);
+                                }
+                                newCoreBasementFloors[coreIndex] = newValue;
+                                setCoreBasementFloors(newCoreBasementFloors);
+                                if (coreIndex === 0) {
+                                  setBasementCount(newValue);
+                                }
+                              }}
+                              className="w-16 text-xs"
+                              title="지하층 수"
+                            />
+                            {currentBasementFloors > 0 && (
+                              <span className="text-xs text-slate-600 dark:text-slate-400 px-1">
+                                지하{currentBasementFloors}개층
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <Input
+                              type="number"
+                              placeholder="지상"
+                              min="0"
+                              value={currentGroundFloors || ''}
+                              onChange={(e) => {
+                                const newCoreGroundFloors = [...coreGroundFloors];
+                                const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                while (newCoreGroundFloors.length <= coreIndex) {
+                                  newCoreGroundFloors.push(groundCount ?? 0);
+                                }
+                                newCoreGroundFloors[coreIndex] = newValue;
+                                setCoreGroundFloors(newCoreGroundFloors);
+                                if (coreIndex === 0) {
+                                  setGroundCount(newValue);
+                                }
+                              }}
+                              className="w-16 text-xs"
+                              title="지상층 수"
+                            />
+                            {currentGroundFloors > 0 && (
+                              <span className="text-xs text-slate-600 dark:text-slate-400 px-1">
+                                지상{currentGroundFloors}개층
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <Input
+                              type="number"
+                              placeholder="옥탑"
+                              min="0"
+                              value={currentPhFloors || ''}
+                              onChange={(e) => {
+                                const newCorePhFloors = [...corePhFloors];
+                                const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                                while (newCorePhFloors.length <= coreIndex) {
+                                  newCorePhFloors.push(phCount ?? 0);
+                                }
+                                newCorePhFloors[coreIndex] = newValue;
+                                setCorePhFloors(newCorePhFloors);
+                                if (coreIndex === 0) {
+                                  setPhCount(newValue);
+                                  // PH층 수가 변경되면 heights.ph 배열도 업데이트
+                                  const currentPhHeights = Array.isArray(heights.ph) ? heights.ph : [heights.ph || 2650];
+                                  if (newValue > currentPhHeights.length) {
+                                    const newPhHeights = [...currentPhHeights, ...Array(newValue - currentPhHeights.length).fill(2650)];
+                                    setHeights({ ...heights, ph: newPhHeights });
+                                  } else if (newValue < currentPhHeights.length) {
+                                    const newPhHeights = currentPhHeights.slice(0, newValue);
+                                    setHeights({ ...heights, ph: newPhHeights });
+                                  }
+                                }
+                              }}
+                              className="w-16 text-xs"
+                              title="옥탑층 수"
+                            />
+                            {currentPhFloors > 0 && (
+                              <span className="text-xs text-slate-600 dark:text-slate-400 px-1">
+                                옥탑{currentPhFloors}개층
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <Input
+                    type="number"
+                    placeholder="필로티 부대시설 제외 세대수"
+                    min="0"
+                    value={currentPilotisCount || ''}
+                    onChange={(e) => {
+                      const newCorePilotisCounts = [...corePilotisCounts];
+                      const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                      // 배열 크기 확보
+                      while (newCorePilotisCounts.length <= pilotisCountIndex) {
+                        newCorePilotisCounts.push(0);
+                      }
+                      newCorePilotisCounts[pilotisCountIndex] = newValue;
+                      setCorePilotisCounts(newCorePilotisCounts);
+                      // 첫 번째 코어1 값은 전체 pilotisCount에도 반영 (호환성 유지)
+                      if (pilotisCountIndex === 0) {
+                        setPilotisCount(newValue);
+                      }
+                    }}
+                    className="w-[300px]"
+                    title="필로티 부대시설 제외 세대수"
+                  />
                   <Button
                     type="button"
                     variant="ghost"
@@ -673,246 +983,7 @@ export function BuildingBasicInfo({
             </div>
           </div>
 
-        </div>
-
-        {/* 구조 정보 */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">구조 정보</h3>
-          
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                코어 개수
-              </label>
-              <Input
-                type="number"
-                min="0"
-                value={coreCount || ''}
-                onChange={(e) => setCoreCount(e.target.value === '' ? 0 : Number(e.target.value))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                코어 타입
-              </label>
-              <select
-                value={coreType}
-                onChange={(e) => setCoreType(e.target.value as CoreType)}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="중복도(판상형)">중복도(판상형)</option>
-                <option value="타워형">타워형</option>
-                <option value="편복도">편복도</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                구조형식
-              </label>
-              <select
-                value={slabType}
-                onChange={(e) => setSlabType(e.target.value as SlabType)}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="벽식구조">벽식구조</option>
-                <option value="RC구조">RC구조</option>
-                <option value="벽식구조(내부기둥)">벽식구조(내부기둥)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* 층수 정보 */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">층수 정보</h3>
-          
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  지하층 수
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={basementCount || ''}
-                  onChange={(e) => setBasementCount(e.target.value === '' ? 0 : Number(e.target.value))}
-                />
-              </div>
-              {/* 코어 개수에 따라 지상층 수 입력 방식 변경 */}
-              {(() => {
-                const core1Patterns = unitTypePattern.filter(p => p.coreNumber === 1);
-                const core1Count = core1Patterns.length;
-                const hasCore2 = unitTypePattern.some(p => p.coreNumber === 2);
-                
-                // 코어1이 하나 이상 있으면 코어1 입력창 표시, 없으면 일반 지상층 수
-                if (core1Count > 0) {
-                  return (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        코어1 지상층 수
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={coreGroundFloors[0] ?? groundCount ?? ''}
-                        onChange={(e) => {
-                          const newCoreGroundFloors = [...coreGroundFloors];
-                          const newValue = e.target.value === '' ? 0 : Number(e.target.value);
-                          newCoreGroundFloors[0] = newValue;
-                          setCoreGroundFloors(newCoreGroundFloors);
-                          // 전체 지상층 수는 첫 번째 코어 값으로 설정
-                          setGroundCount(newValue);
-                        }}
-                      />
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        지상층 수
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={groundCount || ''}
-                        onChange={(e) => setGroundCount(e.target.value === '' ? 0 : Number(e.target.value))}
-                      />
-                    </div>
-                  );
-                }
-              })()}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  옥탑층 수
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={phCount || ''}
-                  onChange={(e) => {
-                    const newPhCount = e.target.value === '' ? 0 : Number(e.target.value);
-                    setPhCount(newPhCount);
-                    
-                    // PH층 수가 변경되면 heights.ph 배열도 업데이트
-                    const currentPhHeights = Array.isArray(heights.ph) ? heights.ph : [heights.ph || 2650];
-                    if (newPhCount > currentPhHeights.length) {
-                      // PH층 수가 증가하면 기본값으로 채움
-                      const newPhHeights = [...currentPhHeights, ...Array(newPhCount - currentPhHeights.length).fill(2650)];
-                      setHeights({ ...heights, ph: newPhHeights });
-                    } else if (newPhCount < currentPhHeights.length) {
-                      // PH층 수가 감소하면 배열 자르기
-                      const newPhHeights = currentPhHeights.slice(0, newPhCount);
-                      setHeights({ ...heights, ph: newPhHeights });
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            {/* 코어별 지상층 수 입력창 동적 생성 */}
-            {(() => {
-              // 단위세대 구성에서 코어1이 몇 번 나오는지 계산
-              const core1Patterns = unitTypePattern.filter(p => p.coreNumber === 1);
-              const core1Count = core1Patterns.length;
-              const core2Patterns = unitTypePattern.filter(p => p.coreNumber === 2);
-              const core2Count = core2Patterns.length > 0 ? 1 : 0; // 코어2가 하나라도 있으면 표시
-              
-              const core1InputRows = [];
-              const core2InputRows = [];
-              
-              // 코어1 입력창들 생성
-              if (core1Count > 0) {
-                for (let i = 0; i < core1Count; i++) {
-                  const coreIndex = i; // 코어1, 코어1-1, 코어1-2 등
-                  const coreDisplayName = i === 0 ? '코어1' : `코어1-${i}`;
-                  core1InputRows.push(
-                    <div key={`core1-${i}`} className="grid grid-cols-3 gap-4">
-                      {i === 0 ? null : <div></div>}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                          {coreDisplayName} 지상층 수
-                        </label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={coreGroundFloors[coreIndex] ?? groundCount ?? ''}
-                          onChange={(e) => {
-                            const newCoreGroundFloors = [...coreGroundFloors];
-                            const newValue = e.target.value === '' ? 0 : Number(e.target.value);
-                            // 배열 크기 확보
-                            while (newCoreGroundFloors.length <= coreIndex) {
-                              newCoreGroundFloors.push(groundCount ?? 0);
-                            }
-                            newCoreGroundFloors[coreIndex] = newValue;
-                            setCoreGroundFloors(newCoreGroundFloors);
-                            // 첫 번째 코어인 경우 전체 지상층 수도 업데이트
-                            if (i === 0) {
-                              setGroundCount(newValue);
-                            }
-                          }}
-                        />
-                      </div>
-                      {i === 0 ? null : <div></div>}
-                    </div>
-                  );
-                }
-              }
-              
-              // 코어2 입력창 생성
-              if (core2Count > 0) {
-                const core2Index = core1Count; // 코어2는 코어1들 뒤에
-                core2InputRows.push(
-                  <div key="core2" className="grid grid-cols-3 gap-4">
-                    <div></div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        코어2 지상층 수
-                      </label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={coreGroundFloors[core2Index] ?? groundCount ?? ''}
-                        onChange={(e) => {
-                          const newCoreGroundFloors = [...coreGroundFloors];
-                          const newValue = e.target.value === '' ? 0 : Number(e.target.value);
-                          // 배열 크기 확보
-                          while (newCoreGroundFloors.length <= core2Index) {
-                            newCoreGroundFloors.push(groundCount ?? 0);
-                          }
-                          newCoreGroundFloors[core2Index] = newValue;
-                          setCoreGroundFloors(newCoreGroundFloors);
-                        }}
-                      />
-                    </div>
-                    <div></div>
-                  </div>
-                );
-              }
-              
-              return (
-                <>
-                  {core1InputRows.slice(1)} {/* 코어1-1, 코어1-2 등 (첫 번째 코어1 제외) */}
-                  {core2InputRows}
-                </>
-              );
-            })()}
-          </div>
-
           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                필로티+ 부대시설 제외 세대수
-              </label>
-              <Input
-                type="number"
-                min="0"
-                value={pilotisCount || ''}
-                onChange={(e) => setPilotisCount(e.target.value === '' ? 0 : Number(e.target.value))}
-                className="max-w-xs"
-              />
-            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 세대수 카운트
@@ -1046,7 +1117,7 @@ export function BuildingBasicInfo({
                 onChange={(e) => setHeights({ ...heights, top: Number(e.target.value) })}
               />
             </div>
-            {/* 옥탑층 층고 - PH층 수에 따라 각각 입력 */}
+            {/* 옥탑층 층고 - 옥탑층 수에 따라 각각 입력 */}
             {phCount > 0 && (
               phCount === 1 ? (
                 <div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { API_ENDPOINTS } from '@/lib/constants';
-import { filterValidFiles } from './utils';
+import { API_ENDPOINTS, FILE_SIZE_LIMITS } from '@/lib/constants';
+import { filterValidFiles, formatFileSize } from './utils';
 
 interface UseFileManagementOptions {
   selectedStore: string;
@@ -26,8 +26,35 @@ export function useFileManagement({ selectedStore, onUploadSuccess, onDeleteSucc
   // 파일 첨부
   const attachFiles = useCallback((files: File[]) => {
     const validFiles = filterValidFiles(files);
-    setAttachedFiles((prev) => [...prev, ...validFiles]);
-  }, []);
+    
+    // 파일 크기 제한 체크
+    const oversizedFiles: string[] = [];
+    const validSizeFiles = validFiles.filter((file) => {
+      if (file.size > FILE_SIZE_LIMITS.MAX_FILE_SIZE) {
+        oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+        return false;
+      }
+      return true;
+    });
+
+    // 전체 크기 체크
+    const currentTotalSize = attachedFiles.reduce((sum, f) => sum + f.size, 0);
+    const newTotalSize = validSizeFiles.reduce((sum, f) => sum + f.size, 0);
+    
+    if (currentTotalSize + newTotalSize > FILE_SIZE_LIMITS.MAX_TOTAL_SIZE) {
+      setError(`전체 파일 크기가 ${formatFileSize(FILE_SIZE_LIMITS.MAX_TOTAL_SIZE)}를 초과합니다.`);
+      return;
+    }
+
+    if (oversizedFiles.length > 0) {
+      setError(`다음 파일의 크기가 너무 큽니다 (최대 ${formatFileSize(FILE_SIZE_LIMITS.MAX_FILE_SIZE)}): ${oversizedFiles.join(', ')}`);
+    }
+
+    setAttachedFiles((prev) => [...prev, ...validSizeFiles]);
+    if (validSizeFiles.length > 0 && oversizedFiles.length === 0) {
+      setError(''); // 에러 초기화
+    }
+  }, [attachedFiles]);
 
   // 첨부 파일 제거
   const removeAttachedFile = useCallback((index: number) => {
