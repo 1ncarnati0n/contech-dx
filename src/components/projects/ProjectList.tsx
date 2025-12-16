@@ -165,7 +165,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
         isOpen={isCreateModalOpen}
         onClose={handleModalClose}
         onSuccess={handleCreateSuccess}
-        isAdmin={isAdmin}
       />
     </div>
   );

@@ -138,6 +138,7 @@ export function DataInputPage({ projectId }: Props) {
             standard: 0,
             floor1: 0,
             floor2: 0,
+            floor3: 0,
             top: 0,
             ph: 0,
           },

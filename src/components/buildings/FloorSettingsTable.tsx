@@ -623,17 +623,18 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                   
                   // 위에서 아래로 내려오면서 기준층 층고와 같은 연속된 층들 찾기
                   let lastStandardHeightFloor: { floor: Floor; floorNum: number } | null = null;
-                  
+
                   for (const item of upperFloors) {
-                    if (item.floorNum === null) continue;
-                    
+                    const floorNum = item.floorNum;
+                    if (floorNum === null) continue;
+
                     const floor = item.floor;
-                    
+
                     // 기준층이고 층고가 standardHeight와 같은 경우
                     if (floor.floorClass === '기준층' && floor.height === standardHeight) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층(마지막 층) 저장
-                      if (!lastStandardHeightFloor || item.floorNum < lastStandardHeightFloor.floorNum) {
-                        lastStandardHeightFloor = item;
+                      if (!lastStandardHeightFloor || floorNum < lastStandardHeightFloor.floorNum) {
+                        lastStandardHeightFloor = { floor, floorNum };
                       }
                     } else if (floor.height !== standardHeight) {
                       // 기준층 층고가 아닌 층을 만나면 연속이 깨짐
@@ -653,25 +654,26 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                   // 중요: updates.height를 사용하여 업데이트하려는 값을 확인
                   let foundDifferentHeight = false;
                   let settingFloorCandidate: { floor: Floor; floorNum: number } | null = null;
-                  
+
                   for (const item of allGroundFloors) {
-                    if (item.floorNum === null) continue;
-                    
+                    const floorNum = item.floorNum;
+                    if (floorNum === null) continue;
+
                     const floor = item.floor;
-                    
+
                     // 업데이트된 층을 만나면 그 층이 기준층 층고이므로 계속 확인
-                    if (item.floorNum === updatedFloorNum) {
+                    if (floorNum === updatedFloorNum) {
                       continue;
                     }
-                    
+
                     if (floor.height !== standardHeight) {
                       foundDifferentHeight = true;
                       // 기준층 층고와 다른 층을 만났으므로, 그 위의 기준층 층고 층이 셋팅층 후보
                       break;
                     } else if (floor.floorClass === '기준층' && floor.height === standardHeight) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층 저장
-                      if (!settingFloorCandidate || item.floorNum < settingFloorCandidate.floorNum) {
-                        settingFloorCandidate = item;
+                      if (!settingFloorCandidate || floorNum < settingFloorCandidate.floorNum) {
+                        settingFloorCandidate = { floor, floorNum };
                       }
                     }
                   }
@@ -897,7 +899,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         }}
                         className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="층고 입력 (mm)"
-                        className="w-24 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </td>
                   </tr>

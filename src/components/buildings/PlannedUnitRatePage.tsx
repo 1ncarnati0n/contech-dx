@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/components/ui';
 import type { UnitRateItem } from '@/lib/types';
-import { getUnitRates, saveUnitRates, updateUnitRateItem } from '@/lib/services/unitRates';
+import { getUnitRates, saveUnitRates, updateUnitRateItem, deleteUnitRateItem } from '@/lib/services/unitRates';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
 

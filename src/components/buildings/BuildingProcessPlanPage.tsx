@@ -1539,6 +1539,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                     // 옥탑층의 경우 옥탑1, 옥탑2 형식 처리
                                     if (row.category === '옥탑층') {
                                       if (!item.floorLabel) return true;
+                                      if (!row.floorLabel) return true;
                                       const itemMatch = item.floorLabel.match(/옥탑(\d+)/);
                                       const rowMatch = row.floorLabel.match(/옥탑(\d+)/);
                                       if (itemMatch && rowMatch) {
@@ -1565,9 +1566,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                     // 오버라이드된 순작업일 확인
                                     // 기준층인 경우: 현재 층의 오버라이드 값을 먼저 확인하고, 없으면 첫 번째 기준층의 오버라이드 값 확인
                                     let itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
-                                    let firstStandardFloor: { floorLabel: string } | undefined;
+                                    let firstStandardFloorLabel: string | undefined;
                                     if (row.category === '기준층') {
-                                      firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
+                                      const found = processRows.find(r => r.category === '기준층' && r.floorLabel);
+                                      firstStandardFloorLabel = found?.floorLabel;
                                     }
                                     
                                     // 기준층인 경우: 현재 층의 오버라이드 값을 먼저 확인하고, 없으면 첫 번째 기준층의 오버라이드 값 확인
@@ -1578,8 +1580,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       overriddenDays = plan?.itemDirectWorkDaysOverrides?.[currentFloorKey];
                                       
                                       // 현재 층에 오버라이드가 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                      if (overriddenDays === undefined && firstStandardFloor) {
-                                        const firstStandardFloorKey = `기준층-${firstStandardFloor.floorLabel}-${item.id}`;
+                                      if (overriddenDays === undefined && firstStandardFloorLabel) {
+                                        const firstStandardFloorKey = `기준층-${firstStandardFloorLabel}-${item.id}`;
                                         overriddenDays = plan?.itemDirectWorkDaysOverrides?.[firstStandardFloorKey];
                                       }
                                     } else {
@@ -1601,9 +1603,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       if (refMatch) {
                                         const [, col] = refMatch;
                                         
-                                        if (row.category === '지하층') {
+                                        if (row.category === '지하층' && row.floorLabel) {
                                           // 지하층는 floorLabel 그대로 사용 (B1, B2 등)
-                                          quantity = getQuantityFromFloor(building, row.floorLabel, 
+                                          quantity = getQuantityFromFloor(building, row.floorLabel,
                                             col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                                             col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
                                         } else if (row.category === '옥탑층') {
@@ -1622,7 +1624,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           if (field && row.floorLabel) {
                                             quantity = getQuantityFromFloor(building, row.floorLabel, field, subField) * ratio;
                                           }
-                                        } else if (isNormalFloor) {
+                                        } else if (isNormalFloor && row.floorLabel) {
                                           // 일반층의 경우 1F, 2F 형식이므로 행 번호 조정
                                           const floorMatch = row.floorLabel.match(/(\d+)F/);
                                           if (floorMatch) {
@@ -1633,7 +1635,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           } else {
                                             quantity = getQuantityByReference(building, item.quantityReference);
                                           }
-                                        } else if (row.category === '셋팅층') {
+                                        } else if (row.category === '셋팅층' && row.floorLabel) {
                                           // 셋팅층은 행 번호 조정 (1층 = 행 11, 2층 = 행 12, ...)
                                           const floorMatch = row.floorLabel.match(/(\d+)F/);
                                           if (floorMatch) {
@@ -1648,12 +1650,16 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           // 기준층은 첫 번째 기준층의 수량을 사용하여 합계 계산 (모든 기준층 행에 공통 적용)
                                           const firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
                                           const calculationFloorLabel = firstStandardFloor?.floorLabel || row.floorLabel;
-                                          const floorMatch = calculationFloorLabel.match(/(\d+)F/);
-                                          if (floorMatch) {
-                                            const floorNum = parseInt(floorMatch[1], 10);
-                                            const targetRowNum = floorNum + 10;
-                                            const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                            quantity = getQuantityByReference(building, newReference);
+                                          if (calculationFloorLabel) {
+                                            const floorMatch = calculationFloorLabel.match(/(\d+)F/);
+                                            if (floorMatch) {
+                                              const floorNum = parseInt(floorMatch[1], 10);
+                                              const targetRowNum = floorNum + 10;
+                                              const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
+                                              quantity = getQuantityByReference(building, newReference);
+                                            } else {
+                                              quantity = getQuantityByReference(building, item.quantityReference);
+                                            }
                                           } else {
                                             quantity = getQuantityByReference(building, item.quantityReference);
                                           }
@@ -2044,6 +2050,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                               // 옥탑층의 경우 옥탑1, 옥탑2 형식 처리
                                               if (expandedRow.category === '옥탑층') {
                                                 if (!item.floorLabel) return true;
+                                                if (!expandedRow.floorLabel) return true;
                                                 const itemMatch = item.floorLabel.match(/옥탑(\d+)/);
                                                 const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
                                                 if (itemMatch && rowMatch) {
@@ -2072,12 +2079,13 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                               // 오버라이드된 순작업일 확인
                                               // 기준층인 경우 모든 기준층 행에 공통 적용되므로, 첫 번째 기준층 행의 floorLabel 사용
                                               let itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
-                                              let firstStandardFloor: { floorLabel: string } | undefined;
+                                              let firstStandardFloorLabel: string | undefined;
                                               if (expandedRow.category === '기준층') {
                                                 // 기준층인 경우 모든 기준층 행에 공통 적용된 오버라이드 사용
-                                                firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
-                                                if (firstStandardFloor) {
-                                                  itemKey = `기준층-${firstStandardFloor.floorLabel}-${item.id}`;
+                                                const found = processRows.find(r => r.category === '기준층' && r.floorLabel);
+                                                firstStandardFloorLabel = found?.floorLabel;
+                                                if (firstStandardFloorLabel) {
+                                                  itemKey = `기준층-${firstStandardFloorLabel}-${item.id}`;
                                                 }
                                               }
                                               
@@ -2089,8 +2097,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                 overriddenDays = plan?.itemDirectWorkDaysOverrides?.[currentFloorKey];
                                                 
                                                 // 현재 층에 오버라이드가 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                                if (overriddenDays === undefined && firstStandardFloor) {
-                                                  const firstStandardFloorKey = `기준층-${firstStandardFloor.floorLabel}-${item.id}`;
+                                                if (overriddenDays === undefined && firstStandardFloorLabel) {
+                                                  const firstStandardFloorKey = `기준층-${firstStandardFloorLabel}-${item.id}`;
                                                   overriddenDays = plan?.itemDirectWorkDaysOverrides?.[firstStandardFloorKey];
                                                 }
                                               } else {
@@ -2113,9 +2121,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                   const [, col, baseRow] = refMatch;
                                                   const baseRowNum = parseInt(baseRow, 10);
                                                   
-                                                  if (expandedRow.category === '지하층') {
+                                                  if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
                                                     // 지하층는 floorLabel 그대로 사용 (B1, B2 등)
-                                                    quantity = getQuantityFromFloor(building, expandedRow.floorLabel, 
+                                                    quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
                                                       col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                                                       col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
                                                   } else if (expandedRow.category === '옥탑층') {
@@ -2134,7 +2142,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                     if (field && expandedRow.floorLabel) {
                                                       quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField) * ratio;
                                                     }
-                                                  } else if (isExpandedNormalFloor) {
+                                                  } else if (isExpandedNormalFloor && expandedRow.floorLabel) {
                                                     // 일반층의 경우 1F, 2F 형식이므로 행 번호 조정
                                                     const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
                                                     if (floorMatch) {
@@ -2145,7 +2153,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                     } else {
                                                       quantity = getQuantityByReference(building, item.quantityReference);
                                                     }
-                                                  } else if (expandedRow.category === '셋팅층') {
+                                                  } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
                                                     // 셋팅층은 행 번호 조정 (1층 = 행 11, 2층 = 행 12, ...)
                                                     const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
                                                     if (floorMatch) {
@@ -2160,12 +2168,16 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                     // 기준층은 첫 번째 기준층의 수량을 사용하여 합계 계산 (모든 기준층 행에 공통 적용)
                                                     const firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
                                                     const calculationFloorLabel = firstStandardFloor?.floorLabel || expandedRow.floorLabel;
-                                                    const floorMatch = calculationFloorLabel.match(/(\d+)F/);
-                                                    if (floorMatch) {
-                                                      const floorNum = parseInt(floorMatch[1], 10);
-                                                      const targetRowNum = floorNum + 10;
-                                                      const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                      quantity = getQuantityByReference(building, newReference);
+                                                    if (calculationFloorLabel) {
+                                                      const floorMatch = calculationFloorLabel.match(/(\d+)F/);
+                                                      if (floorMatch) {
+                                                        const floorNum = parseInt(floorMatch[1], 10);
+                                                        const targetRowNum = floorNum + 10;
+                                                        const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
+                                                        quantity = getQuantityByReference(building, newReference);
+                                                      } else {
+                                                        quantity = getQuantityByReference(building, item.quantityReference);
+                                                      }
                                                     } else {
                                                       quantity = getQuantityByReference(building, item.quantityReference);
                                                     }
@@ -2253,6 +2265,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                       // 옥탑층의 경우 옥탑1, 옥탑2 형식 처리
                                                       if (expandedRow.category === '옥탑층') {
                                                         if (!item.floorLabel) return true;
+                                                        if (!expandedRow.floorLabel) return true;
                                                         const itemMatch = item.floorLabel.match(/옥탑(\d+)/);
                                                         const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
                                                         if (itemMatch && rowMatch) {
@@ -2492,12 +2505,20 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                           processRows.forEach(row => {
                                                             if (row.category === '기준층' && row.floorLabel) {
                                                               const standardFloorKey = `기준층-${row.floorLabel}-${item.id}`;
-                                                              updatedOverrides[standardFloorKey] = newValue !== null && newValue > 0 ? newValue : undefined;
+                                                              if (newValue !== null && newValue > 0) {
+                                                                updatedOverrides[standardFloorKey] = newValue;
+                                                              } else {
+                                                                delete updatedOverrides[standardFloorKey];
+                                                              }
                                                             }
                                                           });
                                                         } else {
                                                           // 기준층이 아닌 경우 기존 로직
-                                                          updatedOverrides[itemDirectWorkDaysKey] = newValue !== null && newValue > 0 ? newValue : undefined;
+                                                          if (newValue !== null && newValue > 0) {
+                                                            updatedOverrides[itemDirectWorkDaysKey] = newValue;
+                                                          } else {
+                                                            delete updatedOverrides[itemDirectWorkDaysKey];
+                                                          }
                                                         }
                                                         
                                                         // undefined 값 제거
@@ -2583,6 +2604,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                             }
                                                             if (expandedRow.category === '옥탑층') {
                                                               if (!moduleItem.floorLabel) return true;
+                                                              if (!expandedRow.floorLabel) return true;
                                                               const itemMatch = moduleItem.floorLabel.match(/옥탑(\d+)/);
                                                               const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
                                                               if (itemMatch && rowMatch) {
@@ -2625,11 +2647,11 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                               if (refMatch) {
                                                                 const [, col] = refMatch;
                                                                 
-                                                                if (expandedRow.category === '지하층') {
-                                                                  quantity = getQuantityFromFloor(building, expandedRow.floorLabel, 
+                                                                if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
+                                                                  quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
                                                                     col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                                                                     col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
-                                                                } else if (expandedRow.category === '옥탑층' || isExpandedNormalFloor) {
+                                                                } else if ((expandedRow.category === '옥탑층' || isExpandedNormalFloor) && expandedRow.floorLabel) {
                                                                   const phMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
                                                                   if (phMatch) {
                                                                     const phNum = parseInt(phMatch[1], 10);
@@ -2647,7 +2669,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                                       quantity = getQuantityByReference(building, moduleItem.quantityReference);
                                                                     }
                                                                   }
-                                                                } else if (expandedRow.category === '셋팅층') {
+                                                                } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
                                                                   const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
                                                                   if (floorMatch) {
                                                                     const floorNum = parseInt(floorMatch[1], 10);
@@ -2657,7 +2679,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                                   } else {
                                                                     quantity = getQuantityByReference(building, moduleItem.quantityReference);
                                                                   }
-                                                                } else if (expandedRow.category === '기준층') {
+                                                                } else if (expandedRow.category === '기준층' && calculationFloorLabel) {
                                                                   // 기준층인 경우 첫 번째 기준층의 수량을 사용하여 합계 계산
                                                                   const floorMatch = calculationFloorLabel.match(/(\d+)F/);
                                                                   if (floorMatch) {

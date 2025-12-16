@@ -4,3 +4,4 @@
  */
 
 export { useAsyncData, useAsyncList } from './useAsyncData';
+export { useTabDragDrop } from './useTabDragDrop';

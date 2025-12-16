@@ -66,7 +66,7 @@ export function getQuantityFromFloor(
   let individualFloorId: string | null = null;
   
   if (rangeFloorId) {
-    rangeFloor = building.floors.find(f => f.id === rangeFloorId);
+    rangeFloor = building.floors.find(f => f.id === rangeFloorId) ?? null;
     if (rangeFloor) {
       const floorMatch = floorLabel.match(/(\d+)F/);
       if (floorMatch) {
@@ -86,7 +86,7 @@ export function getQuantityFromFloor(
   let floor: typeof building.floors[0] | null = null;
   
   // 층 찾기 (정확히 일치하거나, 코어 정보를 제거한 후 일치하는 경우)
-  floor = building.floors.find(f => f.floorLabel === floorLabel);
+  floor = building.floors.find(f => f.floorLabel === floorLabel) ?? null;
   
   // 정확히 일치하지 않으면 코어 정보를 제거한 후 매칭 시도
   if (!floor) {
@@ -110,7 +110,7 @@ export function getQuantityFromFloor(
           }
         }
         return cleanFloorLabel === cleanLabel;
-      });
+      }) ?? null;
       
       // #region agent log
       if (floorLabel === '13F') {
@@ -138,7 +138,7 @@ export function getQuantityFromFloor(
             }
           }
           return false;
-        });
+        }) ?? null;
         
         // 범위 형식의 기준층을 찾았으면, 개별 층 ID 생성
         // 예: rangeFloor.id가 "floor-123"이고 floorNum이 13이면 "floor-123-13F"

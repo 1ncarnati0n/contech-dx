@@ -11,15 +11,32 @@ import type {
   UpdateProjectDTO,
 } from '@/lib/types';
 import { logger } from '@/lib/utils/logger';
+import { projectsCache, createCacheKey } from './cache';
+
+// ============================================
+// 캐시 키 상수
+// ============================================
+const CACHE_KEYS = {
+  ALL_PROJECTS: 'all',
+  PROJECT_BY_ID: (id: string) => createCacheKey('project', id),
+  PROJECTS_BY_STATUS: (status: string) => createCacheKey('status', status),
+  PROJECTS_BY_USER: (userId: string) => createCacheKey('user', userId),
+};
 
 // ============================================
 // Service Functions
 // ============================================
 
 /**
- * Get all projects
+ * Get all projects (with caching)
  */
 export async function getProjects(supabaseClient?: SupabaseClient): Promise<Project[]> {
+  // 캐시 확인
+  const cached = projectsCache.get(CACHE_KEYS.ALL_PROJECTS) as Project[] | null;
+  if (cached) {
+    return cached;
+  }
+
   const supabase = supabaseClient || createClient();
 
   const { data, error } = await supabase
@@ -32,7 +49,11 @@ export async function getProjects(supabaseClient?: SupabaseClient): Promise<Proj
     return [];
   }
 
-  return data as Project[];
+  // 캐시에 저장
+  const projects = data as Project[];
+  projectsCache.set(CACHE_KEYS.ALL_PROJECTS, projects);
+
+  return projects;
 }
 
 /**
@@ -107,6 +128,9 @@ export async function createProject(
     throw new Error(`Failed to create project: ${error.message || error.code || 'Unknown error'}`);
   }
 
+  // 캐시 무효화
+  projectsCache.invalidateAll();
+
   logger.info('✅ Project created successfully:', data.id);
   return data as Project;
 }
@@ -139,6 +163,9 @@ export async function updateProject(
     throw new Error('Project not found or permission denied');
   }
 
+  // 캐시 무효화
+  projectsCache.invalidateAll();
+
   return data as Project;
 }
 
@@ -154,6 +181,9 @@ export async function deleteProject(id: string): Promise<void> {
     logger.error('Error deleting project:', error);
     throw new Error('Failed to delete project');
   }
+
+  // 캐시 무효화
+  projectsCache.invalidateAll();
 }
 
 /**

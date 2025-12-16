@@ -38,12 +38,13 @@ export default function HomePage() {
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">
                             건설산업의 <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">
-                                DX/AX
+                                DX AX
                             </span>를 주도합니다
                         </h1>
 
                         <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-                            공정관리부터 AI 기반 문서 분석까지, 데이터 중심의 의사결정.
+                            데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색, <br/>
+                            건설 산업의 디지털 전환을 위한 통합 플랫폼입니다.
                         </p>
 
                     </motion.div>

@@ -27,13 +27,13 @@ import { logger } from '@/lib/utils/logger';
 
 const projectSchema = z.object({
     name: z.string().min(1, '프로젝트명을 입력해주세요'),
-    description: z.string().optional(),
+    description: z.string(),
     status: z.enum(['announcement', 'bidding', 'award', 'construction_start', 'completion']),
-    location: z.string().optional(),
-    client: z.string().optional(),
-    contract_amount: z.coerce.number().optional(),
+    location: z.string(),
+    client: z.string(),
+    contract_amount: z.union([z.number().min(0), z.nan()]).nullable(),
     start_date: z.string().min(1, '시작일을 선택해주세요'),
-    end_date: z.string().optional(),
+    end_date: z.string(),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -54,7 +54,7 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
             status: project.status,
             location: project.location || '',
             client: project.client || '',
-            contract_amount: project.contract_amount,
+            contract_amount: project.contract_amount ?? null,
             start_date: project.start_date.split('T')[0],
             end_date: project.end_date ? project.end_date.split('T')[0] : '',
         },
@@ -69,7 +69,7 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
                 status: project.status,
                 location: project.location || '',
                 client: project.client || '',
-                contract_amount: project.contract_amount,
+                contract_amount: project.contract_amount ?? null,
                 start_date: project.start_date.split('T')[0],
                 end_date: project.end_date ? project.end_date.split('T')[0] : '',
             });
@@ -79,20 +79,25 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
     const onSubmit = async (data: ProjectFormValues) => {
         logger.debug('Submitting project update:', data);
         try {
-            // Ensure contract_amount is a number or undefined, not NaN
+            // 빈 문자열을 undefined로, NaN을 undefined로 변환
             const formattedData = {
                 ...data,
-                contract_amount: data.contract_amount ? Number(data.contract_amount) : undefined,
+                description: data.description?.trim() || undefined,
+                location: data.location?.trim() || undefined,
+                client: data.client?.trim() || undefined,
+                contract_amount: data.contract_amount && !Number.isNaN(data.contract_amount) ? data.contract_amount : undefined,
+                end_date: data.end_date?.trim() || undefined,
             };
 
             await updateProject(project.id, formattedData);
             toast.success('프로젝트가 수정되었습니다.');
             onUpdate();
             onClose();
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error('Failed to update project:', error);
+            const errorMessage = error instanceof Error ? error.message : '프로젝트 정보를 수정하는 중 오류가 발생했습니다.';
             toast.error('프로젝트 수정 실패', {
-                description: error.message || '프로젝트 정보를 수정하는 중 오류가 발생했습니다.',
+                description: errorMessage,
             });
         }
     };
@@ -164,7 +169,13 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
                                     <FormItem>
                                         <FormLabel>계약금액</FormLabel>
                                         <FormControl>
-                                            <Input type="number" placeholder="0" {...field} />
+                                            <Input
+                                                type="number"
+                                                placeholder="0"
+                                                {...field}
+                                                value={field.value ?? ''}
+                                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

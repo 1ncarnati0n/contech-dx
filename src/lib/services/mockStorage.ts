@@ -104,8 +104,8 @@ async function loadFromFile(): Promise<MockDataStore> {
       const data = JSON.parse(fileContent) as MockDataStore;
       logger.debug('Data loaded from mock.json');
       return data;
-    } catch (fileError: any) {
-      if (fileError.code === 'ENOENT') {
+    } catch (fileError: unknown) {
+      if (fileError instanceof Error && 'code' in fileError && fileError.code === 'ENOENT') {
         // 파일이 없으면 빈 데이터 반환
         logger.debug('mock.json not found, returning empty data');
         return { buildings: [], floors: [], floorTrades: [] };
