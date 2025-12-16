@@ -49,8 +49,10 @@ export default function FileSearchPage() {
     removeAttachedFile,
     clearAttachedFiles,
     uploadFiles,
+    deleteFile,
     // 채팅 액션
     search,
+    stopSearch,
     selectSession,
     createSession,
     deleteSession,
@@ -86,6 +88,7 @@ export default function FileSearchPage() {
         onRemoveAttachedFile={removeAttachedFile}
         onClearAttachedFiles={clearAttachedFiles}
         onUploadFiles={uploadFiles}
+        onDeleteFile={deleteFile}
         sessions={sessions}
         currentSessionId={currentSessionId}
         onSelectSession={selectSession}
@@ -102,6 +105,7 @@ export default function FileSearchPage() {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onSearch={search}
+        onStopSearch={stopSearch}
       />
 
       {/* Notifications */}

@@ -15,7 +15,7 @@ import { getRoleBadgeColor, getRoleDisplayName } from '@/lib/permissions/client'
 import type { Profile } from '@/lib/types';
 
 interface UserDropdownProps {
-  user: { email?: string };
+  user: { email?: string; user_metadata?: { display_name?: string; name?: string; position?: string } };
   profile: Profile;
   isAdmin?: boolean;
 }
@@ -26,6 +26,27 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  // 회원가입 시 등록한 이름과 직위 가져오기
+  const signupName = user?.user_metadata?.display_name || user?.user_metadata?.name || null;
+  const signupPosition = user?.user_metadata?.position || null;
+
+  // 표시할 이름 결정: display_name이 있으면 사용, 없으면 회원가입 시 등록한 이름+직위 조합
+  const getDisplayName = () => {
+    if (profile.display_name) {
+      return profile.display_name;
+    }
+    // 회원가입 시 등록한 이름과 직위를 조합
+    if (signupName && signupPosition) {
+      return `${signupName} ${signupPosition}`;
+    }
+    if (signupName) {
+      return signupName;
+    }
+    return user.email?.split('@')[0] || '사용자';
+  };
+
+  const displayName = getDisplayName();
 
   // 외부 클릭 시 닫기
   useEffect(() => {
@@ -74,7 +95,7 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
 
         {/* 사용자 이름 */}
         <span className="text-sm font-medium text-primary-600 dark:text-primary-300 group-hover:text-primary-900 dark:group-hover:text-primary-100 max-w-[120px] truncate">
-          {profile.display_name || user.email?.split('@')[0]}
+          {displayName}
         </span>
 
         <ChevronDown className={`w-4 h-4 text-primary-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -86,7 +107,7 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
           {/* 사용자 정보 헤더 */}
           <div className="px-4 py-3 border-b border-primary-100 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-900/50">
             <p className="text-sm font-bold text-primary-900 dark:text-white truncate">
-              {profile.display_name || '사용자'}
+              {displayName}
             </p>
             <p className="text-xs text-primary-500 dark:text-primary-400 truncate mt-0.5 font-mono">
               {user.email}

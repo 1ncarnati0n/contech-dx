@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS projects (
   end_date DATE,
   
   -- 상태
-  status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'active', 'completed', 'on_hold', 'cancelled')),
+  status TEXT DEFAULT 'announcement' CHECK (status IN ('announcement', 'bidding', 'award', 'construction_start', 'completion')),
   
   -- 메타 정보
   created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -69,7 +69,7 @@ COMMENT ON COLUMN projects.name IS '프로젝트명';
 COMMENT ON COLUMN projects.location IS '공사 위치 (주소)';
 COMMENT ON COLUMN projects.client IS '발주처/클라이언트명';
 COMMENT ON COLUMN projects.contract_amount IS '계약금액 (원)';
-COMMENT ON COLUMN projects.status IS '프로젝트 상태: planning(기획), active(진행중), completed(완료), on_hold(보류), cancelled(취소)';
+COMMENT ON COLUMN projects.status IS '프로젝트 상태: announcement(공모), bidding(입찰), award(수주), construction_start(착공), completion(준공)';
 
 -- =========================================
 -- 2. PROJECT_MEMBERS 테이블

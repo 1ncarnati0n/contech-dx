@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getPosts } from '@/lib/services/posts';
+import { getPosts } from '@/lib/services/posts.server';
 import Link from 'next/link';
 import {
   PenSquare,

@@ -1,6 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/utils/logger';
 
 const GEMINI_UPLOAD_BASE = 'https://generativelanguage.googleapis.com/upload/v1beta';
+
+// 보안 설정
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+];
+
+// 파일명 sanitize 함수
+function sanitizeFileName(fileName: string): string {
+  // 경로 구분자 제거 및 위험 문자 제거
+  return fileName
+    .replace(/[/\\]/g, '_')  // 경로 구분자
+    .replace(/\.\./g, '_')   // 상위 디렉토리 참조
+    .replace(/[<>:"|?*]/g, '_')  // Windows 예약 문자
+    .trim();
+}
+
+// 파일 검증 함수
+function validateFile(file: File): { valid: boolean; error?: string } {
+  // 파일 크기 검증
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, error: `파일 크기가 10MB를 초과합니다: ${file.name}` };
+  }
+
+  // MIME 타입 검증
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return { valid: false, error: `허용되지 않는 파일 형식입니다: ${file.name} (${file.type})` };
+  }
+
+  // 파일명 검증 (빈 이름, 너무 긴 이름)
+  if (!file.name || file.name.length > 255) {
+    return { valid: false, error: `잘못된 파일명입니다: ${file.name}` };
+  }
+
+  return { valid: true };
+}
 
 // 단일 파일 업로드 헬퍼 함수
 async function uploadSingleFile(
@@ -12,9 +58,12 @@ async function uploadSingleFile(
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
+  // 파일명 sanitize
+  const safeFileName = sanitizeFileName(file.name);
+
   // Resumable upload - Start
   const metadata = {
-    displayName: file.name,
+    displayName: safeFileName,
     mimeType: file.type,
   };
 
@@ -62,7 +111,7 @@ async function uploadSingleFile(
 
   return {
     name: uploadData.file?.name || uploadData.name,
-    displayName: uploadData.file?.displayName || file.name,
+    displayName: uploadData.file?.displayName || safeFileName,
     mimeType: file.type,
     sizeBytes: file.size,
   };
@@ -98,16 +147,40 @@ export async function POST(request: NextRequest) {
 
     if (files.length === 0) {
       return NextResponse.json(
-        { error: '파일을 선택해주세요.' },
+        { success: false, error: { code: 'NO_FILES', message: '파일을 선택해주세요.' } },
+        { status: 400 }
+      );
+    }
+
+    // 파일 검증
+    const validationErrors: { fileName: string; error: string }[] = [];
+    const validFiles: File[] = [];
+
+    for (const file of files) {
+      const validation = validateFile(file);
+      if (validation.valid) {
+        validFiles.push(file);
+      } else {
+        validationErrors.push({ fileName: file.name, error: validation.error! });
+      }
+    }
+
+    if (validFiles.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'VALIDATION_FAILED', message: '유효한 파일이 없습니다.' },
+          validationErrors,
+        },
         { status: 400 }
       );
     }
 
     // 여러 파일 업로드 (순차 처리)
     const uploadedFiles = [];
-    const errors = [];
+    const errors = [...validationErrors];
 
-    for (const file of files) {
+    for (const file of validFiles) {
       try {
         const result = await uploadSingleFile(file, storeName, apiKey);
         uploadedFiles.push(result);
@@ -125,10 +198,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error uploading files:', error);
-    const errorMessage = error instanceof Error ? error.message : '파일 업로드 중 오류가 발생했습니다.';
+    logger.error('파일 업로드 오류', { error: error instanceof Error ? error.message : '알 수 없는 오류' });
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, error: { code: 'UPLOAD_ERROR', message: '파일 업로드 중 오류가 발생했습니다.' } },
       { status: 500 }
     );
   }

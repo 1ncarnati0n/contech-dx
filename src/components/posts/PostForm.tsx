@@ -1,9 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/Form';
+import { Input, Textarea } from '@/components/ui/Input';
 
+// ============================================
+// Zod 스키마 정의
+// ============================================
+const postSchema = z.object({
+  title: z
+    .string()
+    .min(1, '제목을 입력해주세요')
+    .min(2, '제목은 최소 2자 이상이어야 합니다')
+    .max(200, '제목은 200자를 초과할 수 없습니다'),
+  content: z
+    .string()
+    .min(1, '내용을 입력해주세요')
+    .min(10, '내용은 최소 10자 이상이어야 합니다')
+    .max(10000, '내용은 10,000자를 초과할 수 없습니다'),
+});
+
+type PostFormValues = z.infer<typeof postSchema>;
+
+// ============================================
+// Props 타입 정의
+// ============================================
 interface PostFormProps {
   initialData?: {
     id: string;
@@ -13,128 +47,129 @@ interface PostFormProps {
   mode: 'create' | 'edit';
 }
 
+// ============================================
+// 컴포넌트
+// ============================================
 export default function PostForm({ initialData, mode }: PostFormProps) {
-  const [title, setTitle] = useState(initialData?.title || '');
-  const [content, setContent] = useState(initialData?.content || '');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const form = useForm<PostFormValues>({
+    resolver: zodResolver(postSchema),
+    defaultValues: {
+      title: initialData?.title || '',
+      content: initialData?.content || '',
+    },
+  });
 
+  const onSubmit = async (data: PostFormValues) => {
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setError('로그인이 필요합니다.');
+        toast.error('로그인이 필요합니다.');
+        router.push('/login');
         return;
       }
 
       if (mode === 'create') {
-        const { data, error } = await supabase
+        const { data: post, error } = await supabase
           .from('posts')
           .insert({
-            title,
-            content,
+            title: data.title,
+            content: data.content,
             author_id: user.id,
           })
           .select()
           .single();
 
         if (error) {
-          setError(error.message);
+          toast.error('게시글 작성 실패', { description: error.message });
           return;
         }
 
-        router.push(`/posts/${data.id}`);
+        toast.success('게시글이 작성되었습니다.');
+        router.push(`/posts/${post.id}`);
       } else {
         const { error } = await supabase
           .from('posts')
           .update({
-            title,
-            content,
+            title: data.title,
+            content: data.content,
           })
           .eq('id', initialData!.id)
           .eq('author_id', user.id);
 
         if (error) {
-          setError(error.message);
+          toast.error('게시글 수정 실패', { description: error.message });
           return;
         }
 
+        toast.success('게시글이 수정되었습니다.');
         router.push(`/posts/${initialData!.id}`);
       }
 
       router.refresh();
-    } catch (err) {
-      setError('게시글 저장 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+    } catch {
+      toast.error('게시글 저장 중 오류가 발생했습니다.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium">
-          제목
-        </label>
-        <input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>제목</FormLabel>
+              <FormControl>
+                <Input placeholder="게시글 제목을 입력하세요" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div>
-        <label htmlFor="content" className="block text-sm font-medium">
-          내용
-        </label>
-        <textarea
-          id="content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          required
-          rows={10}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>내용</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="게시글 내용을 입력하세요"
+                  rows={10}
+                  className="resize-none"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-          {error}
+        <div className="flex gap-2">
+          <Button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            loading={form.formState.isSubmitting}
+          >
+            {mode === 'create' ? '작성하기' : '수정하기'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => router.back()}
+          >
+            취소
+          </Button>
         </div>
-      )}
-
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading
-            ? '저장 중...'
-            : mode === 'create'
-            ? '작성하기'
-            : '수정하기'}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md bg-gray-200 px-4 py-2 hover:bg-gray-300"
-        >
-          취소
-        </button>
-      </div>
-    </form>
+      </form>
+    </Form>
   );
 }
