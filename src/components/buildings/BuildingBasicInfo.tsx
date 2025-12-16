@@ -126,6 +126,7 @@ export function BuildingBasicInfo({
     pilotisCount: building?.meta?.floorCount?.pilotisCount || 0,
     corePilotisCounts: building?.meta?.floorCount?.corePilotisCounts || [],
     corePilotisHeights: building?.meta?.floorCount?.corePilotisHeights || [],
+    hasHighCeilingEquipmentRoom: building?.meta?.floorCount?.hasHighCeilingEquipmentRoom || false,
     unitTypePattern: building?.meta?.unitTypePattern || [],
     heights: building?.meta?.heights || {},
     standardFloorCycle: building?.meta?.standardFloorCycle || 0,
@@ -309,6 +310,7 @@ export function BuildingBasicInfo({
       phCount: building.meta.floorCount.ph,
       pilotisCount: building.meta.floorCount.pilotisCount || 0,
       corePilotisCounts: building.meta.floorCount.corePilotisCounts || [],
+      corePilotisHeights: building.meta.floorCount.corePilotisHeights || [],
       hasHighCeilingEquipmentRoom: building.meta.floorCount.hasHighCeilingEquipmentRoom || false,
       unitTypePattern: building.meta.unitTypePattern || [],
       heights: building.meta.heights,
@@ -498,12 +500,13 @@ export function BuildingBasicInfo({
         groundCount,
         coreGroundFloors,
         coreBasementFloors,
-      corePhFloors,
-      phCount,
-      pilotisCount,
-      corePilotisCounts,
-      hasHighCeilingEquipmentRoom,
-      heights: prev.heights, // heights는 이전 값 유지 (수동 저장 전까지)
+        corePhFloors,
+        phCount,
+        pilotisCount,
+        corePilotisCounts,
+        corePilotisHeights: prev.corePilotisHeights,
+        hasHighCeilingEquipmentRoom,
+        heights: prev.heights, // heights는 이전 값 유지 (수동 저장 전까지)
         standardFloorCycle: prev.standardFloorCycle, // standardFloorCycle도 이전 값 유지
       };
       autoSave();
@@ -656,6 +659,7 @@ export function BuildingBasicInfo({
         pilotisCount,
         corePilotisCounts,
         corePilotisHeights,
+        hasHighCeilingEquipmentRoom,
         heights,
         standardFloorCycle,
       };

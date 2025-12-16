@@ -401,7 +401,7 @@ export type LevelType = '지하' | '지상';
 /**
  * 층 분류 타입
  */
-export type FloorClass = '지하층' | '일반층' | '셋팅층' | '기준층' | '최상층' | 'PH층';
+export type FloorClass = '지하층' | '일반층' | '셋팅층' | '기준층' | '최상층' | 'PH층' | '옥탑층';
 
 /**
  * 단위세대 타입 패턴
@@ -432,6 +432,7 @@ export interface BuildingMeta {
     pilotisCount?: number; // 필로티 수량 (기존 호환성 유지)
     corePilotisCounts?: number[]; // 코어별 필로티+ 부대시설 제외 세대수 (코어1, 코어2, ... 순서)
     corePilotisHeights?: number[]; // 코어별 필로티 높이 (개층) (코어1, 코어2, ... 순서)
+    hasHighCeilingEquipmentRoom?: boolean; // 고천장 장비실 여부
   };
   heights: {
     basement2: number; // 지하2층 층고
@@ -607,7 +608,7 @@ export type UnitRateType = 'planned' | 'executed';
 /**
  * 공정 구분 타입
  */
-export type ProcessCategory = '버림' | '기초' | '지하층' | '셋팅층' | '기준층' | 'PH층';
+export type ProcessCategory = '버림' | '기초' | '지하층' | '셋팅층' | '기준층' | 'PH층' | '옥탑층';
 
 /**
  * 공정 타입 (표준공정 또는 사이클)

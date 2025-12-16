@@ -1320,7 +1320,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                                     if (refMatch) {
                                                       const [, col] = refMatch;
                                                       const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                      quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
+                                                      quantity = getQuantityFromFloor(building, expandedRow.floorLabel ?? '',
                                                         col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                                                         col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3') * ratio;
                                                     } else {

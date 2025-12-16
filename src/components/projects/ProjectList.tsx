@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -8,6 +8,7 @@ import { ProjectCard } from './ProjectCard';
 import { ProjectCreateModal } from './ProjectCreateModal';
 import type { Project, ProjectStatus } from '@/lib/types';
 import { getProjects } from '@/lib/services/projects';
+import { useAsyncList } from '@/lib/hooks';
 import { logger, getStatusOptions } from '@/lib/utils/index';
 
 interface ProjectListProps {
@@ -15,32 +16,16 @@ interface ProjectListProps {
 }
 
 export function ProjectList({ isAdmin = false }: ProjectListProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  // useAsyncList 훅으로 데이터 fetching 단순화
+  const { data: projects, loading, refetch: loadProjects } = useAsyncList<Project>(getProjects);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // 프로젝트 로드
-  const loadProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await getProjects();
-      setProjects(data);
-    } catch (error) {
-      logger.error('Failed to load projects:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // 초기 로드
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
   // 필터링된 프로젝트 (useMemo로 최적화)
   const filteredProjects = useMemo(() => {
+    if (!projects) return [];
     let filtered = [...projects];
 
     logger.debug('🔍 ProjectList Filter:', {

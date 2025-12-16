@@ -33,6 +33,7 @@ const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
   '지하층': ['표준공정'],
   '셋팅층': ['표준공정'],
   '기준층': ['5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
+  'PH층': ['표준공정'],
   '옥탑층': ['표준공정'],
 };
 
@@ -43,6 +44,7 @@ const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
   '지하층': '표준공정',
   '셋팅층': '표준공정',
   '기준층': '6일 사이클',
+  'PH층': '표준공정',
   '옥탑층': '표준공정',
 };
 
@@ -1404,7 +1406,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         
                         {/* 첫 번째 공정 열만 헤더 표시 (일수, 셀렉트박스, 버튼) */}
                         {processColumns.length > 0 && (
-                          <Fragment key={`header-${processColumns[0].category}-${processColumns[0].floorLabel || ''}-${processColumns[0].colIndex}`}>
+                          <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
                             {/* 일수 열 */}
                             <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               순작업일수
