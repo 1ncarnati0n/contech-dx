@@ -1602,17 +1602,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
                                       if (refMatch && row.floorLabel) {
                                         const [, col] = refMatch;
-<<<<<<< HEAD
 
-                                        if (row.category === '지하골조') {
-                                          // 지하골조는 floorLabel 그대로 사용 (B1, B2 등)
-                                          quantity = getQuantityFromFloor(building, row.floorLabel, 
-=======
-                                        
-                                        if (row.category === '지하층' && row.floorLabel) {
-                                          // 지하층는 floorLabel 그대로 사용 (B1, B2 등)
+                                        if (row.category === '지하층') {
+                                          // 지하층은 floorLabel 그대로 사용 (B1, B2 등)
                                           quantity = getQuantityFromFloor(building, row.floorLabel,
->>>>>>> staging
                                             col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                                             col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
                                         } else if (row.category === '옥탑층') {
@@ -2127,17 +2120,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                 if (refMatch && expandedRow.floorLabel) {
                                                   const [, col, baseRow] = refMatch;
                                                   const baseRowNum = parseInt(baseRow, 10);
-<<<<<<< HEAD
 
-                                                  if (expandedRow.category === '지하골조') {
-                                                    // 지하골조는 floorLabel 그대로 사용 (B1, B2 등)
-                                                    quantity = getQuantityFromFloor(building, expandedRow.floorLabel, 
-=======
-                                                  
-                                                  if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
-                                                    // 지하층는 floorLabel 그대로 사용 (B1, B2 등)
+                                                  if (expandedRow.category === '지하층') {
+                                                    // 지하층은 floorLabel 그대로 사용 (B1, B2 등)
                                                     quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
->>>>>>> staging
                                                       col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                                                       col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
                                                   } else if (expandedRow.category === '옥탑층') {

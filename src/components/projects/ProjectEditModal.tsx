@@ -29,15 +29,9 @@ const projectSchema = z.object({
     name: z.string().min(1, '프로젝트명을 입력해주세요'),
     description: z.string(),
     status: z.enum(['announcement', 'bidding', 'award', 'construction_start', 'completion']),
-<<<<<<< HEAD
     location: z.string().optional(),
     client: z.string().optional(),
     contract_amount: z.number().optional(),
-=======
-    location: z.string(),
-    client: z.string(),
-    contract_amount: z.union([z.number().min(0), z.nan()]).nullable(),
->>>>>>> staging
     start_date: z.string().min(1, '시작일을 선택해주세요'),
     end_date: z.string(),
 });
@@ -60,7 +54,7 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
             status: project.status,
             location: project.location || '',
             client: project.client || '',
-            contract_amount: project.contract_amount ?? null,
+            contract_amount: project.contract_amount ?? undefined,
             start_date: project.start_date.split('T')[0],
             end_date: project.end_date ? project.end_date.split('T')[0] : '',
         },
@@ -75,7 +69,7 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
                 status: project.status,
                 location: project.location || '',
                 client: project.client || '',
-                contract_amount: project.contract_amount ?? null,
+                contract_amount: project.contract_amount ?? undefined,
                 start_date: project.start_date.split('T')[0],
                 end_date: project.end_date ? project.end_date.split('T')[0] : '',
             });

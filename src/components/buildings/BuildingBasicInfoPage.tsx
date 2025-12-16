@@ -123,11 +123,8 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
             floor1: 0,
             floor2: 0,
             floor3: 0,
-<<<<<<< HEAD
-=======
             floor4: 0,
             floor5: 0,
->>>>>>> staging
             top: 0,
             ph: 0,
           },

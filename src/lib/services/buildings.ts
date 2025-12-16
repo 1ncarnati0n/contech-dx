@@ -656,11 +656,7 @@ function generateFloors(
     floor4?: number;
     floor5?: number;
     top?: number;
-<<<<<<< HEAD
-    ph?: number | number[];
-=======
     ph?: number | number[]; // 배열도 지원
->>>>>>> staging
   }
 ): Floor[] {
   const floors: Floor[] = [];

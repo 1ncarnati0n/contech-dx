@@ -31,10 +31,6 @@ export {
   deleteComment,
 } from './comments.client';
 
-<<<<<<< HEAD
-// Users 서비스 (클라이언트 전용)
-export {
-=======
 // Users 서비스 - Server (서버 컴포넌트에서만 사용)
 export {
   getAllUsers,
@@ -45,17 +41,10 @@ export {
 
 // Users 서비스 - Client (클라이언트 컴포넌트에서 사용)
 export {
->>>>>>> staging
   updateUserRole,
   updateUserProfile,
   promoteCurrentUserToAdmin,
 } from './users.client';
-<<<<<<< HEAD
-
-// Users 서비스 (서버 전용) - 서버 컴포넌트에서만 import 가능
-// import { getAllUsers, getUserById, getCurrentUser, getUserRoleStats } from '@/lib/services/users.server';
-=======
->>>>>>> staging
 
 // Gemini AI 서비스
 export {
