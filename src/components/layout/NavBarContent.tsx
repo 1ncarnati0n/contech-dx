@@ -38,21 +38,21 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
                             <div className="hidden md:flex items-center gap-1">
                                 <Link
                                     href="/projects"
-                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FolderKanban className="w-4 h-4" />
                                     공정관리
                                 </Link>
                                 <Link
                                     href="/file-search"
-                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FileSearch className="w-4 h-4" />
                                     AI 문서분석
                                 </Link>
                                 <Link
                                     href="/posts"
-                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FileText className="w-4 h-4" />
                                     게시판
@@ -84,7 +84,7 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
                                 <>
                                     <Link
                                         href="/login"
-                                        className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                                        className="text-zinc-600 dark:text-zinc-300 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                     >
                                         로그인
                                     </Link>

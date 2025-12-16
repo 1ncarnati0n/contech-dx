@@ -28,15 +28,15 @@ const PostItem = memo(function PostItem({ post }: PostItemProps) {
         <Card hover className="group">
           <CardContent className="p-6">
             <div className="flex items-start justify-between gap-4 mb-3">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors line-clamp-1">
+              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-accent-600 dark:group-hover:text-accent-400 transition-colors line-clamp-1">
                 {post.title}
               </h2>
-              <ArrowRight className="w-5 h-5 text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400 group-hover:translate-x-1 transition-all shrink-0" />
+              <ArrowRight className="w-5 h-5 text-zinc-400 dark:text-zinc-600 group-hover:text-accent-500 dark:group-hover:text-accent-400 group-hover:translate-x-1 transition-all shrink-0" />
             </div>
-            <p className="text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
+            <p className="text-zinc-600 dark:text-zinc-400 mb-4 line-clamp-2">
               {post.content}
             </p>
-            <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-500">
+            <div className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-500">
               <div className="flex items-center gap-1.5">
                 <User className="w-4 h-4" />
                 <span>{post.author?.email || '익명'}</span>
