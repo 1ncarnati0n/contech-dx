@@ -43,8 +43,13 @@ export default function HomePage() {
                         </h1>
 
                         <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+<<<<<<< HEAD
                             데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색.<br />
                             건설 산업의 디지털 전환(DX)을 위한 통합 플랫폼입니다.
+=======
+                            데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색, <br/>
+                            건설 산업의 디지털 전환을 위한 통합 플랫폼입니다.
+>>>>>>> staging
                         </p>
 
                     </motion.div>

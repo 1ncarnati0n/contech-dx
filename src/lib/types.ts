@@ -401,7 +401,7 @@ export type LevelType = '지하' | '지상';
 /**
  * 층 분류 타입
  */
-export type FloorClass = '지하층' | '일반층' | '셋팅층' | '기준층' | '최상층' | 'PH층';
+export type FloorClass = '지하층' | '일반층' | '셋팅층' | '기준층' | '최상층' | 'PH층' | '옥탑층';
 
 /**
  * 단위세대 타입 패턴
@@ -427,7 +427,12 @@ export interface BuildingMeta {
     ground: number; // 전체 지상층 수 (코어별 입력이 없을 때 사용)
     ph: number;
     coreGroundFloors?: number[]; // 코어별 지상층 수 (코어1, 코어2, ... 순서, 높은층 순서)
-    pilotisCount?: number; // 필로티 수량
+    coreBasementFloors?: number[]; // 코어별 지하층 수 (코어1, 코어2, ... 순서)
+    corePhFloors?: number[]; // 코어별 옥탑층 수 (코어1, 코어2, ... 순서)
+    pilotisCount?: number; // 필로티 수량 (기존 호환성 유지)
+    corePilotisCounts?: number[]; // 코어별 필로티+ 부대시설 제외 세대수 (코어1, 코어2, ... 순서)
+    corePilotisHeights?: number[]; // 코어별 필로티 높이 (개층) (코어1, 코어2, ... 순서)
+    hasHighCeilingEquipmentRoom?: boolean; // 고천장 장비실 여부
   };
   heights: {
     basement2: number; // 지하2층 층고
@@ -442,6 +447,9 @@ export interface BuildingMeta {
     ph: number | number[]; // PH층 층고 (단일 값 또는 배열)
   };
   standardFloorCycle?: number; // 기준층 공정사이클
+  pumpCarCount?: number | null; // 펌프카 최대 투입대수
+  isBasicInfoLocked?: boolean; // 동기본정보 데이터 고정 여부
+  isDataInputLocked?: boolean; // 물량입력표 데이터 고정 여부
 }
 
 /**
@@ -600,7 +608,7 @@ export type UnitRateType = 'planned' | 'executed';
 /**
  * 공정 구분 타입
  */
-export type ProcessCategory = '버림' | '기초' | '지하골조' | '셋팅층' | '기준층' | 'PH층';
+export type ProcessCategory = '버림' | '기초' | '지하층' | '셋팅층' | '기준층' | 'PH층' | '옥탑층';
 
 /**
  * 공정 타입 (표준공정 또는 사이클)
@@ -627,10 +635,29 @@ export interface BuildingProcessPlan {
     [category in ProcessCategory]?: {
       days: number; // 공정일수 (간트차트에서 duration으로 사용)
       processType: ProcessType; // 선택된 공정 타입 (기본값, 층별 설정이 없을 때 사용)
-      floors?: { [floorLabel: string]: { processType: ProcessType } }; // 층별 공정 타입 (지하골조, PH층 등)
+      floors?: { [floorLabel: string]: { processType: ProcessType } }; // 층별 공정 타입 (지하층, PH층 등)
     };
   };
   totalDays: number; // 구분공정 합계일수 (간트차트에서 전체 일정 계산에 사용)
+  // 세부공정 항목별 순작업일 오버라이드 (키: "category-floorLabel-itemId", 값: 순작업일)
+  itemDirectWorkDaysOverrides?: { [key: string]: number };
+  // 가설공사 흙막이 토공사 공사일수 (지하층 공정계획 전용)
+  temporaryWorkDays?: number; // 가설공사 공사일수
+  earthRetentionWorkDays?: number; // 흙막이 공사일수
+  earthworkWorkDays?: number; // 토공사 공사일수
+  // 주차장 및 3단 가시설 적용부 수량 (지하층별, 공사일수 전용)
+  // 키: "floorLabel-specialType" (예: "B1-parking", "B1-facility3")
+  // 값: { gangForm, alForm, formwork, stripClean, rebar, concrete }
+  specialRowQuantities?: {
+    [key: string]: {
+      gangForm?: number;
+      alForm?: number;
+      formwork?: number;
+      stripClean?: number;
+      rebar?: number;
+      concrete?: number;
+    };
+  };
   createdAt?: string;
   updatedAt?: string;
 }

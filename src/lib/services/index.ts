@@ -5,33 +5,57 @@
  * import { getPosts, createComment, updateUserRole } from '@/lib/services';
  */
 
-// Posts 서비스
+// Posts 서비스 - Server (서버 컴포넌트에서만 사용)
 export {
   getPosts,
   getPostById,
+  getPostsByUserId,
+} from './posts.server';
+
+// Posts 서비스 - Client (클라이언트 컴포넌트에서 사용)
+export {
   createPost,
   updatePost,
   deletePost,
-  getPostsByUserId,
-} from './posts';
+} from './posts.client';
 
-// Comments 서비스
+// Comments 서비스 - Server (서버 컴포넌트에서만 사용)
 export {
   getCommentsByPostId,
+  getCommentsByUserId,
+} from './comments.server';
+
+// Comments 서비스 - Client (클라이언트 컴포넌트에서 사용)
+export {
   createComment,
   deleteComment,
-  getCommentsByUserId,
-} from './comments';
+} from './comments.client';
 
+<<<<<<< HEAD
 // Users 서비스 (클라이언트 전용)
 export {
+=======
+// Users 서비스 - Server (서버 컴포넌트에서만 사용)
+export {
+  getAllUsers,
+  getUserById,
+  getCurrentUser,
+  getUserRoleStats,
+} from './users.server';
+
+// Users 서비스 - Client (클라이언트 컴포넌트에서 사용)
+export {
+>>>>>>> staging
   updateUserRole,
   updateUserProfile,
   promoteCurrentUserToAdmin,
 } from './users.client';
+<<<<<<< HEAD
 
 // Users 서비스 (서버 전용) - 서버 컴포넌트에서만 import 가능
 // import { getAllUsers, getUserById, getCurrentUser, getUserRoleStats } from '@/lib/services/users.server';
+=======
+>>>>>>> staging
 
 // Gemini AI 서비스
 export {

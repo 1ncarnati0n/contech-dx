@@ -3,8 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Card, Badge } from '@/components/ui';
 import { Camera, Maximize2 } from 'lucide-react';
+import { DailyWorkerInputDashboard } from './DailyWorkerInputDashboard';
 
-export function CCTVSection() {
+interface Props {
+    projectId: string;
+}
+
+export function CCTVSection({ projectId }: Props) {
     const [currentTime, setCurrentTime] = useState<string>('');
 
     // 클라이언트에서만 시간 업데이트
@@ -31,7 +36,11 @@ export function CCTVSection() {
     ];
 
     return (
-        <Card className="p-6 mb-6">
+        <>
+            {/* 금일 인원투입현황 대시보드 */}
+            <DailyWorkerInputDashboard projectId={projectId} />
+            
+            <Card className="p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Camera className="w-5 h-5 text-slate-900 dark:text-white" />
@@ -84,5 +93,6 @@ export function CCTVSection() {
                 ))}
             </div>
         </Card>
+        </>
     );
 }

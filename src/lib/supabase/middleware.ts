@@ -64,15 +64,13 @@ export async function updateSession(request: NextRequest) {
     const { data, error } = await supabase.auth.getUser();
     if (error) {
       // 토큰 에러 시 세션 쿠키 정리
-      console.log('[Middleware] Auth error, clearing session:', error.message);
       response.cookies.delete('sb-access-token');
       response.cookies.delete('sb-refresh-token');
     } else {
       user = data.user;
     }
-  } catch (error) {
-    // 예기치 않은 에러 처리
-    console.error('[Middleware] Unexpected auth error:', error);
+  } catch {
+    // 예기치 않은 에러는 무시 (세션 없이 진행)
   }
 
   // Route protection logic

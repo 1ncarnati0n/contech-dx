@@ -1,3 +1,9 @@
+/**
+ * Users Service - Server Side
+ * 서버 컴포넌트에서만 사용 가능한 함수들
+ * next/headers를 사용하는 createServerClient 의존
+ */
+
 import { createClient as createServerClient } from '@/lib/supabase/server';
 
 /**

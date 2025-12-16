@@ -168,7 +168,16 @@ export default function Sidebar({
                 <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-lg p-3 space-y-3">
                   <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
                     <span className="font-medium text-zinc-700 dark:text-zinc-300">{selectedStoreInfo.displayName}</span>
-                    <span>{formatFileSize(selectedStoreInfo.sizeBytes || 0)}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{formatFileSize(selectedStoreInfo.sizeBytes || 0)}</span>
+                      <button
+                        onClick={handleDeleteStore}
+                        className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        title="문서함 삭제"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* File Upload Area */}
@@ -203,14 +212,22 @@ export default function Sidebar({
                       </div>
                       {attachedFiles.map((f, i) => (
                         <div key={i} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-1.5 rounded border border-zinc-200 dark:border-zinc-700">
-                          <span className="truncate flex-1">{f.name}</span>
-                          <button onClick={() => onRemoveAttachedFile(i)}>
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate text-zinc-700 dark:text-zinc-300">{f.name}</div>
+                            <div className="text-[10px] text-zinc-400">{formatFileSize(f.size)}</div>
+                          </div>
+                          <button onClick={() => onRemoveAttachedFile(i)} className="ml-2 p-1 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors">
                             <X className="w-3 h-3 text-zinc-400" />
                           </button>
                         </div>
                       ))}
-                      <Button onClick={onUploadFiles} disabled={loading} size="sm" className="w-full h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white">
-                        업로드
+                      <Button 
+                        onClick={onUploadFiles} 
+                        disabled={loading || attachedFiles.length === 0} 
+                        size="sm" 
+                        className="w-full h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? '업로드 중...' : `${attachedFiles.length}개 파일 업로드`}
                       </Button>
                     </div>
                   )}

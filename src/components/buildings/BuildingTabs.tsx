@@ -3,7 +3,11 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
 import { X, Check, X as XIcon } from 'lucide-react';
 import type { Building } from '@/lib/types';
+import { useTabDragDrop } from '@/lib/hooks';
 
+// ============================================
+// Props 타입 정의
+// ============================================
 interface Props {
   buildings: Building[];
   activeIndex: number;
@@ -14,13 +18,31 @@ interface Props {
   children: ReactNode;
 }
 
+// ============================================
+// 컴포넌트
+// ============================================
 export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, onUpdateBuildingName, onReorder, children }: Props) {
+  // 편집 상태 관리
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 드래그앤드롭 훅 사용
+  const {
+    isDraggable,
+    handleDragStart,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleDragEnd,
+    getDragStyles,
+  } = useTabDragDrop({
+    items: buildings,
+    onReorder,
+    isEditingActive: editingIndex !== null,
+  });
+
+  // 편집 모드 포커스 처리
   useEffect(() => {
     if (editingIndex !== null && inputRef.current) {
       inputRef.current.focus();
@@ -28,24 +50,22 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
     }
   }, [editingIndex]);
 
+  // 편집 핸들러
   const handleStartEdit = (index: number, currentName: string) => {
     setEditingIndex(index);
     setEditingName(currentName);
   };
 
-  const handleSaveEdit = async (index: number, buildingId: string) => {
+  const handleSaveEdit = async (buildingId: string) => {
     if (editingName.trim() && onUpdateBuildingName) {
       try {
         await onUpdateBuildingName(buildingId, editingName.trim());
-        setEditingIndex(null);
-        setEditingName('');
-      } catch (error) {
+      } catch {
         // 에러는 onUpdateBuildingName에서 처리
       }
-    } else {
-      setEditingIndex(null);
-      setEditingName('');
     }
+    setEditingIndex(null);
+    setEditingName('');
   };
 
   const handleCancelEdit = () => {
@@ -53,47 +73,12 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
     setEditingName('');
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, index: number, buildingId: string) => {
+  const handleKeyDown = (e: React.KeyboardEvent, buildingId: string) => {
     if (e.key === 'Enter') {
-      handleSaveEdit(index, buildingId);
+      handleSaveEdit(buildingId);
     } else if (e.key === 'Escape') {
       handleCancelEdit();
     }
-  };
-
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    if (editingIndex !== null) return; // 편집 중일 때는 드래그 불가
-    const building = buildings[index];
-    if (!building) return;
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', building.id);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (draggedIndex !== null && draggedIndex !== index) {
-      setDragOverIndex(index);
-    }
-  };
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== dropIndex && onReorder) {
-      onReorder(draggedIndex, dropIndex);
-    }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
   };
 
   if (buildings.length === 0) {
@@ -108,8 +93,8 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
           {buildings.map((building, index) => (
             <div
               key={building.id}
-              draggable={onReorder !== undefined && editingIndex === null}
-              onDragStart={(e) => handleDragStart(e, index)}
+              draggable={isDraggable}
+              onDragStart={(e) => handleDragStart(e, index, building.id)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, index)}
@@ -121,9 +106,7 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
                     ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
                 }
-                ${draggedIndex === index ? 'opacity-50 cursor-move' : ''}
-                ${dragOverIndex === index ? 'border-primary-300 dark:border-primary-700' : ''}
-                ${onReorder && editingIndex === null ? 'cursor-move' : ''}
+                ${getDragStyles(index)}
               `}
             >
               {editingIndex === index ? (
@@ -133,14 +116,14 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
                     type="text"
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, index, building.id)}
+                    onKeyDown={(e) => handleKeyDown(e, building.id)}
                     className="flex-1 px-2 py-1 text-sm border border-primary-500 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     onClick={(e) => e.stopPropagation()}
                   />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleSaveEdit(index, building.id);
+                      handleSaveEdit(building.id);
                     }}
                     className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                     title="저장"

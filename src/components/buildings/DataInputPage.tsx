@@ -9,7 +9,8 @@ import { FloorTradeTable, type FloorTradeTableHandle } from './FloorTradeTable';
 import type { Building, BuildingMeta, Floor } from '@/lib/types';
 import { createBuilding, getBuildings, deleteBuilding, updateBuilding, reorderBuildings, updateBuildingFloorsAndTrades } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { Spinner } from '@/components/ui';
+import { Spinner, Button } from '@/components/ui';
+import { logger } from '@/lib/utils/logger';
 
 interface Props {
   projectId: string;
@@ -56,7 +57,7 @@ export function DataInputPage({ projectId }: Props) {
         updateBuilding(building.id, projectId, {
           meta: commonMeta,
         }).catch((error) => {
-          console.error(`Failed to apply common meta to ${building.buildingName}:`, error);
+          logger.error(`Failed to apply common meta to ${building.buildingName}:`, error);
           return null;
         })
       );
@@ -301,8 +302,80 @@ export function DataInputPage({ projectId }: Props) {
 
   const activeBuilding = buildings[activeBuildingIndex];
 
+  // 데이터 고정 처리
+  const handleLockDataInput = useCallback(async () => {
+    if (!activeBuilding) return;
+
+    if (!window.confirm('물량입력표 데이터를 고정하시겠습니까? 고정 후에는 수정할 수 없습니다.')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await updateBuilding(activeBuilding.id, projectId, {
+        meta: {
+          ...activeBuilding.meta,
+          isDataInputLocked: true,
+        },
+      });
+      await loadBuildings();
+      toast.success('물량입력표 데이터가 고정되었습니다.');
+    } catch (error) {
+      toast.error('데이터 고정에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeBuilding, projectId, loadBuildings]);
+
+  // 데이터 고정 해제 처리
+  const handleUnlockDataInput = useCallback(async () => {
+    if (!activeBuilding) return;
+
+    if (!window.confirm('물량입력표 데이터 고정을 해제하시겠습니까? 해제 후에는 수정할 수 있습니다.')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await updateBuilding(activeBuilding.id, projectId, {
+        meta: {
+          ...activeBuilding.meta,
+          isDataInputLocked: false,
+        },
+      });
+      await loadBuildings();
+      toast.success('물량입력표 데이터 고정이 해제되었습니다.');
+    } catch (error) {
+      toast.error('데이터 고정 해제에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeBuilding, projectId, loadBuildings]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8">
+      {/* 데이터 고정/해제 버튼 */}
+      <div className="flex justify-end">
+        {activeBuilding && activeBuilding.meta?.isDataInputLocked ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleUnlockDataInput}
+            disabled={isLoading || !activeBuilding}
+          >
+            데이터 고정 해제
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleLockDataInput}
+            disabled={isLoading || !activeBuilding}
+          >
+            데이터 고정
+          </Button>
+        )}
+      </div>
       {/* 동 수 입력 영역 */}
       <BuildingForm onCreate={handleCreateBuildings} isLoading={isLoading} />
 

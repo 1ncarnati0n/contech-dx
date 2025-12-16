@@ -7,6 +7,7 @@
 
 import type {
   Building,
+  BuildingMeta,
   CreateBuildingDTO,
   UpdateBuildingDTO,
   Floor,
@@ -30,33 +31,285 @@ import {
   deleteFloorTrade as deleteFloorTradeFromStorage,
 } from './mockStorage';
 
-// 메모리 캐시 (성능 최적화용)
-const buildingsCache = new Map<string, Building[]>();
+// ============================================
+// TTL 기반 캐시 시스템
+// ============================================
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+/** 캐시 TTL (5분) */
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+/** TTL 기반 메모리 캐시 */
+const buildingsCache = new Map<string, CacheEntry<Building[]>>();
+
+/**
+ * 캐시에서 데이터 조회 (TTL 확인)
+ */
+function getCacheEntry(projectId: string): Building[] | null {
+  const entry = buildingsCache.get(projectId);
+  if (!entry) return null;
+
+  const isExpired = Date.now() - entry.timestamp > CACHE_TTL_MS;
+  if (isExpired) {
+    buildingsCache.delete(projectId);
+    logger.debug(`Cache expired for project ${projectId}`);
+    return null;
+  }
+
+  return entry.data;
+}
+
+/**
+ * 캐시에 데이터 저장
+ */
+function setCacheEntry(projectId: string, data: Building[]): void {
+  buildingsCache.set(projectId, {
+    data,
+    timestamp: Date.now(),
+  });
+}
+
+/**
+ * 특정 프로젝트의 캐시 무효화
+ */
+export function invalidateCache(projectId: string): void {
+  buildingsCache.delete(projectId);
+  logger.debug(`Cache invalidated for project ${projectId}`);
+}
+
+/**
+ * 전체 캐시 무효화
+ */
+export function invalidateAllCache(): void {
+  buildingsCache.clear();
+  logger.debug('All cache invalidated');
+}
+
+// ============================================
+// 헬퍼 함수 (코드 중복 제거용)
+// ============================================
+
+/**
+ * 단일 층에 층고를 적용하는 헬퍼 함수
+ * 지하층, 지상층, 옥탑층 등 모든 케이스를 처리
+ */
+function applyFloorHeight(floor: Floor, heights: BuildingMeta['heights']): void {
+  if (!heights) return;
+
+  // 지하층 처리
+  if (floor.levelType === '지하') {
+    const basementMatch = floor.floorLabel.match(/B(\d+)/);
+    if (basementMatch) {
+      const basementNum = parseInt(basementMatch[1], 10);
+      if (basementNum === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
+        floor.height = heights.basement2;
+      } else if (basementNum === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
+        floor.height = heights.basement1;
+      }
+    }
+    return;
+  }
+
+  // 지상층 처리
+  if (floor.levelType === '지상') {
+    // 층 라벨로 먼저 확인 (코어별 층 포함)
+    const floorMatch = floor.floorLabel.match(/(\d+)F/);
+    if (floorMatch) {
+      const floorNum = parseInt(floorMatch[1], 10);
+      const heightByFloorNum = getHeightByFloorNumber(floorNum, heights);
+
+      if (heightByFloorNum !== null) {
+        floor.height = heightByFloorNum;
+        return;
+      }
+    }
+
+    // floorClass 기반 처리
+    const heightByClass = getHeightByFloorClass(floor, heights);
+    if (heightByClass !== null) {
+      floor.height = heightByClass;
+    }
+  }
+}
+
+/**
+ * 층 번호에 따른 층고 반환 (1~5층 특수 처리)
+ */
+function getHeightByFloorNumber(floorNum: number, heights: BuildingMeta['heights']): number | null {
+  if (floorNum === 1 && heights.floor1 !== undefined && heights.floor1 !== null) {
+    return heights.floor1;
+  }
+  if (floorNum === 2 && heights.floor2 !== undefined && heights.floor2 !== null) {
+    return heights.floor2;
+  }
+  if (floorNum === 3 && heights.floor3 !== undefined && heights.floor3 !== null) {
+    return heights.floor3;
+  }
+  if (floorNum === 4 && heights.floor4 !== undefined && heights.floor4 !== null) {
+    return heights.floor4;
+  }
+  if (floorNum === 5 && heights.floor5 !== undefined && heights.floor5 !== null) {
+    return heights.floor5;
+  }
+  return null;
+}
+
+/**
+ * floorClass에 따른 층고 반환
+ */
+function getHeightByFloorClass(floor: Floor, heights: BuildingMeta['heights']): number | null {
+  if (floor.floorClass === '셋팅층' && heights.floor1 !== undefined && heights.floor1 !== null) {
+    return heights.floor1;
+  }
+  if (floor.floorClass === '기준층' && heights.standard !== undefined && heights.standard !== null) {
+    return heights.standard;
+  }
+  if (floor.floorClass === '최상층' && heights.top !== undefined && heights.top !== null) {
+    return heights.top;
+  }
+  if (floor.floorClass === '옥탑층') {
+    return getPhHeight(floor.floorLabel, heights);
+  }
+  // 기본값: 기준층 높이
+  if (heights.standard !== undefined && heights.standard !== null) {
+    return heights.standard;
+  }
+  return null;
+}
+
+/**
+ * 옥탑층 층고 반환 (PH1, PH2 등 인덱스 처리)
+ */
+function getPhHeight(floorLabel: string, heights: BuildingMeta['heights']): number | null {
+  const phMatch = floorLabel.match(/(?:PH|옥탑)(\d+)/i);
+  if (phMatch && heights.ph !== undefined && heights.ph !== null) {
+    const phIndex = parseInt(phMatch[1], 10) - 1;
+    if (Array.isArray(heights.ph) && heights.ph[phIndex] !== undefined && heights.ph[phIndex] !== null) {
+      return heights.ph[phIndex];
+    }
+    if (!Array.isArray(heights.ph)) {
+      return heights.ph;
+    }
+  }
+  return null;
+}
+
+/**
+ * 여러 층에 층고를 일괄 적용
+ */
+function applyFloorHeightsToAll(floors: Floor[], heights: BuildingMeta['heights']): void {
+  if (!heights || !floors || floors.length === 0) return;
+  floors.forEach(floor => applyFloorHeight(floor, heights));
+}
+
+/**
+ * 층고 변경 감지 헬퍼 함수
+ */
+function detectHeightChanges(
+  currentHeights: BuildingMeta['heights'],
+  newHeights?: Partial<BuildingMeta['heights']>
+): boolean {
+  if (!newHeights) return false;
+
+  // PH 높이 비교
+  const prevPhHeights = Array.isArray(currentHeights.ph)
+    ? currentHeights.ph
+    : [currentHeights.ph || 2650];
+  const newPhHeights = newHeights.ph !== undefined
+    ? (Array.isArray(newHeights.ph) ? newHeights.ph : [newHeights.ph || 2650])
+    : prevPhHeights;
+  const phHeightsChanged = JSON.stringify(prevPhHeights) !== JSON.stringify(newPhHeights);
+
+  return (
+    (newHeights.basement2 !== undefined && newHeights.basement2 !== currentHeights.basement2) ||
+    (newHeights.basement1 !== undefined && newHeights.basement1 !== currentHeights.basement1) ||
+    (newHeights.standard !== undefined && newHeights.standard !== currentHeights.standard) ||
+    (newHeights.floor1 !== undefined && newHeights.floor1 !== currentHeights.floor1) ||
+    (newHeights.floor2 !== undefined && newHeights.floor2 !== currentHeights.floor2) ||
+    (newHeights.floor3 !== undefined && newHeights.floor3 !== currentHeights.floor3) ||
+    (newHeights.floor4 !== undefined && newHeights.floor4 !== currentHeights.floor4) ||
+    (newHeights.floor5 !== undefined && newHeights.floor5 !== currentHeights.floor5) ||
+    (newHeights.top !== undefined && newHeights.top !== currentHeights.top) ||
+    phHeightsChanged
+  );
+}
+
+/**
+ * 기존 FloorTrade를 새로운 Floor에 매칭하여 보존
+ */
+function preserveFloorTrades(
+  oldFloors: Floor[],
+  newFloors: Floor[],
+  existingFloorTrades: FloorTrade[]
+): FloorTrade[] {
+  // 기존 floorTrades를 floorLabel과 floorClass 기준으로 매핑
+  const existingFloorTradesMap = new Map<string, FloorTrade[]>();
+  oldFloors.forEach(oldFloor => {
+    const key = `${oldFloor.floorLabel}_${oldFloor.floorClass}`;
+    const trades = existingFloorTrades.filter(t => t.floorId === oldFloor.id);
+    if (trades.length > 0) {
+      existingFloorTradesMap.set(key, trades);
+    }
+  });
+
+  // 새로운 floors에 매칭하여 보존
+  const preservedFloorTrades: FloorTrade[] = [];
+  newFloors.forEach(newFloor => {
+    const key = `${newFloor.floorLabel}_${newFloor.floorClass}`;
+    const existingTrades = existingFloorTradesMap.get(key);
+
+    if (existingTrades && existingTrades.length > 0) {
+      existingTrades.forEach(trade => {
+        preservedFloorTrades.push({
+          ...trade,
+          floorId: newFloor.id,
+        });
+      });
+    }
+  });
+
+  return preservedFloorTrades;
+}
+
+/**
+ * 캐시에서 buildings 로드 (TTL 기반)
+ * 캐시가 만료되었거나 없으면 스토리지에서 로드
+ */
+async function loadBuildingsWithCache(projectId: string): Promise<Building[]> {
+  // TTL 기반 캐시 확인
+  const cached = getCacheEntry(projectId);
+  if (cached) {
+    logger.debug(`Fetched ${cached.length} buildings from cache for project ${projectId}`);
+    return cached;
+  }
+
+  // 스토리지에서 로드
+  const buildings = await loadBuildingsByProject(projectId);
+  for (const building of buildings) {
+    building.floors = await loadFloorsByBuilding(building.id);
+    building.floorTrades = await loadFloorTradesByBuilding(building.id);
+  }
+
+  // TTL 캐시에 저장
+  setCacheEntry(projectId, buildings);
+  logger.debug(`Loaded ${buildings.length} buildings from storage for project ${projectId}`);
+  return buildings;
+}
+
+// ============================================
+// 서비스 함수
+// ============================================
 
 /**
  * 프로젝트의 모든 동 조회
  */
 export async function getBuildings(projectId: string): Promise<Building[]> {
-  // 캐시 확인
-  if (buildingsCache.has(projectId)) {
-    const cached = buildingsCache.get(projectId)!;
-    logger.debug(`Fetched ${cached.length} buildings from cache for project ${projectId}`);
-    return [...cached];
-  }
-
-  // 스토리지에서 로드
-  const buildings = await loadBuildingsByProject(projectId);
-  
-  // 각 동의 floors와 floorTrades 로드
-  for (const building of buildings) {
-    building.floors = await loadFloorsByBuilding(building.id);
-    building.floorTrades = await loadFloorTradesByBuilding(building.id);
-  }
-  
-  // 캐시에 저장
-  buildingsCache.set(projectId, buildings);
-  
-  logger.debug(`Fetched ${buildings.length} buildings for project ${projectId}`);
+  const buildings = await loadBuildingsWithCache(projectId);
+  // 외부로 반환 시 복사본 반환 (캐시 데이터 보호)
   return [...buildings];
 }
 
@@ -64,17 +317,9 @@ export async function getBuildings(projectId: string): Promise<Building[]> {
  * 동 생성
  */
 export async function createBuilding(dto: CreateBuildingDTO): Promise<Building> {
-  // 캐시에서 로드 또는 스토리지에서 로드
-  let buildings = buildingsCache.get(dto.projectId);
-  if (!buildings) {
-    buildings = await loadBuildingsByProject(dto.projectId);
-    for (const building of buildings) {
-      building.floors = await loadFloorsByBuilding(building.id);
-      building.floorTrades = await loadFloorTradesByBuilding(building.id);
-    }
-    buildingsCache.set(dto.projectId, buildings);
-  }
-  
+  // TTL 기반 캐시에서 로드
+  const buildings = await loadBuildingsWithCache(dto.projectId);
+
   const newBuilding: Building = {
     id: `building-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     projectId: dto.projectId,
@@ -86,21 +331,21 @@ export async function createBuilding(dto: CreateBuildingDTO): Promise<Building> 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  
+
   // buildingId 설정
   newBuilding.floors.forEach(floor => {
     floor.buildingId = newBuilding.id;
   });
-  
+
   buildings.push(newBuilding);
-  
+
   // 스토리지에 저장
   await saveBuildings(buildings);
   await saveFloors(newBuilding.floors);
-  
-  // 캐시 업데이트
-  buildingsCache.set(dto.projectId, buildings);
-  
+
+  // TTL 캐시 업데이트 (타임스탬프 갱신)
+  setCacheEntry(dto.projectId, buildings);
+
   logger.debug(`Created building: ${newBuilding.buildingName}`);
   return newBuilding;
 }
@@ -116,61 +361,32 @@ export async function updateBuilding(
   if (!buildingId || !projectId) {
     throw new Error('Building ID and Project ID are required');
   }
-  
-  // 캐시에서 로드 또는 스토리지에서 로드
-  let buildings = buildingsCache.get(projectId);
-  if (!buildings) {
-    buildings = await loadBuildingsByProject(projectId);
-    for (const building of buildings) {
-      building.floors = await loadFloorsByBuilding(building.id);
-      building.floorTrades = await loadFloorTradesByBuilding(building.id);
-    }
-    buildingsCache.set(projectId, buildings);
-  }
-  
-  // 디버깅: building 찾기 전 로그
+
+  // 캐시에서 로드 (헬퍼 함수 사용)
+  const buildings = await loadBuildingsWithCache(projectId);
+
+  // 디버깅 로그
   logger.debug(`Updating building: buildingId=${buildingId}, projectId=${projectId}, buildingsCount=${buildings.length}`);
-  if (buildings.length > 0) {
-    logger.debug(`Available building IDs: ${buildings.map(b => b.id).join(', ')}`);
-  }
-  
+
   const buildingIndex = buildings.findIndex(b => b.id === buildingId);
-  
   if (buildingIndex === -1) {
-    logger.error(`Building not found: buildingId=${buildingId}, projectId=${projectId}, buildingsCount=${buildings.length}`);
+    logger.error(`Building not found: buildingId=${buildingId}, projectId=${projectId}`);
     throw new Error(`Building not found: ${buildingId} in project ${projectId}`);
   }
-  
+
   const building = buildings[buildingIndex];
-  
+
   if (updates.buildingName) {
     building.buildingName = updates.buildingName;
   }
-  
+
   if (updates.meta) {
-    // 층고 변경 감지 (각 속성 비교, 안전하게 처리)
-    const prevPhHeights = Array.isArray(building.meta.heights.ph) ? building.meta.heights.ph : [building.meta.heights.ph || 2650];
-    const newPhHeights = updates.meta.heights?.ph !== undefined 
-      ? (Array.isArray(updates.meta.heights.ph) ? updates.meta.heights.ph : [updates.meta.heights.ph || 2650])
-      : prevPhHeights;
-    const phHeightsChanged = JSON.stringify(prevPhHeights) !== JSON.stringify(newPhHeights);
-    
-    const heightsChanged = updates.meta.heights && (
-      (updates.meta.heights.basement2 !== undefined && updates.meta.heights.basement2 !== building.meta.heights.basement2) ||
-      (updates.meta.heights.basement1 !== undefined && updates.meta.heights.basement1 !== building.meta.heights.basement1) ||
-      (updates.meta.heights.standard !== undefined && updates.meta.heights.standard !== building.meta.heights.standard) ||
-      (updates.meta.heights.floor1 !== undefined && updates.meta.heights.floor1 !== building.meta.heights.floor1) ||
-      (updates.meta.heights.floor2 !== undefined && updates.meta.heights.floor2 !== building.meta.heights.floor2) ||
-      (updates.meta.heights.floor3 !== undefined && updates.meta.heights.floor3 !== building.meta.heights.floor3) ||
-      (updates.meta.heights.floor4 !== undefined && updates.meta.heights.floor4 !== building.meta.heights.floor4) ||
-      (updates.meta.heights.floor5 !== undefined && updates.meta.heights.floor5 !== building.meta.heights.floor5) ||
-      (updates.meta.heights.top !== undefined && updates.meta.heights.top !== building.meta.heights.top) ||
-      phHeightsChanged
-    );
-    
+    // 층고 변경 감지 (헬퍼 함수 사용)
+    const heightsChanged = detectHeightChanges(building.meta.heights, updates.meta.heights);
+
     // meta 업데이트 (heights는 병합)
     if (updates.meta.heights) {
-      // PH층 층고를 배열로 변환하여 병합
+      // 옥탑층 층고를 배열로 변환하여 병합
       const updatedPhHeights = updates.meta.heights.ph !== undefined
         ? (Array.isArray(updates.meta.heights.ph) ? updates.meta.heights.ph : [updates.meta.heights.ph || 2650])
         : (Array.isArray(building.meta.heights.ph) ? building.meta.heights.ph : [building.meta.heights.ph || 2650]);
@@ -202,246 +418,38 @@ export async function updateBuilding(
     if (shouldRegenerateFloors) {
       const coreCount = updates.meta.coreCount ?? building.meta.coreCount;
       const floorCount = updates.meta.floorCount ?? building.meta.floorCount;
-      
-      // 기존 floorTrades를 floorLabel과 floorClass 기준으로 매핑 (물량 데이터 보존용)
-      const existingFloorTradesMap = new Map<string, FloorTrade[]>();
-      if (building.floorTrades && building.floors) {
-        building.floors.forEach(oldFloor => {
-          const key = `${oldFloor.floorLabel}_${oldFloor.floorClass}`;
-          const trades = building.floorTrades.filter(t => t.floorId === oldFloor.id);
-          if (trades.length > 0) {
-            existingFloorTradesMap.set(key, trades);
-          }
-        });
-      }
-      
-      // 업데이트된 heights 사용 (이미 building.meta에 반영됨)
       const heights = building.meta.heights;
+      const oldFloors = building.floors || [];
+      const existingTrades = building.floorTrades || [];
+
+      // 층 재생성
       building.floors = generateFloors(floorCount, coreCount, heights);
-      
-      // buildingId 설정
-      building.floors.forEach(floor => {
-        floor.buildingId = building.id;
-      });
-      
-      // 기존 floorTrades를 새로운 floors에 매칭하여 보존
-      const preservedFloorTrades: FloorTrade[] = [];
-      building.floors.forEach(newFloor => {
-        const key = `${newFloor.floorLabel}_${newFloor.floorClass}`;
-        const existingTrades = existingFloorTradesMap.get(key);
-        
-        if (existingTrades && existingTrades.length > 0) {
-          // 같은 floorLabel과 floorClass를 가진 기존 floorTrades가 있으면 보존
-          existingTrades.forEach(trade => {
-            preservedFloorTrades.push({
-              ...trade,
-              floorId: newFloor.id, // 새로운 floorId로 업데이트
-            });
-          });
-        }
-        // 새로운 층이거나 층분류가 변경된 경우는 floorTrades를 추가하지 않음 (빈 상태)
-      });
-      
-      // 보존된 floorTrades로 업데이트
-      building.floorTrades = preservedFloorTrades;
-      
-      // 층 재생성 시에만 기본 층고 적용 (자동반영 버튼을 누르지 않아도 초기값 설정)
-      if (heights && building.floors.length > 0) {
-        building.floors.forEach(floor => {
-          // 지하층 처리
-          if (floor.levelType === '지하') {
-            if (floor.floorLabel === 'B2' && heights.basement2 !== undefined && heights.basement2 !== null) {
-              floor.height = heights.basement2;
-            } else if (floor.floorLabel === 'B1' && heights.basement1 !== undefined && heights.basement1 !== null) {
-              floor.height = heights.basement1;
-            }
-          }
-          // 지상층 처리
-          else if (floor.levelType === '지상') {
-            // 층 라벨로 먼저 확인 (코어별 층 포함)
-            const floorMatch = floor.floorLabel.match(/(\d+)F/);
-            if (floorMatch) {
-              const floorNum = parseInt(floorMatch[1], 10);
-              if (floorNum === 1 && heights.floor1 !== undefined && heights.floor1 !== null) {
-                floor.height = heights.floor1;
-              } else if (floorNum === 2 && heights.floor2 !== undefined && heights.floor2 !== null) {
-                floor.height = heights.floor2;
-              } else if (floorNum === 3 && heights.floor3 !== undefined && heights.floor3 !== null) {
-                floor.height = heights.floor3;
-              } else if (floorNum === 4 && heights.floor4 !== undefined && heights.floor4 !== null) {
-                floor.height = heights.floor4;
-              } else if (floorNum === 5 && heights.floor5 !== undefined && heights.floor5 !== null) {
-                floor.height = heights.floor5;
-              } else if (floor.floorClass === '기준층' && heights.standard !== undefined && heights.standard !== null) {
-                floor.height = heights.standard;
-              } else if (floor.floorClass === '최상층' && heights.top !== undefined && heights.top !== null) {
-                floor.height = heights.top;
-              } else if (floor.floorClass === 'PH층') {
-                // PH층 라벨에서 번호 추출 (PH1, PH2 등)
-                const phMatch = floor.floorLabel.match(/PH(\d+)/);
-                if (phMatch && heights.ph !== undefined && heights.ph !== null) {
-                  const phIndex = parseInt(phMatch[1], 10) - 1; // PH1 -> 0, PH2 -> 1
-                  if (Array.isArray(heights.ph) && heights.ph[phIndex] !== undefined && heights.ph[phIndex] !== null) {
-                    floor.height = heights.ph[phIndex];
-                  } else if (!Array.isArray(heights.ph)) {
-                    floor.height = heights.ph;
-                  }
-                }
-              } else if (heights.standard !== undefined && heights.standard !== null) {
-                // 기본값으로 기준층 높이 사용
-                floor.height = heights.standard;
-              }
-            } else {
-              // 라벨 매칭 실패 시 floorClass로 확인
-              if (floor.floorClass === '셋팅층' && heights.floor1 !== undefined && heights.floor1 !== null) {
-                floor.height = heights.floor1;
-              } else if (floor.floorClass === '기준층' && heights.standard !== undefined && heights.standard !== null) {
-                floor.height = heights.standard;
-              } else if (floor.floorClass === '최상층' && heights.top !== undefined && heights.top !== null) {
-                floor.height = heights.top;
-              } else if (floor.floorClass === 'PH층') {
-                // PH층 라벨에서 번호 추출 (PH1, PH2 등)
-                const phMatch = floor.floorLabel.match(/PH(\d+)/);
-                if (phMatch && heights.ph !== undefined && heights.ph !== null) {
-                  const phIndex = parseInt(phMatch[1], 10) - 1; // PH1 -> 0, PH2 -> 1
-                  if (Array.isArray(heights.ph) && heights.ph[phIndex] !== undefined && heights.ph[phIndex] !== null) {
-                    floor.height = heights.ph[phIndex];
-                  } else if (!Array.isArray(heights.ph)) {
-                    floor.height = heights.ph;
-                  }
-                }
-              } else if (heights.standard !== undefined && heights.standard !== null) {
-                // 기본값으로 기준층 높이 사용
-                floor.height = heights.standard;
-              }
-            }
-          }
-        });
-        
-        logger.debug(`Applied initial floor heights for regenerated floors: ${building.floors.length} floors`);
-      }
+      building.floors.forEach(floor => { floor.buildingId = building.id; });
+
+      // FloorTrade 보존 (헬퍼 함수 사용)
+      building.floorTrades = preserveFloorTrades(oldFloors, building.floors, existingTrades);
+
+      // 층고 적용 (헬퍼 함수 사용)
+      applyFloorHeightsToAll(building.floors, heights);
+      logger.debug(`Regenerated ${building.floors.length} floors with preserved trades`);
     } else if (updates.meta.coreCount !== undefined) {
       // 코어 개수만 변경된 경우에도 층 재생성
-      
-      // 기존 floorTrades를 floorLabel과 floorClass 기준으로 매핑 (물량 데이터 보존용)
-      const existingFloorTradesMap = new Map<string, FloorTrade[]>();
-      if (building.floorTrades && building.floors) {
-        building.floors.forEach(oldFloor => {
-          const key = `${oldFloor.floorLabel}_${oldFloor.floorClass}`;
-          const trades = building.floorTrades.filter(t => t.floorId === oldFloor.id);
-          if (trades.length > 0) {
-            existingFloorTradesMap.set(key, trades);
-          }
-        });
-      }
-      
-      // 업데이트된 heights 사용 (이미 building.meta에 반영됨)
       const heights = building.meta.heights;
+      const oldFloors = building.floors || [];
+      const existingTrades = building.floorTrades || [];
+
+      // 층 재생성
       building.floors = generateFloors(building.meta.floorCount, updates.meta.coreCount, heights);
-      
-      // buildingId 설정
-      building.floors.forEach(floor => {
-        floor.buildingId = building.id;
-      });
-      
-      // 기존 floorTrades를 새로운 floors에 매칭하여 보존
-      const preservedFloorTrades: FloorTrade[] = [];
-      building.floors.forEach(newFloor => {
-        const key = `${newFloor.floorLabel}_${newFloor.floorClass}`;
-        const existingTrades = existingFloorTradesMap.get(key);
-        
-        if (existingTrades && existingTrades.length > 0) {
-          // 같은 floorLabel과 floorClass를 가진 기존 floorTrades가 있으면 보존
-          existingTrades.forEach(trade => {
-            preservedFloorTrades.push({
-              ...trade,
-              floorId: newFloor.id, // 새로운 floorId로 업데이트
-            });
-          });
-        }
-        // 새로운 층이거나 층분류가 변경된 경우는 floorTrades를 추가하지 않음 (빈 상태)
-      });
-      
-      // 보존된 floorTrades로 업데이트
-      building.floorTrades = preservedFloorTrades;
-      
-      // 층 재생성 시에만 기본 층고 적용
-      if (heights && building.floors.length > 0) {
-        building.floors.forEach(floor => {
-          // 지하층 처리
-          if (floor.levelType === '지하') {
-            if (floor.floorLabel === 'B2' && heights.basement2 !== undefined && heights.basement2 !== null) {
-              floor.height = heights.basement2;
-            } else if (floor.floorLabel === 'B1' && heights.basement1 !== undefined && heights.basement1 !== null) {
-              floor.height = heights.basement1;
-            }
-          }
-          // 지상층 처리
-          else if (floor.levelType === '지상') {
-            // 층 라벨로 먼저 확인 (코어별 층 포함)
-            const floorMatch = floor.floorLabel.match(/(\d+)F/);
-            if (floorMatch) {
-              const floorNum = parseInt(floorMatch[1], 10);
-              if (floorNum === 1 && heights.floor1 !== undefined && heights.floor1 !== null) {
-                floor.height = heights.floor1;
-              } else if (floorNum === 2 && heights.floor2 !== undefined && heights.floor2 !== null) {
-                floor.height = heights.floor2;
-              } else if (floorNum === 3 && heights.floor3 !== undefined && heights.floor3 !== null) {
-                floor.height = heights.floor3;
-              } else if (floorNum === 4 && heights.floor4 !== undefined && heights.floor4 !== null) {
-                floor.height = heights.floor4;
-              } else if (floorNum === 5 && heights.floor5 !== undefined && heights.floor5 !== null) {
-                floor.height = heights.floor5;
-              } else if (floor.floorClass === '기준층' && heights.standard !== undefined && heights.standard !== null) {
-                floor.height = heights.standard;
-              } else if (floor.floorClass === '최상층' && heights.top !== undefined && heights.top !== null) {
-                floor.height = heights.top;
-              } else if (floor.floorClass === 'PH층') {
-                // PH층 라벨에서 번호 추출 (PH1, PH2 등)
-                const phMatch = floor.floorLabel.match(/PH(\d+)/);
-                if (phMatch && heights.ph !== undefined && heights.ph !== null) {
-                  const phIndex = parseInt(phMatch[1], 10) - 1; // PH1 -> 0, PH2 -> 1
-                  if (Array.isArray(heights.ph) && heights.ph[phIndex] !== undefined && heights.ph[phIndex] !== null) {
-                    floor.height = heights.ph[phIndex];
-                  } else if (!Array.isArray(heights.ph)) {
-                    floor.height = heights.ph;
-                  }
-                }
-              } else if (heights.standard !== undefined && heights.standard !== null) {
-                // 기본값으로 기준층 높이 사용
-                floor.height = heights.standard;
-              }
-            } else {
-              // 라벨 매칭 실패 시 floorClass로 확인
-              if (floor.floorClass === '셋팅층' && heights.floor1 !== undefined && heights.floor1 !== null) {
-                floor.height = heights.floor1;
-              } else if (floor.floorClass === '기준층' && heights.standard !== undefined && heights.standard !== null) {
-                floor.height = heights.standard;
-              } else if (floor.floorClass === '최상층' && heights.top !== undefined && heights.top !== null) {
-                floor.height = heights.top;
-              } else if (floor.floorClass === 'PH층') {
-                // PH층 라벨에서 번호 추출 (PH1, PH2 등)
-                const phMatch = floor.floorLabel.match(/PH(\d+)/);
-                if (phMatch && heights.ph !== undefined && heights.ph !== null) {
-                  const phIndex = parseInt(phMatch[1], 10) - 1; // PH1 -> 0, PH2 -> 1
-                  if (Array.isArray(heights.ph) && heights.ph[phIndex] !== undefined && heights.ph[phIndex] !== null) {
-                    floor.height = heights.ph[phIndex];
-                  } else if (!Array.isArray(heights.ph)) {
-                    floor.height = heights.ph;
-                  }
-                }
-              } else if (heights.standard !== undefined && heights.standard !== null) {
-                // 기본값으로 기준층 높이 사용
-                floor.height = heights.standard;
-              }
-            }
-          }
-        });
-        
-        logger.debug(`Applied initial floor heights for regenerated floors: ${building.floors.length} floors`);
-      }
+      building.floors.forEach(floor => { floor.buildingId = building.id; });
+
+      // FloorTrade 보존 (헬퍼 함수 사용)
+      building.floorTrades = preserveFloorTrades(oldFloors, building.floors, existingTrades);
+
+      // 층고 적용 (헬퍼 함수 사용)
+      applyFloorHeightsToAll(building.floors, heights);
+      logger.debug(`Regenerated ${building.floors.length} floors (coreCount change)`);
     }
-    
+
     // 층고 변경 시에는 자동으로 floors의 height를 업데이트하지 않음
     // 층설정 테이블의 "층고 자동반영" 버튼을 통해 수동으로 반영해야 함
   }
@@ -455,7 +463,7 @@ export async function updateBuilding(
   await saveFloorTrades(building.floorTrades);
   
   // 캐시 업데이트
-  buildingsCache.set(projectId, buildings);
+  setCacheEntry(projectId, buildings);
   
   return building;
 }
@@ -466,12 +474,12 @@ export async function updateBuilding(
 export async function deleteBuilding(buildingId: string, projectId: string): Promise<void> {
   // 스토리지에서 삭제
   await deleteBuildingFromStorage(buildingId);
-  
-  // 캐시 업데이트
-  const buildings = buildingsCache.get(projectId) || [];
+
+  // TTL 캐시 업데이트
+  const buildings = getCacheEntry(projectId) || [];
   const filtered = buildings.filter(b => b.id !== buildingId);
-  buildingsCache.set(projectId, filtered);
-  
+  setCacheEntry(projectId, filtered);
+
   logger.debug(`Deleted building: ${buildingId}`);
 }
 
@@ -483,17 +491,8 @@ export async function reorderBuildings(
   fromIndex: number,
   toIndex: number
 ): Promise<void> {
-  // 캐시에서 로드 또는 스토리지에서 로드
-  let buildings = buildingsCache.get(projectId);
-  if (!buildings) {
-    buildings = await loadBuildingsByProject(projectId);
-    for (const building of buildings) {
-      building.floors = await loadFloorsByBuilding(building.id);
-      building.floorTrades = await loadFloorTradesByBuilding(building.id);
-    }
-    buildingsCache.set(projectId, buildings);
-  }
-  
+  const buildings = await loadBuildingsWithCache(projectId);
+
   if (fromIndex < 0 || fromIndex >= buildings.length || toIndex < 0 || toIndex >= buildings.length) {
     throw new Error('Invalid index');
   }
@@ -510,7 +509,7 @@ export async function reorderBuildings(
   await saveBuildings(buildings);
   
   // 캐시 업데이트
-  buildingsCache.set(projectId, buildings);
+  setCacheEntry(projectId, buildings);
   
   logger.debug(`Reordered buildings: ${fromIndex} -> ${toIndex}`);
 }
@@ -524,17 +523,7 @@ export async function updateBuildingFloorsAndTrades(
   floors: Floor[],
   floorTrades: FloorTrade[]
 ): Promise<Building> {
-  // 캐시에서 로드 또는 스토리지에서 로드
-  let buildings = buildingsCache.get(projectId);
-  if (!buildings) {
-    buildings = await loadBuildingsByProject(projectId);
-    for (const building of buildings) {
-      building.floors = await loadFloorsByBuilding(building.id);
-      building.floorTrades = await loadFloorTradesByBuilding(building.id);
-    }
-    buildingsCache.set(projectId, buildings);
-  }
-  
+  const buildings = await loadBuildingsWithCache(projectId);
   const building = buildings.find(b => b.id === buildingId);
   
   if (!building) {
@@ -551,7 +540,7 @@ export async function updateBuildingFloorsAndTrades(
   await saveFloorTrades(floorTrades);
   
   // 캐시 업데이트
-  buildingsCache.set(projectId, buildings);
+  setCacheEntry(projectId, buildings);
   
   logger.debug(`Updated floors and trades for building: ${buildingId}`);
   return building;
@@ -566,17 +555,7 @@ export async function updateFloor(
   projectId: string,
   updates: UpdateFloorDTO
 ): Promise<Floor> {
-  // 캐시에서 로드 또는 스토리지에서 로드
-  let buildings = buildingsCache.get(projectId);
-  if (!buildings) {
-    buildings = await loadBuildingsByProject(projectId);
-    for (const building of buildings) {
-      building.floors = await loadFloorsByBuilding(building.id);
-      building.floorTrades = await loadFloorTradesByBuilding(building.id);
-    }
-    buildingsCache.set(projectId, buildings);
-  }
-  
+  const buildings = await loadBuildingsWithCache(projectId);
   const building = buildings.find(b => b.id === buildingId);
   
   if (!building) {
@@ -603,7 +582,7 @@ export async function updateFloor(
   await saveFloorToStorage(floor);
   
   // 캐시 업데이트
-  buildingsCache.set(projectId, buildings);
+  setCacheEntry(projectId, buildings);
   
   return floor;
 }
@@ -616,17 +595,7 @@ export async function saveFloorTrade(
   projectId: string,
   trade: UpdateFloorTradeDTO
 ): Promise<FloorTrade> {
-  // 캐시에서 로드 또는 스토리지에서 로드
-  let buildings = buildingsCache.get(projectId);
-  if (!buildings) {
-    buildings = await loadBuildingsByProject(projectId);
-    for (const building of buildings) {
-      building.floors = await loadFloorsByBuilding(building.id);
-      building.floorTrades = await loadFloorTradesByBuilding(building.id);
-    }
-    buildingsCache.set(projectId, buildings);
-  }
-  
+  const buildings = await loadBuildingsWithCache(projectId);
   const building = buildings.find(b => b.id === buildingId);
   
   if (!building) {
@@ -660,7 +629,7 @@ export async function saveFloorTrade(
   await saveFloorTradeToStorage(floorTrade);
   
   // 캐시 업데이트
-  buildingsCache.set(projectId, buildings);
+  setCacheEntry(projectId, buildings);
   
   return floorTrade;
 }
@@ -674,6 +643,7 @@ function generateFloors(
     ground: number;
     ph: number;
     coreGroundFloors?: number[];
+    coreBasementFloors?: number[]; // 코어별 지하층 수 추가
   },
   coreCount?: number,
   heights?: {
@@ -686,22 +656,68 @@ function generateFloors(
     floor4?: number;
     floor5?: number;
     top?: number;
+<<<<<<< HEAD
     ph?: number | number[];
+=======
+    ph?: number | number[]; // 배열도 지원
+>>>>>>> staging
   }
 ): Floor[] {
   const floors: Floor[] = [];
   
   // 지하층 생성 (B2, B1, ...)
-  for (let i = floorCount.basement; i >= 1; i--) {
-    floors.push({
-      id: `floor-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      buildingId: '',
-      floorLabel: `B${i}`,
-      floorNumber: -i,
-      levelType: '지하',
-      floorClass: '지하층',
-      height: null,
-    });
+  // 코어별 지하층 수가 있으면 코어별로 생성, 없으면 전체 지하층 수로 생성
+  if (coreCount && coreCount > 1 && floorCount.coreBasementFloors && floorCount.coreBasementFloors.length > 0) {
+    // 코어별 지하층 생성
+    for (let coreIndex = 0; coreIndex < coreCount; coreIndex++) {
+      const coreNumber = coreIndex + 1;
+      const coreBasementCount = floorCount.coreBasementFloors[coreIndex] || 0;
+      
+      for (let i = coreBasementCount; i >= 1; i--) {
+        // 지하층 층고 설정
+        let basementHeight: number | null = null;
+        if (heights) {
+          if (i === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
+            basementHeight = heights.basement2;
+          } else if (i === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
+            basementHeight = heights.basement1;
+          }
+        }
+        
+        floors.push({
+          id: `floor-core${coreNumber}-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          buildingId: '',
+          floorLabel: `코어${coreNumber}-B${i}`,
+          floorNumber: -(coreNumber * 1000 + i),
+          levelType: '지하',
+          floorClass: '지하층',
+          height: basementHeight,
+        });
+      }
+    }
+  } else {
+    // 전체 지하층 수로 생성 (기존 방식)
+    for (let i = floorCount.basement; i >= 1; i--) {
+      // 지하층 층고 설정
+      let basementHeight: number | null = null;
+      if (heights) {
+        if (i === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
+          basementHeight = heights.basement2;
+        } else if (i === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
+          basementHeight = heights.basement1;
+        }
+      }
+      
+      floors.push({
+        id: `floor-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        buildingId: '',
+        floorLabel: `B${i}`,
+        floorNumber: -i,
+        levelType: '지하',
+        floorClass: '지하층',
+        height: basementHeight,
+      });
+    }
   }
   
   // 지상층 생성
@@ -726,215 +742,97 @@ function generateFloors(
       const floor3Height = heights?.floor3;
       const floor4Height = heights?.floor4;
       const floor5Height = heights?.floor5;
-      const isFloor1Different = hasFloor1 && standardHeight !== undefined && standardHeight !== null && floor1Height !== standardHeight;
-      const isFloor2Different = hasFloor2 && standardHeight !== undefined && standardHeight !== null && floor2Height !== standardHeight;
-      const isFloor3Different = hasFloor3 && standardHeight !== undefined && standardHeight !== null && floor3Height !== standardHeight;
-      const isFloor4Different = hasFloor4 && standardHeight !== undefined && standardHeight !== null && floor4Height !== standardHeight;
-      const isFloor5Different = hasFloor5 && standardHeight !== undefined && standardHeight !== null && floor5Height !== standardHeight;
       
-      // 셋팅층이 되는 층 번호 찾기 (1, 2, 3, 4, 5층 중 기준층과 다른 층)
+      // 5~1층 순서대로 기준층과 층고가 달라지는 층의 윗층이 셋팅층
+      // 각 층의 층고를 확인하고 기준층과 다른지 체크
       const settingFloors: number[] = [];
-      if (isFloor1Different && coreFloorCount >= 1) settingFloors.push(1);
-      if (isFloor2Different && coreFloorCount >= 2) settingFloors.push(2);
-      if (isFloor3Different && coreFloorCount >= 3) settingFloors.push(3);
-      if (isFloor4Different && coreFloorCount >= 4) settingFloors.push(4);
-      if (isFloor5Different && coreFloorCount >= 5) settingFloors.push(5);
       
-      // 가장 낮은 셋팅층 번호
-      const lowestSettingFloor = settingFloors.length > 0 ? Math.min(...settingFloors) : null;
+      // 5층부터 1층까지 역순으로 확인하여 기준층과 층고가 다른 층 찾기
+      // 더 위층이 셋팅층이면 아래층은 일반층
+      if (coreFloorCount >= 5 && hasFloor5 && standardHeight !== undefined && standardHeight !== null && floor5Height !== standardHeight) {
+        settingFloors.push(5);
+      }
+      if (coreFloorCount >= 4 && hasFloor4 && standardHeight !== undefined && standardHeight !== null && floor4Height !== standardHeight && !settingFloors.includes(5)) {
+        settingFloors.push(4);
+      }
+      if (coreFloorCount >= 3 && hasFloor3 && standardHeight !== undefined && standardHeight !== null && floor3Height !== standardHeight && !settingFloors.includes(4) && !settingFloors.includes(5)) {
+        settingFloors.push(3);
+      }
+      if (coreFloorCount >= 2 && hasFloor2 && standardHeight !== undefined && standardHeight !== null && floor2Height !== standardHeight && !settingFloors.includes(3) && !settingFloors.includes(4) && !settingFloors.includes(5)) {
+        settingFloors.push(2);
+      }
+      if (coreFloorCount >= 1 && hasFloor1 && standardHeight !== undefined && standardHeight !== null && floor1Height !== standardHeight && !settingFloors.includes(2) && !settingFloors.includes(3) && !settingFloors.includes(4) && !settingFloors.includes(5)) {
+        settingFloors.push(1);
+      }
       
-      // 2층이 일반층인지 확인 (3층이 셋팅층이고 2층이 기준층과 같을 때)
-      const isFloor2Normal = !isFloor2Different && isFloor3Different && coreFloorCount >= 3;
+      // 가장 높은 셋팅층 번호 (기준층 시작점 계산용)
+      const highestSettingFloor = settingFloors.length > 0 ? Math.max(...settingFloors) : null;
       
-      // 1층 처리
-      if (coreFloorCount >= 1) {
-        // 2층, 3층, 4층, 5층이 일반층이거나 셋팅층이면 1층은 무조건 일반층 (우선순위)
-        if (settingFloors.includes(2) || settingFloors.includes(3) || settingFloors.includes(4) || settingFloors.includes(5) || isFloor2Normal) {
-          // 2층, 3층, 4층, 5층 중 하나라도 셋팅층이면 1층은 일반층
+      // 5~1층 순서대로 처리 (위층부터 아래층으로)
+      for (let floorNum = 5; floorNum >= 1; floorNum--) {
+        if (coreFloorCount < floorNum) continue;
+        
+        const isSettingFloor = settingFloors.includes(floorNum);
+        
+        if (isSettingFloor) {
+          // 셋팅층
           floors.push({
-            id: `floor-core${coreNumber}-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `floor-core${coreNumber}-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             buildingId: '',
-            floorLabel: `코어${coreNumber}-1F`,
-            floorNumber: coreNumber * 1000 + 1,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        } else if (isFloor1Different) {
-          // 1층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-core${coreNumber}-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-1F`,
-            floorNumber: coreNumber * 1000 + 1,
+            floorLabel: `코어${coreNumber}-${floorNum}F`,
+            floorNumber: coreNumber * 1000 + floorNum,
             levelType: '지상',
             floorClass: '셋팅층',
             height: null,
           });
         } else {
-          // 기본값: 셋팅층
-      floors.push({
-        id: `floor-core${coreNumber}-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        buildingId: '',
-        floorLabel: `코어${coreNumber}-1F`,
-        floorNumber: coreNumber * 1000 + 1,
-        levelType: '지상',
-        floorClass: '셋팅층',
-        height: null,
-      });
-        }
-      }
-      
-      // 2층 처리
-      if (coreFloorCount >= 2) {
-        // 3층, 4층, 5층이 셋팅층이면 2층은 무조건 일반층 (우선순위)
-        if ((isFloor3Different && coreFloorCount >= 3) || (isFloor4Different && coreFloorCount >= 4) || (isFloor5Different && coreFloorCount >= 5)) {
-          // 3층, 4층, 5층 중 하나라도 셋팅층이면 2층은 일반층 (2층이 기준층과 같거나 달라도)
+          // 일반층 (위층에 셋팅층이 있거나, 기준층과 층고가 같은 경우)
           floors.push({
-            id: `floor-core${coreNumber}-2f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `floor-core${coreNumber}-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             buildingId: '',
-            floorLabel: `코어${coreNumber}-2F`,
-            floorNumber: coreNumber * 1000 + 2,
+            floorLabel: `코어${coreNumber}-${floorNum}F`,
+            floorNumber: coreNumber * 1000 + floorNum,
             levelType: '지상',
             floorClass: '일반층',
             height: null,
           });
-        } else if (isFloor2Different) {
-          // 2층이 기준층과 다르면 셋팅층
+        }
+      }
+      
+      // 기준층 범위 생성 (가장 높은 셋팅층 다음 층부터 최상층 전까지)
+      const standardStart = highestSettingFloor ? highestSettingFloor + 1 : (coreFloorCount >= 2 ? 2 : 1);
+      
+      // 5층이 셋팅층이고 기준층과 층고가 다르면, 6층도 기준층에서 분리하여 셋팅층으로 처리
+      // 6층의 층고는 기본적으로 기준층과 같지만, 사용자가 수정할 수 있으므로
+      // 일단 6층을 개별 층으로 생성하고, 층고 업데이트 시점에 기준층과 다르면 셋팅층으로 변경
+      let actualStandardStart = standardStart;
+      
+      // 5층이 셋팅층이면 6층도 개별 층으로 생성 (나중에 층고 비교하여 셋팅층으로 변경 가능)
+      if (settingFloors.includes(5) && coreFloorCount >= 6) {
+        // 6층을 개별 기준층으로 생성 (나중에 층고가 다르면 셋팅층으로 변경)
         floors.push({
-          id: `floor-core${coreNumber}-2f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `floor-core${coreNumber}-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
-          floorLabel: `코어${coreNumber}-2F`,
-          floorNumber: coreNumber * 1000 + 2,
+          floorLabel: `코어${coreNumber}-6F`,
+          floorNumber: coreNumber * 1000 + 6,
           levelType: '지상',
-          floorClass: '셋팅층',
+          floorClass: '기준층', // 일단 기준층으로 생성, 층고 업데이트 시점에 변경 가능
           height: null,
         });
-        }
-        // 2층이 기준층과 같고 3층이 셋팅층이 아니면 기준층 범위에 포함됨
+        actualStandardStart = 7; // 7층부터 기준층 범위 시작
       }
       
-      // 3층 처리
-      if (coreFloorCount >= 3) {
-        // 4층 또는 5층이 셋팅층이면 3층은 무조건 일반층 (우선순위)
-        if ((isFloor4Different && coreFloorCount >= 4) || (isFloor5Different && coreFloorCount >= 5)) {
-          // 4층 또는 5층이 셋팅층이면 3층은 일반층
-          floors.push({
-            id: `floor-core${coreNumber}-3f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-3F`,
-            floorNumber: coreNumber * 1000 + 3,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        } else if (isFloor3Different) {
-          // 3층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-core${coreNumber}-3f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-3F`,
-            floorNumber: coreNumber * 1000 + 3,
-            levelType: '지상',
-            floorClass: '셋팅층',
-            height: null,
-          });
-        } else if (lowestSettingFloor && lowestSettingFloor > 3) {
-          // 셋팅층보다 낮으면 일반층
-          floors.push({
-            id: `floor-core${coreNumber}-3f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-3F`,
-            floorNumber: coreNumber * 1000 + 3,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        }
-        // 3층이 기준층과 같고 셋팅층이 없거나 3층보다 낮으면 기준층 범위에 포함됨
-      }
-      
-      // 4층 처리
-      if (coreFloorCount >= 4) {
-        // 5층이 셋팅층이면 4층은 무조건 일반층 (우선순위)
-        if (isFloor5Different && coreFloorCount >= 5) {
-          // 5층이 셋팅층이면 4층은 일반층
-          floors.push({
-            id: `floor-core${coreNumber}-4f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-4F`,
-            floorNumber: coreNumber * 1000 + 4,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        } else if (isFloor4Different) {
-          // 4층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-core${coreNumber}-4f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-4F`,
-            floorNumber: coreNumber * 1000 + 4,
-            levelType: '지상',
-            floorClass: '셋팅층',
-            height: null,
-          });
-        } else if (lowestSettingFloor && lowestSettingFloor > 4) {
-          // 셋팅층보다 낮으면 일반층
-          floors.push({
-            id: `floor-core${coreNumber}-4f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-4F`,
-            floorNumber: coreNumber * 1000 + 4,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        }
-        // 4층이 기준층과 같고 셋팅층이 없거나 4층보다 낮으면 기준층 범위에 포함됨
-      }
-      
-      // 5층 처리
-      if (coreFloorCount >= 5) {
-        if (isFloor5Different) {
-          // 5층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-core${coreNumber}-5f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-5F`,
-            floorNumber: coreNumber * 1000 + 5,
-            levelType: '지상',
-            floorClass: '셋팅층',
-            height: null,
-          });
-        } else if (lowestSettingFloor && lowestSettingFloor > 5) {
-          // 셋팅층보다 낮으면 일반층
-          floors.push({
-            id: `floor-core${coreNumber}-5f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-5F`,
-            floorNumber: coreNumber * 1000 + 5,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        }
-        // 5층이 기준층과 같고 셋팅층이 없거나 5층보다 낮으면 기준층 범위에 포함됨
-      }
-      
-      // 기준층 범위 생성 (셋팅층이 아닌 층부터 최상층 전까지)
-      const standardStart = settingFloors.length > 0 ? Math.max(...settingFloors) + 1 : (coreFloorCount >= 2 ? 2 : 1);
-      if (standardStart <= coreFloorCount - 1) {
-          const standardEnd = coreFloorCount - 1;
-          floors.push({
-            id: `floor-core${coreNumber}-${standardStart}~${standardEnd}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `코어${coreNumber}-${standardStart}~${standardEnd}F 기준층`,
-            floorNumber: coreNumber * 1000 + standardStart,
-            levelType: '지상',
-            floorClass: '기준층',
-            height: null,
-          });
+      if (actualStandardStart <= coreFloorCount - 1) {
+        const standardEnd = coreFloorCount - 1;
+        floors.push({
+          id: `floor-core${coreNumber}-${actualStandardStart}~${standardEnd}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          buildingId: '',
+          floorLabel: `코어${coreNumber}-${actualStandardStart}~${standardEnd}F 기준층`,
+          floorNumber: coreNumber * 1000 + actualStandardStart,
+          levelType: '지상',
+          floorClass: '기준층',
+          height: null,
+        });
       }
       
       // 최상층
@@ -985,215 +883,94 @@ function generateFloors(
       const floor3Height = heights?.floor3;
       const floor4Height = heights?.floor4;
       const floor5Height = heights?.floor5;
-      const isFloor1Different = hasFloor1 && standardHeight !== undefined && standardHeight !== null && floor1Height !== standardHeight;
-      const isFloor2Different = hasFloor2 && standardHeight !== undefined && standardHeight !== null && floor2Height !== standardHeight;
-      const isFloor3Different = hasFloor3 && standardHeight !== undefined && standardHeight !== null && floor3Height !== standardHeight;
-      const isFloor4Different = hasFloor4 && standardHeight !== undefined && standardHeight !== null && floor4Height !== standardHeight;
-      const isFloor5Different = hasFloor5 && standardHeight !== undefined && standardHeight !== null && floor5Height !== standardHeight;
       
-      // 셋팅층이 되는 층 번호 찾기 (1, 2, 3, 4, 5층 중 기준층과 다른 층)
+      // 5~1층 순서대로 기준층과 층고가 달라지는 층의 윗층이 셋팅층
+      // 각 층의 층고를 확인하고 기준층과 다른지 체크
       const settingFloors: number[] = [];
-      if (isFloor1Different && groundFloorCount >= 1) settingFloors.push(1);
-      if (isFloor2Different && groundFloorCount >= 2) settingFloors.push(2);
-      if (isFloor3Different && groundFloorCount >= 3) settingFloors.push(3);
-      if (isFloor4Different && groundFloorCount >= 4) settingFloors.push(4);
-      if (isFloor5Different && groundFloorCount >= 5) settingFloors.push(5);
       
-      // 가장 낮은 셋팅층 번호
-      const lowestSettingFloor = settingFloors.length > 0 ? Math.min(...settingFloors) : null;
+      // 5층부터 1층까지 역순으로 확인하여 기준층과 층고가 다른 층 찾기
+      // 더 위층이 셋팅층이면 아래층은 일반층
+      if (groundFloorCount >= 5 && hasFloor5 && standardHeight !== undefined && standardHeight !== null && floor5Height !== standardHeight) {
+        settingFloors.push(5);
+      }
+      if (groundFloorCount >= 4 && hasFloor4 && standardHeight !== undefined && standardHeight !== null && floor4Height !== standardHeight && !settingFloors.includes(5)) {
+        settingFloors.push(4);
+      }
+      if (groundFloorCount >= 3 && hasFloor3 && standardHeight !== undefined && standardHeight !== null && floor3Height !== standardHeight && !settingFloors.includes(4) && !settingFloors.includes(5)) {
+        settingFloors.push(3);
+      }
+      if (groundFloorCount >= 2 && hasFloor2 && standardHeight !== undefined && standardHeight !== null && floor2Height !== standardHeight && !settingFloors.includes(3) && !settingFloors.includes(4) && !settingFloors.includes(5)) {
+        settingFloors.push(2);
+      }
+      if (groundFloorCount >= 1 && hasFloor1 && standardHeight !== undefined && standardHeight !== null && floor1Height !== standardHeight && !settingFloors.includes(2) && !settingFloors.includes(3) && !settingFloors.includes(4) && !settingFloors.includes(5)) {
+        settingFloors.push(1);
+      }
       
-      // 2층이 일반층인지 확인 (3층이 셋팅층이고 2층이 기준층과 같을 때)
-      const isFloor2Normal = !isFloor2Different && isFloor3Different && groundFloorCount >= 3;
+      // 가장 높은 셋팅층 번호 (기준층 시작점 계산용)
+      const highestSettingFloor = settingFloors.length > 0 ? Math.max(...settingFloors) : null;
       
-      // 1층 처리
-      if (groundFloorCount >= 1) {
-        // 2층, 3층, 4층, 5층이 일반층이거나 셋팅층이면 1층은 무조건 일반층 (우선순위)
-        if (settingFloors.includes(2) || settingFloors.includes(3) || settingFloors.includes(4) || settingFloors.includes(5) || isFloor2Normal) {
-          // 2층, 3층, 4층, 5층 중 하나라도 셋팅층이면 1층은 일반층
+      // 5~1층 순서대로 처리 (위층부터 아래층으로)
+      for (let floorNum = 5; floorNum >= 1; floorNum--) {
+        if (groundFloorCount < floorNum) continue;
+        
+        const isSettingFloor = settingFloors.includes(floorNum);
+        
+        if (isSettingFloor) {
+          // 셋팅층
           floors.push({
-            id: `floor-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `floor-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             buildingId: '',
-            floorLabel: '1F',
-            floorNumber: 1,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        } else if (isFloor1Different) {
-          // 1층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '1F',
-            floorNumber: 1,
+            floorLabel: `${floorNum}F`,
+            floorNumber: floorNum,
             levelType: '지상',
             floorClass: '셋팅층',
             height: null,
           });
         } else {
-          // 기본값: 셋팅층
-      floors.push({
-        id: `floor-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        buildingId: '',
-        floorLabel: '1F',
-        floorNumber: 1,
-        levelType: '지상',
-        floorClass: '셋팅층',
-        height: null,
-      });
-        }
-      }
-      
-      // 2층 처리
-      if (groundFloorCount >= 2) {
-        // 3층, 4층, 5층이 셋팅층이면 2층은 무조건 일반층 (우선순위)
-        if ((isFloor3Different && groundFloorCount >= 3) || (isFloor4Different && groundFloorCount >= 4) || (isFloor5Different && groundFloorCount >= 5)) {
-          // 3층, 4층, 5층 중 하나라도 셋팅층이면 2층은 일반층 (2층이 기준층과 같거나 달라도)
+          // 일반층 (위층에 셋팅층이 있거나, 기준층과 층고가 같은 경우)
           floors.push({
-            id: `floor-2f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: `floor-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             buildingId: '',
-            floorLabel: '2F',
-            floorNumber: 2,
+            floorLabel: `${floorNum}F`,
+            floorNumber: floorNum,
             levelType: '지상',
             floorClass: '일반층',
             height: null,
           });
-        } else if (isFloor2Different) {
-          // 2층이 기준층과 다르면 셋팅층
+        }
+      }
+      
+      // 기준층 범위 생성 (가장 높은 셋팅층 다음 층부터 최상층 전까지)
+      const standardStart = highestSettingFloor ? highestSettingFloor + 1 : (groundFloorCount >= 2 ? 2 : 1);
+      
+      // 5층이 셋팅층이면 6층도 개별 층으로 생성 (나중에 층고 비교하여 셋팅층으로 변경 가능)
+      let actualStandardStart = standardStart;
+      
+      if (settingFloors.includes(5) && groundFloorCount >= 6) {
+        // 6층을 개별 기준층으로 생성 (나중에 층고가 다르면 셋팅층으로 변경)
         floors.push({
-          id: `floor-2f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `floor-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
-          floorLabel: '2F',
-          floorNumber: 2,
+          floorLabel: '6F',
+          floorNumber: 6,
           levelType: '지상',
-          floorClass: '셋팅층',
+          floorClass: '기준층', // 일단 기준층으로 생성, 층고 업데이트 시점에 변경 가능
           height: null,
         });
-        }
-        // 2층이 기준층과 같고 3층이 셋팅층이 아니면 기준층 범위에 포함됨
+        actualStandardStart = 7; // 7층부터 기준층 범위 시작
       }
       
-      // 3층 처리
-      if (groundFloorCount >= 3) {
-        // 4층 또는 5층이 셋팅층이면 3층은 무조건 일반층 (우선순위)
-        if ((isFloor4Different && groundFloorCount >= 4) || (isFloor5Different && groundFloorCount >= 5)) {
-          // 4층 또는 5층이 셋팅층이면 3층은 일반층
-          floors.push({
-            id: `floor-3f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '3F',
-            floorNumber: 3,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        } else if (isFloor3Different) {
-          // 3층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-3f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '3F',
-            floorNumber: 3,
-            levelType: '지상',
-            floorClass: '셋팅층',
-            height: null,
-          });
-        } else if (lowestSettingFloor && lowestSettingFloor > 3) {
-          // 셋팅층보다 낮으면 일반층
-          floors.push({
-            id: `floor-3f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '3F',
-            floorNumber: 3,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        }
-        // 3층이 기준층과 같고 셋팅층이 없거나 3층보다 낮으면 기준층 범위에 포함됨
-      }
-      
-      // 4층 처리
-      if (groundFloorCount >= 4) {
-        // 5층이 셋팅층이면 4층은 무조건 일반층 (우선순위)
-        if (isFloor5Different && groundFloorCount >= 5) {
-          // 5층이 셋팅층이면 4층은 일반층
-          floors.push({
-            id: `floor-4f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '4F',
-            floorNumber: 4,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        } else if (isFloor4Different) {
-          // 4층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-4f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '4F',
-            floorNumber: 4,
-            levelType: '지상',
-            floorClass: '셋팅층',
-            height: null,
-          });
-        } else if (lowestSettingFloor && lowestSettingFloor > 4) {
-          // 셋팅층보다 낮으면 일반층
-          floors.push({
-            id: `floor-4f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '4F',
-            floorNumber: 4,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        }
-        // 4층이 기준층과 같고 셋팅층이 없거나 4층보다 낮으면 기준층 범위에 포함됨
-      }
-      
-      // 5층 처리
-      if (groundFloorCount >= 5) {
-        if (isFloor5Different) {
-          // 5층이 기준층과 다르면 셋팅층
-          floors.push({
-            id: `floor-5f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '5F',
-            floorNumber: 5,
-            levelType: '지상',
-            floorClass: '셋팅층',
-            height: null,
-          });
-        } else if (lowestSettingFloor && lowestSettingFloor > 5) {
-          // 셋팅층보다 낮으면 일반층
-          floors.push({
-            id: `floor-5f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: '5F',
-            floorNumber: 5,
-            levelType: '지상',
-            floorClass: '일반층',
-            height: null,
-          });
-        }
-        // 5층이 기준층과 같고 셋팅층이 없거나 5층보다 낮으면 기준층 범위에 포함됨
-      }
-      
-      // 기준층 범위 생성 (셋팅층이 아닌 층부터 최상층 전까지)
-      const standardStart = settingFloors.length > 0 ? Math.max(...settingFloors) + 1 : (groundFloorCount >= 2 ? 2 : 1);
-      if (standardStart <= groundFloorCount - 1) {
-          const standardEnd = groundFloorCount - 1;
-          floors.push({
-            id: `floor-${standardStart}~${standardEnd}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            floorLabel: `${standardStart}~${standardEnd}F 기준층`,
-            floorNumber: standardStart,
-            levelType: '지상',
-            floorClass: '기준층',
-            height: null,
-          });
+      if (actualStandardStart <= groundFloorCount - 1) {
+        const standardEnd = groundFloorCount - 1;
+        floors.push({
+          id: `floor-${actualStandardStart}~${standardEnd}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          buildingId: '',
+          floorLabel: `${actualStandardStart}~${standardEnd}F 기준층`,
+          floorNumber: actualStandardStart,
+          levelType: '지상',
+          floorClass: '기준층',
+          height: null,
+        });
       }
       
       // 최상층
@@ -1211,14 +988,24 @@ function generateFloors(
   
   // PH층 생성
   for (let i = 1; i <= floorCount.ph; i++) {
+    // 옥탑층 층고 설정 (heights.ph가 배열이면 각 인덱스 사용, 아니면 단일 값 사용)
+    let phHeight: number | null = null;
+    if (heights && heights.ph !== undefined && heights.ph !== null) {
+      if (Array.isArray(heights.ph)) {
+        phHeight = heights.ph[i - 1] !== undefined && heights.ph[i - 1] !== null ? heights.ph[i - 1] : null;
+      } else {
+        phHeight = heights.ph;
+      }
+    }
+    
     floors.push({
       id: `floor-ph${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       buildingId: '',
       floorLabel: `PH${i}`,
       floorNumber: 1000 + i, // PH는 큰 숫자로 정렬
       levelType: '지상',
-      floorClass: 'PH층',
-      height: null,
+      floorClass: '옥탑층',
+      height: phHeight, // heights.ph 배열에서 해당 인덱스의 값 사용
     });
   }
   
