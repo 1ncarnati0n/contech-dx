@@ -6,6 +6,7 @@ import type { Building, CoreType, SlabType, UnitTypePattern } from '@/lib/types'
 import { updateBuilding, getBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
 import { Save, Plus, Trash2 } from 'lucide-react';
+import { logger } from '@/lib/utils/logger';
 
 interface Props {
   building: Building;
@@ -30,6 +31,7 @@ export function BuildingBasicInfo({
   onGenerationComplete,
   onBeforeRegenerate
 }: BuildingBasicInfoProps) {
+  const isLocked = building?.meta?.isBasicInfoLocked || false;
   
   const [buildingName, setBuildingName] = useState(building?.buildingName || '');
   const [totalUnits, setTotalUnits] = useState(building?.meta?.totalUnits || 0);
@@ -76,6 +78,12 @@ export function BuildingBasicInfo({
   const [corePilotisCounts, setCorePilotisCounts] = useState<number[]>(
     building?.meta?.floorCount?.corePilotisCounts || []
   );
+  const [corePilotisHeights, setCorePilotisHeights] = useState<number[]>(
+    building?.meta?.floorCount?.corePilotisHeights || []
+  );
+  const [hasHighCeilingEquipmentRoom, setHasHighCeilingEquipmentRoom] = useState(
+    building?.meta?.floorCount?.hasHighCeilingEquipmentRoom || false
+  );
   const [unitTypePattern, setUnitTypePattern] = useState<UnitTypePattern[]>(
     building?.meta?.unitTypePattern || []
   );
@@ -117,6 +125,7 @@ export function BuildingBasicInfo({
     phCount: building?.meta?.floorCount?.ph || 0,
     pilotisCount: building?.meta?.floorCount?.pilotisCount || 0,
     corePilotisCounts: building?.meta?.floorCount?.corePilotisCounts || [],
+    corePilotisHeights: building?.meta?.floorCount?.corePilotisHeights || [],
     unitTypePattern: building?.meta?.unitTypePattern || [],
     heights: building?.meta?.heights || {},
     standardFloorCycle: building?.meta?.standardFloorCycle || 0,
@@ -168,7 +177,7 @@ export function BuildingBasicInfo({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calculatedCoreCount, unitTypePattern.length]); // coreCount는 dependency에 포함하지 않음 (무한 루프 방지)
 
-  // 세대수 카운트 계산: (코어별 호수 * 코어별 층수) - 필로티 세대수
+  // 세대수 카운트 계산: ((코어1 호수*지상층수)+(코어1-1 호수*지상층수)+(코어2 호수*지상층수))-(코어1 필로티 부대시설 제외 세대수*코어1 필로티 층수+코어1-1 필로티 부대시설 제외 세대수*코어1-1 필로티 층수+코어2 필로티 부대시설 제외 세대수*코어2 필로티 층수)
   const totalUnitCount = useMemo(() => {
     let total = 0;
     
@@ -205,12 +214,45 @@ export function BuildingBasicInfo({
       total += unitCount * floorCount;
     });
     
-    // 필로티 세대수 제외 (코어별 합계)
-    const totalPilotisCount = corePilotisCounts.length > 0 
-      ? corePilotisCounts.reduce((sum, count) => sum + count, 0)
-      : pilotisCount;
-    return total - totalPilotisCount;
-  }, [unitTypePattern, coreCount, coreGroundFloors, groundCount, pilotisCount, corePilotisCounts]);
+    // 필로티 세대수 제외: 각 코어별로 (필로티 부대시설 제외 세대수 * 필로티 층수)를 계산
+    let totalPilotisExclusion = 0;
+    if (corePilotisCounts.length > 0 && corePilotisHeights.length > 0) {
+      // 각 코어별로 필로티 제외 세대수 계산
+      unitTypePattern.forEach((pattern, index) => {
+        const coreNum = pattern.coreNumber || 1;
+        
+        // 코어별 필로티 인덱스 계산 (getPilotisCountIndex 로직과 동일)
+        let pilotisIndex = 0;
+        if (coreNum === 1) {
+          // 코어1인 경우: 현재까지의 코어1 개수 - 1 (0-based)
+          const core1Index = unitTypePattern
+            .slice(0, index + 1)
+            .filter(p => p.coreNumber === 1).length - 1;
+          pilotisIndex = core1Index;
+        } else if (coreNum === 2) {
+          // 코어2인 경우: 코어1 개수 뒤에 위치
+          const core1Count = unitTypePattern.filter(p => p.coreNumber === 1).length;
+          pilotisIndex = core1Count;
+        }
+        
+        const pilotisCount = corePilotisCounts.length > pilotisIndex 
+          ? corePilotisCounts[pilotisIndex] ?? 0 
+          : 0;
+        const pilotisHeight = corePilotisHeights.length > pilotisIndex 
+          ? corePilotisHeights[pilotisIndex] ?? 0 
+          : 0;
+        
+        totalPilotisExclusion += pilotisCount * pilotisHeight;
+      });
+    } else {
+      // 기존 방식 (호환성 유지)
+      totalPilotisExclusion = corePilotisCounts.length > 0 
+        ? corePilotisCounts.reduce((sum, count) => sum + count, 0)
+        : pilotisCount;
+    }
+    
+    return total - totalPilotisExclusion;
+  }, [unitTypePattern, coreCount, coreGroundFloors, groundCount, pilotisCount, corePilotisCounts, corePilotisHeights]);
 
   useEffect(() => {
     if (!building || !building.meta) {
@@ -230,6 +272,7 @@ export function BuildingBasicInfo({
     setPhCount(building.meta.floorCount.ph);
     setPilotisCount(building.meta.floorCount.pilotisCount || 0);
     setCorePilotisCounts(building.meta.floorCount.corePilotisCounts || []);
+    setHasHighCeilingEquipmentRoom(building.meta.floorCount.hasHighCeilingEquipmentRoom || false);
     setUnitTypePattern(building.meta.unitTypePattern || []);
     setStandardFloorCycle(building.meta.standardFloorCycle || 0);
     // 옥탑층 층고를 배열로 변환 (기존 단일 값이면 배열로, 이미 배열이면 그대로)
@@ -266,6 +309,7 @@ export function BuildingBasicInfo({
       phCount: building.meta.floorCount.ph,
       pilotisCount: building.meta.floorCount.pilotisCount || 0,
       corePilotisCounts: building.meta.floorCount.corePilotisCounts || [],
+      hasHighCeilingEquipmentRoom: building.meta.floorCount.hasHighCeilingEquipmentRoom || false,
       unitTypePattern: building.meta.unitTypePattern || [],
       heights: building.meta.heights,
       standardFloorCycle: building.meta.standardFloorCycle || 0,
@@ -274,7 +318,7 @@ export function BuildingBasicInfo({
     // building이 변경되면 buildingNotFoundRef 리셋
     buildingNotFoundRef.current = false;
     } catch (error) {
-      console.error('Error syncing building data:', error);
+      logger.error('Error syncing building data:', error);
     }
   }, [building]);
 
@@ -294,7 +338,7 @@ export function BuildingBasicInfo({
 
     // building이 유효한지 확인
     if (!building || !building.id || !building.projectId) {
-      console.error('Invalid building data:', building);
+      logger.error('Invalid building data:', building);
       buildingNotFoundRef.current = true;
       return;
     }
@@ -317,15 +361,18 @@ export function BuildingBasicInfo({
             coreType,
             slabType,
             unitTypePattern,
-            // floorCount는 제외하여 층 생성 방지
-            floorCount: building.meta.floorCount, // 기존 값 유지
+            // floorCount는 제외하여 층 생성 방지 (단, 체크박스 값은 업데이트)
+            floorCount: {
+              ...building.meta.floorCount,
+              hasHighCeilingEquipmentRoom,
+            },
             heights,
             standardFloorCycle,
           };
           
           // building이 여전히 유효한지 다시 확인
           if (!building.id || !building.projectId) {
-            console.warn('Building ID or Project ID is missing, skipping save');
+            logger.warn('Building ID or Project ID is missing, skipping save');
             setIsSaving(false);
             return;
           }
@@ -336,7 +383,7 @@ export function BuildingBasicInfo({
           
           // building이 없으면 목록을 다시 로드 시도
           if (!latestBuilding) {
-            console.warn('Building not found in store, attempting to reload...', {
+            logger.warn('Building not found in store, attempting to reload...', {
               buildingId: building.id,
               projectId: building.projectId,
               availableBuildings: latestBuildings.map(b => ({ id: b.id, name: b.buildingName }))
@@ -349,7 +396,7 @@ export function BuildingBasicInfo({
               latestBuildings = await getBuildings(building.projectId);
               latestBuilding = latestBuildings.find(b => b.id === building.id);
             } catch (error) {
-              console.error('Failed to reload buildings:', error);
+              logger.error('Failed to reload buildings:', error);
             }
           }
           
@@ -360,7 +407,7 @@ export function BuildingBasicInfo({
             buildingNotFoundRef.current = true;
             
             if (!wasNotFound) {
-              console.error('Building not found after reload, skipping save:', {
+              logger.error('Building not found after reload, skipping save:', {
                 buildingId: building.id,
                 projectId: building.projectId,
                 buildingName: building.buildingName,
@@ -383,7 +430,7 @@ export function BuildingBasicInfo({
           
           // 자동 저장에서는 onUpdate를 호출하지 않음 (층 생성하지 않으므로)
         } catch (error) {
-          console.error('Building save error:', error);
+          logger.error('Building save error:', error);
           toast.error('저장에 실패했습니다.', {
             description: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
           });
@@ -408,6 +455,7 @@ export function BuildingBasicInfo({
     corePhFloors,
     phCount,
     pilotisCount,
+    hasHighCeilingEquipmentRoom,
     heights,
     standardFloorCycle,
     onUpdate,
@@ -434,6 +482,7 @@ export function BuildingBasicInfo({
       phCount !== prev.phCount ||
       pilotisCount !== prev.pilotisCount ||
       JSON.stringify(corePilotisCounts) !== JSON.stringify(prev.corePilotisCounts) ||
+      hasHighCeilingEquipmentRoom !== prev.hasHighCeilingEquipmentRoom ||
       standardFloorCycle !== prev.standardFloorCycle;
       // heights는 수동 저장이므로 자동 저장에서 제외
 
@@ -453,6 +502,7 @@ export function BuildingBasicInfo({
       phCount,
       pilotisCount,
       corePilotisCounts,
+      hasHighCeilingEquipmentRoom,
       heights: prev.heights, // heights는 이전 값 유지 (수동 저장 전까지)
         standardFloorCycle: prev.standardFloorCycle, // standardFloorCycle도 이전 값 유지
       };
@@ -468,9 +518,12 @@ export function BuildingBasicInfo({
     basementCount,
     groundCount,
       coreGroundFloors,
+      coreBasementFloors,
+      corePhFloors,
       phCount,
       pilotisCount,
       corePilotisCounts,
+      hasHighCeilingEquipmentRoom,
       standardFloorCycle,
       autoSave,
   ]);
@@ -531,7 +584,7 @@ export function BuildingBasicInfo({
         try {
           await onBeforeRegenerate(); // 저장 완료 대기
         } catch (error) {
-          console.error('물량 저장 실패:', error);
+          logger.error('물량 저장 실패:', error);
           toast.error('물량 데이터 저장에 실패했습니다. 층 재생성을 중단합니다.');
           return;
         }
@@ -552,6 +605,7 @@ export function BuildingBasicInfo({
           corePhFloors: corePhFloors.length > 0 ? corePhFloors : undefined,
           pilotisCount: pilotisCount > 0 ? pilotisCount : undefined,
           corePilotisCounts: corePilotisCounts.length > 0 ? corePilotisCounts : undefined,
+          hasHighCeilingEquipmentRoom,
         },
         heights,
         standardFloorCycle,
@@ -601,6 +655,7 @@ export function BuildingBasicInfo({
         phCount,
         pilotisCount,
         corePilotisCounts,
+        corePilotisHeights,
         heights,
         standardFloorCycle,
       };
@@ -615,7 +670,7 @@ export function BuildingBasicInfo({
 
       toast.success('동 정보가 저장되었습니다.');
     } catch (error) {
-      console.error('동 정보 저장 오류:', error);
+      logger.error('동 정보 저장 오류:', error);
       toast.error('저장에 실패했습니다.', {
         description: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
       });
@@ -699,7 +754,8 @@ export function BuildingBasicInfo({
               <select
                 value={coreType}
                 onChange={(e) => setCoreType(e.target.value as CoreType)}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isLocked}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="중복도(판상형)">중복도(판상형)</option>
                 <option value="타워형">타워형</option>
@@ -713,7 +769,8 @@ export function BuildingBasicInfo({
               <select
                 value={slabType}
                 onChange={(e) => setSlabType(e.target.value as SlabType)}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isLocked}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="벽식구조">벽식구조</option>
                 <option value="RC구조">RC구조</option>
@@ -723,9 +780,9 @@ export function BuildingBasicInfo({
           </div>
         </div>
 
-        {/* 단위세대 정보 */}
+        {/* 골구조 정보 */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">단위세대 정보</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">골구조 정보</h3>
           
           {/* 단위세대 패턴 입력 */}
           <div>
@@ -738,7 +795,8 @@ export function BuildingBasicInfo({
                 variant="outline"
                 size="sm"
                 onClick={addUnitTypePattern}
-                className="gap-1"
+                disabled={isLocked}
+                className="gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-3 h-3" />
                 추가
@@ -790,7 +848,8 @@ export function BuildingBasicInfo({
                   <select
                     value={pattern.coreNumber || 1}
                     onChange={(e) => updateUnitTypePattern(index, 'coreNumber', Number(e.target.value))}
-                    className="w-24 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    disabled={isLocked}
+                    className="w-24 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value={1}>{currentCoreDisplayName}</option>
                     <option value={2}>코어2</option>
@@ -800,7 +859,9 @@ export function BuildingBasicInfo({
                     placeholder="시작 호수"
                     value={pattern.from || ''}
                     onChange={(e) => updateUnitTypePattern(index, 'from', Number(e.target.value))}
-                    className="w-24"
+                    disabled={isLocked}
+                    className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
                   <span className="text-slate-500">~</span>
                   <Input
@@ -808,7 +869,9 @@ export function BuildingBasicInfo({
                     placeholder="끝 호수"
                     value={pattern.to || ''}
                     onChange={(e) => updateUnitTypePattern(index, 'to', Number(e.target.value))}
-                    className="w-24"
+                    disabled={isLocked}
+                    className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
                   <span className="text-slate-500">호</span>
                   <Input
@@ -816,7 +879,9 @@ export function BuildingBasicInfo({
                     placeholder="타입 (예: 59A)"
                     value={pattern.type || ''}
                     onChange={(e) => updateUnitTypePattern(index, 'type', e.target.value)}
-                    className="w-32"
+                    disabled={isLocked}
+                    className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
                   {/* 코어별 층수 입력창 */}
                   {(() => {
@@ -853,6 +918,7 @@ export function BuildingBasicInfo({
                               placeholder="지하"
                               min="0"
                               value={currentBasementFloors || ''}
+                              disabled={isLocked}
                               onChange={(e) => {
                                 const newCoreBasementFloors = [...coreBasementFloors];
                                 const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -870,7 +936,7 @@ export function BuildingBasicInfo({
                             />
                             {currentBasementFloors > 0 && (
                               <span className="text-xs text-slate-600 dark:text-slate-400 px-1">
-                                지하{currentBasementFloors}개층
+                                지하{currentBasementFloors}층
                               </span>
                             )}
                           </div>
@@ -880,6 +946,7 @@ export function BuildingBasicInfo({
                               placeholder="지상"
                               min="0"
                               value={currentGroundFloors || ''}
+                              disabled={isLocked}
                               onChange={(e) => {
                                 const newCoreGroundFloors = [...coreGroundFloors];
                                 const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -897,7 +964,7 @@ export function BuildingBasicInfo({
                             />
                             {currentGroundFloors > 0 && (
                               <span className="text-xs text-slate-600 dark:text-slate-400 px-1">
-                                지상{currentGroundFloors}개층
+                                지상{currentGroundFloors}층
                               </span>
                             )}
                           </div>
@@ -907,6 +974,7 @@ export function BuildingBasicInfo({
                               placeholder="옥탑"
                               min="0"
                               value={currentPhFloors || ''}
+                              disabled={isLocked}
                               onChange={(e) => {
                                 const newCorePhFloors = [...corePhFloors];
                                 const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -933,7 +1001,7 @@ export function BuildingBasicInfo({
                             />
                             {currentPhFloors > 0 && (
                               <span className="text-xs text-slate-600 dark:text-slate-400 px-1">
-                                옥탑{currentPhFloors}개층
+                                옥탑{currentPhFloors}층
                               </span>
                             )}
                           </div>
@@ -941,34 +1009,75 @@ export function BuildingBasicInfo({
                       </div>
                     );
                   })()}
-                  <Input
-                    type="number"
-                    placeholder="필로티 부대시설 제외 세대수"
-                    min="0"
-                    value={currentPilotisCount || ''}
-                    onChange={(e) => {
-                      const newCorePilotisCounts = [...corePilotisCounts];
-                      const newValue = e.target.value === '' ? 0 : Number(e.target.value);
-                      // 배열 크기 확보
-                      while (newCorePilotisCounts.length <= pilotisCountIndex) {
-                        newCorePilotisCounts.push(0);
-                      }
-                      newCorePilotisCounts[pilotisCountIndex] = newValue;
-                      setCorePilotisCounts(newCorePilotisCounts);
-                      // 첫 번째 코어1 값은 전체 pilotisCount에도 반영 (호환성 유지)
-                      if (pilotisCountIndex === 0) {
-                        setPilotisCount(newValue);
-                      }
-                    }}
-                    className="w-[300px]"
-                    title="필로티 부대시설 제외 세대수"
-                  />
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      type="number"
+                      placeholder="필로티 부대시설 제외 세대수"
+                      min="0"
+                      value={currentPilotisCount || ''}
+                      disabled={isLocked}
+                      onChange={(e) => {
+                        const newCorePilotisCounts = [...corePilotisCounts];
+                        const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                        // 배열 크기 확보
+                        while (newCorePilotisCounts.length <= pilotisCountIndex) {
+                          newCorePilotisCounts.push(0);
+                        }
+                        newCorePilotisCounts[pilotisCountIndex] = newValue;
+                        setCorePilotisCounts(newCorePilotisCounts);
+                        // 첫 번째 코어1 값은 전체 pilotisCount에도 반영 (호환성 유지)
+                        if (pilotisCountIndex === 0) {
+                          setPilotisCount(newValue);
+                        }
+                      }}
+                      style={{ width: '270px', minWidth: '270px', maxWidth: '270px' }}
+                      title="필로티 부대시설 제외 세대수"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      필로티 부대시설에 해당하는 세대수 제외
+                    </p>
+                  </div>
+                  {/* 필로티 층수 입력창 */}
+                  {(() => {
+                    const currentPilotisHeight = corePilotisHeights.length > pilotisCountIndex 
+                      ? corePilotisHeights[pilotisCountIndex] ?? 0
+                      : 0;
+                    
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <Input
+                          type="number"
+                          placeholder="필로티 층수"
+                          min="0"
+                          value={currentPilotisHeight || ''}
+                          disabled={isLocked}
+                          onChange={(e) => {
+                            const newCorePilotisHeights = [...corePilotisHeights];
+                            const newValue = e.target.value === '' ? 0 : Number(e.target.value);
+                            // 배열 크기 확보
+                            while (newCorePilotisHeights.length <= pilotisCountIndex) {
+                              newCorePilotisHeights.push(0);
+                            }
+                            newCorePilotisHeights[pilotisCountIndex] = newValue;
+                            setCorePilotisHeights(newCorePilotisHeights);
+                          }}
+                          className="w-[200px]"
+                          style={{ width: '200px', minWidth: '200px', maxWidth: '200px' }}
+                          title="필로티 층수"
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          필로티층의 층수를 입력합니다
+                        </p>
+                      </div>
+                    );
+                  })()}
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removeUnitTypePattern(index)}
-                    className="text-red-500 hover:text-red-700"
+                    disabled={isLocked}
+                    className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -988,12 +1097,31 @@ export function BuildingBasicInfo({
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 세대수 카운트
               </label>
-              <Input
-                type="number"
-                value={totalUnitCount}
-                disabled
-                className="max-w-xs bg-slate-100 dark:bg-slate-800"
-              />
+              <div className="flex items-center gap-4">
+                <Input
+                  type="number"
+                  value={totalUnitCount}
+                  disabled
+                  className="max-w-xs bg-slate-100 dark:bg-slate-800"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="hasHighCeilingEquipmentRoom"
+                    checked={hasHighCeilingEquipmentRoom}
+                    onChange={(e) => setHasHighCeilingEquipmentRoom(e.target.checked)}
+                    disabled={isLocked}
+                    className="w-4 h-4 text-primary-600 bg-white border-slate-300 rounded focus:ring-primary-500 focus:ring-2 dark:bg-slate-800 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <label
+                    htmlFor="hasHighCeilingEquipmentRoom"
+                    className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer"
+                    style={{ width: 'auto', minWidth: '350px', whiteSpace: 'nowrap' }}
+                  >
+                    3단 가시설 적용 (동하부 혹은 측면 펌프실,전기실 등)
+                  </label>
+                </div>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 단위세대 패턴에서 자동 계산됩니다.
               </p>
@@ -1019,6 +1147,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.basement2 || 3500}
                 onChange={(e) => setHeights({ ...heights, basement2: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1031,6 +1161,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.basement1 || 5400}
                 onChange={(e) => setHeights({ ...heights, basement1: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1043,6 +1175,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor1 || 3050}
                 onChange={(e) => setHeights({ ...heights, floor1: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1055,6 +1189,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor2 || 2850}
                 onChange={(e) => setHeights({ ...heights, floor2: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1067,6 +1203,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor3 || 2850}
                 onChange={(e) => setHeights({ ...heights, floor3: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1079,6 +1217,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor4 || 2850}
                 onChange={(e) => setHeights({ ...heights, floor4: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1103,6 +1243,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.standard || 2850}
                 onChange={(e) => setHeights({ ...heights, standard: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             <div>
@@ -1115,6 +1257,8 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.top || 3050}
                 onChange={(e) => setHeights({ ...heights, top: Number(e.target.value) })}
+                disabled={isLocked}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
             {/* 옥탑층 층고 - 옥탑층 수에 따라 각각 입력 */}
@@ -1130,6 +1274,8 @@ export function BuildingBasicInfo({
                     min="0"
                     value={Array.isArray(heights.ph) ? heights.ph[0] || 2650 : heights.ph || 2650}
                     onChange={(e) => setHeights({ ...heights, ph: [Number(e.target.value)] })}
+                    disabled={isLocked}
+                    className="disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               ) : (
@@ -1148,6 +1294,8 @@ export function BuildingBasicInfo({
                         phArray[i] = Number(e.target.value);
                         setHeights({ ...heights, ph: phArray });
                       }}
+                      disabled={isLocked}
+                      className="disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 ))
@@ -1165,8 +1313,8 @@ export function BuildingBasicInfo({
             variant="primary"
             size="sm"
             onClick={handleSaveBuildingInfo}
-            disabled={isSaving}
-            className="gap-2"
+            disabled={isSaving || isLocked}
+            className="gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
             {isSaving ? '생성 중...' : '층정보 생성'}

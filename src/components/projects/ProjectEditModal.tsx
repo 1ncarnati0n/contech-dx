@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import { updateProject } from '@/lib/services/projects';
 import type { Project } from '@/lib/types';
+import { logger } from '@/lib/utils/logger';
 
 const projectSchema = z.object({
     name: z.string().min(1, '프로젝트명을 입력해주세요'),
@@ -76,7 +77,7 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
     }, [project, isOpen, form]);
 
     const onSubmit = async (data: ProjectFormValues) => {
-        console.log('Submitting project update:', data);
+        logger.debug('Submitting project update:', data);
         try {
             // Ensure contract_amount is a number or undefined, not NaN
             const formattedData = {
@@ -89,7 +90,7 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
             onUpdate();
             onClose();
         } catch (error: any) {
-            console.error('Failed to update project:', error);
+            logger.error('Failed to update project:', error);
             toast.error('프로젝트 수정 실패', {
                 description: error.message || '프로젝트 정보를 수정하는 중 오류가 발생했습니다.',
             });

@@ -24,7 +24,7 @@ export interface ProcessItem {
   equipmentCalculationBase?: number; // I열 값 (예: 650)
   // 장비기반 인원수 (K*5 또는 K*6)
   equipmentWorkersPerUnit?: number; // 4, 5, 6 등
-  // 층별 구분 (지하골조, 기준층, 옥탑층 등에서 사용)
+  // 층별 구분 (지하층, 기준층, 옥탑층 등에서 사용)
   floorLabel?: string; // "B2", "B1", "1F", "옥탑1" 등
 }
 
@@ -140,12 +140,12 @@ export const PROCESS_MODULES: ProcessModule[] = [
   },
 
   // ============================================
-  // 지하골조 - 지하2층 표준 지하1층 2차마감
+  // 지하층 - 지하2층 표준 지하1층 2차마감
   // ============================================
   {
     id: 'basement-standard',
     name: '표준공정',
-    category: '지하골조',
+    category: '지하층',
     items: [
       {
         id: 'basement-meokmaekim-1',
@@ -216,7 +216,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: '㎥',
         quantityReference: 'G8', // 동,층별물량표!G8
         dailyProductivity: 130,
-        calculationBasis: '장비대수*5명 /지하골조부분',
+        calculationBasis: '장비대수*5명 /지하층부분',
         equipmentName: '콘크리트 펌프차',
         equipmentCount: 1, // 계산식: CEILING(MIN(2, E17/I28), 1)
         equipmentCalculationBase: 500, // 지하 대당 타설량 기준값
@@ -307,7 +307,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: '㎥',
         quantityReference: 'G9*0.6', // 동,층별물량표!G9*0.6
         dailyProductivity: 130,
-        calculationBasis: '장비대수*5명 /지하골조부분',
+        calculationBasis: '장비대수*5명 /지하층부분',
         equipmentName: '콘크리트 펌프차',
         equipmentCount: 1, // 계산식
         equipmentCalculationBase: 500, // 지하 대당 타설량 기준값
@@ -336,7 +336,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: '㎥',
         quantityReference: 'G9*0.4', // 동,층별물량표!G9*0.4
         dailyProductivity: 130,
-        calculationBasis: '장비대수*5명 /지하골조부분',
+        calculationBasis: '장비대수*5명 /지하층부분',
         equipmentName: '콘크리트 펌프차',
         equipmentCount: 1, // 계산식
         equipmentCalculationBase: 500, // 지하 대당 타설량 기준값

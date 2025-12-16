@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui
 import type { Building, Floor, FloorClass } from '@/lib/types';
 import { updateFloor } from '@/lib/services/buildings';
 import { toast } from 'sonner';
+import { logger } from '@/lib/utils/logger';
 
 interface Props {
   building: Building;
@@ -14,6 +15,7 @@ interface Props {
 const FLOOR_CLASSES: FloorClass[] = ['지하층', '일반층', '셋팅층', '기준층', '최상층', '옥탑층'];
 
 export function FloorSettingsTable({ building, onUpdate }: Props) {
+  const isLocked = building?.meta?.isBasicInfoLocked || false;
   const [floors, setFloors] = useState<Floor[]>(building.floors);
   const [pendingHeights, setPendingHeights] = useState<Record<string, number | null>>({});
   const [savedFloorIds, setSavedFloorIds] = useState<Set<string>>(new Set());
@@ -72,7 +74,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                     f.id === floorToUpdate.id ? { ...f, floorClass: '기준층' } : f
                   ));
                 } catch (error) {
-                  console.error(`Failed to update floor ${floorToUpdate.id}:`, error);
+                  logger.error(`Failed to update floor ${floorToUpdate.id}:`, error);
                 }
               }
             }
@@ -106,9 +108,19 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
       // 코어1의 최대 층수
       const core1MaxFloor = coreGroundFloors[0] || 0;
       
-      // 지하층 추가 (공통)
+      // 지하층 추가 (공통) - cleanLabel 기준 중복 제거
       const basementFloors = floors.filter(f => f.levelType === '지하');
+      const addedBasementLabels = new Set<string>();
       basementFloors.forEach(f => {
+        // 코어 정보 제거 (예: "코어1-B1" -> "B1")
+        const cleanLabel = f.floorLabel.replace(/코어\d+-/, '');
+        
+        // 이미 추가된 cleanLabel이면 건너뛰기
+        if (addedBasementLabels.has(cleanLabel)) {
+          return;
+        }
+        addedBasementLabels.add(cleanLabel);
+        
         if (!addedFloorIds.has(f.id)) {
           result.push(f);
           addedFloorIds.add(f.id);
@@ -379,10 +391,20 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
     const result: Floor[] = [];
     const addedFloorIds = new Set<string>(); // 중복 체크용
     
-    // 지하층과 옥탑층은 개별로 추가
+    // 지하층과 옥탑층은 개별로 추가 - cleanLabel 기준 중복 제거
     const basementFloors = sortedFloors.filter(f => f.levelType === '지하');
     const phFloors = sortedFloors.filter(f => f.floorClass === '옥탑층' || f.floorClass === 'PH층');
+    const addedBasementLabels = new Set<string>();
     basementFloors.forEach(f => {
+      // 코어 정보 제거 (예: "코어1-B1" -> "B1")
+      const cleanLabel = f.floorLabel.replace(/코어\d+-/, '');
+      
+      // 이미 추가된 cleanLabel이면 건너뛰기
+      if (addedBasementLabels.has(cleanLabel)) {
+        return;
+      }
+      addedBasementLabels.add(cleanLabel);
+      
       if (!addedFloorIds.has(f.id)) {
         result.push(f);
         addedFloorIds.add(f.id);
@@ -541,20 +563,11 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
       
       // 층고 업데이트 시 셋팅층 자동 판단 로직
       if (updates.height !== undefined) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:543',message:'Height update detected',data:{floorId,newHeight:updates.height},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         const updatedFloor = updatedFloors.find(f => f.id === floorId);
         if (!updatedFloor || updatedFloor.levelType !== '지상') {
           // 지상층이 아니면 처리하지 않음
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:546',message:'Skipping non-ground floor',data:{floorId,levelType:updatedFloor?.levelType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
         } else {
           const standardHeight = building.meta.heights?.standard;
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:549',message:'Standard height check',data:{standardHeight,updatedFloorLabel:updatedFloor.floorLabel,updatedFloorHeight:updatedFloor.height,updatedFloorClass:updatedFloor.floorClass},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           if (standardHeight !== undefined && standardHeight !== null) {
             // 층 번호 추출 함수
             const extractFloorNumber = (floor: Floor): number | null => {
@@ -573,9 +586,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
             // 업데이트된 층의 층 번호 추출
             const updatedFloorNum = extractFloorNumber(updatedFloor);
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:567',message:'Extracted floor number',data:{updatedFloorNum,updatedFloorLabel:updatedFloor.floorLabel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             
             if (updatedFloorNum !== null) {
               // 지상층만 필터링하고 층 번호로 내림차순 정렬 (위에서 아래로)
@@ -584,9 +594,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                 .map(f => ({ floor: f, floorNum: extractFloorNumber(f) }))
                 .filter(item => item.floorNum !== null)
                 .sort((a, b) => (b.floorNum || 0) - (a.floorNum || 0)); // 내림차순
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:575',message:'Ground floors filtered',data:{groundFloorsCount:groundFloors.length,groundFloors:groundFloors.map(item=>({floorNum:item.floorNum,floorLabel:item.floor.floorLabel,floorClass:item.floor.floorClass,height:item.floor.height}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
 
               // 1층의 경우 특수 처리
               if (updatedFloorNum === 1) {
@@ -609,16 +616,10 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                 // 업데이트된 층의 층고가 standardHeight와 다른 경우
                 // 중요: updates.height를 사용하여 업데이트하려는 값을 확인 (updatedFloor.height는 이미 업데이트된 값)
                 if (updates.height !== null && updates.height !== standardHeight) {
-                  // #region agent log
-                  fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:609',message:'Updated floor height differs from standard',data:{updatedFloorNum,updatedFloorHeight:updates.height,standardHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                  // #endregion
                   // 업데이트된 층보다 위쪽 층들만 필터링
                   const upperFloors = allGroundFloors.filter(item => 
                     item.floorNum !== null && item.floorNum > updatedFloorNum
                   );
-                  // #region agent log
-                  fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:614',message:'Filtered upper floors',data:{upperFloorsCount:upperFloors.length,upperFloors:upperFloors.map(item=>({floorNum:item.floorNum,floorLabel:item.floor.floorLabel,floorClass:item.floor.floorClass,height:item.floor.height}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                  // #endregion
                   
                   // 위에서 아래로 내려오면서 기준층 층고와 같은 연속된 층들 찾기
                   let lastStandardHeightFloor: { floor: Floor; floorNum: number } | null = null;
@@ -633,31 +634,18 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층(마지막 층) 저장
                       if (!lastStandardHeightFloor || item.floorNum < lastStandardHeightFloor.floorNum) {
                         lastStandardHeightFloor = item;
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:625',message:'Found standard height floor',data:{floorNum:item.floorNum,floorLabel:floor.floorLabel,floorClass:floor.floorClass,height:floor.height},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                        // #endregion
                       }
                     } else if (floor.height !== standardHeight) {
                       // 기준층 층고가 아닌 층을 만나면 연속이 깨짐
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:631',message:'Found different height, breaking continuity',data:{floorNum:item.floorNum,floorLabel:floor.floorLabel,floorClass:floor.floorClass,height:floor.height,lastStandardHeightFloor:lastStandardHeightFloor?{floorNum:lastStandardHeightFloor.floorNum,floorLabel:lastStandardHeightFloor.floor.floorLabel}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                      // #endregion
                       break;
                     }
                   }
 
                   // 위에서 내려오면서 기준층 층고로 연속되던 마지막 층을 셋팅층으로 설정
                   if (lastStandardHeightFloor) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:638',message:'Setting setting floor',data:{settingFloorNum:lastStandardHeightFloor.floorNum,settingFloorLabel:lastStandardHeightFloor.floor.floorLabel,settingFloorClass:lastStandardHeightFloor.floor.floorClass},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                     if (lastStandardHeightFloor.floor.floorClass !== '셋팅층') {
                       await handleFloorUpdate(lastStandardHeightFloor.floor.id, { floorClass: '셋팅층' }, false);
                     }
-                  } else {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorSettingsTable.tsx:642',message:'Not setting setting floor - no lastStandardHeightFloor',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                   }
                 } else if (updates.height === standardHeight) {
                   // 업데이트된 층이 기준층 층고로 변경된 경우
@@ -865,7 +853,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                             await handleFloorUpdate(actualFloor.id, { floorClass: newClass });
                           }
                         }}
-                        disabled={!actualFloor && actualFloors.length === 0}
+                        disabled={isLocked || (!actualFloor && actualFloors.length === 0)}
                         className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {FLOOR_CLASSES.map((fc) => (
@@ -881,7 +869,9 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         step="1"
                         min="0"
                         value={floor.height ?? ''}
+                        disabled={isLocked || (floor.id.startsWith('dummy-') && actualFloors.length === 0 && !actualFloor)}
                         onChange={async (e) => {
+                          if (isLocked) return;
                           const value = e.target.value ? Number(e.target.value) : null;
                           // 범위 형식의 층인 경우 모든 개별 층 업데이트
                           if (floor.id.startsWith('dummy-range-') && actualFloors.length > 0) {
@@ -896,6 +886,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                           }
                         }}
                         onBlur={async () => {
+                          if (isLocked) return;
                           // 범위 형식의 층인 경우 이미 onChange에서 처리됨
                           if (!floor.id.startsWith('dummy-range-')) {
                             const targetFloor = actualFloor || floor;
@@ -904,7 +895,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                             }
                           }
                         }}
-                        disabled={floor.id.startsWith('dummy-') && actualFloors.length === 0 && !actualFloor}
+                        className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="층고 입력 (mm)"
                         className="w-24 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                       />

@@ -38,10 +38,10 @@ export function ProjectSidebar({
     onTabChange,
 }: ProjectSidebarProps) {
     const [isDataInputExpanded, setIsDataInputExpanded] = useState(
-        activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'frame_structure' || activeTab === 'geological_data'
+        activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'geological_data'
     );
     const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(
-        activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
+        activeTab === 'basement_process_plan' || activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
     );
 
     const menuItems = [
@@ -54,9 +54,8 @@ export function ProjectSidebar({
 
     const dataInputSubItems = [
         { id: 'data_input', label: '동 기본 정보', icon: Database },
-        { id: 'frame_structure', label: '동별 골구조도', icon: Layers },
-        { id: 'geological_data', label: '지질자료 입력', icon: MapPin },
         { id: 'quantity_input', label: '물량 입력', icon: Package },
+        { id: 'geological_data', label: '지질 데이터 입력', icon: Layers },
     ];
 
     const processPlanSubItems = [
@@ -65,7 +64,7 @@ export function ProjectSidebar({
         { id: 'gantt_chart', label: '간트차트', icon: BarChart3 },
     ];
 
-    const isDataInputActive = activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'frame_structure' || activeTab === 'geological_data';
+    const isDataInputActive = activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'geological_data';
     const isProcessPlanActive = activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
     const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
 

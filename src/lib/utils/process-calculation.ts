@@ -85,15 +85,19 @@ export function roundDown(value: number, decimals: number = 0): number {
 }
 
 /**
- * 장비대수 계산 (CEILING(MIN(2, 수량/대당타설량), 1))
+ * 장비대수 계산 (CEILING(MIN(최대값, 수량/대당타설량), 1))
+ * @param quantity 수량
+ * @param equipmentCalculationBase 대당 타설량 기준값
+ * @param maxCount 최대 장비 대수 (기본값: 2, 동별공정계획표의 펌프카 최대 투입대수 사용)
  */
 export function calculateEquipmentCount(
   quantity: number,
-  equipmentCalculationBase: number
+  equipmentCalculationBase: number,
+  maxCount: number = 2
 ): number {
   if (equipmentCalculationBase === 0) return 1;
   const ratio = quantity / equipmentCalculationBase;
-  return Math.max(1, Math.ceil(Math.min(2, ratio)));
+  return Math.max(1, Math.ceil(Math.min(maxCount, ratio)));
 }
 
 /**

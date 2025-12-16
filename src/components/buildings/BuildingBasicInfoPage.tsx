@@ -357,9 +357,83 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
   }, [projectId, buildings, activeBuildingIndex]);
 
   const activeBuilding = buildings[activeBuildingIndex];
+
+  // 데이터 고정 처리
+  const handleLockBasicInfo = useCallback(async () => {
+    if (!activeBuilding) return;
+
+    if (!window.confirm('동기본정보 데이터를 고정하시겠습니까? 고정 후에는 수정할 수 없습니다.')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await updateBuilding(activeBuilding.id, projectId, {
+        meta: {
+          ...activeBuilding.meta,
+          isBasicInfoLocked: true,
+        },
+      });
+      await loadBuildings();
+      toast.success('동기본정보 데이터가 고정되었습니다.');
+    } catch (error) {
+      toast.error('데이터 고정에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeBuilding, projectId, loadBuildings]);
+
+  // 데이터 고정 해제 처리
+  const handleUnlockBasicInfo = useCallback(async () => {
+    if (!activeBuilding) return;
+
+    if (!window.confirm('동기본정보 데이터 고정을 해제하시겠습니까? 해제 후에는 수정할 수 있습니다.')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await updateBuilding(activeBuilding.id, projectId, {
+        meta: {
+          ...activeBuilding.meta,
+          isBasicInfoLocked: false,
+        },
+      });
+      await loadBuildings();
+      toast.success('동기본정보 데이터 고정이 해제되었습니다.');
+    } catch (error) {
+      toast.error('데이터 고정 해제에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeBuilding, projectId, loadBuildings]);
   
   return (
     <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8">
+      {/* 데이터 고정/해제 버튼 */}
+      {activeBuilding && (
+        <div className="flex justify-end">
+          {activeBuilding.meta?.isBasicInfoLocked ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleUnlockBasicInfo}
+              disabled={isLoading}
+            >
+              데이터 고정 해제
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleLockBasicInfo}
+              disabled={isLoading}
+            >
+              데이터 고정
+            </Button>
+          )}
+        </div>
+      )}
       {/* 동 수 입력 및 복사 영역 */}
       <Card className="p-4">
         <div className="flex items-center gap-4 flex-wrap">

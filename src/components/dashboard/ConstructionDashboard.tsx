@@ -5,11 +5,15 @@ import { TaktView } from './TaktView';
 import { BuildingProgress } from './BuildingProgress';
 import { CCTVSection } from './CCTVSection';
 
-export function ConstructionDashboard() {
+interface Props {
+    projectId: string;
+}
+
+export function ConstructionDashboard({ projectId }: Props) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <KPICards />
-            <CCTVSection />
+            <CCTVSection projectId={projectId} />
             <TaktView />
             <BuildingProgress />
         </div>

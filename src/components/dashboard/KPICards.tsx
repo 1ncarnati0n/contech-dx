@@ -48,7 +48,7 @@ export function KPICards() {
             {/* Card 2: Plan vs Actual Chart */}
             <Card className="p-6">
                 <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">인원투입 계획,실행</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">인원투입 계획,실행 누계</h3>
                 </div>
                 <div className="h-[120px] w-full min-h-[120px] min-w-0">
                     {isMounted ? (
