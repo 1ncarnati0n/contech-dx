@@ -1,3 +1,9 @@
+/**
+ * Users Service - Client Side
+ * 클라이언트 컴포넌트에서 사용 가능한 함수들
+ * createBrowserClient 또는 API 호출만 사용
+ */
+
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/lib/types';
 

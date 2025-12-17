@@ -19,6 +19,7 @@ export interface FloorTradeTableHandle {
 
 export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   ({ building, onUpdate }, ref) => {
+  const isLocked = building?.meta?.isDataInputLocked || false;
   const [floors, setFloors] = useState<Floor[]>(building.floors);
   const [trades, setTrades] = useState<Map<string, FloorTrade>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
@@ -64,13 +65,55 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     const coreGroundFloors = building.meta.floorCount.coreGroundFloors;
     
     if (coreCount > 1 && coreGroundFloors && coreGroundFloors.length > 0) {
-      // 코어1의 최대 층수
-      const core1MaxFloor = coreGroundFloors[0] || 0;
+      // 코어1의 최대 층수 - 실제 층 데이터에서도 확인
+      let core1MaxFloor = coreGroundFloors[0] || 0;
       
-      // 지하층 추가 (공통)
+      // 실제 층 데이터에서 코어1의 최대 층수 확인
+      const core1Floors = floors.filter(f => {
+        const match = f.floorLabel.match(/코어1-(\d+)F/);
+        if (match) {
+          return true;
+        }
+        const rangeMatch = f.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
+        if (rangeMatch) {
+          return true;
+        }
+        return false;
+      });
+      
+      core1Floors.forEach(floor => {
+        // 개별 층 (예: "코어1-13F")
+        const match = floor.floorLabel.match(/코어1-(\d+)F$/);
+        if (match) {
+          const floorNum = parseInt(match[1], 10);
+          if (floorNum > core1MaxFloor) {
+            core1MaxFloor = floorNum;
+          }
+        }
+        // 범위 형식 (예: "코어1-2~14F 기준층")
+        const rangeMatch = floor.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
+        if (rangeMatch) {
+          const end = parseInt(rangeMatch[2], 10);
+          if (end > core1MaxFloor) {
+            core1MaxFloor = end;
+          }
+        }
+      });
+      
+      // 지하층 추가 (공통) - 중복 제거
       const basementFloors = floors.filter(f => f.levelType === '지하');
+      const addedLabels = new Set<string>();
       basementFloors.forEach(floor => {
-        result.push({ type: 'floor', label: floor.floorLabel, floor });
+        // 코어 정보 제거 (예: "코어1-B1" -> "B1")
+        let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+        
+        // 이미 추가된 cleanLabel이면 건너뛰기
+        if (addedLabels.has(cleanLabel)) {
+          return;
+        }
+        addedLabels.add(cleanLabel);
+        
+        result.push({ type: 'floor', label: cleanLabel, floor });
       });
       
       // 코어1의 지상층 기준으로 행 추가 (1F, 2F, ...)
@@ -126,19 +169,50 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         }
       }
       
-      // PH층 추가 (공통)
-      const phFloors = floors.filter(f => f.floorClass === 'PH층');
+      // 옥탑층 추가 (공통)
+      const phFloors = floors.filter(f => f.floorClass === '옥탑층');
       phFloors.forEach(floor => {
         result.push({ type: 'floor', label: floor.floorLabel, floor });
       });
     } else {
       // 코어가 1개이거나 코어별 층수가 없으면 전체 지상층 수로 처리
-      const groundFloorCount = building.meta.floorCount.ground || 0;
+      let groundFloorCount = building.meta.floorCount.ground || 0;
       
-      // 지하층 추가
+      // 실제 층 데이터에서 최대 층수 확인
+      const groundFloors = floors.filter(f => f.levelType === '지상');
+      groundFloors.forEach(floor => {
+        // 개별 층 (예: "13F")
+        const match = floor.floorLabel.match(/^(\d+)F$/);
+        if (match) {
+          const floorNum = parseInt(match[1], 10);
+          if (floorNum > groundFloorCount) {
+            groundFloorCount = floorNum;
+          }
+        }
+        // 범위 형식 (예: "2~14F 기준층")
+        const rangeMatch = floor.floorLabel.match(/(\d+)~(\d+)F 기준층/);
+        if (rangeMatch) {
+          const end = parseInt(rangeMatch[2], 10);
+          if (end > groundFloorCount) {
+            groundFloorCount = end;
+          }
+        }
+      });
+      
+      // 지하층 추가 - 중복 제거
       const basementFloors = floors.filter(f => f.levelType === '지하');
+      const addedLabels = new Set<string>();
       basementFloors.forEach(floor => {
-        result.push({ type: 'floor', label: floor.floorLabel, floor });
+        // 코어 정보 제거 (예: "코어1-B1" -> "B1")
+        let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+        
+        // 이미 추가된 cleanLabel이면 건너뛰기
+        if (addedLabels.has(cleanLabel)) {
+          return;
+        }
+        addedLabels.add(cleanLabel);
+        
+        result.push({ type: 'floor', label: cleanLabel, floor });
       });
       
       // 지상층 추가: 범위 형식의 기준층을 개별 층으로 확장
@@ -193,8 +267,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         }
       }
       
-      // PH층 추가
-      const phFloors = floors.filter(f => f.floorClass === 'PH층');
+      // 옥탑층 추가
+      const phFloors = floors.filter(f => f.floorClass === '옥탑층');
       phFloors.forEach(floor => {
         result.push({ type: 'floor', label: floor.floorLabel, floor });
       });
@@ -237,9 +311,6 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     if (isDraggingTextRef.current) {
       return;
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:handleDragStart',message:'Drag start',data:{rowIndex,colIndex,isDraggingText},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const start = { row: rowIndex, col: colIndex };
     setIsDragging(true);
     setSelectionStart(start);
@@ -277,9 +348,6 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
   // 텍스트 선택 드래그 핸들러
   const handleTextDragStart = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:handleTextDragStart',message:'Text drag start',data:{isDragging},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     isDraggingTextRef.current = true;
     setIsDraggingText(true);
     // 셀 선택 드래그 중이면 중단
@@ -289,9 +357,6 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   }, [isDragging, handleDragEnd]);
   
   const handleTextDragEnd = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:handleTextDragEnd',message:'Text drag end',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     isDraggingTextRef.current = false;
     setIsDraggingText(false);
   }, []);
@@ -305,15 +370,9 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       
       // input 필드 내부에서 드래그할 때는 텍스트 선택을 허용 (셀 선택 드래그 무시)
       const target = e.target as HTMLElement;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:handleMouseMove',message:'Mouse move during drag',data:{targetTag:target.tagName,isInput:target.tagName==='INPUT'||!!target.closest('input'),activeElement:document.activeElement?.tagName},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       
       // input 필드 내부이면 셀 선택 드래그를 중단하고 텍스트 선택 허용
       if (target.tagName === 'INPUT' || target.closest('input')) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:handleMouseMove:endDrag',message:'Ending drag - input field',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         handleDragEnd();
         return;
       }
@@ -322,9 +381,6 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       const activeEl = document.activeElement;
       if (activeEl?.tagName === 'INPUT' && (activeEl as HTMLInputElement).selectionStart !== null) {
         // input 필드에서 텍스트 선택 중이면 셀 선택 드래그 중단
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:handleMouseMove:endDrag:activeInput',message:'Ending drag - active input with selection',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         handleDragEnd();
         return;
       }
@@ -411,7 +467,27 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
           return match && match[1] === floorNum;
         });
         if (core1Floor) {
-          actualFloorId = core1Floor.id;
+          // 범위 형식 기준층인 경우 개별 층 ID 생성
+          if (core1Floor.floorLabel.includes('~') && core1Floor.floorClass === '기준층') {
+            actualFloorId = `${core1Floor.id}-${floorNum}F`;
+          } else {
+            actualFloorId = core1Floor.id;
+          }
+        }
+      }
+    } else {
+      // 범위 형식 기준층의 개별 층 ID인지 확인 (예: "floor-123-2F")
+      const individualMatch = floorId.match(/^(.+)-(\d+)F$/);
+      if (individualMatch) {
+        const baseFloorId = individualMatch[1];
+        const floorNum = individualMatch[2];
+        const baseFloor = floors.find(f => f.id === baseFloorId);
+        if (baseFloor && baseFloor.floorLabel.includes('~') && baseFloor.floorClass === '기준층') {
+          // 범위 형식 기준층의 개별 층이므로 그대로 사용
+          actualFloorId = floorId;
+        } else {
+          // 개별 층 ID가 아니면 원본 사용
+          actualFloorId = floorId;
         }
       }
     }
@@ -433,11 +509,29 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
           return match && match[1] === floorNum;
         });
         if (core1Floor) {
-          actualFloorId = core1Floor.id;
+          // 범위 형식 기준층인 경우 개별 층 ID 생성
+          if (core1Floor.floorLabel.includes('~') && core1Floor.floorClass === '기준층') {
+            actualFloorId = `${core1Floor.id}-${floorNum}F`;
+          } else {
+            actualFloorId = core1Floor.id;
+          }
         } else {
           // 코어1에 해당 층이 없으면 저장하지 않음
           return false;
         }
+      }
+    } else {
+      // 범위 형식 기준층의 개별 층 ID인지 확인 (예: "floor-123-2F")
+      const individualMatch = floorId.match(/^(.+)-(\d+)F$/);
+      if (individualMatch) {
+        const baseFloorId = individualMatch[1];
+        const floorNum = individualMatch[2];
+        const baseFloor = floors.find(f => f.id === baseFloorId);
+        if (baseFloor && baseFloor.floorLabel.includes('~') && baseFloor.floorClass === '기준층') {
+          // 범위 형식 기준층의 개별 층이므로 그대로 사용
+          actualFloorId = floorId;
+        }
+        // 개별 층 ID가 아니면 원본 사용 (이미 actualFloorId = floorId)
       }
     }
     
@@ -474,6 +568,59 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       tradeGroup,
       trades: newTrades,
     };
+
+    // 범위 형식 기준층의 개별 층 ID인 경우, 범위의 모든 개별 층에 데이터 복사
+    const individualMatch = actualFloorId.match(/^(.+)-(\d+)F$/);
+    if (individualMatch) {
+      const baseFloorId = individualMatch[1];
+      const baseFloor = floors.find(f => f.id === baseFloorId);
+      
+      if (baseFloor && baseFloor.floorLabel.includes('~') && baseFloor.floorClass === '기준층') {
+        // 범위 파싱 (예: "코어1-2~14F 기준층" 또는 "2~14F 기준층")
+        let rangeMatch = baseFloor.floorLabel.match(/코어\d+-(\d+)~(\d+)F 기준층/);
+        if (!rangeMatch) {
+          rangeMatch = baseFloor.floorLabel.match(/(\d+)~(\d+)F 기준층/);
+        }
+        
+        if (rangeMatch) {
+          const start = parseInt(rangeMatch[1], 10);
+          const end = parseInt(rangeMatch[2], 10);
+          
+          // 범위의 모든 개별 층에 데이터 복사
+          const tradesToSave: FloorTrade[] = [];
+          
+          for (let floorNum = start; floorNum <= end; floorNum++) {
+            const individualFloorId = `${baseFloorId}-${floorNum}F`;
+            const individualKey = `${individualFloorId}-${tradeGroup}`;
+            
+            // 이미 개별 층 데이터가 있는지 확인
+            const existingIndividual = trades.get(individualKey);
+            if (!existingIndividual) {
+              // 개별 층 데이터가 없으면 범위 기준층 데이터를 복사
+              const individualTrade: FloorTrade = {
+                id: `temp-${Date.now()}-${floorNum}`,
+                floorId: individualFloorId,
+                buildingId: building.id,
+                tradeGroup,
+                trades: { ...newTrades },
+              };
+              
+              const newTradesMap = new Map(trades.set(individualKey, individualTrade));
+              setTrades(newTradesMap);
+              tradesToSave.push(individualTrade);
+            }
+          }
+          
+          // 개별 층 데이터 저장
+          if (tradesToSave.length > 0) {
+            tradesToSave.forEach(trade => {
+              const tradeKey = `${trade.floorId}-${trade.tradeGroup}`;
+              autoSave(tradeKey, trade);
+            });
+          }
+        }
+      }
+    }
 
     const newTradesMap = new Map(trades.set(key, updatedTrade));
     setTrades(newTradesMap);
@@ -829,6 +976,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                       <tr
                         key="summary"
                         className="bg-slate-100 dark:bg-slate-800 font-semibold border-t-2 border-slate-300 dark:border-slate-700"
+                        style={{ height: '25px' }}
                       >
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-16">소계</td>
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-16">합계</td>
@@ -887,7 +1035,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                     const groupTrade = getTrade(specialFloorId, tradeGroup);
                     
                     return (
-                      <tr key={row.label} className="bg-slate-50 dark:bg-slate-900/50">
+                      <tr key={row.label} className="bg-slate-50 dark:bg-slate-900/50" style={{ height: '25px' }}>
                         <td className="px-0.5 py-0 text-[10.8px] text-center font-medium border-r border-slate-200 dark:border-slate-800 w-16">
                           {row.label}
                         </td>
@@ -909,6 +1057,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-2`)}
+                          isLocked={isLocked}
                         />
                         {/* 알폼 */}
                         <TradeInputCell
@@ -927,6 +1076,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-3`)}
+                          isLocked={isLocked}
                         />
                         {/* 형틀 */}
                         <TradeInputCell
@@ -945,6 +1095,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-4`)}
+                          isLocked={isLocked}
                         />
                         {/* 해체/정리 */}
                         <TradeInputCell
@@ -963,6 +1114,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-5`)}
+                          isLocked={isLocked}
                         />
                         {/* 철근 */}
                         <TradeInputCell
@@ -981,6 +1133,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-6`)}
+                          isLocked={isLocked}
                         />
                         {/* 콘크리트 */}
                         <TradeInputCell
@@ -999,6 +1152,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-7`)}
+                          isLocked={isLocked}
                         />
                       </tr>
                     );
@@ -1009,7 +1163,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   const floorClass = row.floor?.floorClass || '';
                   
                   return (
-                    <tr key={row.floor?.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                    <tr key={row.floor?.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50" style={{ height: '25px' }}>
                       <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-16">{floorClass}</td>
                       <td className="px-0.5 py-0 text-[10.8px] text-center font-medium border-r border-slate-200 dark:border-slate-800 w-16">
                         {row.label}
@@ -1031,6 +1185,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-2`)}
+                          isLocked={isLocked}
                         />
                       {/* 알폼 */}
                       <TradeInputCell
@@ -1048,6 +1203,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-3`)}
+                        isLocked={isLocked}
                       />
                       {/* 형틀 */}
                       <TradeInputCell
@@ -1082,6 +1238,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-5`)}
+                        isLocked={isLocked}
                       />
                       {/* 철근 */}
                       <TradeInputCell
@@ -1099,6 +1256,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-6`)}
+                        isLocked={isLocked}
                       />
                       {/* 콘크리트 */}
                       <TradeInputCell
@@ -1116,6 +1274,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-7`)}
+                        isLocked={isLocked}
                       />
                     </tr>
                   );
@@ -1169,7 +1328,8 @@ function TradeInputCell({
   onTextDragEnd,
   isDraggingText,
   isDraggingTextRef,
-  isSelected
+  isSelected,
+  isLocked
 }: { 
   value: number | null | undefined; 
   onChange: (value: number | null) => void;
@@ -1186,6 +1346,7 @@ function TradeInputCell({
   isDraggingText?: boolean;
   isDraggingTextRef?: React.MutableRefObject<boolean>;
   isSelected?: boolean;
+  isLocked?: boolean;
 }) {
   const [isFocused, setIsFocused] = useState(false);
   const [displayValue, setDisplayValue] = useState('');
@@ -1457,26 +1618,13 @@ function TradeInputCell({
 
   // 셀 클릭 시 선택
   const handleMouseDown = (e: React.MouseEvent<HTMLInputElement>) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleMouseDown',message:'Input mouseDown',data:{rowIndex,colIndex,targetTag:(e.target as HTMLElement).tagName,button:e.button},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     // input 필드 내부 이벤트가 부모로 전파되지 않도록 함
     // 단, 기본 텍스트 선택 동작은 허용해야 하므로 preventDefault는 호출하지 않음
     e.stopPropagation();
     
     // 텍스트 선택 드래그 시작 (전역 상태로 관리)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleMouseDown:beforeTextDragStart',message:'Before onTextDragStart',data:{rowIndex,colIndex,hasOnTextDragStart:!!onTextDragStart},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
     if (onTextDragStart) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleMouseDown:callingTextDragStart',message:'Calling onTextDragStart',data:{rowIndex,colIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       onTextDragStart();
-    } else {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleMouseDown:noTextDragStart',message:'onTextDragStart not provided',data:{rowIndex,colIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
     }
     
     // 텍스트 선택이 완료되면 플래그 해제
@@ -1503,34 +1651,21 @@ function TradeInputCell({
 
   // input 필드에서 마우스 이동 (텍스트 선택 허용)
   const handleInputMouseMove = (e: React.MouseEvent<HTMLInputElement>) => {
-    // #region agent log
-    const draggingTextValue = isDraggingTextRef?.current ?? isDraggingText ?? false;
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleInputMouseMove',message:'Input mouseMove',data:{rowIndex,colIndex,buttons:e.buttons,isDraggingText,isDraggingTextRefValue:isDraggingTextRef?.current,draggingTextValue,hasRef:!!isDraggingTextRef},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     // input 필드 내부에서 마우스 이동 시 기본 동작(텍스트 선택) 허용
     e.stopPropagation();
   };
 
   // td 요소에서 마우스 다운 (셀 선택 드래그 시작)
   const handleCellMouseDown = (e: React.MouseEvent<HTMLTableCellElement>) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleCellMouseDown',message:'Cell mouseDown',data:{rowIndex,colIndex,targetTag:(e.target as HTMLElement).tagName,isInput:(e.target as HTMLElement).tagName==='INPUT'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     // input 필드 내부가 아닐 때만 셀 선택 드래그 시작
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.closest('input')) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleCellMouseDown:skipped',message:'Cell mouseDown skipped - input field',data:{rowIndex,colIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       return; // input 필드 내부이면 텍스트 선택 허용
     }
     
     if (rowIndex !== undefined && colIndex !== undefined && onDragStart) {
       const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
       if (!isMultiSelect) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FloorTradeTable.tsx:TradeInputCell:handleCellMouseDown:dragStart',message:'Cell drag start',data:{rowIndex,colIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         onDragStart(rowIndex, colIndex);
       }
       
@@ -1554,16 +1689,19 @@ function TradeInputCell({
         onBlur={handleBlur}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        disabled={isLocked}
         onMouseDown={(e) => {
           // input 필드 내부에서의 이벤트는 부모로 전파되지 않도록 함
           e.stopPropagation();
-          handleMouseDown(e);
+          if (!isLocked) {
+            handleMouseDown(e);
+          }
         }}
         onMouseMove={handleInputMouseMove}
         data-row-index={rowIndex}
         data-col-index={colIndex}
         style={{ userSelect: 'text' }}
-        className="w-full h-5 text-[10.8px] p-0.5 border-0 rounded-none text-center focus:ring-0 focus-visible:ring-0"
+        className="w-full h-5 text-[10.8px] p-0.5 border-0 rounded-none text-center focus:ring-0 focus-visible:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
       />
     </td>
   );

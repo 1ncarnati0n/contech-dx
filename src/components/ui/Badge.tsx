@@ -8,9 +8,9 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
+          "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
         primary:
-          "border-slate-300 bg-slate-700 text-white dark:border-slate-600 dark:bg-slate-600",
+          "border-zinc-300 bg-zinc-700 text-white dark:border-zinc-600 dark:bg-zinc-600",
         secondary:
           "border-cyan-200 bg-cyan-100 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
         accent:
@@ -22,7 +22,7 @@ const badgeVariants = cva(
         error:
           "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400",
         outline:
-          "border-slate-300 bg-transparent text-slate-700 dark:border-slate-600 dark:text-slate-300",
+          "border-zinc-300 bg-transparent text-zinc-700 dark:border-zinc-600 dark:text-zinc-300",
       },
     },
     defaultVariants: {

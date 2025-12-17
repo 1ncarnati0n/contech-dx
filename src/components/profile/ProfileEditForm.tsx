@@ -1,23 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import type { Profile } from '@/lib/types';
+import { Button } from '@/components/ui';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/Form';
+import { Input, Textarea } from '@/components/ui/Input';
 
+// ============================================
+// Zod 스키마 정의
+// ============================================
+const profileSchema = z.object({
+  displayName: z
+    .string()
+    .max(50, '표시 이름은 50자를 초과할 수 없습니다'),
+  bio: z
+    .string()
+    .max(200, '자기소개는 200자를 초과할 수 없습니다'),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
+// ============================================
+// Props 타입 정의
+// ============================================
 interface ProfileEditFormProps {
   profile: Profile;
   signupName?: string | null;
   signupPosition?: string | null;
 }
 
+// ============================================
+// 컴포넌트
+// ============================================
 export default function ProfileEditForm({ profile, signupName, signupPosition }: ProfileEditFormProps) {
-  // display_name이 없고 회원가입 시 등록한 정보가 있으면 자동 입력
+  const router = useRouter();
+  const supabase = createClient();
+
+  // 초기 표시 이름 계산
   const getInitialDisplayName = () => {
     if (profile.display_name) {
       return profile.display_name;
     }
-    // 회원가입 시 등록한 이름과 직위를 조합
     if (signupName && signupPosition) {
       return `${signupName} ${signupPosition}`;
     }
@@ -27,150 +63,147 @@ export default function ProfileEditForm({ profile, signupName, signupPosition }:
     return '';
   };
 
-  const [displayName, setDisplayName] = useState(getInitialDisplayName());
-  const [bio, setBio] = useState(profile.bio || '');
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      displayName: getInitialDisplayName(),
+      bio: profile.bio || '',
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setLoading(true);
-
+  const onSubmit = async (data: ProfileFormValues) => {
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
-          display_name: displayName || null,
-          bio: bio || null,
+          display_name: data.displayName || null,
+          bio: data.bio || null,
         })
         .eq('id', profile.id);
 
       if (error) {
-        setError(error.message);
+        toast.error('프로필 업데이트 실패', { description: error.message });
         return;
       }
 
-      setSuccess('프로필이 성공적으로 업데이트되었습니다.');
+      toast.success('프로필이 성공적으로 업데이트되었습니다.');
       router.refresh();
-    } catch (err) {
-      setError('프로필 업데이트 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+    } catch {
+      toast.error('프로필 업데이트 중 오류가 발생했습니다.');
     }
   };
 
+  const handleReset = () => {
+    form.reset({
+      displayName: getInitialDisplayName(),
+      bio: profile.bio || '',
+    });
+  };
+
+  const bioValue = form.watch('bio') || '';
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 이메일 (읽기 전용) */}
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-          이메일 (변경 불가)
-        </label>
-        <input
-          id="email"
-          type="email"
-          value={profile.email}
-          disabled
-          className="w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-gray-500 cursor-not-allowed"
-        />
-      </div>
-
-      {/* 표시 이름 */}
-      <div>
-        <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
-          표시 이름
-        </label>
-        <input
-          id="displayName"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="이름을 입력하세요"
-          maxLength={50}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          게시글과 댓글에 표시될 이름입니다. (최대 50자)
-        </p>
-      </div>
-
-      {/* 자기소개 */}
-      <div>
-        <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
-          자기소개
-        </label>
-        <textarea
-          id="bio"
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          placeholder="간단한 자기소개를 입력하세요"
-          rows={4}
-          maxLength={200}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          {bio.length}/200자
-        </p>
-      </div>
-
-      {/* 회원 등급 (읽기 전용) */}
-      <div>
-        <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-          회원 등급 (변경 불가)
-        </label>
-        <input
-          id="role"
-          type="text"
-          value={profile.role}
-          disabled
-          className="w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-gray-500 cursor-not-allowed"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          회원 등급은 관리자만 변경할 수 있습니다.
-        </p>
-      </div>
-
-      {/* 에러/성공 메시지 */}
-      {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 border border-red-200">
-          {error}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* 이메일 (읽기 전용) */}
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            이메일 (변경 불가)
+          </label>
+          <Input
+            id="email"
+            type="email"
+            value={profile.email}
+            disabled
+            className="bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed"
+          />
         </div>
-      )}
 
-      {success && (
-        <div className="rounded-md bg-green-50 p-3 text-sm text-green-800 border border-green-200">
-          {success}
+        {/* 표시 이름 */}
+        <FormField
+          control={form.control}
+          name="displayName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>표시 이름</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="이름을 입력하세요"
+                  maxLength={50}
+                  {...field}
+                  value={field.value || ''}
+                />
+              </FormControl>
+              <FormDescription>
+                게시글과 댓글에 표시될 이름입니다. (최대 50자)
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* 자기소개 */}
+        <FormField
+          control={form.control}
+          name="bio"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>자기소개</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="간단한 자기소개를 입력하세요"
+                  rows={4}
+                  maxLength={200}
+                  className="resize-none"
+                  {...field}
+                  value={field.value || ''}
+                />
+              </FormControl>
+              <FormDescription>
+                {bioValue.length}/200자
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* 회원 등급 (읽기 전용) */}
+        <div>
+          <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            회원 등급 (변경 불가)
+          </label>
+          <Input
+            id="role"
+            type="text"
+            value={profile.role}
+            disabled
+            className="bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            회원 등급은 관리자만 변경할 수 있습니다.
+          </p>
         </div>
-      )}
 
-      {/* 버튼 */}
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? '저장 중...' : '저장하기'}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDisplayName(getInitialDisplayName());
-            setBio(profile.bio || '');
-            setError(null);
-            setSuccess(null);
-          }}
-          disabled={loading}
-          className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          초기화
-        </button>
-      </div>
-    </form>
+        {/* 버튼 */}
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            loading={form.formState.isSubmitting}
+            className="flex-1"
+          >
+            저장하기
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleReset}
+            disabled={form.formState.isSubmitting}
+          >
+            초기화
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

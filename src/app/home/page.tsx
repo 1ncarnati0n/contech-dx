@@ -163,9 +163,9 @@ export default function HomePage() {
             </section>
 
             {/* CTA Section */}
-            <section className="py-24 bg-zinc-200 dark:bg-zinc-950 text-white relative overflow-hidden">
+            <section className="py-24 bg-zinc-100 dark:bg-zinc-900/50 relative overflow-hidden">
                 <div className="container mx-auto px-4 text-center relative z-10">
-                    <p className="text-zinc-400 mb-10 max-w-2xl mx-auto">
+                    <p className="text-zinc-600 dark:text-zinc-400 mb-10 max-w-2xl mx-auto">
                         지금 바로 ConTech DX와 함께 디지털 전환을 시작하세요.
                     </p>
                 </div>

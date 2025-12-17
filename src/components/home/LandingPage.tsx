@@ -30,7 +30,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
       {/* Background Effects */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080801a_1px,transparent_1px),linear-gradient(to_bottom,#8080801a_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
@@ -57,7 +57,7 @@ export default function LandingPage() {
         {/* Hero Title */}
         <motion.h1
           variants={itemVariants}
-          className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 dark:text-white mb-6"
+          className="text-5xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6"
         >
           Contech DX
           <br />
@@ -69,7 +69,7 @@ export default function LandingPage() {
         {/* Description */}
         <motion.p
           variants={itemVariants}
-          className="text-lg md:text-xl text-slate-600 dark:text-primary-400 max-w-2xl mx-auto mb-12 leading-relaxed"
+          className="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed"
         >
           데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색.
           <br className="hidden sm:block" />
@@ -81,10 +81,10 @@ export default function LandingPage() {
           variants={itemVariants}
           className="p-1 rounded-2xl bg-gradient-to-b from-white/50 to-white/20 dark:from-white/10 dark:to-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl dark:shadow-2xl max-w-sm mx-auto"
         >
-          <div className="bg-white/60 dark:bg-slate-950/80 rounded-xl p-6 space-y-4 backdrop-blur-sm">
+          <div className="bg-white/60 dark:bg-zinc-950/80 rounded-xl p-6 space-y-4 backdrop-blur-sm">
             <div className="space-y-2">
-              <h3 className="text-slate-900 dark:text-white font-medium">Member Access</h3>
-              <p className="text-sm text-slate-500 dark:text-primary-500">
+              <h3 className="text-zinc-900 dark:text-white font-medium">Member Access</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 승인된 임직원 및 관계자 전용
               </p>
             </div>
@@ -93,7 +93,7 @@ export default function LandingPage() {
               <Button
                 variant="primary"
                 size="lg"
-                className="w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-primary-100 border-none shadow-lg"
+                className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-100 border-none shadow-lg"
                 asChild
               >
                 <Link href="/login" className="flex items-center justify-center gap-2">
@@ -104,7 +104,7 @@ export default function LandingPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-white/5"
+                className="w-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
                 asChild
               >
                 <Link href="/signup">
@@ -121,45 +121,45 @@ export default function LandingPage() {
           className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto"
         >
           {/* Feature 1 */}
-          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 hover:border-primary-200 dark:hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-700 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-3 rounded-xl bg-primary-50 dark:bg-white/5 text-primary-600 dark:text-primary-300 group-hover:scale-110 transition-transform duration-300">
+              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-white/5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300">
                 <Building2 className="w-8 h-8" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">직영공사 관리</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  프로젝트의 모든 작업을 체계적으로 분류하고<br className="hidden xl:block" /> 효율적으로 관리하여 공기를 준수합니다.
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">WBS 직영공사 관리</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  프로젝트의 모든 작업들을 체계적으로 분류하고 효율적으로 관리하여 공기를 준수합니다.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Feature 2 */}
-          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 hover:border-primary-200 dark:hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-700 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-3 rounded-xl bg-primary-50 dark:bg-white/5 text-primary-600 dark:text-primary-300 group-hover:scale-110 transition-transform duration-300">
-                <LineChart className="w-8 h-8" />
+              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-white/5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheck className="w-8 h-8" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">EVMS 원가관리(예정)</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  비용과 일정을 통합 관리하여 프로젝트의<br className="hidden xl:block" /> 성과를 실시간으로 측정하고 예측합니다.
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">건설 데이터 구축</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  건설산업의 프로세스와 시공현장의 다양한 데이터를 디지털화하고 지속 가능한 지적자산으로 구축합니다.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Feature 3 */}
-          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-primary-100 dark:border-white/10 hover:border-primary-200 dark:hover:border-white/20 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-700 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="p-3 rounded-xl bg-primary-50 dark:bg-white/5 text-primary-600 dark:text-primary-300 group-hover:scale-110 transition-transform duration-300">
-                <ShieldCheck className="w-8 h-8" />
+              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-white/5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                <LineChart className="w-8 h-8" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">건설 데이터 구축</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  현장의 다양한 데이터를 디지털화하고<br className="hidden xl:block" /> 지속 가능한 지식 자산으로 구축합니다.
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">EVMS 원가관리(예정)</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  비용과 일정을 통합관리하여 프로젝트의 성과를 실시간으로 측정하고 예측합니다.
                 </p>
               </div>
             </div>

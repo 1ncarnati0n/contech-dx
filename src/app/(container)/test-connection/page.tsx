@@ -82,7 +82,7 @@ export default async function TestConnectionPage() {
   let allTables: string[] = [];
 
   if (!tablesError && tables) {
-    allTables = tables.map((t: any) => t.table_name);
+    allTables = tables.map((t: { table_name: string }) => t.table_name);
   } else {
     // 권한 문제 등으로 실패 시 기본 테이블 확인 시도
     const checkTables = ['posts', 'comments', 'profiles', 'projects'];

@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /out/
+/.swc/
 
 # production
 /build
@@ -49,4 +50,5 @@ next-env.d.ts
 GEMINI.md
 
 # cursor
+.cursor
 .cursor/

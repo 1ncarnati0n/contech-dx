@@ -88,18 +88,24 @@ async function loadFromFile(): Promise<MockDataStore> {
   }
 
   try {
-    const fs = await import('fs/promises');
-    const path = await import('path');
+    // 서버 환경에서만 동적으로 import (클라이언트 번들에서 제외)
+    const fs = await import('fs/promises').catch(() => null);
+    const path = await import('path').catch(() => null);
     
-    const mockDataPath = path.join(process.cwd(), 'mock.json');
+    if (!fs || !path) {
+      logger.debug('File system modules not available, returning empty data');
+      return { buildings: [], floors: [], floorTrades: [] };
+    }
+    
+    const mockDataPath = path.join(process.cwd(), 'public', 'mock.json');
     
     try {
       const fileContent = await fs.readFile(mockDataPath, 'utf-8');
       const data = JSON.parse(fileContent) as MockDataStore;
       logger.debug('Data loaded from mock.json');
       return data;
-    } catch (fileError: any) {
-      if (fileError.code === 'ENOENT') {
+    } catch (fileError: unknown) {
+      if (fileError instanceof Error && 'code' in fileError && fileError.code === 'ENOENT') {
         // 파일이 없으면 빈 데이터 반환
         logger.debug('mock.json not found, returning empty data');
         return { buildings: [], floors: [], floorTrades: [] };
@@ -122,17 +128,23 @@ async function saveToFile(data: MockDataStore): Promise<void> {
   }
 
   try {
-    const fs = await import('fs/promises');
-    const path = await import('path');
+    // 서버 환경에서만 동적으로 import (클라이언트 번들에서 제외)
+    const fs = await import('fs/promises').catch(() => null);
+    const path = await import('path').catch(() => null);
     
-    const mockDataPath = path.join(process.cwd(), 'mock.json');
+    if (!fs || !path) {
+      logger.debug('File system modules not available, cannot save to file');
+      return;
+    }
+    
+    const mockDataPath = path.join(process.cwd(), 'public', 'mock.json');
     const jsonContent = JSON.stringify(data, null, 2);
     
     await fs.writeFile(mockDataPath, jsonContent, 'utf-8');
     logger.debug('Data saved to mock.json');
   } catch (error) {
     logger.error('Error saving to file:', error);
-    throw error;
+    // 클라이언트 환경에서 호출될 수 있으므로 에러를 throw하지 않음
   }
 }
 

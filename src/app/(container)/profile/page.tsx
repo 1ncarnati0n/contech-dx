@@ -43,7 +43,7 @@ export default async function ProfilePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* 왼쪽: 프로필 정보 카드 */}
         <div className="md:col-span-1">
-          <div className="bg-white dark:bg-primary-900/50 rounded-lg shadow-md p-6 border border-slate-200 dark:border-primary-800">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-6 border border-slate-200 dark:border-zinc-800">
             {/* 프로필 이미지 */}
             <div className="flex justify-center mb-4">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
@@ -69,7 +69,7 @@ export default async function ProfilePage() {
             </div>
 
             {/* 통계 */}
-            <div className="border-t border-slate-200 dark:border-primary-800 pt-4 space-y-3">
+            <div className="border-t border-slate-200 dark:border-zinc-800 pt-4 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-600 dark:text-primary-400">게시글</span>
                 <span className="text-lg font-semibold text-slate-900 dark:text-white">{postCount || 0}</span>
@@ -91,7 +91,7 @@ export default async function ProfilePage() {
 
             {/* Bio */}
             {profile.bio && (
-              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-primary-800">
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
                 <p className="text-sm text-slate-600 dark:text-primary-400 italic">{profile.bio}</p>
               </div>
             )}
@@ -117,7 +117,7 @@ export default async function ProfilePage() {
 
         {/* 오른쪽: 프로필 편집 폼 */}
         <div className="md:col-span-2">
-          <div className="bg-white dark:bg-primary-900/50 rounded-lg shadow-md p-6 border border-slate-200 dark:border-primary-800">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-6 border border-slate-200 dark:border-zinc-800">
             <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">프로필 편집</h2>
             <ProfileEditForm 
               profile={profile} 
@@ -129,12 +129,12 @@ export default async function ProfilePage() {
       </div>
 
       {/* 내가 작성한 게시글 링크 */}
-      <div className="mt-6 bg-white dark:bg-primary-900/50 rounded-lg shadow-md p-6 border border-slate-200 dark:border-primary-800">
+      <div className="mt-6 bg-white dark:bg-primary-900/50 rounded-lg shadow-md p-6 border border-slate-200 dark:border-zinc-800">
         <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">빠른 링크</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link
             href="/posts"
-            className="flex items-center justify-between p-4 border border-slate-200 dark:border-primary-700 rounded-lg hover:bg-slate-50 dark:hover:bg-primary-800 transition"
+            className="flex items-center justify-between p-4 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-primary-800 transition"
           >
             <div>
               <h3 className="font-medium text-slate-900 dark:text-white">내가 작성한 게시글</h3>
@@ -156,7 +156,7 @@ export default async function ProfilePage() {
           </Link>
           <Link
             href="/posts/new"
-            className="flex items-center justify-between p-4 border border-slate-200 dark:border-primary-700 rounded-lg hover:bg-slate-50 dark:hover:bg-primary-800 transition"
+            className="flex items-center justify-between p-4 border border-slate-200 dark:border-zinc-700 rounded-lg hover:bg-slate-50 dark:hover:bg-primary-800 transition"
           >
             <div>
               <h3 className="font-medium text-slate-900 dark:text-white">새 글 작성</h3>
