@@ -122,7 +122,7 @@ export default function MarkdownRenderer({
                   <span>{match ? match[1] : 'Code'}</span>
                 </div>
                 <pre className="p-3 overflow-x-auto bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent">
-                  <code className="font-mono text-xs leading-relaxed" {...props}>
+                  <code className="font-mono text-xs" {...props}>
                     {children}
                   </code>
                 </pre>
