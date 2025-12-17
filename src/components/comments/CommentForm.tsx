@@ -6,13 +6,13 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Send } from 'lucide-react';
 import { Button } from '@/components/ui';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/Form';
 import { Textarea } from '@/components/ui/Input';
@@ -85,32 +85,47 @@ export default function CommentForm({ postId }: CommentFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="content"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>댓글 작성</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="댓글을 입력하세요..."
-                  rows={3}
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="flex gap-4">
+          {/* 현재 사용자 아바타 */}
+          <div className="flex-shrink-0 hidden sm:block">
+            <div className="w-10 h-10 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-medium text-sm">
+              나
+            </div>
+          </div>
 
-        <Button
-          type="submit"
-          disabled={form.formState.isSubmitting}
-          loading={form.formState.isSubmitting}
-        >
-          댓글 작성
-        </Button>
+          <div className="flex-1">
+            <FormField
+              control={form.control}
+              name="content"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Textarea
+                      placeholder="댓글을 작성해주세요..."
+                      rows={3}
+                      className="resize-none bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 focus:bg-white dark:focus:bg-zinc-800 transition-colors"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end mt-3">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={form.formState.isSubmitting}
+                loading={form.formState.isSubmitting}
+                className="gap-2"
+              >
+                <Send className="w-4 h-4" />
+                댓글 작성
+              </Button>
+            </div>
+          </div>
+        </div>
       </form>
     </Form>
   );

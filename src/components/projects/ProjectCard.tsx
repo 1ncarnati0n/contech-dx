@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Calendar, DollarSign, MapPin } from 'lucide-react';
+import { ProjectImagePlaceholder } from '@/components/common/ProjectImagePlaceholder';
 import type { Project } from '@/lib/types';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
 
@@ -23,6 +24,9 @@ function generateStableHash(id: string): number {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
   // 프로젝트 ID 기반 결정론적 값 생성 (매 렌더링마다 동일)
   const stableValues = useMemo(() => {
     const hash = generateStableHash(project.id);
@@ -39,12 +43,31 @@ export function ProjectCard({ project }: ProjectCardProps) {
       <div className="h-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden hover:shadow-lg hover:border-cyan-400 dark:hover:border-cyan-600 transition-all duration-300 flex flex-col">
         {/* Project Image */}
         <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mockImage}
-            alt={project.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
+          {imageError ? (
+            <ProjectImagePlaceholder
+              projectName={project.name}
+              projectNumber={project.project_number}
+            />
+          ) : (
+            <>
+              {imageLoading && (
+                <div className="absolute inset-0 bg-zinc-200 dark:bg-zinc-700 animate-pulse" />
+              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mockImage}
+                alt={project.name}
+                onLoad={() => setImageLoading(false)}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                  imageLoading ? 'opacity-0' : 'opacity-100'
+                }`}
+              />
+            </>
+          )}
           <div className="absolute top-3 right-3">
             <span
               className={`px-2.5 py-1 text-xs font-semibold rounded-lg shadow-sm backdrop-blur-md ${getStatusColors(project.status)}`}
