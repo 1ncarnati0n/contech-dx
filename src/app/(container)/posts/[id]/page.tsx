@@ -108,7 +108,7 @@ export default async function PostDetailPage({ params }: PageProps) {
 
         {/* 본문 */}
         <CardContent className="p-6 sm:p-8">
-          <div className="prose prose-zinc dark:prose-invert max-w-none prose-pre:leading-tight">
+          <div className="prose prose-zinc dark:prose-invert max-w-none">
             <MarkdownRenderer content={post.content} />
           </div>
         </CardContent>

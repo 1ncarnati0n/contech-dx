@@ -4,6 +4,15 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* D2Coding 폰트 로드 (한글 코딩 폰트) */
+@font-face {
+  font-family: 'D2Coding';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   /* 
      IMPORTANT: Map theme colors to CSS variables.
@@ -87,6 +96,7 @@
   
   /* Font Family */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: "SF Mono", "D2Coding", ui-monospace, SFMono-Regular, "Roboto Mono", Menlo, Monaco, Consolas, monospace;
 }
 
 /* 
@@ -189,6 +199,11 @@ body::before {
   /* Prose Pre 스타일 리셋 - Typography 플러그인 기본 스타일 제거 */
   .prose pre {
     @apply bg-transparent p-0 m-0;
+  }
+
+  /* 코드 블록 line-height - not-prose 영역 포함 */
+  .markdown-content pre code {
+    @apply leading-none;
   }
 }
 

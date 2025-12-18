@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -9,10 +10,21 @@ interface MarkdownRendererProps {
 }
 
 /**
+ * 헤딩 텍스트에서 ID 생성
+ */
+const generateId = (children: React.ReactNode): string => {
+  const text = React.Children.toArray(children)
+    .map((child) => (typeof child === 'string' ? child : ''))
+    .join('');
+  return text.trim();
+};
+
+/**
  * 마크다운 렌더러 컴포넌트
  * - GFM(GitHub Flavored Markdown) 지원
  * - 다크모드 지원
  * - 테이블, 코드블록, 리스트 등 커스텀 스타일링
+ * - 목차 앵커 링크 지원
  */
 export default function MarkdownRenderer({
   content,
@@ -24,14 +36,32 @@ export default function MarkdownRenderer({
         remarkPlugins={[remarkGfm]}
         components={{
           pre: ({ node: _node, children }) => <>{children}</>,
-          a: ({ node: _node, ...props }) => (
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-cyan-600 dark:text-cyan-400 hover:underline break-all"
-              {...props}
-            />
-          ),
+          a: ({ node: _node, href, ...props }) => {
+            if (href?.startsWith('#')) {
+              return (
+                <a
+                  href={href}
+                  className="text-cyan-600 dark:text-cyan-400 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const target = document.getElementById(href.slice(1));
+                    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  {...props}
+                />
+              );
+            }
+
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-600 dark:text-cyan-400 hover:underline break-all"
+                {...props}
+              />
+            );
+          },
           table: ({ node: _node, ...props }) => (
             <div className="overflow-x-auto my-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
               <table
@@ -80,29 +110,41 @@ export default function MarkdownRenderer({
               {...props}
             />
           ),
-          h1: ({ node: _node, ...props }) => (
+          h1: ({ node: _node, children, ...props }) => (
             <h1
+              id={generateId(children)}
               className="text-2xl font-bold mt-6 mb-4 text-zinc-900 dark:text-white"
               {...props}
-            />
+            >
+              {children}
+            </h1>
           ),
-          h2: ({ node: _node, ...props }) => (
+          h2: ({ node: _node, children, ...props }) => (
             <h2
+              id={generateId(children)}
               className="text-xl font-bold mt-5 mb-3 text-zinc-900 dark:text-white"
               {...props}
-            />
+            >
+              {children}
+            </h2>
           ),
-          h3: ({ node: _node, ...props }) => (
+          h3: ({ node: _node, children, ...props }) => (
             <h3
+              id={generateId(children)}
               className="text-lg font-bold mt-4 mb-2 text-zinc-800 dark:text-zinc-200"
               {...props}
-            />
+            >
+              {children}
+            </h3>
           ),
-          h4: ({ node: _node, ...props }) => (
+          h4: ({ node: _node, children, ...props }) => (
             <h4
+              id={generateId(children)}
               className="text-base font-bold mt-3 mb-2 text-zinc-800 dark:text-zinc-200"
               {...props}
-            />
+            >
+              {children}
+            </h4>
           ),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           code: ({ node: _node, className, children, ...props }: any) => {
@@ -121,8 +163,8 @@ export default function MarkdownRenderer({
                 <div className="flex items-center px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-xs">
                   <span>{match ? match[1] : 'Code'}</span>
                 </div>
-                <pre className="p-3 overflow-x-auto bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent">
-                  <code className="font-mono text-xs" {...props}>
+                <pre className="p-3 overflow-x-auto bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-none">
+                  <code className="font-mono text-xs leading-none" {...props}>
                     {children}
                   </code>
                 </pre>
