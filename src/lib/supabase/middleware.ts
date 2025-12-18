@@ -76,7 +76,15 @@ export async function updateSession(request: NextRequest) {
   // Route protection logic
   const path = request.nextUrl.pathname;
 
-  // 1. Public paths that don't require authentication
+  // 디버깅 로그
+  console.log('[Middleware] path:', path, 'user:', user?.email ?? 'null');
+
+  // 인증된 사용자가 로그인/회원가입/루트 페이지 접근 시 /home으로 리다이렉트
+  if (user && (path === '/login' || path === '/signup' || path === '/')) {
+    return NextResponse.redirect(new URL('/home', request.url));
+  }
+
+  // Public paths that don't require authentication
   const publicPaths = ['/login', '/signup', '/auth/callback', '/'];
   const isPublicPath = publicPaths.some(p => path === p || path.startsWith('/auth/'));
 
@@ -85,16 +93,6 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
-  }
-
-  if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup') || request.nextUrl.pathname === '/')) {
-    // 3. 인증된 사용자가 로그인/회원가입/루트 페이지 접근 시 /home으로 리다이렉트
-    return NextResponse.redirect(new URL('/home', request.url));
-  }
-
-  // 4. 루트 페이지('/')는 공개 접근 허용 (위에서 처리되지 않은 비로그인 사용자)
-  if (request.nextUrl.pathname === '/') {
-    return response;
   }
 
   return response;

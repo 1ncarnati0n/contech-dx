@@ -18,7 +18,7 @@ export async function getPosts(limit: number = 20) {
     .select(
       `
       *,
-      author:profiles(email, role)
+      author:profiles(email, display_name, role)
     `
     )
     .order('created_at', { ascending: false })

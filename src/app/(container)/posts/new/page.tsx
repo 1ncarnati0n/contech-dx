@@ -15,9 +15,11 @@ export default async function NewPostPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">새 게시글 작성</h1>
-      <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="max-w-5xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6 text-zinc-900 dark:text-zinc-100">
+        새 게시글 작성
+      </h1>
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 p-6">
         <PostForm mode="create" />
       </div>
     </div>
