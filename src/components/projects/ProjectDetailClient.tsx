@@ -315,14 +315,13 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab === 'gantt_chart' && (
-            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-              <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                  <BarChart3 className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                </div>
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">간트차트</h3>
-                <p className="text-sm">간트차트 기능은 준비 중입니다.</p>
-              </div>
+            <div className="w-full h-[calc(100vh-120px)]">
+              <iframe
+                src="https://sa-gantt-lib.vercel.app/"
+                className="w-full h-full border-0"
+                title="간트차트"
+                allow="fullscreen"
+              />
             </div>
           )}
 

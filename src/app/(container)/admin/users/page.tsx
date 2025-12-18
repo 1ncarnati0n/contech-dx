@@ -153,19 +153,19 @@ export default async function AdminUsersPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-slate-950 divide-y divide-slate-200 dark:divide-slate-800">
+            <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
               {users?.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <Mail className="w-4 h-4 text-slate-400" />
                         <span className="text-sm font-medium text-slate-900 dark:text-slate-200">
                           {user.email}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1 ml-0.5">
-                        <UserIcon className="w-3 h-3 text-slate-400" />
+                        <UserIcon className="w-4 h-4 text-slate-400" />
                         <span className="text-xs text-slate-500 dark:text-slate-400">
                           {user.display_name || '이름 없음'}
                         </span>
@@ -183,7 +183,7 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <Calendar className="w-4 h-4 text-slate-400" />
                       {formatDistanceToNow(new Date(user.created_at), {
                         addSuffix: true,
                         locale: ko,

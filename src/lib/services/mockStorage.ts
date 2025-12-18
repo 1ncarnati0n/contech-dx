@@ -97,7 +97,7 @@ async function loadFromFile(): Promise<MockDataStore> {
       return { buildings: [], floors: [], floorTrades: [] };
     }
     
-    const mockDataPath = path.join(process.cwd(), 'mock.json');
+    const mockDataPath = path.join(process.cwd(), 'public', 'mock.json');
     
     try {
       const fileContent = await fs.readFile(mockDataPath, 'utf-8');
@@ -137,7 +137,7 @@ async function saveToFile(data: MockDataStore): Promise<void> {
       return;
     }
     
-    const mockDataPath = path.join(process.cwd(), 'mock.json');
+    const mockDataPath = path.join(process.cwd(), 'public', 'mock.json');
     const jsonContent = JSON.stringify(data, null, 2);
     
     await fs.writeFile(mockDataPath, jsonContent, 'utf-8');

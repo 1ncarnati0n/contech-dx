@@ -32,7 +32,7 @@ export default function HomePage() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                             </span>
-                            ConTech DX Platform
+                            ConTech DX AX Platform
                         </div>
 
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">
@@ -43,8 +43,8 @@ export default function HomePage() {
                         </h1>
 
                         <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-                            데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색, <br/>
-                            건설 산업의 디지털 전환을 위한 통합 플랫폼입니다.
+                            데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색.<br />
+                            건설 산업의 디지털 전환(DX)을 위한 통합 플랫폼입니다.
                         </p>
 
                     </motion.div>
@@ -163,9 +163,9 @@ export default function HomePage() {
             </section>
 
             {/* CTA Section */}
-            <section className="py-24 bg-zinc-200 dark:bg-zinc-950 text-white relative overflow-hidden">
+            <section className="py-24 bg-zinc-100 dark:bg-zinc-900/50 relative overflow-hidden">
                 <div className="container mx-auto px-4 text-center relative z-10">
-                    <p className="text-zinc-400 mb-10 max-w-2xl mx-auto">
+                    <p className="text-zinc-600 dark:text-zinc-400 mb-10 max-w-2xl mx-auto">
                         지금 바로 ConTech DX와 함께 디지털 전환을 시작하세요.
                     </p>
                 </div>

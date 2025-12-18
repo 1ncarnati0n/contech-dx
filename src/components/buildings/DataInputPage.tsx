@@ -144,7 +144,7 @@ export function DataInputPage({ projectId }: Props) {
           },
         };
       }
-      
+
       for (let i = 0; i < additionalCount; i++) {
         const buildingName = `${nextNumber + i}동`;
         

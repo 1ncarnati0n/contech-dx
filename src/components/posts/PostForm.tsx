@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,6 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/Form';
 import { Input, Textarea } from '@/components/ui/Input';
+import MarkdownRenderer from '@/components/common/MarkdownRenderer';
 
 // ============================================
 // Zod 스키마 정의
@@ -53,6 +55,7 @@ interface PostFormProps {
 export default function PostForm({ initialData, mode }: PostFormProps) {
   const router = useRouter();
   const supabase = createClient();
+  const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
@@ -140,14 +143,56 @@ export default function PostForm({ initialData, mode }: PostFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>내용</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="게시글 내용을 입력하세요"
-                  rows={10}
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
+              {/* Write/Preview 탭 */}
+              <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                <div className="flex border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('write')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      activeTab === 'write'
+                        ? 'text-zinc-900 dark:text-white bg-white dark:bg-zinc-900 border-b-2 border-cyan-500'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('preview')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      activeTab === 'preview'
+                        ? 'text-zinc-900 dark:text-white bg-white dark:bg-zinc-900 border-b-2 border-cyan-500'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    Preview
+                  </button>
+                </div>
+
+                {activeTab === 'write' ? (
+                  <FormControl>
+                    <Textarea
+                      placeholder="게시글 내용을 입력하세요 (마크다운 지원)"
+                      className="resize-none border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[600px]"
+                      {...field}
+                    />
+                  </FormControl>
+                ) : (
+                  <div className="min-h-[600px] p-4 bg-white dark:bg-zinc-900 prose dark:prose-invert max-w-none">
+                    {field.value ? (
+                      <MarkdownRenderer content={field.value} />
+                    ) : (
+                      <p className="text-zinc-400 dark:text-zinc-500 italic">
+                        작성된 내용이 없습니다. Write 탭에서 내용을 입력해주세요.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                마크다운 문법을 지원합니다. **굵게**, *기울임*, `코드`, [링크](url) 등을 사용할 수 있습니다.
+              </p>
               <FormMessage />
             </FormItem>
           )}
