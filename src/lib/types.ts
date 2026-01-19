@@ -493,6 +493,14 @@ export interface TradeData {
     cost: number;
   };
   
+  // 유로폼
+  euroForm?: {
+    areaM2: number;
+    productivity: number;
+    workers: number;
+    cost: number;
+  };
+  
   // 해체/정리
   stripClean?: {
     areaM2: number;
@@ -503,7 +511,9 @@ export interface TradeData {
   
   // 철근
   rebar?: {
-    ton: number;
+    ton: number; // 기존 (합계용)
+    wall?: number; // 벽 (TON)
+    beamSlab?: number; // 보/슬라브 (TON)
     productivity: number;
     workers: number;
     cost: number;
@@ -511,7 +521,9 @@ export interface TradeData {
   
   // 콘크리트
   concrete?: {
-    volumeM3: number;
+    volumeM3: number; // 기존 (합계용)
+    wall?: number; // 벽 (M³)
+    beamSlab?: number; // 보/슬라브 (M³)
     equipmentCount: number;
     productivityM3: number;
     workers: number;
@@ -683,4 +695,46 @@ export interface UpdateBuildingProcessPlanDTO {
       processType?: ProcessType;
     };
   };
+}
+
+/**
+ * 타설구간
+ */
+export interface PouringSection {
+  id: string; // 고유 ID
+  label: string; // 'A', 'B', 'C' 등
+  projectId: string;
+  // 타설구간별 공정 정보
+  processDays?: number;
+  concreteVolume?: number; // 해당 구간의 콘크리트 물량
+  equipmentCount?: number; // 해당 구간의 장비 대수
+  isPassage?: boolean; // 통로부분 여부
+  includesGroundFloor?: boolean; // 지상층 주동 포함 여부
+  includesFacility3?: boolean; // 3단 가시설 적용부분 포함 여부
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * 프로젝트 레벨 타설구간 목록
+ */
+export interface ProjectPouringSections {
+  projectId: string;
+  sections: PouringSection[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * 타설구간 계산 결과
+ */
+export interface PouringSectionCalculationResult {
+  totalConcreteVolume: number; // 입력된 총 기초 타설량
+  buildingCount: number; // 입력된 동 개수
+  baseSectionCount: number; // 기본 구간 개수 (FLOOR(물량 / 1,300))
+  remainder: number; // 남은 물량
+  calculatedCount: number; // 계산된 구간 개수 (기본 + 남은 물량 처리)
+  minSectionCount: number; // 최소 구간 개수 (동 개수 + 1)
+  finalSectionCount: number; // 최종 타설구간 개수
+  sections: PouringSection[]; // 생성된 타설구간 목록
 }

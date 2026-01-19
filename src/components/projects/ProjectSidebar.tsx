@@ -18,6 +18,7 @@ import {
     Building,
     BarChart3,
     Layers,
+    Calculator,
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
@@ -38,7 +39,7 @@ export function ProjectSidebar({
     onTabChange,
 }: ProjectSidebarProps) {
     const [isDataInputExpanded, setIsDataInputExpanded] = useState(
-        activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'geological_data'
+        activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data'
     );
     const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(
         activeTab === 'basement_process_plan' || activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
@@ -53,8 +54,10 @@ export function ProjectSidebar({
     ];
 
     const dataInputSubItems = [
+        { id: 'pouring_section_review', label: '타설구간 개략검토', icon: Calculator },
         { id: 'data_input', label: '동 기본 정보', icon: Database },
         { id: 'quantity_input', label: '물량 입력', icon: Package },
+        { id: 'detailed_quantity_input', label: '상세물량입력', icon: Package },
         { id: 'geological_data', label: '지질 데이터 입력', icon: Layers },
     ];
 
@@ -64,7 +67,7 @@ export function ProjectSidebar({
         { id: 'gantt_chart', label: '간트차트', icon: BarChart3 },
     ];
 
-    const isDataInputActive = activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'geological_data';
+    const isDataInputActive = activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data';
     const isProcessPlanActive = activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
     const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
 

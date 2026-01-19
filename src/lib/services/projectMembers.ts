@@ -164,6 +164,15 @@ export async function addProjectMember(
 
   const supabase = createClient();
 
+  // 현재 사용자 확인
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    throw new Error('로그인이 필요합니다.');
+  }
+
   const { data, error } = await supabase
     .from('project_members')
     .insert({
@@ -180,8 +189,32 @@ export async function addProjectMember(
     .single();
 
   if (error) {
-    console.error('Error adding project member:', error);
-    throw new Error('Failed to add project member');
+    // 상세 에러 정보 로깅
+    console.error('Error adding project member:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      memberData,
+    });
+
+    // 구체적인 에러 메시지 제공
+    let errorMessage = '멤버 추가에 실패했습니다.';
+    
+    if (error.code === '23505') {
+      // Unique constraint violation
+      errorMessage = '이미 프로젝트 멤버로 등록된 사용자입니다.';
+    } else if (error.code === '42501') {
+      // Insufficient privilege (RLS policy violation)
+      errorMessage = '멤버를 추가할 권한이 없습니다. 프로젝트 생성자 또는 PM만 멤버를 추가할 수 있습니다.';
+    } else if (error.code === '23503') {
+      // Foreign key violation
+      errorMessage = '유효하지 않은 프로젝트 또는 사용자입니다.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
   }
 
   // Transform the joined data
@@ -240,8 +273,25 @@ export async function updateProjectMemberRole(
     .single();
 
   if (error) {
-    console.error('Error updating member role:', error);
-    throw new Error('Failed to update member role');
+    // 상세 에러 정보 로깅
+    console.error('Error updating member role:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      memberId,
+      updates,
+    });
+
+    let errorMessage = '역할 변경에 실패했습니다.';
+    
+    if (error.code === '42501') {
+      errorMessage = '역할을 변경할 권한이 없습니다. 프로젝트 생성자 또는 PM만 역할을 변경할 수 있습니다.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
   }
 
   // Transform the joined data
@@ -280,8 +330,24 @@ export async function removeProjectMember(memberId: string): Promise<void> {
     .eq('id', memberId);
 
   if (error) {
-    console.error('Error removing project member:', error);
-    throw new Error('Failed to remove project member');
+    // 상세 에러 정보 로깅
+    console.error('Error removing project member:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      memberId,
+    });
+
+    let errorMessage = '멤버 제거에 실패했습니다.';
+    
+    if (error.code === '42501') {
+      errorMessage = '멤버를 제거할 권한이 없습니다. 프로젝트 생성자 또는 PM만 멤버를 제거할 수 있습니다.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    throw new Error(errorMessage);
   }
 }
 

@@ -17,7 +17,7 @@ export interface FloorTradeTableHandle {
   flushPendingSaves: () => Promise<void>;
 }
 
-export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
+export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   ({ building, onUpdate }, ref) => {
   const isLocked = building?.meta?.isDataInputLocked || false;
   const [floors, setFloors] = useState<Floor[]>(building.floors);
@@ -294,8 +294,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
   // 셀 선택 처리
   const handleCellSelect = (rowIndex: number, colIndex: number, isMultiSelect: boolean) => {
-    // 형틀 열(colIndex 2), 해체/정리 열(colIndex 6)은 읽기 전용이므로 선택 불가
-    if (colIndex === 2 || colIndex === 6) return;
+    // 형틀 열(colIndex 2), 해체/정리 열(colIndex 6), 철근 합계 열(colIndex 7), 콘크리트 합계 열(colIndex 10)은 읽기 전용이므로 선택 불가
+    if (colIndex === 2 || colIndex === 6 || colIndex === 7 || colIndex === 10) return;
     
     const cellKey = `${rowIndex}-${colIndex}`;
     
@@ -309,8 +309,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       const newSelection = new Set<string>();
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
-          // 형틀 열, 해체/정리 열은 제외
-          if (c !== 2 && c !== 6) {
+          // 형틀 열, 해체/정리 열, 철근 합계 열, 콘크리트 합계 열은 제외
+          if (c !== 2 && c !== 6 && c !== 7 && c !== 10) {
             newSelection.add(`${r}-${c}`);
           }
         }
@@ -350,8 +350,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     for (let r = minRow; r <= maxRow; r++) {
       for (let c = minCol; c <= maxCol; c++) {
         // 구분/층 컬럼은 제외 (데이터 컬럼만 선택)
-        // 형틀 열(colIndex 2), 해체/정리 열(colIndex 6)은 읽기 전용이므로 제외
-        if (c >= 2 && c !== 2 && c !== 6) {
+        // 형틀 열(colIndex 2), 해체/정리 열(colIndex 6), 철근 합계 열(colIndex 7), 콘크리트 합계 열(colIndex 10)은 읽기 전용이므로 제외
+        if (c >= 2 && c !== 2 && c !== 6 && c !== 7 && c !== 10) {
           newSelection.add(`${r}-${c}`);
         }
       }
@@ -418,8 +418,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       if (rowIndex !== null && colIndex !== null) {
         const row = Number(rowIndex);
         const col = Number(colIndex);
-        // 데이터 컬럼만 선택 (구분/층 컬럼 제외, 형틀 열, 해체/정리 열은 읽기 전용이므로 제외)
-        if (col >= 2 && col !== 2 && col !== 6) {
+        // 데이터 컬럼만 선택 (구분/층 컬럼 제외, 형틀 열, 해체/정리 열, 철근 합계 열, 콘크리트 합계 열은 읽기 전용이므로 제외)
+        if (col >= 2 && col !== 2 && col !== 6 && col !== 7 && col !== 10) {
           handleDragMove(row, col);
         }
       }
@@ -762,6 +762,32 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     return gangForm + alForm + euroForm;
   };
 
+  // 철근 합계 계산 함수 (상세물량입력 페이지의 벽 + 보/슬라브)
+  const calculateRebarTotal = (trade: TradeData): number => {
+    const wall = trade.rebar?.wall || 0;
+    const beamSlab = trade.rebar?.beamSlab || 0;
+    return wall + beamSlab;
+  };
+
+  // 콘크리트 합계 계산 함수 (상세물량입력 페이지의 벽 + 보/슬라브)
+  const calculateConcreteTotal = (trade: TradeData): number => {
+    const wall = trade.concrete?.wall || 0;
+    const beamSlab = trade.concrete?.beamSlab || 0;
+    return wall + beamSlab;
+  };
+
+  // 물량입력 페이지에서 철근 물량 가져오기
+  const getQuantityInputRebar = (floorId: string, tradeGroup: string): number => {
+    const quantityInputTrade = getTrade(floorId, tradeGroup);
+    return quantityInputTrade.rebar?.ton || 0;
+  };
+
+  // 물량입력 페이지에서 콘크리트 물량 가져오기
+  const getQuantityInputConcrete = (floorId: string, tradeGroup: string): number => {
+    const quantityInputTrade = getTrade(floorId, tradeGroup);
+    return quantityInputTrade.concrete?.volumeM3 || 0;
+  };
+
   // 소계 계산
   const calculateSummary = (field: string): number => {
     let sum = 0;
@@ -804,13 +830,29 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     if (dataColIndex === 4) {
       return null;
     }
-    // 철근 (5)
+    // 철근 합계 (5) - 읽기 전용이므로 null 반환
     if (dataColIndex === 5) {
-      return 'rebar.ton';
+      return null;
     }
-    // 콘크리트 (6)
+    // 철근 벽 (6)
     if (dataColIndex === 6) {
-      return 'concrete.volumeM3';
+      return 'rebar.wall';
+    }
+    // 철근 보/슬라브 (7)
+    if (dataColIndex === 7) {
+      return 'rebar.beamSlab';
+    }
+    // 콘크리트 합계 (8) - 읽기 전용이므로 null 반환
+    if (dataColIndex === 8) {
+      return null;
+    }
+    // 콘크리트 벽 (9)
+    if (dataColIndex === 9) {
+      return 'concrete.wall';
+    }
+    // 콘크리트 보/슬라브 (10)
+    if (dataColIndex === 10) {
+      return 'concrete.beamSlab';
     }
     
     return null;
@@ -959,10 +1001,10 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
                     해체/정리
                   </th>
-                  <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+                  <th colSpan={3} className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
                     철근
                   </th>
-                  <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white bg-white dark:bg-slate-950">
+                  <th colSpan={3} className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white bg-white dark:bg-slate-950">
                     콘크리트
                   </th>
                 </tr>
@@ -988,13 +1030,29 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
                     M²
                   </th>
-                  {/* 철근 */}
-                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
-                    TON
+                  {/* 철근 합계 */}
+                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                    합계(TON)
                   </th>
-                  {/* 콘크리트 */}
+                  {/* 철근 벽 */}
+                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
+                    벽(TON)
+                  </th>
+                  {/* 철근 보/슬라브 */}
+                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
+                    보/슬라브(TON)
+                  </th>
+                  {/* 콘크리트 합계 */}
+                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                    합계(M³)
+                  </th>
+                  {/* 콘크리트 벽 */}
+                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
+                    벽(M³)
+                  </th>
+                  {/* 콘크리트 보/슬라브 */}
                   <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 w-14">
-                    M³
+                    보/슬라브(M³)
                   </th>
                 </tr>
               </thead>
@@ -1048,17 +1106,56 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                             return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
-                        {/* 철근 */}
-                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
+                        {/* 철근 합계 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
                           {(() => {
-                            const val = calculateSummary('rebar.ton');
+                            const wallSum = calculateSummary('rebar.wall');
+                            const beamSlabSum = calculateSummary('rebar.beamSlab');
+                            const val = wallSum + beamSlabSum;
                             return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
-                        {/* 콘크리트 */}
-                        <td className="px-0.5 py-0 text-[10.8px] text-center w-14">
+                        {/* 철근 벽 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
+                          {(() => {
+                            const val = calculateSummary('rebar.wall');
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        {/* 철근 보/슬라브 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
+                          {(() => {
+                            const val = calculateSummary('rebar.beamSlab');
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        {/* 콘크리트 합계 - 물량입력 페이지 값 표시 */}
+                        <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
+                          (() => {
+                            const wallSum = calculateSummary('concrete.wall');
+                            const beamSlabSum = calculateSummary('concrete.beamSlab');
+                            const detailedSum = wallSum + beamSlabSum;
+                            const quantityInputSum = calculateSummary('concrete.volumeM3');
+                            const tolerance = 0.01; // 소수점 오차 허용
+                            return Math.abs(quantityInputSum - detailedSum) > tolerance ? 'text-red-600 dark:text-red-400' : '';
+                          })()
+                        }`}>
                           {(() => {
                             const val = calculateSummary('concrete.volumeM3');
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        {/* 콘크리트 벽 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
+                          {(() => {
+                            const val = calculateSummary('concrete.wall');
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        {/* 콘크리트 보/슬라브 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center w-14">
+                          {(() => {
+                            const val = calculateSummary('concrete.beamSlab');
                             return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
@@ -1152,34 +1249,29 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                             return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
-                        {/* 철근 */}
+                        {/* 철근 합계 (읽기 전용) - 물량입력 페이지 값 표시 */}
+                        <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
+                          (() => {
+                            const quantityInputVal = getQuantityInputRebar(specialFloorId, tradeGroup);
+                            const detailedVal = calculateRebarTotal(groupTrade);
+                            const tolerance = 0.01; // 소수점 오차 허용
+                            return Math.abs(quantityInputVal - detailedVal) > tolerance ? 'text-red-600 dark:text-red-400' : '';
+                          })()
+                        }`}>
+                          {(() => {
+                            const val = getQuantityInputRebar(specialFloorId, tradeGroup);
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        {/* 철근 벽 */}
                         <TradeInputCell
-                          value={groupTrade.rebar?.ton ?? null}
-                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'rebar.ton', v)}
-                          rowIndex={rowIndex}
-                          colIndex={7}
-                          floorId={specialFloorId}
-                          tradeGroup={tradeGroup}
-                          fieldPath="rebar.ton"
-                          onPaste={handlePaste}
-                          onSelect={handleCellSelect}
-                          onDragStart={handleDragStart}
-                          onTextDragStart={handleTextDragStart}
-                          onTextDragEnd={handleTextDragEnd}
-                          isDraggingText={isDraggingText}
-                          isDraggingTextRef={isDraggingTextRef}
-                          isSelected={selectedCells.has(`${rowIndex}-7`)}
-                          isLocked={isLocked}
-                        />
-                        {/* 콘크리트 */}
-                        <TradeInputCell
-                          value={groupTrade.concrete?.volumeM3 ?? null}
-                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'concrete.volumeM3', v)}
+                          value={groupTrade.rebar?.wall ?? null}
+                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'rebar.wall', v)}
                           rowIndex={rowIndex}
                           colIndex={8}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
-                          fieldPath="concrete.volumeM3"
+                          fieldPath="rebar.wall"
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
@@ -1188,6 +1280,77 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-8`)}
+                          isLocked={isLocked}
+                        />
+                        {/* 철근 보/슬라브 */}
+                        <TradeInputCell
+                          value={groupTrade.rebar?.beamSlab ?? null}
+                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'rebar.beamSlab', v)}
+                          rowIndex={rowIndex}
+                          colIndex={9}
+                          floorId={specialFloorId}
+                          tradeGroup={tradeGroup}
+                          fieldPath="rebar.beamSlab"
+                          onPaste={handlePaste}
+                          onSelect={handleCellSelect}
+                          onDragStart={handleDragStart}
+                          onTextDragStart={handleTextDragStart}
+                          onTextDragEnd={handleTextDragEnd}
+                          isDraggingText={isDraggingText}
+                          isDraggingTextRef={isDraggingTextRef}
+                          isSelected={selectedCells.has(`${rowIndex}-9`)}
+                          isLocked={isLocked}
+                        />
+                        {/* 콘크리트 합계 (읽기 전용) - 물량입력 페이지 값 표시 */}
+                        <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
+                          (() => {
+                            const quantityInputVal = getQuantityInputConcrete(specialFloorId, tradeGroup);
+                            const detailedVal = calculateConcreteTotal(groupTrade);
+                            const tolerance = 0.01; // 소수점 오차 허용
+                            return Math.abs(quantityInputVal - detailedVal) > tolerance ? 'text-red-600 dark:text-red-400' : '';
+                          })()
+                        }`}>
+                          {(() => {
+                            const val = getQuantityInputConcrete(specialFloorId, tradeGroup);
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
+                        {/* 콘크리트 벽 */}
+                        <TradeInputCell
+                          value={groupTrade.concrete?.wall ?? null}
+                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'concrete.wall', v)}
+                          rowIndex={rowIndex}
+                          colIndex={11}
+                          floorId={specialFloorId}
+                          tradeGroup={tradeGroup}
+                          fieldPath="concrete.wall"
+                          onPaste={handlePaste}
+                          onSelect={handleCellSelect}
+                          onDragStart={handleDragStart}
+                          onTextDragStart={handleTextDragStart}
+                          onTextDragEnd={handleTextDragEnd}
+                          isDraggingText={isDraggingText}
+                          isDraggingTextRef={isDraggingTextRef}
+                          isSelected={selectedCells.has(`${rowIndex}-11`)}
+                          isLocked={isLocked}
+                        />
+                        {/* 콘크리트 보/슬라브 */}
+                        <TradeInputCell
+                          value={groupTrade.concrete?.beamSlab ?? null}
+                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'concrete.beamSlab', v)}
+                          rowIndex={rowIndex}
+                          colIndex={12}
+                          floorId={specialFloorId}
+                          tradeGroup={tradeGroup}
+                          fieldPath="concrete.beamSlab"
+                          onPaste={handlePaste}
+                          onSelect={handleCellSelect}
+                          onDragStart={handleDragStart}
+                          onTextDragStart={handleTextDragStart}
+                          onTextDragEnd={handleTextDragEnd}
+                          isDraggingText={isDraggingText}
+                          isDraggingTextRef={isDraggingTextRef}
+                          isSelected={selectedCells.has(`${rowIndex}-12`)}
                           isLocked={isLocked}
                         />
                       </tr>
@@ -1274,33 +1437,29 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         })()}
                       </td>
-                      {/* 철근 */}
+                      {/* 철근 합계 (읽기 전용) - 물량입력 페이지 값 표시 */}
+                      <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
+                        (() => {
+                          const quantityInputVal = getQuantityInputRebar(floorId, tradeGroup);
+                          const detailedVal = calculateRebarTotal(floorTrade);
+                          const tolerance = 0.01; // 소수점 오차 허용
+                          return Math.abs(quantityInputVal - detailedVal) > tolerance ? 'text-red-600 dark:text-red-400' : '';
+                        })()
+                      }`}>
+                        {(() => {
+                          const val = getQuantityInputRebar(floorId, tradeGroup);
+                          return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        })()}
+                      </td>
+                      {/* 철근 벽 */}
                       <TradeInputCell
-                        value={floorTrade.rebar?.ton ?? null}
-                        onChange={(v) => updateTrade(floorId, tradeGroup, 'rebar.ton', v)}
-                        rowIndex={rowIndex}
-                        colIndex={7}
-                        floorId={floorId}
-                        tradeGroup={tradeGroup}
-                        fieldPath="rebar.ton"
-                        onPaste={handlePaste}
-                        onSelect={handleCellSelect}
-                        onDragStart={handleDragStart}
-                        onTextDragStart={handleTextDragStart}
-                        onTextDragEnd={handleTextDragEnd}
-                        isDraggingText={isDraggingText}
-                        isSelected={selectedCells.has(`${rowIndex}-7`)}
-                        isLocked={isLocked}
-                      />
-                      {/* 콘크리트 */}
-                      <TradeInputCell
-                        value={floorTrade.concrete?.volumeM3 ?? null}
-                        onChange={(v) => updateTrade(floorId, tradeGroup, 'concrete.volumeM3', v)}
+                        value={floorTrade.rebar?.wall ?? null}
+                        onChange={(v) => updateTrade(floorId, tradeGroup, 'rebar.wall', v)}
                         rowIndex={rowIndex}
                         colIndex={8}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
-                        fieldPath="concrete.volumeM3"
+                        fieldPath="rebar.wall"
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
@@ -1308,6 +1467,74 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-8`)}
+                        isLocked={isLocked}
+                      />
+                      {/* 철근 보/슬라브 */}
+                      <TradeInputCell
+                        value={floorTrade.rebar?.beamSlab ?? null}
+                        onChange={(v) => updateTrade(floorId, tradeGroup, 'rebar.beamSlab', v)}
+                        rowIndex={rowIndex}
+                        colIndex={9}
+                        floorId={floorId}
+                        tradeGroup={tradeGroup}
+                        fieldPath="rebar.beamSlab"
+                        onPaste={handlePaste}
+                        onSelect={handleCellSelect}
+                        onDragStart={handleDragStart}
+                        onTextDragStart={handleTextDragStart}
+                        onTextDragEnd={handleTextDragEnd}
+                        isDraggingText={isDraggingText}
+                        isSelected={selectedCells.has(`${rowIndex}-9`)}
+                        isLocked={isLocked}
+                      />
+                      {/* 콘크리트 합계 (읽기 전용) - 물량입력 페이지 값 표시 */}
+                      <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
+                        (() => {
+                          const quantityInputVal = getQuantityInputConcrete(floorId, tradeGroup);
+                          const detailedVal = calculateConcreteTotal(floorTrade);
+                          const tolerance = 0.01; // 소수점 오차 허용
+                          return Math.abs(quantityInputVal - detailedVal) > tolerance ? 'text-red-600 dark:text-red-400' : '';
+                        })()
+                      }`}>
+                        {(() => {
+                          const val = getQuantityInputConcrete(floorId, tradeGroup);
+                          return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        })()}
+                      </td>
+                      {/* 콘크리트 벽 */}
+                      <TradeInputCell
+                        value={floorTrade.concrete?.wall ?? null}
+                        onChange={(v) => updateTrade(floorId, tradeGroup, 'concrete.wall', v)}
+                        rowIndex={rowIndex}
+                        colIndex={11}
+                        floorId={floorId}
+                        tradeGroup={tradeGroup}
+                        fieldPath="concrete.wall"
+                        onPaste={handlePaste}
+                        onSelect={handleCellSelect}
+                        onDragStart={handleDragStart}
+                        onTextDragStart={handleTextDragStart}
+                        onTextDragEnd={handleTextDragEnd}
+                        isDraggingText={isDraggingText}
+                        isSelected={selectedCells.has(`${rowIndex}-11`)}
+                        isLocked={isLocked}
+                      />
+                      {/* 콘크리트 보/슬라브 */}
+                      <TradeInputCell
+                        value={floorTrade.concrete?.beamSlab ?? null}
+                        onChange={(v) => updateTrade(floorId, tradeGroup, 'concrete.beamSlab', v)}
+                        rowIndex={rowIndex}
+                        colIndex={12}
+                        floorId={floorId}
+                        tradeGroup={tradeGroup}
+                        fieldPath="concrete.beamSlab"
+                        onPaste={handlePaste}
+                        onSelect={handleCellSelect}
+                        onDragStart={handleDragStart}
+                        onTextDragStart={handleTextDragStart}
+                        onTextDragEnd={handleTextDragEnd}
+                        isDraggingText={isDraggingText}
+                        isSelected={selectedCells.has(`${rowIndex}-12`)}
                         isLocked={isLocked}
                       />
                     </tr>

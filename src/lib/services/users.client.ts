@@ -5,7 +5,27 @@
  */
 
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
-import type { UserRole } from '@/lib/types';
+import type { UserRole, Profile } from '@/lib/types';
+
+/**
+ * 모든 사용자 목록 조회 (클라이언트 사이드)
+ * 프로젝트 멤버 추가 시 사용자 선택에 사용
+ */
+export async function getAllUsersClient(): Promise<Profile[]> {
+  const supabase = createBrowserClient();
+
+  const { data: users, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching users:', error);
+    return [];
+  }
+
+  return users || [];
+}
 
 /**
  * 사용자 역할 업데이트 (클라이언트 사이드 - Admin 전용)
