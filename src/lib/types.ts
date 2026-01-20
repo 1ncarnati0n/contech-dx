@@ -738,3 +738,217 @@ export interface PouringSectionCalculationResult {
   finalSectionCount: number; // 최종 타설구간 개수
   sections: PouringSection[]; // 생성된 타설구간 목록
 }
+
+// ============================================
+// CastPlan 타설 계획 타입
+// ============================================
+
+/**
+ * 2D 좌표 타입
+ */
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+/**
+ * DXF 엔티티 타입
+ */
+export type DxfEntityType = 'LINE' | 'POLYLINE' | 'LWPOLYLINE' | 'CIRCLE' | 'ARC' | 'TEXT' | 'MTEXT' | 'INSERT';
+
+/**
+ * DXF 엔티티
+ */
+export interface DxfEntity {
+  type: DxfEntityType;
+  layer: string;
+  color?: number;
+  vertices?: Point2D[];
+  // LINE
+  startPoint?: Point2D;
+  endPoint?: Point2D;
+  // CIRCLE/ARC
+  center?: Point2D;
+  radius?: number;
+  startAngle?: number;
+  endAngle?: number;
+  // TEXT
+  text?: string;
+  position?: Point2D;
+}
+
+/**
+ * DXF 레이어
+ */
+export interface DxfLayer {
+  name: string;
+  color: number;
+  visible: boolean;
+  entities: DxfEntity[];
+}
+
+/**
+ * 파싱된 DXF 데이터
+ */
+export interface ParsedDxfData {
+  layers: DxfLayer[];
+  bounds: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  };
+}
+
+/**
+ * 펌프카 타입
+ */
+export type PumpCarType = '36M' | '42M' | '52M' | '56M' | '63M';
+
+/**
+ * 펌프카 스펙
+ */
+export interface PumpCarSpec {
+  type: PumpCarType;
+  boomLength: number;      // 붐 길이 (m)
+  horizontalReach: number; // 수평 도달 (m)
+  verticalReach: number;   // 수직 도달 (m)
+  vehicleWidth: number;    // 차량폭 (m)
+  outriggerWidth: number;  // 아웃트리거 (m)
+}
+
+/**
+ * 펌프카 스펙 목록
+ */
+export const PUMP_CAR_SPECS: Record<PumpCarType, PumpCarSpec> = {
+  '36M': { type: '36M', boomLength: 36, horizontalReach: 32, verticalReach: 36, vehicleWidth: 2.5, outriggerWidth: 8.2 },
+  '42M': { type: '42M', boomLength: 42, horizontalReach: 38, verticalReach: 42, vehicleWidth: 2.5, outriggerWidth: 8.6 },
+  '52M': { type: '52M', boomLength: 52, horizontalReach: 48, verticalReach: 52, vehicleWidth: 2.5, outriggerWidth: 9.4 },
+  '56M': { type: '56M', boomLength: 56, horizontalReach: 52, verticalReach: 56, vehicleWidth: 2.8, outriggerWidth: 10.2 },
+  '63M': { type: '63M', boomLength: 63, horizontalReach: 59, verticalReach: 63, vehicleWidth: 2.8, outriggerWidth: 11.0 },
+};
+
+/**
+ * 펌프카
+ */
+export interface PumpCar {
+  id: string;
+  name: string;
+  type: PumpCarType;
+  position: Point2D;
+  rotation: number;        // 차량 방향 (각도)
+  spec: PumpCarSpec;
+  assignedBlocks: string[]; // 담당 블록 ID 목록
+}
+
+/**
+ * 게이트 타입
+ */
+export type GateType = 'main' | 'temp';
+
+/**
+ * 게이트 (장비 진입구)
+ */
+export interface Gate {
+  id: string;
+  name: string;
+  position: Point2D;
+  width: number;           // 게이트 폭 (m)
+  direction: number;       // 진입 방향 (각도 0-360)
+  type: GateType;
+  maxVehicleWidth: number; // 최대 차량 폭 제한 (m)
+}
+
+/**
+ * 타설 블록 (캔버스용 확장)
+ */
+export interface CastBlock {
+  id: string;
+  name: string;
+  sectionId?: string;      // PouringSection 참조
+  points: number[];        // 폴리곤 좌표 [x1,y1,x2,y2,...]
+  color: string;           // 표시 색상 (HEX)
+  thickness: number;       // 타설 두께 (m)
+  concreteGrade: string;   // 콘크리트 강도 (25-24-15)
+  surchargeRate: number;   // 할증률 (%)
+  sequence: number;        // 타설 순서
+  scheduledDate?: string;  // 타설 예정일 (ISO date)
+  // 계산 값
+  area?: number;           // 면적 (㎡)
+  volume?: number;         // 순물량 (㎥)
+  orderVolume?: number;    // 발주량 (㎥)
+}
+
+/**
+ * CastPlan 도구 타입
+ */
+export type CastPlanTool =
+  | 'select'    // 선택
+  | 'pan'       // 이동
+  | 'split'     // 블록 분할
+  | 'gate'      // 게이트 배치
+  | 'pumpcar'   // 펌프카 배치
+  | 'route'     // 동선 그리기
+  | 'measure';  // 측정
+
+/**
+ * CastPlan 캔버스 상태
+ */
+export interface CastPlanState {
+  // DXF 데이터
+  dxfData: ParsedDxfData | null;
+  dxfFileName: string | null;
+
+  // 캔버스 뷰
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+
+  // 현재 도구
+  activeTool: CastPlanTool;
+
+  // 데이터
+  blocks: CastBlock[];
+  gates: Gate[];
+  pumpCars: PumpCar[];
+
+  // 선택 상태
+  selectedBlockId: string | null;
+  selectedGateId: string | null;
+  selectedPumpCarId: string | null;
+
+  // 표시 옵션
+  showReachCircles: boolean;
+  showLabels: boolean;
+  showGrid: boolean;
+  snapEnabled: boolean;
+}
+
+/**
+ * CastPlan 프로젝트 저장 데이터
+ */
+export interface CastPlanProject {
+  id: string;
+  projectId: string;        // ConTech 프로젝트 ID
+  name: string;
+  dxfFileName: string | null;
+  blocks: CastBlock[];
+  gates: Gate[];
+  pumpCars: PumpCar[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 물량표 내보내기 데이터
+ */
+export interface VolumeExportRow {
+  no: number;
+  blockName: string;
+  area: number;             // ㎡
+  thickness: number;        // m
+  volume: number;           // ㎥
+  surchargeRate: number;    // %
+  orderVolume: number;      // ㎥
+  concreteGrade: string;
+}
