@@ -34,7 +34,7 @@ export function CastPlanSidebar({
   );
 
   return (
-    <div className="w-80 h-full overflow-y-auto bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 space-y-4">
+    <div className="w-full h-full overflow-y-auto bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 space-y-4">
       {/* 프로젝트 요약 */}
       <Card>
         <CardHeader className="pb-2">

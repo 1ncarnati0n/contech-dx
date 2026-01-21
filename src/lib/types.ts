@@ -754,7 +754,22 @@ export interface Point2D {
 /**
  * DXF 엔티티 타입
  */
-export type DxfEntityType = 'LINE' | 'POLYLINE' | 'LWPOLYLINE' | 'CIRCLE' | 'ARC' | 'TEXT' | 'MTEXT' | 'INSERT';
+export type DxfEntityType =
+  | 'LINE'
+  | 'POLYLINE'
+  | 'LWPOLYLINE'
+  | 'CIRCLE'
+  | 'ARC'
+  | 'TEXT'
+  | 'MTEXT'
+  | 'INSERT'
+  | 'SPLINE'
+  | 'ELLIPSE'
+  | 'HATCH'
+  | 'SOLID'
+  | 'POINT'
+  | 'DIMENSION'
+  | '3DFACE';
 
 /**
  * DXF 엔티티
@@ -767,14 +782,30 @@ export interface DxfEntity {
   // LINE
   startPoint?: Point2D;
   endPoint?: Point2D;
-  // CIRCLE/ARC
+  // CIRCLE/ARC/ELLIPSE
   center?: Point2D;
   radius?: number;
   startAngle?: number;
   endAngle?: number;
+  // ELLIPSE
+  majorAxisEndPoint?: Point2D;
+  minorAxisRatio?: number;
   // TEXT
   text?: string;
   position?: Point2D;
+  // SPLINE
+  controlPoints?: Point2D[];
+  fitPoints?: Point2D[];
+  degree?: number;
+  // INSERT (블록 참조)
+  blockName?: string;
+  insertionPoint?: Point2D;
+  scale?: { x: number; y: number };
+  rotation?: number;
+  // POINT
+  point?: Point2D;
+  // HATCH
+  boundaryPaths?: Point2D[][];
 }
 
 /**
@@ -798,6 +829,39 @@ export interface ParsedDxfData {
     maxX: number;
     maxY: number;
   };
+  blocks?: DxfBlock[];
+  statistics?: DxfStatistics;
+}
+
+/**
+ * DXF 블록 정의 (INSERT 참조용)
+ */
+export interface DxfBlock {
+  name: string;
+  basePoint: Point2D;
+  entities: DxfEntity[];
+}
+
+/**
+ * DXF 파싱 통계
+ */
+export interface DxfStatistics {
+  totalEntities: number;
+  parsedEntities: number;
+  skippedEntities: number;
+  entityCounts: Record<string, number>;
+  layerCount: number;
+  blockCount: number;
+}
+
+/**
+ * DXF 파싱 진행률 이벤트
+ */
+export interface DxfParseProgress {
+  phase: 'reading' | 'parsing' | 'processing' | 'complete' | 'error';
+  progress: number; // 0-100
+  message: string;
+  statistics?: DxfStatistics;
 }
 
 /**
