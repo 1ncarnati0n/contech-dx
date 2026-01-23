@@ -225,6 +225,63 @@ export function IfcViewer({ className }: IfcViewerProps) {
     };
   }, []);
 
+  // Load IFC from URL (for auto-loading)
+  const loadIfcFromUrl = useCallback(async (url: string, fileName: string) => {
+    if (!ifcLoaderRef.current || !worldRef.current || !fragmentsRef.current || !isReady) {
+      return;
+    }
+
+    const startTime = performance.now();
+
+    try {
+      setLoadingState({ phase: 'loading', progress: 10, message: '기본 모델 불러오는 중...' });
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+
+      const buffer = await response.arrayBuffer();
+      const data = new Uint8Array(buffer);
+      const fileSizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(2);
+
+      setLoadingState({ phase: 'processing', progress: 30, message: 'IFC 처리 중...' });
+
+      await ifcLoaderRef.current.load(data, true, fileName);
+
+      setLoadingState({ phase: 'processing', progress: 80, message: '렌더링 중...' });
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await fragmentsRef.current.core.update(true);
+
+      if (worldRef.current?.camera) {
+        await worldRef.current.camera.fitToItems();
+      }
+
+      const loadTime = Math.round(performance.now() - startTime);
+
+      setStats({
+        meshCount: fragmentsRef.current.list.size || 0,
+        fileSize: `${fileSizeMB} MB`,
+        loadTime,
+      });
+
+      setLoadingState({ phase: 'complete', progress: 100, message: '로딩 완료' });
+
+    } catch (error) {
+      console.warn('Auto-load failed:', error);
+      // Silently fail and show upload prompt
+      setLoadingState({ phase: 'idle', progress: 0, message: '' });
+    }
+  }, [isReady]);
+
+  // Auto-load default IFC file when ready
+  useEffect(() => {
+    if (!isReady || stats) return;
+
+    loadIfcFromUrl('/APT_2x3.ifc', 'APT_2x3');
+  }, [isReady, stats, loadIfcFromUrl]);
+
   // Load IFC file
   const loadIfcFile = useCallback(async (file: File) => {
     if (!ifcLoaderRef.current || !worldRef.current || !fragmentsRef.current || !isReady) {
