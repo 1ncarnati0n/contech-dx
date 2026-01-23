@@ -564,13 +564,15 @@ export function BasementProcessPlanPage({ projectId }: Props) {
         floorLabel: `${cleanLabel} 주차장`
       });
       
-      // 각 지하층별로 3단 가시설 적용부 행 추가
-      rows.push({ 
-        category: '지하층' as ProcessCategory, 
-        rowIndex: rowIndex++,
-        isSpecialRow: true,
-        floorLabel: `${cleanLabel} 3단 가시설 적용부`
-      });
+      // 각 지하층별로 3단 가시설 적용부 행 추가 (동 기본 정보에서 체크된 경우에만)
+      if (activeBuilding.meta?.floorCount?.hasHighCeilingEquipmentRoom) {
+        rows.push({ 
+          category: '지하층' as ProcessCategory, 
+          rowIndex: rowIndex++,
+          isSpecialRow: true,
+          floorLabel: `${cleanLabel} 3단 가시설 적용부`
+        });
+      }
       
       // 지하층 행 추가
       rows.push({ 
@@ -1931,18 +1933,31 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               
                               // 층수 표시 (오른쪽 열)
                               const getFloorNumberLabel = () => {
-                                // 특수 행 처리 (주차장, 3단 가시설 적용부) - 원래대로 표시
-                                if (row.isSpecialRow && row.floorLabel) {
-                                  return row.floorLabel;
-                                }
                                 // 버림, 기초는 층수 없음
                                 if (row.category === '버림' || row.category === '기초') {
                                   return '';
                                 }
+                                
+                                // 특수 행 처리 (주차장, 3단 가시설 적용부) - 층수 추출하여 표시
+                                if (row.isSpecialRow && row.floorLabel) {
+                                  // floorLabel에서 층수 추출 (예: "B1 주차장" -> "B1", "B2 3단 가시설 적용부" -> "B2")
+                                  const floorMatch = row.floorLabel.match(/^(B\d+)/);
+                                  if (floorMatch) {
+                                    const floorNumber = floorMatch[1];
+                                    if (row.floorLabel.includes('주차장')) {
+                                      return `${floorNumber} 주차장`;
+                                    } else if (row.floorLabel.includes('3단 가시설 적용부')) {
+                                      return `${floorNumber} 3단 가시설 적용부`;
+                                    }
+                                  }
+                                  return row.floorLabel;
+                                }
+                                
                                 // 지하층인 경우 "B1 동지하", "B2 동지하" 형식으로 표시
                                 if (row.category === '지하층' && row.floorLabel) {
                                   return `${row.floorLabel} 동지하`;
                                 }
+                                
                                 // 나머지는 floorLabel 표시 (B2, B1 등)
                                 return row.floorLabel || '';
                               };

@@ -41,6 +41,7 @@ export {
 
 // Users 서비스 - Client (클라이언트 컴포넌트에서 사용)
 export {
+  getAllUsersClient,
   updateUserRole,
   updateUserProfile,
   promoteCurrentUserToAdmin,

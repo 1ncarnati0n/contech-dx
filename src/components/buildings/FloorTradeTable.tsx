@@ -172,7 +172,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       // 옥탑층 추가 (공통)
       const phFloors = floors.filter(f => f.floorClass === '옥탑층');
       phFloors.forEach(floor => {
-        result.push({ type: 'floor', label: floor.floorLabel, floor });
+        // PH1 -> 옥탑1, PH2 -> 옥탑2 형식으로 변환
+        let label = floor.floorLabel.replace(/코어\d+-/, ''); // 코어 정보 제거
+        const phMatch = label.match(/^PH(\d+)/i);
+        if (phMatch) {
+          label = `옥탑${phMatch[1]}`;
+        }
+        result.push({ type: 'floor', label, floor });
       });
     } else {
       // 코어가 1개이거나 코어별 층수가 없으면 전체 지상층 수로 처리
@@ -270,7 +276,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       // 옥탑층 추가
       const phFloors = floors.filter(f => f.floorClass === '옥탑층');
       phFloors.forEach(floor => {
-        result.push({ type: 'floor', label: floor.floorLabel, floor });
+        // PH1 -> 옥탑1, PH2 -> 옥탑2 형식으로 변환
+        let label = floor.floorLabel.replace(/코어\d+-/, ''); // 코어 정보 제거
+        const phMatch = label.match(/^PH(\d+)/i);
+        if (phMatch) {
+          label = `옥탑${phMatch[1]}`;
+        }
+        result.push({ type: 'floor', label, floor });
       });
     }
 
@@ -282,6 +294,9 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
   // 셀 선택 처리
   const handleCellSelect = (rowIndex: number, colIndex: number, isMultiSelect: boolean) => {
+    // 형틀 열(colIndex 2), 해체/정리 열(colIndex 6)은 읽기 전용이므로 선택 불가
+    if (colIndex === 2 || colIndex === 6) return;
+    
     const cellKey = `${rowIndex}-${colIndex}`;
     
     if (isMultiSelect && selectionStart) {
@@ -294,7 +309,10 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       const newSelection = new Set<string>();
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
-          newSelection.add(`${r}-${c}`);
+          // 형틀 열, 해체/정리 열은 제외
+          if (c !== 2 && c !== 6) {
+            newSelection.add(`${r}-${c}`);
+          }
         }
       }
       setSelectedCells(newSelection);
@@ -332,7 +350,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     for (let r = minRow; r <= maxRow; r++) {
       for (let c = minCol; c <= maxCol; c++) {
         // 구분/층 컬럼은 제외 (데이터 컬럼만 선택)
-        if (c >= 2) {
+        // 형틀 열(colIndex 2), 해체/정리 열(colIndex 6)은 읽기 전용이므로 제외
+        if (c >= 2 && c !== 2 && c !== 6) {
           newSelection.add(`${r}-${c}`);
         }
       }
@@ -399,8 +418,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       if (rowIndex !== null && colIndex !== null) {
         const row = Number(rowIndex);
         const col = Number(colIndex);
-        // 데이터 컬럼만 선택 (구분/층 컬럼 제외)
-        if (col >= 2) {
+        // 데이터 컬럼만 선택 (구분/층 컬럼 제외, 형틀 열, 해체/정리 열은 읽기 전용이므로 제외)
+        if (col >= 2 && col !== 2 && col !== 6) {
           handleDragMove(row, col);
         }
       }
@@ -735,6 +754,14 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     }, 500);
   };
 
+  // 형틀 합계 계산 함수
+  const calculateFormworkTotal = (trade: TradeData): number => {
+    const gangForm = trade.gangForm?.areaM2 || 0;
+    const alForm = trade.alForm?.areaM2 || 0;
+    const euroForm = trade.euroForm?.areaM2 || 0;
+    return gangForm + alForm + euroForm;
+  };
+
   // 소계 계산
   const calculateSummary = (field: string): number => {
     let sum = 0;
@@ -757,28 +784,32 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     
     const dataColIndex = colIndex - 2; // 데이터 컬럼 인덱스 (0부터 시작)
     
-    // 갱폼 (0)
+    // 형틀 (0) - 합계, 읽기 전용이므로 null 반환
     if (dataColIndex === 0) {
+      return null;
+    }
+    // 갱폼 (1)
+    if (dataColIndex === 1) {
       return 'gangForm.areaM2';
     }
-    // 알폼 (1)
-    if (dataColIndex === 1) {
+    // 알폼 (2)
+    if (dataColIndex === 2) {
       return 'alForm.areaM2';
     }
-    // 형틀 (2)
-    if (dataColIndex === 2) {
-      return 'formwork.areaM2';
-    }
-    // 해체/정리 (3)
+    // 유로폼 (3)
     if (dataColIndex === 3) {
-      return 'stripClean.areaM2';
+      return 'euroForm.areaM2';
     }
-    // 철근 (4)
+    // 해체/정리 (4) - 유로폼 * 2로 자동 계산되므로 읽기 전용, null 반환
     if (dataColIndex === 4) {
+      return null;
+    }
+    // 철근 (5)
+    if (dataColIndex === 5) {
       return 'rebar.ton';
     }
-    // 콘크리트 (5)
-    if (dataColIndex === 5) {
+    // 콘크리트 (6)
+    if (dataColIndex === 6) {
       return 'concrete.volumeM3';
     }
     
@@ -922,13 +953,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   <th rowSpan={2} className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 w-16">
                     층
                   </th>
-                  <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-                    갱폼
-                  </th>
-                  <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-                    알폼
-                  </th>
-                  <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+                  <th colSpan={4} className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
                     형틀
                   </th>
                   <th className="px-0.5 py-0.5 text-center text-[10.8px] font-semibold leading-tight text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
@@ -943,17 +968,21 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                 </tr>
                 {/* 헤더 2단계 */}
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                  {/* 형틀 합계 */}
+                  <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                    합계(M²)
+                  </th>
                   {/* 갱폼 */}
                   <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
-                    M²
+                    갱폼(M²)
                   </th>
                   {/* 알폼 */}
                   <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
-                    M²
+                    알폼(M²)
                   </th>
-                  {/* 형틀 */}
+                  {/* 유로폼 */}
                   <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
-                    M²
+                    유로폼(M²)
                   </th>
                   {/* 해체/정리 */}
                   <th className="px-0.5 py-0.5 text-[10.8px] font-medium leading-tight text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 w-14">
@@ -980,46 +1009,57 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                       >
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-16">소계</td>
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-16">합계</td>
+                        {/* 형틀 합계 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                          {(() => {
+                            const gangFormSum = calculateSummary('gangForm.areaM2');
+                            const alFormSum = calculateSummary('alForm.areaM2');
+                            const euroFormSum = calculateSummary('euroForm.areaM2');
+                            const val = gangFormSum + alFormSum + euroFormSum;
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
                         {/* 갱폼 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('gangForm.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 알폼 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('alForm.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
-                        {/* 형틀 */}
+                        {/* 유로폼 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
-                            const val = calculateSummary('formwork.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            const val = calculateSummary('euroForm.areaM2');
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
-                        {/* 해체/정리 */}
-                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
+                        {/* 해체/정리 - 유로폼 소계 * 2로 자동 계산 */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
                           {(() => {
-                            const val = calculateSummary('stripClean.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            const euroFormSum = calculateSummary('euroForm.areaM2');
+                            const val = euroFormSum * 2;
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 철근 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('rebar.ton');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 콘크리트 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center w-14">
                           {(() => {
                             const val = calculateSummary('concrete.volumeM3');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                       </tr>
@@ -1040,12 +1080,19 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           {row.label}
                         </td>
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-16">-</td>
+                        {/* 형틀 합계 (읽기 전용) */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                          {(() => {
+                            const val = calculateFormworkTotal(groupTrade);
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
                         {/* 갱폼 */}
                         <TradeInputCell
                           value={groupTrade.gangForm?.areaM2 ?? null}
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'gangForm.areaM2', v)}
                           rowIndex={rowIndex}
-                          colIndex={2}
+                          colIndex={3}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="gangForm.areaM2"
@@ -1056,7 +1103,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
-                          isSelected={selectedCells.has(`${rowIndex}-2`)}
+                          isSelected={selectedCells.has(`${rowIndex}-3`)}
                           isLocked={isLocked}
                         />
                         {/* 알폼 */}
@@ -1064,7 +1111,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           value={groupTrade.alForm?.areaM2 ?? null}
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'alForm.areaM2', v)}
                           rowIndex={rowIndex}
-                          colIndex={3}
+                          colIndex={4}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="alForm.areaM2"
@@ -1075,37 +1122,18 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
-                          isSelected={selectedCells.has(`${rowIndex}-3`)}
-                          isLocked={isLocked}
-                        />
-                        {/* 형틀 */}
-                        <TradeInputCell
-                          value={groupTrade.formwork?.areaM2 ?? null}
-                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'formwork.areaM2', v)}
-                          rowIndex={rowIndex}
-                          colIndex={4}
-                          floorId={specialFloorId}
-                          tradeGroup={tradeGroup}
-                          fieldPath="formwork.areaM2"
-                          onPaste={handlePaste}
-                          onSelect={handleCellSelect}
-                          onDragStart={handleDragStart}
-                          onTextDragStart={handleTextDragStart}
-                          onTextDragEnd={handleTextDragEnd}
-                          isDraggingText={isDraggingText}
-                          isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-4`)}
                           isLocked={isLocked}
                         />
-                        {/* 해체/정리 */}
+                        {/* 유로폼 */}
                         <TradeInputCell
-                          value={groupTrade.stripClean?.areaM2 ?? null}
-                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'stripClean.areaM2', v)}
+                          value={groupTrade.euroForm?.areaM2 ?? null}
+                          onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'euroForm.areaM2', v)}
                           rowIndex={rowIndex}
                           colIndex={5}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
-                          fieldPath="stripClean.areaM2"
+                          fieldPath="euroForm.areaM2"
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
@@ -1116,12 +1144,20 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isSelected={selectedCells.has(`${rowIndex}-5`)}
                           isLocked={isLocked}
                         />
+                        {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
+                        <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                          {(() => {
+                            const euroFormVal = groupTrade.euroForm?.areaM2 || 0;
+                            const val = euroFormVal * 2;
+                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          })()}
+                        </td>
                         {/* 철근 */}
                         <TradeInputCell
                           value={groupTrade.rebar?.ton ?? null}
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'rebar.ton', v)}
                           rowIndex={rowIndex}
-                          colIndex={6}
+                          colIndex={7}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="rebar.ton"
@@ -1132,7 +1168,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
-                          isSelected={selectedCells.has(`${rowIndex}-6`)}
+                          isSelected={selectedCells.has(`${rowIndex}-7`)}
                           isLocked={isLocked}
                         />
                         {/* 콘크리트 */}
@@ -1140,7 +1176,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           value={groupTrade.concrete?.volumeM3 ?? null}
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'concrete.volumeM3', v)}
                           rowIndex={rowIndex}
-                          colIndex={7}
+                          colIndex={8}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="concrete.volumeM3"
@@ -1151,7 +1187,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
-                          isSelected={selectedCells.has(`${rowIndex}-7`)}
+                          isSelected={selectedCells.has(`${rowIndex}-8`)}
                           isLocked={isLocked}
                         />
                       </tr>
@@ -1168,31 +1204,38 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                       <td className="px-0.5 py-0 text-[10.8px] text-center font-medium border-r border-slate-200 dark:border-slate-800 w-16">
                         {row.label}
                       </td>
+                      {/* 형틀 합계 (읽기 전용) */}
+                      <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                        {(() => {
+                          const val = calculateFormworkTotal(floorTrade);
+                          return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        })()}
+                      </td>
                       {/* 갱폼 */}
                       <TradeInputCell
                         value={floorTrade.gangForm?.areaM2 ?? null}
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'gangForm.areaM2', v)}
                         rowIndex={rowIndex}
-                        colIndex={2}
+                        colIndex={3}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="gangForm.areaM2"
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
-                          onTextDragStart={handleTextDragStart}
-                          onTextDragEnd={handleTextDragEnd}
-                          isDraggingText={isDraggingText}
-                          isDraggingTextRef={isDraggingTextRef}
-                          isSelected={selectedCells.has(`${rowIndex}-2`)}
-                          isLocked={isLocked}
-                        />
+                        onTextDragStart={handleTextDragStart}
+                        onTextDragEnd={handleTextDragEnd}
+                        isDraggingText={isDraggingText}
+                        isDraggingTextRef={isDraggingTextRef}
+                        isSelected={selectedCells.has(`${rowIndex}-3`)}
+                        isLocked={isLocked}
+                      />
                       {/* 알폼 */}
                       <TradeInputCell
-                          value={floorTrade.alForm?.areaM2 ?? null}
+                        value={floorTrade.alForm?.areaM2 ?? null}
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'alForm.areaM2', v)}
                         rowIndex={rowIndex}
-                        colIndex={3}
+                        colIndex={4}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="alForm.areaM2"
@@ -1202,35 +1245,18 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
-                        isSelected={selectedCells.has(`${rowIndex}-3`)}
+                        isSelected={selectedCells.has(`${rowIndex}-4`)}
                         isLocked={isLocked}
                       />
-                      {/* 형틀 */}
+                      {/* 유로폼 */}
                       <TradeInputCell
-                          value={floorTrade.formwork?.areaM2 ?? null}
-                        onChange={(v) => updateTrade(floorId, tradeGroup, 'formwork.areaM2', v)}
-                        rowIndex={rowIndex}
-                        colIndex={4}
-                        floorId={floorId}
-                        tradeGroup={tradeGroup}
-                        fieldPath="formwork.areaM2"
-                        onPaste={handlePaste}
-                        onSelect={handleCellSelect}
-                        onDragStart={handleDragStart}
-                        onTextDragStart={handleTextDragStart}
-                        onTextDragEnd={handleTextDragEnd}
-                        isDraggingText={isDraggingText}
-                        isSelected={selectedCells.has(`${rowIndex}-4`)}
-                      />
-                      {/* 해체/정리 */}
-                      <TradeInputCell
-                        value={floorTrade.stripClean?.areaM2 ?? null}
-                        onChange={(v) => updateTrade(floorId, tradeGroup, 'stripClean.areaM2', v)}
+                        value={floorTrade.euroForm?.areaM2 ?? null}
+                        onChange={(v) => updateTrade(floorId, tradeGroup, 'euroForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={5}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
-                        fieldPath="stripClean.areaM2"
+                        fieldPath="euroForm.areaM2"
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
@@ -1240,12 +1266,20 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         isSelected={selectedCells.has(`${rowIndex}-5`)}
                         isLocked={isLocked}
                       />
+                      {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
+                      <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
+                        {(() => {
+                          const euroFormVal = floorTrade.euroForm?.areaM2 || 0;
+                          const val = euroFormVal * 2;
+                          return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        })()}
+                      </td>
                       {/* 철근 */}
                       <TradeInputCell
-                          value={floorTrade.rebar?.ton ?? null}
+                        value={floorTrade.rebar?.ton ?? null}
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'rebar.ton', v)}
                         rowIndex={rowIndex}
-                        colIndex={6}
+                        colIndex={7}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="rebar.ton"
@@ -1255,15 +1289,15 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
-                        isSelected={selectedCells.has(`${rowIndex}-6`)}
+                        isSelected={selectedCells.has(`${rowIndex}-7`)}
                         isLocked={isLocked}
                       />
                       {/* 콘크리트 */}
                       <TradeInputCell
-                          value={floorTrade.concrete?.volumeM3 ?? null}
+                        value={floorTrade.concrete?.volumeM3 ?? null}
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'concrete.volumeM3', v)}
                         rowIndex={rowIndex}
-                        colIndex={7}
+                        colIndex={8}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="concrete.volumeM3"
@@ -1273,7 +1307,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
-                        isSelected={selectedCells.has(`${rowIndex}-7`)}
+                        isSelected={selectedCells.has(`${rowIndex}-8`)}
                         isLocked={isLocked}
                       />
                     </tr>
