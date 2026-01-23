@@ -1,0 +1,1402 @@
+{
+  "file_name": "작업면작업면적.xlsx",
+  "sheet_count": 5,
+  "sheet_names": [
+    "작업조 설정",
+    "공종별 인원 상,하한 설정",
+    "부분별 보정계수 설정",
+    "거푸집 계열 작업면, 작업면적 추정 산식",
+    "철근 작업면,작업면적(Zone,Front) 추정 산식"
+  ],
+  "sheets": [
+    {
+      "sheet_name": "작업조 설정",
+      "max_row": 9,
+      "max_column": 3,
+      "dimensions": "A1:C9",
+      "headers": [
+        {
+          "row": 1,
+          "values": [
+            "구 분",
+            "작업조원",
+            "권장 작업조 산정 기준"
+          ]
+        },
+        {
+          "row": 2,
+          "values": [
+            "갱폼",
+            "４명",
+            "동시에 작업 할 수 있는 작업면의 수 "
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "알폼",
+            "３명",
+            "동시에 작업 할 수 있는 작업면의 수 "
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "유로폼",
+            "２명",
+            "동시에 작업 할 수 있는 작업면의 수 "
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "해체/정리",
+            "２명",
+            "250㎡/구획"
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "마감/보강",
+            "２명",
+            "300㎡/구획"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "기초 철근",
+            "４명",
+            "200㎡/구획"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "벽 철근",
+            "３명",
+            "벽체라인 25ｍ/구획"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "슬라브 철근",
+            "３명",
+            "200㎡/구획"
+          ]
+        }
+      ],
+      "data_rows": [
+        {
+          "row": 2,
+          "values": [
+            {
+              "address": "A2",
+              "value": "갱폼"
+            },
+            {
+              "address": "B2",
+              "value": "４명"
+            },
+            {
+              "address": "C2",
+              "value": "동시에 작업 할 수 있는 작업면의 수 "
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 3,
+          "values": [
+            {
+              "address": "A3",
+              "value": "알폼"
+            },
+            {
+              "address": "B3",
+              "value": "３명"
+            },
+            {
+              "address": "C3",
+              "value": "동시에 작업 할 수 있는 작업면의 수 "
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 4,
+          "values": [
+            {
+              "address": "A4",
+              "value": "유로폼"
+            },
+            {
+              "address": "B4",
+              "value": "２명"
+            },
+            {
+              "address": "C4",
+              "value": "동시에 작업 할 수 있는 작업면의 수 "
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 5,
+          "values": [
+            {
+              "address": "A5",
+              "value": "해체/정리"
+            },
+            {
+              "address": "B5",
+              "value": "２명"
+            },
+            {
+              "address": "C5",
+              "value": "250㎡/구획"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 6,
+          "values": [
+            {
+              "address": "A6",
+              "value": "마감/보강"
+            },
+            {
+              "address": "B6",
+              "value": "２명"
+            },
+            {
+              "address": "C6",
+              "value": "300㎡/구획"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 7,
+          "values": [
+            {
+              "address": "A7",
+              "value": "기초 철근"
+            },
+            {
+              "address": "B7",
+              "value": "４명"
+            },
+            {
+              "address": "C7",
+              "value": "200㎡/구획"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 8,
+          "values": [
+            {
+              "address": "A8",
+              "value": "벽 철근"
+            },
+            {
+              "address": "B8",
+              "value": "３명"
+            },
+            {
+              "address": "C8",
+              "value": "벽체라인 25ｍ/구획"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 9,
+          "values": [
+            {
+              "address": "A9",
+              "value": "슬라브 철근"
+            },
+            {
+              "address": "B9",
+              "value": "３명"
+            },
+            {
+              "address": "C9",
+              "value": "200㎡/구획"
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "formulas": []
+    },
+    {
+      "sheet_name": "공종별 인원 상,하한 설정",
+      "max_row": 13,
+      "max_column": 6,
+      "dimensions": "A1:F13",
+      "headers": [
+        {
+          "row": 1,
+          "values": [
+            "공종",
+            "",
+            "하한",
+            "기본값",
+            "권장",
+            "공기지연"
+          ]
+        },
+        {
+          "row": 2,
+          "values": [
+            "갱폼",
+            "",
+            "12",
+            "16",
+            "20",
+            "24"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "알폼",
+            "",
+            "12",
+            "15",
+            "18",
+            "21"
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "유로폼",
+            "옥탑",
+            "6",
+            "8",
+            "8",
+            "8"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "",
+            "지상 필로티,부대시설",
+            "6",
+            "8",
+            "10",
+            "12"
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "",
+            "지하슬라브",
+            "6",
+            "8",
+            "10",
+            "12"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "",
+            "지하 벽",
+            "8",
+            "12",
+            "16",
+            "20"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "철근",
+            "슬라브",
+            "12",
+            "15",
+            "18",
+            "21"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "",
+            "지상벽",
+            "9",
+            "12",
+            "15",
+            "18"
+          ]
+        },
+        {
+          "row": 10,
+          "values": [
+            "",
+            "지하벽",
+            "12",
+            "15",
+            "18",
+            "21"
+          ]
+        }
+      ],
+      "data_rows": [
+        {
+          "row": 2,
+          "values": [
+            {
+              "address": "A2",
+              "value": "갱폼"
+            },
+            {
+              "address": "B2",
+              "value": ""
+            },
+            {
+              "address": "C2",
+              "value": "12"
+            },
+            {
+              "address": "D2",
+              "value": "16"
+            },
+            {
+              "address": "E2",
+              "value": "20"
+            },
+            {
+              "address": "F2",
+              "value": "24"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 3,
+          "values": [
+            {
+              "address": "A3",
+              "value": "알폼"
+            },
+            {
+              "address": "B3",
+              "value": ""
+            },
+            {
+              "address": "C3",
+              "value": "12"
+            },
+            {
+              "address": "D3",
+              "value": "15"
+            },
+            {
+              "address": "E3",
+              "value": "18"
+            },
+            {
+              "address": "F3",
+              "value": "21"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 4,
+          "values": [
+            {
+              "address": "A4",
+              "value": "유로폼"
+            },
+            {
+              "address": "B4",
+              "value": "옥탑"
+            },
+            {
+              "address": "C4",
+              "value": "6"
+            },
+            {
+              "address": "D4",
+              "value": "8"
+            },
+            {
+              "address": "E4",
+              "value": "8"
+            },
+            {
+              "address": "F4",
+              "value": "8"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 5,
+          "values": [
+            {
+              "address": "A5",
+              "value": ""
+            },
+            {
+              "address": "B5",
+              "value": "지상 필로티,부대시설"
+            },
+            {
+              "address": "C5",
+              "value": "6"
+            },
+            {
+              "address": "D5",
+              "value": "8"
+            },
+            {
+              "address": "E5",
+              "value": "10"
+            },
+            {
+              "address": "F5",
+              "value": "12"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 6,
+          "values": [
+            {
+              "address": "A6",
+              "value": ""
+            },
+            {
+              "address": "B6",
+              "value": "지하슬라브"
+            },
+            {
+              "address": "C6",
+              "value": "6"
+            },
+            {
+              "address": "D6",
+              "value": "8"
+            },
+            {
+              "address": "E6",
+              "value": "10"
+            },
+            {
+              "address": "F6",
+              "value": "12"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 7,
+          "values": [
+            {
+              "address": "A7",
+              "value": ""
+            },
+            {
+              "address": "B7",
+              "value": "지하 벽"
+            },
+            {
+              "address": "C7",
+              "value": "8"
+            },
+            {
+              "address": "D7",
+              "value": "12"
+            },
+            {
+              "address": "E7",
+              "value": "16"
+            },
+            {
+              "address": "F7",
+              "value": "20"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 8,
+          "values": [
+            {
+              "address": "A8",
+              "value": "철근"
+            },
+            {
+              "address": "B8",
+              "value": "슬라브"
+            },
+            {
+              "address": "C8",
+              "value": "12"
+            },
+            {
+              "address": "D8",
+              "value": "15"
+            },
+            {
+              "address": "E8",
+              "value": "18"
+            },
+            {
+              "address": "F8",
+              "value": "21"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 9,
+          "values": [
+            {
+              "address": "A9",
+              "value": ""
+            },
+            {
+              "address": "B9",
+              "value": "지상벽"
+            },
+            {
+              "address": "C9",
+              "value": "9"
+            },
+            {
+              "address": "D9",
+              "value": "12"
+            },
+            {
+              "address": "E9",
+              "value": "15"
+            },
+            {
+              "address": "F9",
+              "value": "18"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 10,
+          "values": [
+            {
+              "address": "A10",
+              "value": ""
+            },
+            {
+              "address": "B10",
+              "value": "지하벽"
+            },
+            {
+              "address": "C10",
+              "value": "12"
+            },
+            {
+              "address": "D10",
+              "value": "15"
+            },
+            {
+              "address": "E10",
+              "value": "18"
+            },
+            {
+              "address": "F10",
+              "value": "21"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 11,
+          "values": [
+            {
+              "address": "A11",
+              "value": ""
+            },
+            {
+              "address": "B11",
+              "value": "기초"
+            },
+            {
+              "address": "C11",
+              "value": "16"
+            },
+            {
+              "address": "D11",
+              "value": "20"
+            },
+            {
+              "address": "E11",
+              "value": "24"
+            },
+            {
+              "address": "F11",
+              "value": "27"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 12,
+          "values": [
+            {
+              "address": "A12",
+              "value": "해체/정리"
+            },
+            {
+              "address": "B12",
+              "value": ""
+            },
+            {
+              "address": "C12",
+              "value": "10"
+            },
+            {
+              "address": "D12",
+              "value": "14"
+            },
+            {
+              "address": "E12",
+              "value": "16"
+            },
+            {
+              "address": "F12",
+              "value": "20"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 13,
+          "values": [
+            {
+              "address": "A13",
+              "value": "마감/보강"
+            },
+            {
+              "address": "B13",
+              "value": ""
+            },
+            {
+              "address": "C13",
+              "value": "6"
+            },
+            {
+              "address": "D13",
+              "value": "8"
+            },
+            {
+              "address": "E13",
+              "value": "10"
+            },
+            {
+              "address": "F13",
+              "value": "12"
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "formulas": []
+    },
+    {
+      "sheet_name": "부분별 보정계수 설정",
+      "max_row": 9,
+      "max_column": 2,
+      "dimensions": "A1:B9",
+      "headers": [
+        {
+          "row": 1,
+          "values": [
+            "구 분",
+            "보정계수"
+          ]
+        },
+        {
+          "row": 2,
+          "values": [
+            "기초",
+            "1.3"
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "지하",
+            "1.2"
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "동하부 ",
+            "0.85"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "필로티/부대시설",
+            ""
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "셋팅층",
+            "0.9"
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "기준층",
+            "1"
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "최상층",
+            "0.85"
+          ]
+        },
+        {
+          "row": 9,
+          "values": [
+            "PH층",
+            "0.7"
+          ]
+        }
+      ],
+      "data_rows": [
+        {
+          "row": 2,
+          "values": [
+            {
+              "address": "A2",
+              "value": "기초"
+            },
+            {
+              "address": "B2",
+              "value": "1.3"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 3,
+          "values": [
+            {
+              "address": "A3",
+              "value": "지하"
+            },
+            {
+              "address": "B3",
+              "value": "1.2"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 4,
+          "values": [
+            {
+              "address": "A4",
+              "value": "동하부 "
+            },
+            {
+              "address": "B4",
+              "value": "0.85"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 5,
+          "values": [
+            {
+              "address": "A5",
+              "value": "필로티/부대시설"
+            },
+            {
+              "address": "B5",
+              "value": ""
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 6,
+          "values": [
+            {
+              "address": "A6",
+              "value": "셋팅층"
+            },
+            {
+              "address": "B6",
+              "value": "0.9"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 7,
+          "values": [
+            {
+              "address": "A7",
+              "value": "기준층"
+            },
+            {
+              "address": "B7",
+              "value": "1"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 8,
+          "values": [
+            {
+              "address": "A8",
+              "value": "최상층"
+            },
+            {
+              "address": "B8",
+              "value": "0.85"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 9,
+          "values": [
+            {
+              "address": "A9",
+              "value": "PH층"
+            },
+            {
+              "address": "B9",
+              "value": "0.7"
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "formulas": []
+    },
+    {
+      "sheet_name": "거푸집 계열 작업면, 작업면적 추정 산식",
+      "max_row": 8,
+      "max_column": 6,
+      "dimensions": "A1:F8",
+      "headers": [
+        {
+          "row": 1,
+          "values": [
+            "공종·부위",
+            "물량표 입력",
+            "추정 파라미터",
+            "작업면/작업면적 산정식(예시)",
+            "Front/Zone 산정",
+            "비고(오차/보정 포인트)"
+          ]
+        },
+        {
+          "row": 2,
+          "values": [
+            "갱폼(지상 벽체)",
+            "갱폼㎡",
+            "h",
+            "벽체연장 L_g = 갱폼㎡ / h",
+            "Front_g = CEILING(L_g / L_front)",
+            "갱폼㎡가 “벽체면적”이라 가장 깔끔. 코어/외곽 분리 없으면 Front는 과대/과소 가능 ..."
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "알폼(지상 벽체)",
+            "알폼㎡",
+            "h",
+            "벽체연장 L_a = 알폼㎡ / h",
+            "Front_a = CEILING(L_a / L_front)",
+            "알폼은 구획을 잘게 나눌 수 있어 Front 추정이 현실적. 단, 코어 집중형 평면은 Fr..."
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "옥탑",
+            "형틀㎡(또는 유로폼으로 간주)",
+            "h_PH, k_beam_PH",
+            "① 슬라브면적 A_s = 콘크리트㎥ / t_slab (가능하면 PH 두께 별도) ② 슬라브...",
+            "Front_PH = CEILING((벽체유로폼㎡/h_PH)/L_front), Zone_sl...",
+            "옥탑은 보정이 큰 구간. PH는 “상한(권장)=상한(하드)”로 묶는 게 안정적(사람 더 넣..."
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "유로폼(지상 필로티·부대시설 – 벽체)",
+            "형틀㎡",
+            "h_pil, t_slab_pil,",
+            "① A_s = 콘크리트㎥ / t_slab_pil ② A_sf = A_s × k_beam_p...",
+            "Front = CEILING(L / L_front)",
+            "필로티는 기둥/보/단차가 많아 k_beam을 높게(1.2~1.3) 잡아야 “벽체유로폼” 과..."
+          ]
+        },
+        {
+          "row": 6,
+          "values": [
+            "",
+            "(갱폼/알폼이 0 또는 매우 적은 층)",
+            "k_beam_pil",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "row": 7,
+          "values": [
+            "유로폼(지하 슬라브 – 저면/보·턱)",
+            "형틀㎡, 콘크리트㎥",
+            "t_slab_ug, k_beam_ug",
+            "① 슬라브면적 A_s = 콘크리트㎥ / t_slab_ug ② 슬라브거푸집 A_sf = A_...",
+            "Zone_slab = CEILING(A_s / A_zone_slab)",
+            "지하 슬라브는 벽체와 분리 필요. 형틀㎡ 중 슬라브 몫을 먼저 빼고 남는 걸 벽체로(아래 ..."
+          ]
+        },
+        {
+          "row": 8,
+          "values": [
+            "유로폼(지하 벽체 – 외곽/내력벽)",
+            "형틀㎡, 콘크리트㎥",
+            "h_ug, t_slab_ug, k_beam_ug",
+            "① A_s = 콘크리트㎥ / t_slab_ug ② A_sf = A_s × k_beam_ug...",
+            "Front = CEILING(L / L_front)",
+            "지하벽은 cap이 “전선” 지배. h_ug를 잘못 주면 Front가 크게 흔들림 → 지하층..."
+          ]
+        }
+      ],
+      "data_rows": [
+        {
+          "row": 2,
+          "values": [
+            {
+              "address": "A2",
+              "value": "갱폼(지상 벽체)"
+            },
+            {
+              "address": "B2",
+              "value": "갱폼㎡"
+            },
+            {
+              "address": "C2",
+              "value": "h"
+            },
+            {
+              "address": "D2",
+              "value": "벽체연장 L_g = 갱폼㎡ / h"
+            },
+            {
+              "address": "E2",
+              "value": "Front_g = CEILING(L_g / L_front)"
+            },
+            {
+              "address": "F2",
+              "value": "갱폼㎡가 “벽체면적”이라 가장 깔끔. 코어/외곽 분리 없으면 Front는 과대/과소 가능 ..."
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 3,
+          "values": [
+            {
+              "address": "A3",
+              "value": "알폼(지상 벽체)"
+            },
+            {
+              "address": "B3",
+              "value": "알폼㎡"
+            },
+            {
+              "address": "C3",
+              "value": "h"
+            },
+            {
+              "address": "D3",
+              "value": "벽체연장 L_a = 알폼㎡ / h"
+            },
+            {
+              "address": "E3",
+              "value": "Front_a = CEILING(L_a / L_front)"
+            },
+            {
+              "address": "F3",
+              "value": "알폼은 구획을 잘게 나눌 수 있어 Front 추정이 현실적. 단, 코어 집중형 평면은 Fr..."
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 4,
+          "values": [
+            {
+              "address": "A4",
+              "value": "옥탑"
+            },
+            {
+              "address": "B4",
+              "value": "형틀㎡(또는 유로폼으로 간주)"
+            },
+            {
+              "address": "C4",
+              "value": "h_PH, k_beam_PH"
+            },
+            {
+              "address": "D4",
+              "value": "① 슬라브면적 A_s = 콘크리트㎥ / t_slab (가능하면 PH 두께 별도) ② 슬라브..."
+            },
+            {
+              "address": "E4",
+              "value": "Front_PH = CEILING((벽체유로폼㎡/h_PH)/L_front), Zone_sl..."
+            },
+            {
+              "address": "F4",
+              "value": "옥탑은 보정이 큰 구간. PH는 “상한(권장)=상한(하드)”로 묶는 게 안정적(사람 더 넣..."
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 5,
+          "values": [
+            {
+              "address": "A5",
+              "value": "유로폼(지상 필로티·부대시설 – 벽체)"
+            },
+            {
+              "address": "B5",
+              "value": "형틀㎡"
+            },
+            {
+              "address": "C5",
+              "value": "h_pil, t_slab_pil,"
+            },
+            {
+              "address": "D5",
+              "value": "① A_s = 콘크리트㎥ / t_slab_pil ② A_sf = A_s × k_beam_p..."
+            },
+            {
+              "address": "E5",
+              "value": "Front = CEILING(L / L_front)"
+            },
+            {
+              "address": "F5",
+              "value": "필로티는 기둥/보/단차가 많아 k_beam을 높게(1.2~1.3) 잡아야 “벽체유로폼” 과..."
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 6,
+          "values": [
+            {
+              "address": "A6",
+              "value": ""
+            },
+            {
+              "address": "B6",
+              "value": "(갱폼/알폼이 0 또는 매우 적은 층)"
+            },
+            {
+              "address": "C6",
+              "value": "k_beam_pil"
+            },
+            {
+              "address": "D6",
+              "value": ""
+            },
+            {
+              "address": "E6",
+              "value": ""
+            },
+            {
+              "address": "F6",
+              "value": ""
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 7,
+          "values": [
+            {
+              "address": "A7",
+              "value": "유로폼(지하 슬라브 – 저면/보·턱)"
+            },
+            {
+              "address": "B7",
+              "value": "형틀㎡, 콘크리트㎥"
+            },
+            {
+              "address": "C7",
+              "value": "t_slab_ug, k_beam_ug"
+            },
+            {
+              "address": "D7",
+              "value": "① 슬라브면적 A_s = 콘크리트㎥ / t_slab_ug ② 슬라브거푸집 A_sf = A_..."
+            },
+            {
+              "address": "E7",
+              "value": "Zone_slab = CEILING(A_s / A_zone_slab)"
+            },
+            {
+              "address": "F7",
+              "value": "지하 슬라브는 벽체와 분리 필요. 형틀㎡ 중 슬라브 몫을 먼저 빼고 남는 걸 벽체로(아래 ..."
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 8,
+          "values": [
+            {
+              "address": "A8",
+              "value": "유로폼(지하 벽체 – 외곽/내력벽)"
+            },
+            {
+              "address": "B8",
+              "value": "형틀㎡, 콘크리트㎥"
+            },
+            {
+              "address": "C8",
+              "value": "h_ug, t_slab_ug, k_beam_ug"
+            },
+            {
+              "address": "D8",
+              "value": "① A_s = 콘크리트㎥ / t_slab_ug ② A_sf = A_s × k_beam_ug..."
+            },
+            {
+              "address": "E8",
+              "value": "Front = CEILING(L / L_front)"
+            },
+            {
+              "address": "F8",
+              "value": "지하벽은 cap이 “전선” 지배. h_ug를 잘못 주면 Front가 크게 흔들림 → 지하층..."
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "formulas": []
+    },
+    {
+      "sheet_name": "철근 작업면,작업면적(Zone,Front) 추정 산식",
+      "max_row": 5,
+      "max_column": 6,
+      "dimensions": "A1:F5",
+      "headers": [
+        {
+          "row": 1,
+          "values": [
+            "철근 부위",
+            "물량표 입력",
+            "추정 파라미터",
+            "작업면/작업면적 산정식(예시)",
+            "Zone/Front 산정",
+            "비고(오차/보정 포인트)"
+          ]
+        },
+        {
+          "row": 2,
+          "values": [
+            "슬라브 철근(지상/지하 공통)",
+            "콘크리트㎥(우선), 철근ton(검증)",
+            "t_slab, A_zone_slab=200㎡",
+            "슬라브면적 A_s = 콘크리트㎥ / t_slab",
+            "Zone_slab = CEILING(A_s / 200)",
+            "슬라브는 면적 구획이 cap을 결정. 철근ton은 “난이도 검증”용(ton/㎡가 높으면 생..."
+          ]
+        },
+        {
+          "row": 3,
+          "values": [
+            "지상 벽체 철근(갱폼/알폼 기반)",
+            "갱폼㎡+알폼㎡",
+            "h",
+            "벽체연장 L = (갱폼㎡+알폼㎡)/h",
+            "Front = CEILING(L / 25m)",
+            "지상 벽체철근은 폼(벽체면적)과 강하게 연동됨. 벽체 면적이 곧 작업면"
+          ]
+        },
+        {
+          "row": 4,
+          "values": [
+            "지하 벽체 철근(유로폼 기반)",
+            "형틀㎡(+ 콘크리트㎥로 슬라브 제거)",
+            "h_ug, t_slab_ug, k_beam_ug",
+            "① A_s = 콘크리트㎥ / t_slab_ug ② A_sf=A_s×k_beam_ug ③ 벽...",
+            "Front=CEILING(L/25m)",
+            "지하벽 철근은 전선 기반이 가장 맞음. 지하층고 입력이 중요"
+          ]
+        },
+        {
+          "row": 5,
+          "values": [
+            "기초 철근(매트/독립기초)",
+            "콘크리트㎥(기초), 철근ton",
+            "t_mat(기초두께), A_zone_slab=200㎡",
+            "기초면적 A_f = 기초콘크리트㎥ / t_mat",
+            "Zone_found = CEILING(A_f / 200)",
+            "기초는 “자유구획”이라 Zone 기반이 맞음. 두께(t_mat)만 알면 면적이 안정적으로 ..."
+          ]
+        }
+      ],
+      "data_rows": [
+        {
+          "row": 2,
+          "values": [
+            {
+              "address": "A2",
+              "value": "슬라브 철근(지상/지하 공통)"
+            },
+            {
+              "address": "B2",
+              "value": "콘크리트㎥(우선), 철근ton(검증)"
+            },
+            {
+              "address": "C2",
+              "value": "t_slab, A_zone_slab=200㎡"
+            },
+            {
+              "address": "D2",
+              "value": "슬라브면적 A_s = 콘크리트㎥ / t_slab"
+            },
+            {
+              "address": "E2",
+              "value": "Zone_slab = CEILING(A_s / 200)"
+            },
+            {
+              "address": "F2",
+              "value": "슬라브는 면적 구획이 cap을 결정. 철근ton은 “난이도 검증”용(ton/㎡가 높으면 생..."
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 3,
+          "values": [
+            {
+              "address": "A3",
+              "value": "지상 벽체 철근(갱폼/알폼 기반)"
+            },
+            {
+              "address": "B3",
+              "value": "갱폼㎡+알폼㎡"
+            },
+            {
+              "address": "C3",
+              "value": "h"
+            },
+            {
+              "address": "D3",
+              "value": "벽체연장 L = (갱폼㎡+알폼㎡)/h"
+            },
+            {
+              "address": "E3",
+              "value": "Front = CEILING(L / 25m)"
+            },
+            {
+              "address": "F3",
+              "value": "지상 벽체철근은 폼(벽체면적)과 강하게 연동됨. 벽체 면적이 곧 작업면"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 4,
+          "values": [
+            {
+              "address": "A4",
+              "value": "지하 벽체 철근(유로폼 기반)"
+            },
+            {
+              "address": "B4",
+              "value": "형틀㎡(+ 콘크리트㎥로 슬라브 제거)"
+            },
+            {
+              "address": "C4",
+              "value": "h_ug, t_slab_ug, k_beam_ug"
+            },
+            {
+              "address": "D4",
+              "value": "① A_s = 콘크리트㎥ / t_slab_ug ② A_sf=A_s×k_beam_ug ③ 벽..."
+            },
+            {
+              "address": "E4",
+              "value": "Front=CEILING(L/25m)"
+            },
+            {
+              "address": "F4",
+              "value": "지하벽 철근은 전선 기반이 가장 맞음. 지하층고 입력이 중요"
+            }
+          ],
+          "formulas": []
+        },
+        {
+          "row": 5,
+          "values": [
+            {
+              "address": "A5",
+              "value": "기초 철근(매트/독립기초)"
+            },
+            {
+              "address": "B5",
+              "value": "콘크리트㎥(기초), 철근ton"
+            },
+            {
+              "address": "C5",
+              "value": "t_mat(기초두께), A_zone_slab=200㎡"
+            },
+            {
+              "address": "D5",
+              "value": "기초면적 A_f = 기초콘크리트㎥ / t_mat"
+            },
+            {
+              "address": "E5",
+              "value": "Zone_found = CEILING(A_f / 200)"
+            },
+            {
+              "address": "F5",
+              "value": "기초는 “자유구획”이라 Zone 기반이 맞음. 두께(t_mat)만 알면 면적이 안정적으로 ..."
+            }
+          ],
+          "formulas": []
+        }
+      ],
+      "formulas": []
+    }
+  ]
+}

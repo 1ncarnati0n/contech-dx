@@ -23,7 +23,8 @@ import { deleteProject, getProject } from '@/lib/services/projects';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage } from '@/components/buildings';
+import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage, PouringSectionReviewPage } from '@/components/buildings';
+import { ProjectTeamPage } from './ProjectTeamPage';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
 
 interface Props {
@@ -131,6 +132,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                 {activeTab === 'overview' && '프로젝트 개요'}
                 {activeTab === 'data_input' && '동 기본 정보'}
                 {activeTab === 'quantity_input' && '물량 입력'}
+                {activeTab === 'detailed_quantity_input' && '상세물량입력'}
                 {activeTab === 'price_input' && '단가 입력'}
                 {activeTab === 'building_process_plan' && '동별 공정계획'}
                 {activeTab === 'gantt_chart' && '간트차트'}
@@ -260,6 +262,10 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
 
+          {activeTab === 'pouring_section_review' && (
+            <PouringSectionReviewPage projectId={project.id} />
+          )}
+
           {activeTab === 'data_input' && (
             <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
               <BuildingBasicInfoPage projectId={project.id} />
@@ -269,6 +275,12 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           {activeTab === 'quantity_input' && (
             <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
               <QuantityInputPage projectId={project.id} />
+            </div>
+          )}
+
+          {activeTab === 'detailed_quantity_input' && (
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+              <DetailedQuantityInputPage projectId={project.id} />
             </div>
           )}
 
@@ -325,7 +337,11 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
             </div>
           )}
 
-          {activeTab !== 'overview' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && (
+          {activeTab === 'team' && (
+            <ProjectTeamPage projectId={project.id} projectCreatedBy={project.created_by} />
+          )}
+
+          {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
             <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                 <Settings className="w-8 h-8 text-slate-300 dark:text-slate-600" />
