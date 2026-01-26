@@ -19,21 +19,25 @@ import {
     BarChart3,
     Layers,
     Calculator,
+    PanelLeftClose,
+    PanelLeft,
+    ArrowLeft,
 } from 'lucide-react';
+import Link from 'next/link';
 import type { Project } from '@/lib/types';
-import { formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
+import { formatDate } from '@/lib/utils/index';
 
 interface ProjectSidebarProps {
-    isOpen: boolean;
-    onClose: () => void;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
     project: Project;
     activeTab: string;
     onTabChange: (tab: string) => void;
 }
 
 export function ProjectSidebar({
-    isOpen,
-    onClose,
+    isCollapsed,
+    onToggleCollapse,
     project,
     activeTab,
     onTabChange,
@@ -81,170 +85,207 @@ export function ProjectSidebar({
         }
     }, [activeTab, isDataInputActive, isDataInputExpanded, isProcessPlanActive, isProcessPlanExpanded]);
 
+    // 접힌 상태에서는 서브메뉴 확장 해제
+    useEffect(() => {
+        if (isCollapsed) {
+            setIsDataInputExpanded(false);
+            setIsProcessPlanExpanded(false);
+        }
+    }, [isCollapsed]);
+
+    // 메뉴 버튼 공통 컴포넌트
+    const MenuButton = ({
+        id,
+        label,
+        icon: Icon,
+        isActive,
+        onClick,
+        hasSubmenu = false,
+        isExpanded = false,
+    }: {
+        id: string;
+        label: string;
+        icon: React.ComponentType<{ className?: string }>;
+        isActive: boolean;
+        onClick: () => void;
+        hasSubmenu?: boolean;
+        isExpanded?: boolean;
+    }) => (
+        <button
+            onClick={onClick}
+            title={isCollapsed ? label : undefined}
+            className={`w-full flex items-center ${hasSubmenu ? 'justify-between' : ''} gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+            }`}
+        >
+            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
+                {!isCollapsed && <span>{label}</span>}
+            </div>
+            {hasSubmenu && !isCollapsed && (
+                isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                )
+            )}
+        </button>
+    );
+
     return (
-        <>
-            {/* Mobile Overlay */}
-            <div
-                className={`fixed inset-0 bg-black/20 z-20 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                    }`}
-                onClick={onClose}
-            />
-
-            {/* Sidebar */}
-            <div
-                className={`absolute inset-y-0 left-0 z-30 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
-                    } flex flex-col`}
-            >
-                {/* Project Header */}
-                <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">
-                        {project.name}
-                    </h2>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColors(project.status)}`}>
-                            {getStatusLabel(project.status)}
-                        </span>
-                        <span>#{project.project_number}</span>
-                    </div>
-                </div>
-
-                {/* Navigation */}
-                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-                    {/* Overview */}
-                    <button
-                        onClick={() => onTabChange('overview')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'overview'
-                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                            }`}
+        <div
+            className={`fixed inset-y-0 left-0 top-16 z-30 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out flex flex-col ${
+                isCollapsed ? 'w-16' : 'w-72'
+            }`}
+        >
+            {/* Header with back button and project name */}
+            <div className={`border-b border-slate-200 dark:border-slate-800 ${isCollapsed ? 'p-2' : 'p-4'}`}>
+                {isCollapsed ? (
+                    <Link
+                        href="/projects"
+                        title="프로젝트 목록"
+                        className="flex items-center justify-center w-full h-10 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
-                        <LayoutDashboard className={`w-4 h-4 ${activeTab === 'overview' ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                        개요
-                    </button>
-
-                    {/* 데이터 입력 확장 메뉴 */}
-                    <div className="space-y-1">
-                        <button
-                            onClick={() => setIsDataInputExpanded(!isDataInputExpanded)}
-                            className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isDataInputActive
-                                ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                                }`}
+                        <ArrowLeft className="w-5 h-5" />
+                    </Link>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/projects"
+                            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0"
                         >
-                            <div className="flex items-center gap-3">
-                                <Database className={`w-4 h-4 ${isDataInputActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                                데이터 입력
-                            </div>
-                            {isDataInputExpanded ? (
-                                <ChevronDown className="w-4 h-4 text-slate-400" />
-                            ) : (
-                                <ChevronRight className="w-4 h-4 text-slate-400" />
-                            )}
-                        </button>
+                            <ArrowLeft className="w-4 h-4" />
+                        </Link>
+                        <h2 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            {project.name}
+                        </h2>
+                    </div>
+                )}
+            </div>
 
-                        {/* 서브메뉴 */}
-                        {isDataInputExpanded && (
-                            <div className="ml-4 space-y-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                                {dataInputSubItems.map((item) => {
-                                    const Icon = item.icon;
-                                    const isActive = activeTab === item.id;
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => {
-                                                onTabChange(item.id);
-                                            }}
-                                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+            {/* Navigation */}
+            <div className={`flex-1 overflow-y-auto py-4 space-y-1 ${isCollapsed ? 'px-2' : 'px-3'}`}>
+                {/* Overview */}
+                <MenuButton
+                    id="overview"
+                    label="개요"
+                    icon={LayoutDashboard}
+                    isActive={activeTab === 'overview'}
+                    onClick={() => onTabChange('overview')}
+                />
+
+                {/* 데이터 입력 확장 메뉴 */}
+                <div className="space-y-1">
+                    <MenuButton
+                        id="data_input_group"
+                        label="데이터 입력"
+                        icon={Database}
+                        isActive={isDataInputActive}
+                        onClick={() => {
+                            if (isCollapsed) {
+                                onTabChange('data_input');
+                            } else {
+                                setIsDataInputExpanded(!isDataInputExpanded);
+                            }
+                        }}
+                        hasSubmenu={!isCollapsed}
+                        isExpanded={isDataInputExpanded}
+                    />
+
+                    {/* 서브메뉴 */}
+                    {isDataInputExpanded && !isCollapsed && (
+                        <div className="ml-4 space-y-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+                            {dataInputSubItems.map((item) => {
+                                const Icon = item.icon;
+                                const isActive = activeTab === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => onTabChange(item.id)}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            isActive
                                                 ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
                                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                                                }`}
-                                        >
-                                            <Icon className={`w-4 h-4 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                                            {item.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 공정계획 확장 메뉴 */}
-                    <div className="space-y-1">
-                        <button
-                            onClick={() => setIsProcessPlanExpanded(!isProcessPlanExpanded)}
-                            className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isProcessPlanActive
-                                ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                                }`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <ListTodo className={`w-4 h-4 ${isProcessPlanActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                                공정계획
-                            </div>
-                            {isProcessPlanExpanded ? (
-                                <ChevronDown className="w-4 h-4 text-slate-400" />
-                            ) : (
-                                <ChevronRight className="w-4 h-4 text-slate-400" />
-                            )}
-                        </button>
-
-                        {/* 서브메뉴 */}
-                        {isProcessPlanExpanded && (
-                            <div className="ml-4 space-y-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-                                {processPlanSubItems.map((item) => {
-                                    const Icon = item.icon;
-                                    const isActive = activeTab === item.id;
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => onTabChange(item.id)}
-                                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                                                ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                                                }`}
-                                        >
-                                            <Icon className={`w-4 h-4 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                                            {item.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 단가 입력 메뉴 */}
-                    <button
-                        onClick={() => onTabChange('planned_unit_rate')}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isUnitRateActive
-                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                            }`}
-                    >
-                        <DollarSign className={`w-4 h-4 ${isUnitRateActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                        단가 입력
-                    </button>
-
-                    {/* 나머지 메뉴 아이템들 */}
-                    {menuItems.slice(2).map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => onTabChange(item.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
-                            >
-                                <Icon className={`w-4 h-4 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
-                                {item.label}
-                            </button>
-                        );
-                    })}
+                                        }`}
+                                    >
+                                        <Icon className={`w-4 h-4 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
-                {/* Project Info Summary */}
+                {/* 공정계획 확장 메뉴 */}
+                <div className="space-y-1">
+                    <MenuButton
+                        id="process_plan_group"
+                        label="공정계획"
+                        icon={ListTodo}
+                        isActive={isProcessPlanActive}
+                        onClick={() => {
+                            if (isCollapsed) {
+                                onTabChange('building_process_plan');
+                            } else {
+                                setIsProcessPlanExpanded(!isProcessPlanExpanded);
+                            }
+                        }}
+                        hasSubmenu={!isCollapsed}
+                        isExpanded={isProcessPlanExpanded}
+                    />
+
+                    {/* 서브메뉴 */}
+                    {isProcessPlanExpanded && !isCollapsed && (
+                        <div className="ml-4 space-y-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+                            {processPlanSubItems.map((item) => {
+                                const Icon = item.icon;
+                                const isActive = activeTab === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => onTabChange(item.id)}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            isActive
+                                                ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <Icon className={`w-4 h-4 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'}`} />
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* 단가 입력 메뉴 */}
+                <MenuButton
+                    id="planned_unit_rate"
+                    label="단가 입력"
+                    icon={DollarSign}
+                    isActive={isUnitRateActive}
+                    onClick={() => onTabChange('planned_unit_rate')}
+                />
+
+                {/* 나머지 메뉴 아이템들 */}
+                {menuItems.slice(2).map((item) => (
+                    <MenuButton
+                        key={item.id}
+                        id={item.id}
+                        label={item.label}
+                        icon={item.icon}
+                        isActive={activeTab === item.id}
+                        onClick={() => onTabChange(item.id)}
+                    />
+                ))}
+            </div>
+
+            {/* Project Info Summary - only when expanded */}
+            {!isCollapsed && (
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                     <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
                         프로젝트 정보
@@ -268,7 +309,27 @@ export function ProjectSidebar({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Toggle Button */}
+            <div className={`border-t border-slate-200 dark:border-slate-800 ${isCollapsed ? 'p-2' : 'p-3'}`}>
+                <button
+                    onClick={onToggleCollapse}
+                    title={isCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                        isCollapsed ? 'justify-center' : ''
+                    }`}
+                >
+                    {isCollapsed ? (
+                        <PanelLeft className="w-5 h-5" />
+                    ) : (
+                        <>
+                            <PanelLeftClose className="w-5 h-5" />
+                            <span>사이드바 접기</span>
+                        </>
+                    )}
+                </button>
             </div>
-        </>
+        </div>
     );
 }

@@ -1,20 +1,15 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
   Calendar,
   DollarSign,
   MapPin,
   Building2,
   Edit,
   Trash2,
-  Menu,
   Settings,
-  Building,
-  BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card } from '@/components/ui';
@@ -31,23 +26,41 @@ interface Props {
   project: Project;
 }
 
+// 탭별 제목 매핑
+const TAB_TITLES: Record<string, string> = {
+  overview: '프로젝트 개요',
+  pouring_section_review: '타설구간 개략검토',
+  data_input: '동 기본 정보',
+  quantity_input: '물량 입력',
+  detailed_quantity_input: '상세물량입력',
+  geological_data: '지질 데이터 입력',
+  planned_unit_rate: '단가 입력',
+  executed_unit_rate: '실행 단가',
+  building_process_plan: '동별 공정계획',
+  basement_process_plan: '지하층 공정계획',
+  gantt_chart: '간트차트',
+  team: '팀 관리',
+  documents: '문서 관리',
+  settings: '설정',
+};
+
 export function ProjectDetailClient({ project: initialProject }: Props) {
   const router = useRouter();
   const [project, setProject] = useState<Project>(initialProject);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
   }, []);
-  
+
   // 프로젝트 데이터 동기화 (서버에서 업데이트된 데이터 반영)
   useEffect(() => {
     setProject(initialProject);
   }, [initialProject]);
-  
+
   const handleDelete = useCallback(async () => {
     if (typeof window === 'undefined') return;
     if (!window.confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
@@ -67,12 +80,8 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     }
   }, [project.id, router]);
 
-  const handleSidebarToggle = useCallback(() => {
-    setSidebarOpen(prev => !prev);
-  }, []);
-
-  const handleSidebarClose = useCallback(() => {
-    setSidebarOpen(false);
+  const handleToggleCollapse = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
   }, []);
 
   const handleProjectUpdate = useCallback(async () => {
@@ -95,69 +104,29 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
 
   return (
     <div className="fixed inset-0 top-16 flex bg-background overflow-hidden">
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="absolute inset-0 bg-black/20 z-20 lg:hidden"
-          onClick={handleSidebarClose}
-        />
-      )}
-
       <ProjectSidebar
-        isOpen={sidebarOpen}
-        onClose={handleSidebarClose}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
         project={project}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />
 
       <div
-        className={`flex-1 flex flex-col h-full transition-all duration-300 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'
-          }`}
+        className={`flex-1 flex flex-col h-full transition-all duration-300 ${
+          sidebarCollapsed ? 'ml-16' : 'ml-72'
+        }`}
       >
-        {/* Header */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSidebarToggle}
-              className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-md">
-                {activeTab === 'overview' && '프로젝트 개요'}
-                {activeTab === 'data_input' && '동 기본 정보'}
-                {activeTab === 'quantity_input' && '물량 입력'}
-                {activeTab === 'detailed_quantity_input' && '상세물량입력'}
-                {activeTab === 'price_input' && '단가 입력'}
-                {activeTab === 'building_process_plan' && '동별 공정계획'}
-                {activeTab === 'gantt_chart' && '간트차트'}
-                {activeTab === 'process_plan' && '공정계획'}
-                {activeTab === 'team' && '팀 관리'}
-                {activeTab === 'documents' && '문서 관리'}
-                {activeTab === 'settings' && '설정'}
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link href="/projects">
-              <Button variant="ghost" size="sm" className="gap-2 text-slate-500">
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">목록으로</span>
-              </Button>
-            </Link>
-          </div>
-        </header>
-
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
+          {/* Page Title */}
+          <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-2">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {TAB_TITLES[activeTab] || ''}
+            </h1>
+          </div>
           {activeTab === 'overview' && (
-            <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               {/* Project Header Card */}
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                 <div>
@@ -267,31 +236,31 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab === 'data_input' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <BuildingBasicInfoPage projectId={project.id} />
             </div>
           )}
 
           {activeTab === 'quantity_input' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <QuantityInputPage projectId={project.id} />
             </div>
           )}
 
           {activeTab === 'detailed_quantity_input' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <DetailedQuantityInputPage projectId={project.id} />
             </div>
           )}
 
           {activeTab === 'geological_data' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <GeologicalDataPage projectId={project.id} />
             </div>
           )}
 
           {activeTab === 'planned_unit_rate' && (
-            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
                 <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                   <DollarSign className="w-8 h-8 text-slate-300 dark:text-slate-600" />
@@ -303,7 +272,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab === 'executed_unit_rate' && (
-            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
                 <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                   <DollarSign className="w-8 h-8 text-slate-300 dark:text-slate-600" />
@@ -315,13 +284,13 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab === 'building_process_plan' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <BuildingProcessPlanPage projectId={project.id} />
             </div>
           )}
 
           {activeTab === 'basement_process_plan' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <BasementProcessPlanPage projectId={project.id} />
             </div>
           )}
@@ -342,7 +311,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                 <Settings className="w-8 h-8 text-slate-300 dark:text-slate-600" />
               </div>
