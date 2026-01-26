@@ -20,6 +20,7 @@ import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
 import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage, PouringSectionReviewPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
+import { GanttChartPage } from './GanttChartPage';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
 
 interface Props {
@@ -296,14 +297,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab === 'gantt_chart' && (
-            <div className="w-full h-[calc(100vh-120px)]">
-              <iframe
-                src="https://sa-gantt-lib.vercel.app/"
-                className="w-full h-full border-0"
-                title="간트차트"
-                allow="fullscreen"
-              />
-            </div>
+            <GanttChartPage projectId={project.id} />
           )}
 
           {activeTab === 'team' && (
