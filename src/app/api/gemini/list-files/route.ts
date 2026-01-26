@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+import { geminiStoreRequest } from '@/lib/utils/geminiApi';
+import { checkAuth } from '@/lib/utils/apiAuth';
 
 interface GeminiDocument {
   name: string;
@@ -12,9 +12,16 @@ interface GeminiDocument {
   state?: string;
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
+  // 인증 확인
+  const authCheck = await checkAuth();
+  if (!authCheck.success) return authCheck.response;
+
   try {
-    const { storeName } = await request.json();
+    // 쿼리 파라미터에서 storeName, pageToken 추출
+    const { searchParams } = new URL(request.url);
+    const storeName = searchParams.get('storeName');
+    const pageToken = searchParams.get('pageToken');
 
     if (!storeName) {
       return NextResponse.json(
@@ -32,25 +39,40 @@ export async function POST(request: NextRequest) {
     }
 
     // REST API로 문서 목록 조회
-    const response = await fetch(
-      `${GEMINI_API_BASE}/${storeName}/documents?key=${apiKey}&pageSize=100`,
+    // API 키를 헤더로 전달하여 URL 노출 방지
+    const response = await geminiStoreRequest(
+      `${storeName}/documents`,
+      apiKey,
       {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+        queryParams: {
+          pageSize: '20',
+          ...(pageToken && { pageToken }),
         },
       }
     );
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || '문서 목록 조회 실패');
+      const errorText = await response.text();
+      console.error('Gemini API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        endpoint: `${storeName}/documents`,
+        body: errorText,
+      });
+
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.error?.message || '문서 목록 조회 실패');
+      } catch {
+        throw new Error(`API 오류 (${response.status}): ${errorText.slice(0, 200)}`);
+      }
     }
 
     const data = await response.json();
 
     // 문서 목록 포맷팅
-    const documents = (data.documents || []).map((doc: GeminiDocument) => ({
+    const files = (data.documents || []).map((doc: GeminiDocument) => ({
       name: doc.name,
       displayName: doc.displayName || '이름 없음',
       mimeType: doc.mimeType || 'unknown',
@@ -62,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      documents,
+      files,
       nextPageToken: data.nextPageToken,
     });
 

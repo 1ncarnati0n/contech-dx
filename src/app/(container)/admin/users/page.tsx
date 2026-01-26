@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, isSystemAdmin, getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions/server';
+import { getCurrentUserProfile, isSystemAdmin, getRoleDisplayName, getRoleBadgeVariant } from '@/lib/permissions/server';
 import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -176,8 +176,7 @@ export default async function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Badge variant={getRoleBadgeColor(user.role) as any} className="capitalize">
+                    <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">
                       {getRoleDisplayName(user.role)}
                     </Badge>
                   </td>

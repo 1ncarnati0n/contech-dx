@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildFullSystemPrompt } from '@/lib/data/chatbot-prompts';
 import { parseHighlightMarkersEnhanced } from '@/lib/utils/highlight-registry';
+import { geminiModelRequest } from '@/lib/utils/geminiApi';
+import { checkAuth } from '@/lib/utils/apiAuth';
 import type {
   ChatContextSnapshot,
   ChatbotError,
   ChatbotErrorType,
   HighlightTarget,
 } from '@/components/buildings/ProcessPlanChatbotTypes';
-
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 interface CitationSource {
   startIndex?: number;
@@ -199,6 +199,10 @@ function contextSnapshotToPromptText(snapshot?: ChatContextSnapshot): string {
  * 컨텍스트 정보를 포함하여 Gemini API에 요청합니다.
  */
 export async function POST(request: NextRequest) {
+  // 인증 확인
+  const authCheck = await checkAuth();
+  if (!authCheck.success) return authCheck.response;
+
   try {
     const body: ProcessPlanChatRequest = await request.json();
     const { query, context, contextSnapshot, history = [] } = body;
@@ -293,22 +297,19 @@ export async function POST(request: NextRequest) {
     });
 
     // Gemini API 호출
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    // API 키를 헤더로 전달하여 URL 노출 방지
+    const response = await geminiModelRequest(
+      'gemini-2.0-flash',
+      'generateContent',
+      apiKey,
       {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
         },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-          },
-        }),
       }
     );
 

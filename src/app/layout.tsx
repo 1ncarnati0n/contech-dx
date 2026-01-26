@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
-  description: '라온아크테크 건축공정관리 시스템빌드',
+  description: '라온아크테크 스마트건축 플랫폼',
 };
 
 export default function RootLayout({
@@ -31,7 +31,7 @@ export default function RootLayout({
             <LoadingBar />
           </Suspense>
           <NavBar />
-          <main className="pt-16 min-h-screen bg-background text-foreground transition-colors">
+          <main className="pt-16 min-h-screen text-foreground transition-colors">
             {children}
           </main>
           <Toaster />

@@ -1,30 +1,38 @@
 /**
  * Users Service - Client Side
  * 클라이언트 컴포넌트에서 사용 가능한 함수들
- * createBrowserClient 또는 API 호출만 사용
+ *
+ * withClientAuth/withOptionalAuth 래퍼를 사용하여 인증 로직을 추상화합니다.
  */
 
-import { createClient as createBrowserClient } from '@/lib/supabase/client';
+import {
+  withClientAuth,
+  withOptionalAuth,
+  type ServiceResult,
+} from '@/lib/supabase/withAuth';
 import type { UserRole, Profile } from '@/lib/types';
 
 /**
  * 모든 사용자 목록 조회 (클라이언트 사이드)
  * 프로젝트 멤버 추가 시 사용자 선택에 사용
+ * 인증 여부와 관계없이 조회 가능 (공개 데이터)
  */
 export async function getAllUsersClient(): Promise<Profile[]> {
-  const supabase = createBrowserClient();
+  const result = await withOptionalAuth<Profile[]>(async (supabase) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  const { data: users, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching users:', error);
+      return { data: [], error: null };
+    }
 
-  if (error) {
-    console.error('Error fetching users:', error);
-    return [];
-  }
+    return { data: data || [], error: null };
+  });
 
-  return users || [];
+  return result.data || [];
 }
 
 /**
@@ -33,17 +41,20 @@ export async function getAllUsersClient(): Promise<Profile[]> {
  * @param newRole 새로운 역할
  * @returns 업데이트된 사용자와 에러
  */
-export async function updateUserRole(userId: string, newRole: UserRole) {
-  const supabase = createBrowserClient();
+export async function updateUserRole(
+  userId: string,
+  newRole: UserRole
+): Promise<ServiceResult<Profile>> {
+  return withClientAuth(async (supabase) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId)
+      .select()
+      .single();
 
-  const { data: user, error } = await supabase
-    .from('profiles')
-    .update({ role: newRole })
-    .eq('id', userId)
-    .select()
-    .single();
-
-  return { user, error };
+    return { data, error: error ? { message: error.message } : null };
+  });
 }
 
 /**
@@ -59,20 +70,20 @@ export async function updateUserProfile(
     avatar_url?: string;
     bio?: string;
   }
-) {
-  const supabase = createBrowserClient();
+): Promise<ServiceResult<Profile>> {
+  return withClientAuth(async (supabase) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
-  const { data: user, error } = await supabase
-    .from('profiles')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .select()
-    .single();
-
-  return { user, error };
+    return { data, error: error ? { message: error.message } : null };
+  });
 }
 
 /**
@@ -80,7 +91,11 @@ export async function updateUserProfile(
  * 개발/테스트 목적으로만 사용해야 합니다.
  * @returns 성공 여부와 업데이트된 사용자 정보
  */
-export async function promoteCurrentUserToAdmin() {
+export async function promoteCurrentUserToAdmin(): Promise<{
+  success: boolean;
+  user: Profile | null;
+  error: string | null;
+}> {
   try {
     const response = await fetch('/api/users/promote-to-admin', {
       method: 'POST',
@@ -92,10 +107,14 @@ export async function promoteCurrentUserToAdmin() {
     const data = await response.json();
 
     if (!response.ok) {
-      return { success: false, error: data.error || '권한 업데이트에 실패했습니다.', user: null };
+      return {
+        success: false,
+        error: data.error?.message || data.error || '권한 업데이트에 실패했습니다.',
+        user: null,
+      };
     }
 
-    return { success: true, user: data.user, error: null };
+    return { success: true, user: data.data?.user || data.user, error: null };
   } catch (error) {
     console.error('권한 업데이트 중 오류:', error);
     return {

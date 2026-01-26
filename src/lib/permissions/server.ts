@@ -14,6 +14,7 @@ export {
   hasMinimumRole,
   getRoleDisplayName,
   getRoleBadgeColor,
+  getRoleBadgeVariant,
   getRoleLevel,
   isRoleHigherOrEqual,
   getAllRoles,

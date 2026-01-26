@@ -466,6 +466,28 @@ export interface Floor {
 }
 
 /**
+ * 공종 필드 데이터 (공통 구조)
+ */
+export interface TradeFieldData {
+  areaM2?: number;
+  productivity?: number;
+  productivityM2?: number;
+  productivityM3?: number;
+  workers?: number;
+  cost?: number;
+  ton?: number;
+  volumeM3?: number;
+  wall?: number;
+  beamSlab?: number;
+  equipmentCount?: number;
+}
+
+/**
+ * TradeData의 카테고리 키 타입
+ */
+export type TradeCategoryKey = keyof TradeData;
+
+/**
  * 공종별 데이터
  */
 export interface TradeData {
@@ -529,6 +551,9 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
+
+  // 동적 접근을 위한 인덱스 시그니처 (타입 안전성 유지)
+  [key: string]: TradeFieldData | undefined;
 }
 
 /**

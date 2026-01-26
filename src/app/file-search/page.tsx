@@ -31,6 +31,9 @@ export default function FileSearchPage() {
     // 파일 상태
     attachedFiles,
     uploadedFiles,
+    // 페이지네이션 상태
+    nextPageToken,
+    isLoadingMore,
     // 채팅 상태
     messages,
     isSearching,
@@ -50,6 +53,7 @@ export default function FileSearchPage() {
     clearAttachedFiles,
     uploadFiles,
     deleteFile,
+    loadMoreFiles,
     // 채팅 액션
     search,
     stopSearch,
@@ -89,6 +93,9 @@ export default function FileSearchPage() {
         onClearAttachedFiles={clearAttachedFiles}
         onUploadFiles={uploadFiles}
         onDeleteFile={deleteFile}
+        nextPageToken={nextPageToken}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMoreFiles}
         sessions={sessions}
         currentSessionId={currentSessionId}
         onSelectSession={selectSession}

@@ -87,7 +87,7 @@ export default function ChatArea({
           )}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 text-sm font-medium text-zinc-700 dark:text-zinc-200">
             <Bot className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-            <span>{selectedStoreInfo?.displayName || '스토어 미선택'}</span>
+            <span>{selectedStoreInfo?.displayName || '문서함 미선택'}</span>
           </div>
         </div>
       </header>

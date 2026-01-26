@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+import { geminiStoreRequest } from '@/lib/utils/geminiApi';
+import { checkAuth } from '@/lib/utils/apiAuth';
 
 export async function POST(request: NextRequest) {
+  // 인증 확인
+  const authCheck = await checkAuth();
+  if (!authCheck.success) return authCheck.response;
+
   try {
     const { storeName } = await request.json();
 
@@ -22,15 +26,10 @@ export async function POST(request: NextRequest) {
     }
 
     // REST API로 File search store 정보 조회
-    const response = await fetch(
-      `${GEMINI_API_BASE}/${storeName}?key=${apiKey}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // API 키를 헤더로 전달하여 URL 노출 방지
+    const response = await geminiStoreRequest(storeName, apiKey, {
+      method: 'GET',
+    });
 
     if (!response.ok) {
       const errorData = await response.json();

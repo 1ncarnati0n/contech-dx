@@ -80,6 +80,7 @@ export const ROLE_DISPLAY_NAMES = {
 
 /**
  * 역할별 뱃지 색상 (Tailwind CSS 클래스)
+ * @deprecated Badge 컴포넌트의 variant를 사용하세요 (ROLE_BADGE_VARIANTS)
  */
 export const ROLE_BADGE_COLORS = {
   admin: 'bg-purple-100 text-purple-800 border-purple-300',
@@ -87,6 +88,19 @@ export const ROLE_BADGE_COLORS = {
   vip_user: 'bg-yellow-100 text-yellow-800 border-yellow-300',
   user: 'bg-gray-100 text-gray-800 border-gray-300',
 } as const;
+
+/**
+ * 역할별 Badge 컴포넌트 variant
+ * Badge 컴포넌트의 variant prop과 타입 안전하게 매핑됩니다.
+ */
+export const ROLE_BADGE_VARIANTS = {
+  admin: 'admin',
+  main_user: 'main_user',
+  vip_user: 'vip_user',
+  user: 'user',
+} as const;
+
+export type RoleBadgeVariant = (typeof ROLE_BADGE_VARIANTS)[keyof typeof ROLE_BADGE_VARIANTS];
 
 /**
  * 에러 메시지

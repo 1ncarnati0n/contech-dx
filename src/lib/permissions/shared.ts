@@ -8,6 +8,8 @@ import {
   ROLE_HIERARCHY,
   ROLE_DISPLAY_NAMES,
   ROLE_BADGE_COLORS,
+  ROLE_BADGE_VARIANTS,
+  type RoleBadgeVariant,
 } from '../constants';
 
 /**
@@ -62,10 +64,19 @@ export function getRoleDisplayName(role: UserRole): string {
 }
 
 /**
- * 역할별 뱃지 색상
+ * 역할별 뱃지 색상 (CSS 클래스)
+ * @deprecated Badge 컴포넌트의 variant를 사용하세요 (getRoleBadgeVariant)
  */
 export function getRoleBadgeColor(role: UserRole): string {
   return ROLE_BADGE_COLORS[role] || ROLE_BADGE_COLORS.user;
+}
+
+/**
+ * 역할별 Badge 컴포넌트 variant
+ * Badge 컴포넌트의 variant prop과 타입 안전하게 매핑됩니다.
+ */
+export function getRoleBadgeVariant(role: UserRole): RoleBadgeVariant {
+  return ROLE_BADGE_VARIANTS[role] || ROLE_BADGE_VARIANTS.user;
 }
 
 /**

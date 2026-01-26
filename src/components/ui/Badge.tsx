@@ -23,6 +23,15 @@ const badgeVariants = cva(
           "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400",
         outline:
           "border-zinc-300 bg-transparent text-zinc-700 dark:border-zinc-600 dark:text-zinc-300",
+        // 역할별 Badge variants
+        admin:
+          "border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+        main_user:
+          "border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+        vip_user:
+          "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+        user:
+          "border-gray-300 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
       },
     },
     defaultVariants: {
@@ -30,6 +39,9 @@ const badgeVariants = cva(
     },
   }
 );
+
+// Badge variant 타입 export (타입 안전성을 위해)
+export type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,

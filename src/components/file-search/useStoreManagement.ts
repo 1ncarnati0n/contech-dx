@@ -15,6 +15,10 @@ export function useStoreManagement() {
   const [selectedStoreInfo, setSelectedStoreInfo] = useState<FileSearchStore | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
+  // 페이지네이션 상태
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   // UI 상태
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,17 +40,15 @@ export function useStoreManagement() {
   // 스토어 상세 정보 로드
   const loadStoreInfo = useCallback(async (storeName: string) => {
     try {
+      const encodedStoreName = encodeURIComponent(storeName);
       const [storeResponse, filesResponse] = await Promise.all([
         fetch(API_ENDPOINTS.GEMINI_GET_STORE, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ storeName }),
         }),
-        fetch(API_ENDPOINTS.GEMINI_LIST_FILES, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeName }),
-        }),
+        // GET 요청 + 쿼리 파라미터로 변경
+        fetch(`${API_ENDPOINTS.GEMINI_LIST_FILES}?storeName=${encodedStoreName}`),
       ]);
 
       const [storeData, filesData] = await Promise.all([
@@ -55,7 +57,10 @@ export function useStoreManagement() {
       ]);
 
       if (storeData.success) setSelectedStoreInfo(storeData.store);
-      if (filesData.success) setUploadedFiles(filesData.documents || []);
+      if (filesData.success) {
+        setUploadedFiles(filesData.files || []);
+        setNextPageToken(filesData.nextPageToken || null);
+      }
     } catch (err) {
       console.error('Error loading store info:', err);
     }
@@ -71,10 +76,32 @@ export function useStoreManagement() {
       } else {
         setSelectedStoreInfo(null);
         setUploadedFiles([]);
+        setNextPageToken(null);
       }
     },
     [loadStoreInfo]
   );
+
+  // 파일 더 불러오기 (페이지네이션)
+  const loadMoreFiles = useCallback(async () => {
+    if (!selectedStore || !nextPageToken || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const url = `${API_ENDPOINTS.GEMINI_LIST_FILES}?storeName=${encodeURIComponent(selectedStore)}&pageToken=${encodeURIComponent(nextPageToken)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.success) {
+        setUploadedFiles(prev => [...prev, ...(data.files || [])]);
+        setNextPageToken(data.nextPageToken || null);
+      }
+    } catch (err) {
+      console.error('Error loading more files:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [selectedStore, nextPageToken, isLoadingMore]);
 
   // 스토어 생성
   const createStore = useCallback(
@@ -161,6 +188,9 @@ export function useStoreManagement() {
     loading,
     error,
     success,
+    // 페이지네이션 상태
+    nextPageToken,
+    isLoadingMore,
     // 액션
     loadStores,
     loadStoreInfo,
@@ -168,6 +198,7 @@ export function useStoreManagement() {
     createStore,
     deleteStore,
     clearNotification,
+    loadMoreFiles,
     // 내부 setter (다른 훅에서 사용)
     setUploadedFiles,
   };

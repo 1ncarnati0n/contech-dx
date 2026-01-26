@@ -34,6 +34,11 @@ interface SidebarProps {
   onUploadFiles: () => void;
   onDeleteFile?: (fileName: string) => void;
 
+  // 페이지네이션 관련 props
+  nextPageToken?: string | null;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+
   // 채팅 세션 관련 props
   sessions?: ChatSession[];
   currentSessionId?: string | null;
@@ -60,6 +65,10 @@ export default function Sidebar({
   onClearAttachedFiles,
   onUploadFiles,
   onDeleteFile,
+
+  nextPageToken,
+  isLoadingMore = false,
+  onLoadMore,
 
   sessions = [],
   currentSessionId,
@@ -142,7 +151,7 @@ export default function Sidebar({
                   onChange={(e) => onSelectStore(e.target.value)}
                   className="w-full p-2 rounded-lg text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none"
                 >
-                  <option value="">스토어 선택...</option>
+                  <option value="">문서함 선택...</option>
                   {stores.map((s) => (
                     <option key={s.name} value={s.name}>
                       {s.displayName}
@@ -243,7 +252,17 @@ export default function Sidebar({
                         {uploadedFiles.map((file) => (
                           <div key={file.name} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-1.5 rounded border border-zinc-200 dark:border-zinc-700">
                             <div className="flex-1 min-w-0">
-                              <div className="truncate text-zinc-700 dark:text-zinc-300">{file.displayName}</div>
+                              <div className="relative group/tooltip">
+                                <div className="truncate text-zinc-700 dark:text-zinc-300">{file.displayName}</div>
+                                <div className="absolute left-0 top-full mt-1 z-[9999]
+                                  opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible
+                                  transition-all duration-200 delay-500
+                                  px-2 py-1 text-xs bg-zinc-900 dark:bg-zinc-100
+                                  text-white dark:text-zinc-900 rounded shadow-lg
+                                  max-w-[200px] break-all pointer-events-none">
+                                  {file.displayName}
+                                </div>
+                              </div>
                               <div className="text-[10px] text-zinc-400">{formatFileSize(file.sizeBytes)}</div>
                             </div>
                             {onDeleteFile && (
@@ -262,6 +281,16 @@ export default function Sidebar({
                           </div>
                         ))}
                       </div>
+                      {/* 더 보기 버튼 */}
+                      {nextPageToken && onLoadMore && (
+                        <button
+                          onClick={onLoadMore}
+                          disabled={isLoadingMore}
+                          className="w-full py-2 text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isLoadingMore ? '로딩 중...' : '더 보기'}
+                        </button>
+                      )}
                     </div>
                   )}
                   {uploadedFiles.length === 0 && (

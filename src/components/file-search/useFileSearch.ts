@@ -25,12 +25,15 @@ export function useFileSearch() {
     loading: storeLoading,
     error: storeError,
     success: storeSuccess,
+    nextPageToken,
+    isLoadingMore,
     loadStores,
     loadStoreInfo,
     selectStore: rawSelectStore,
     createStore,
     deleteStore: rawDeleteStore,
     clearNotification: clearStoreNotification,
+    loadMoreFiles,
   } = storeManagement;
 
   // 채팅 세션 관리
@@ -111,40 +114,45 @@ export function useFileSearch() {
     selectedStore,
     selectedStoreInfo,
     uploadedFiles,
-    
+
     // 파일 상태
     attachedFiles,
-    
+
+    // 페이지네이션 상태
+    nextPageToken,
+    isLoadingMore,
+
     // 채팅 상태
     messages,
     isSearching,
     sessions,
     currentSessionId,
-    
+
     // UI 상태
     loading,
     error,
     success,
-    
+
     // 스토어 액션
     selectStore,
     createStore,
     deleteStore,
-    
+
     // 파일 액션
     attachFiles,
     removeAttachedFile,
     clearAttachedFiles,
     uploadFiles,
     deleteFile,
-    
+    loadMoreFiles,
+
     // 채팅 액션
     search,
     stopSearch,
     selectSession,
     createSession,
     deleteSession,
-    
+
     // 공통 액션
     clearNotification,
   };

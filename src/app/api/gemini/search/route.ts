@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+import { geminiModelRequest } from '@/lib/utils/geminiApi';
+import { checkAuth } from '@/lib/utils/apiAuth';
 
 interface CitationSource {
   startIndex?: number;
@@ -10,6 +10,10 @@ interface CitationSource {
 }
 
 export async function POST(request: NextRequest) {
+  // 인증 확인
+  const authCheck = await checkAuth();
+  if (!authCheck.success) return authCheck.response;
+
   try {
     const { query, storeName } = await request.json();
 
@@ -36,23 +40,20 @@ export async function POST(request: NextRequest) {
     }
 
     // REST API로 검색 수행 (File Search는 gemini-2.5+ 모델 필요)
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/gemini-3-pro-preview:generateContent?key=${apiKey}`,
+    // API 키를 헤더로 전달하여 URL 노출 방지
+    const response = await geminiModelRequest(
+      'gemini-3-pro-preview',
+      'generateContent',
+      apiKey,
       {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: query }]
-          }],
-          tools: [{
-            file_search: {
-              file_search_store_names: [storeName]
-            }
-          }]
-        }),
+        contents: [{
+          parts: [{ text: query }]
+        }],
+        tools: [{
+          file_search: {
+            file_search_store_names: [storeName]
+          }
+        }]
       }
     );
 

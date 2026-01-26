@@ -1,197 +1,130 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import {
-    BarChart2,
-    Database,
-    Bot,
-    Calendar,
-    Layers,
-    TrendingUp,
-    FileSearch
-} from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Building2, ShieldCheck, LineChart } from 'lucide-react';
 
 export default function HomePage() {
-    return (
-        <div className="min-h-screen bg-background">
-            {/* Hero Section */}
-            <section className="relative pt-20 pb-32 overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-100/20 via-transparent to-transparent dark:from-cyan-900/20" />
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  };
 
-                <div className="container mx-auto px-4 relative z-10">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8 }}
-                        className="text-center max-w-4xl mx-auto space-y-8"
-                    >
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 text-sm font-medium mb-4">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-                            </span>
-                            ConTech DX AX Platform
-                        </div>
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: [0.215, 0.61, 0.355, 1] as const,
+      },
+    },
+  };
 
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">
-                            건설산업의 <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">
-                                DX AX
-                            </span>를 주도합니다
-                        </h1>
+  return (
+    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden transition-colors duration-300">
+      {/* Background Effects */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080801a_1px,transparent_1px),linear-gradient(to_bottom,#8080801a_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-primary-200/40 via-transparent to-transparent dark:from-primary-900/20 dark:via-transparent dark:to-transparent blur-3xl" />
+      </div>
 
-                        <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-                            데이터 기반의 의사결정, 체계화된 WBS 공정 관리, 그리고 AI 문서 검색.<br />
-                            건설 산업의 디지털 전환(DX)을 위한 통합 플랫폼입니다.
-                        </p>
-
-                    </motion.div>
-                </div>
-
-                {/* Background Grid Effect */}
-                <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-            </section>
-
-            {/* Features Grid */}
-            <section className="py-24 bg-zinc-50 dark:bg-zinc-900/50">
-                <div className="container mx-auto px-4">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl font-bold text-zinc-900 dark:text-white mb-4">
-                            Core Capabilities
-                        </h2>
-                        <p className="text-zinc-600 dark:text-zinc-400">
-                            성공적인 프로젝트 수행을 위한 4가지 핵심 솔루션
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <FeatureCard
-                            icon={<Calendar className="w-8 h-8 text-blue-500" />}
-                            title="공정관리"
-                            description="체계적인 건설전문 WBS 간트앱을 통해 복잡한 공정을 직관적으로 관리하고 일정을 최적화합니다."
-                            delay={0.1}
-                        />
-                        <FeatureCard
-                            icon={<Bot className="w-8 h-8 text-cyan-500" />}
-                            title="AI RAG 분석"
-                            description="RAG 기술이 적용된 AI가 건설산업에 관련한 문서들을 분석하여 핵심 정보를 요약 제공합니다."
-                            delay={0.2}
-                        />
-                        <FeatureCard
-                            icon={<Database className="w-8 h-8 text-purple-500" />}
-                            title="Data Hub"
-                            description="현장의 모든 데이터를 디지털화하여 표준화된 건설 데이터베이스를 구축합니다."
-                            delay={0.3}
-                        />
-                        <FeatureCard
-                            icon={<TrendingUp className="w-8 h-8 text-green-500" />}
-                            title="EVMS 원가관리"
-                            description="비용과 일정을 통합 관리하여 프로젝트의 성과를 실시간으로 측정하고 예측합니다."
-                            delay={0.4}
-                        />
-                    </div>
-                </div>
-            </section>
-
-            {/* Detail Sections */}
-            <section className="py-24">
-                <div className="container mx-auto px-4 space-y-32">
-                    {/* Feature 1: Project Management */}
-                    <div className="flex flex-col lg:flex-row items-center gap-16">
-                        <div className="flex-1 space-y-6">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                <Layers className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <h3 className="text-3xl font-bold text-zinc-900 dark:text-white">
-                                데이터 기반의 <br />
-                                정밀한 공정 관리
-                            </h3>
-                            <p className="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                기존의 직관에 의존하던 공정 관리를 데이터 기반으로 전환하세요.
-                                WBS와 EVMS가 결합된 시스템은 프로젝트의 진행 상황을 객관적인 수치로 보여줍니다.
-                            </p>
-                            <ul className="space-y-3">
-                                {['실시간 진도율 체크', '비용-일정 통합 분석', '리스크 조기 경보'].map((item, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-zinc-700 dark:text-zinc-300">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                        {item}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                        <div className="flex-1 relative">
-                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 aspect-video flex items-center justify-center group">
-                                <BarChart2 className="w-24 h-24 text-zinc-300 dark:text-zinc-700 group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Feature 2: AI Analysis */}
-                    <div className="flex flex-col lg:flex-row-reverse items-center gap-16">
-                        <div className="flex-1 space-y-6">
-                            <div className="w-12 h-12 rounded-2xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
-                                <FileSearch className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-                            </div>
-                            <h3 className="text-3xl font-bold text-zinc-900 dark:text-white">
-                                AI로 완성하는 <br />
-                                스마트한 문서 분석
-                            </h3>
-                            <p className="text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                                수천 페이지의 시방서와 도면 정보를 AI가 학습하고 분석합니다.
-                                RAG(검색 증강 생성) 기술을 통해 정확한 근거 기반의 답변을 제공합니다.
-                            </p>
-                            <ul className="space-y-3">
-                                {['기술 문서 자동 요약', '규정 위반 사항 검토', '유사 사례 검색'].map((item, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-zinc-700 dark:text-zinc-300">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                                        {item}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                        <div className="flex-1 relative">
-                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 aspect-video flex items-center justify-center group">
-                                <Bot className="w-24 h-24 text-zinc-300 dark:text-zinc-700 group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute inset-0 bg-gradient-to-bl from-cyan-500/10 to-transparent" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="py-24 bg-zinc-100 dark:bg-zinc-900/50 relative overflow-hidden">
-                <div className="container mx-auto px-4 text-center relative z-10">
-                    <p className="text-zinc-600 dark:text-zinc-400 mb-10 max-w-2xl mx-auto">
-                        지금 바로 ConTech DX와 함께 디지털 전환을 시작하세요.
-                    </p>
-                </div>
-            </section>
-        </div>
-    );
-}
-
-function FeatureCard({ icon, title, description, delay }: { icon: React.ReactNode, title: string, description: string, delay: number }) {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay }}
-            className="p-6 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:shadow-lg hover:border-cyan-500/50 transition-all duration-300 group"
-        >
-            <div className="mb-4 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 w-fit group-hover:scale-110 transition-transform duration-300">
-                {icon}
-            </div>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-3">
-                {title}
-            </h3>
-            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                {description}
-            </p>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative z-10 max-w-4xl mx-auto px-4 text-center"
+      >
+        {/* Badge */}
+        <motion.div variants={itemVariants} className="mb-8 flex justify-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 dark:bg-white/5 border border-primary-200 dark:border-white/10 backdrop-blur-md text-sm text-primary-600 dark:text-primary-200 shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Enterprise Grade Platform
+          </div>
         </motion.div>
-    );
+
+        {/* Hero Title */}
+        <motion.h1
+          variants={itemVariants}
+          className="text-5xl md:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white mb-6"
+        >
+          Contech DX
+          <br />
+          <span className="text-4xl md:text-6xl font-medium text-primary-500 dark:text-primary-400 bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400 dark:from-white dark:via-white dark:to-white/50">
+            Intelligent Construction
+          </span>
+        </motion.h1>
+
+        {/* Description */}
+        <motion.p
+          variants={itemVariants}
+          className="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed"
+        >
+          BIM 및 데이터 기반의 의사결정, WBS 공정계획, AI 전문가 에이전트를 적용,
+          <br className="hidden sm:block" />
+          건설산업의 디지털전환(DX) 및 BIM 데이터 통합을 위한 플랫폼입니다.
+        </motion.p>
+
+        {/* Footer Features */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto"
+        >
+          {/* Feature 1 */}
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-700 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-white/5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                <Building2 className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">WBS 직영공사 관리</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  프로젝트의 모든 작업들을 체계적으로 분류하고 효율적으로 관리하여 공기를 준수합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 2 */}
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-700 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-white/5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">건설 데이터 구축</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  건설산업의 프로세스와 시공현장의 다양한 데이터를 디지털화하고 지속 가능한 지적자산으로 구축합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="group p-6 rounded-2xl bg-white/50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 hover:border-cyan-300 dark:hover:border-cyan-700 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 rounded-xl bg-cyan-50 dark:bg-white/5 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                <LineChart className="w-8 h-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">EVMS 원가관리(예정)</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  비용과 일정을 통합관리하여 프로젝트의 성과를 실시간으로 측정하고 예측합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
 }

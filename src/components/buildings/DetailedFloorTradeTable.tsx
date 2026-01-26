@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, 
 import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
+import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
 import { toast } from 'sonner';
 
 interface Props {
@@ -557,28 +558,11 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     const key = `${actualFloorId}-${tradeGroup}`;
     const existing = trades.get(key);
     
-    const newTrades = { ...(existing?.trades || {}) };
-    
+    const newTrades: TradeData = { ...(existing?.trades || {}) };
+
     // 중첩된 필드 처리 (예: "gangForm.areaM2")
-    const [category, subField] = field.split('.');
-    if (subField) {
-      if (!newTrades[category as keyof TradeData]) {
-        newTrades[category as keyof TradeData] = {} as any;
-      }
-      // null인 경우 해당 필드 삭제 (빈칸 처리)
-      if (value === null) {
-        delete (newTrades[category as keyof TradeData] as any)[subField];
-      } else {
-        (newTrades[category as keyof TradeData] as any)[subField] = value;
-      }
-    } else {
-      // null인 경우 해당 필드 삭제 (빈칸 처리)
-      if (value === null) {
-        delete (newTrades as any)[field];
-      } else {
-        (newTrades as any)[field] = value;
-      }
-    }
+    // 타입 안전한 헬퍼 함수 사용
+    setTradeValueByPath(newTrades, field, value);
 
     const updatedTrade: FloorTrade = {
       id: existing?.id || `temp-${Date.now()}`,
@@ -794,9 +778,9 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     trades.forEach(trade => {
       const [category, subField] = field.split('.');
       if (subField) {
-        const categoryData = trade.trades[category as keyof TradeData] as any;
-        if (categoryData && categoryData[subField]) {
-          sum += categoryData[subField] || 0;
+        const value = getTradeValue(trade.trades, category, subField);
+        if (value) {
+          sum += value;
         }
       }
     });

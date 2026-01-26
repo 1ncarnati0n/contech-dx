@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { GeminiFileSearchStore } from '@/lib/types';
 import { getErrorMessage } from '@/lib/utils';
-
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+import { geminiStoreRequest } from '@/lib/utils/geminiApi';
+import { checkAuth } from '@/lib/utils/apiAuth';
 
 export async function GET() {
+  // 인증 확인
+  const authCheck = await checkAuth();
+  if (!authCheck.success) return authCheck.response;
+
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -15,15 +19,10 @@ export async function GET() {
     }
 
     // REST API로 File search stores 목록 가져오기
-    const response = await fetch(
-      `${GEMINI_API_BASE}/fileSearchStores?key=${apiKey}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // API 키를 헤더로 전달하여 URL 노출 방지
+    const response = await geminiStoreRequest('fileSearchStores', apiKey, {
+      method: 'GET',
+    });
 
     if (!response.ok) {
       const errorData = await response.json();

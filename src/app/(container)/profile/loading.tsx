@@ -2,16 +2,11 @@ import { Skeleton } from '@/components/ui';
 
 export default function ProfileLoading() {
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <Skeleton variant="title" className="mb-2" />
-        <Skeleton className="w-48 h-5" />
-      </div>
-
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* 왼쪽: 프로필 정보 카드 Skeleton */}
         <div className="md:col-span-1">
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg shadow-md p-6">
             {/* 프로필 이미지 */}
             <div className="flex justify-center mb-4">
               <Skeleton variant="avatar" className="w-24 h-24" />
@@ -25,7 +20,7 @@ export default function ProfileLoading() {
             </div>
 
             {/* 통계 */}
-            <div className="border-t pt-4 space-y-3">
+            <div className="border-t border-slate-200 dark:border-zinc-800 pt-4 space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex justify-between items-center">
                   <Skeleton className="w-16 h-4" />
@@ -47,7 +42,7 @@ export default function ProfileLoading() {
 
         {/* 오른쪽: 프로필 편집 폼 Skeleton */}
         <div className="md:col-span-2">
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg shadow-md p-6">
             <Skeleton variant="title" className="mb-6" />
             <div className="space-y-6">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -56,14 +51,17 @@ export default function ProfileLoading() {
                   <Skeleton className="w-full h-10" />
                 </div>
               ))}
-              <Skeleton variant="button" className="w-32 h-10" />
+              <div className="flex gap-3">
+                <Skeleton variant="button" className="w-32 h-10" />
+                <Skeleton variant="button" className="w-24 h-10" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* 빠른 링크 Skeleton */}
-      <div className="mt-6 bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
+      <div className="mt-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg shadow-md p-6">
         <Skeleton variant="title" className="mb-4" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 2 }).map((_, i) => (
