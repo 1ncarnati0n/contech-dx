@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTheme } from 'next-themes';
 import {
   Upload,
   Loader2,
@@ -54,7 +55,18 @@ export function IfcViewer({ className }: IfcViewerProps) {
   const fragmentsRef = useRef<any>(null);
   const highlighterRef = useRef<any>(null);
   const boundingBoxerRef = useRef<any>(null);
+  const threeRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
+
+  // Theme synchronization
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDarkMode = mounted ? resolvedTheme === 'dark' : true;
 
   const [loadingState, setLoadingState] = useState<LoadingState>({
     phase: 'idle',
@@ -81,6 +93,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         const OBC = await import('@thatopen/components');
         const OBF = await import('@thatopen/components-front');
         const THREE = await import('three');
+        threeRef.current = THREE;
 
         // Create components
         const components = new OBC.Components();
@@ -224,6 +237,14 @@ export function IfcViewer({ className }: IfcViewerProps) {
       }
     };
   }, []);
+
+  // Sync Three.js scene background with theme
+  useEffect(() => {
+    if (!worldRef.current?.scene?.three || !threeRef.current || !mounted) return;
+
+    const bgColor = isDarkMode ? 0x1e293b : 0xf4f4f5; // slate-800 : zinc-100
+    worldRef.current.scene.three.background = new threeRef.current.Color(bgColor);
+  }, [isDarkMode, mounted]);
 
   // Load IFC from URL (for auto-loading)
   const loadIfcFromUrl = useCallback(async (url: string, fileName: string) => {
@@ -424,8 +445,8 @@ export function IfcViewer({ className }: IfcViewerProps) {
       <div className="relative flex-1 flex flex-col">
         <div
           ref={containerRef}
-          className={`relative flex-1 bg-slate-900 rounded-lg overflow-hidden border-2 transition-colors ${
-            isDragging ? 'border-primary border-dashed' : 'border-transparent'
+          className={`relative flex-1 bg-zinc-100 dark:bg-slate-900 rounded-lg overflow-hidden border-2 transition-colors ${
+            isDragging ? 'border-primary border-dashed' : 'border-zinc-300 dark:border-transparent'
           }`}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
@@ -433,23 +454,23 @@ export function IfcViewer({ className }: IfcViewerProps) {
         >
           {/* Upload prompt (shown when idle and no model loaded) */}
           {loadingState.phase === 'idle' && !stats && isReady && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 z-10">
               <div
                 className={`flex flex-col items-center gap-6 text-center p-12 rounded-2xl border-2 border-dashed transition-all cursor-pointer max-w-md mx-4 ${
                   isDragging
                     ? 'border-primary bg-primary/10 scale-105'
-                    : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
+                    : 'border-zinc-300 dark:border-slate-600 hover:border-zinc-400 dark:hover:border-slate-500 hover:bg-zinc-200/50 dark:hover:bg-slate-800/50'
                 }`}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <div className={`p-6 rounded-full transition-colors ${
-                  isDragging ? 'bg-primary/20' : 'bg-slate-800'
+                  isDragging ? 'bg-primary/20' : 'bg-zinc-200 dark:bg-slate-800'
                 }`}>
-                  <Box className={`h-12 w-12 ${isDragging ? 'text-primary' : 'text-slate-400'}`} />
+                  <Box className={`h-12 w-12 ${isDragging ? 'text-primary' : 'text-zinc-500 dark:text-slate-400'}`} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-white mb-2">IFC 모델 뷰어</h3>
-                  <p className="text-slate-400 mb-6">
+                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">IFC 모델 뷰어</h3>
+                  <p className="text-zinc-600 dark:text-slate-400 mb-6">
                     IFC 파일을 드래그하여 놓거나<br />
                     아래 버튼을 클릭하여 파일을 선택하세요
                   </p>
@@ -465,8 +486,8 @@ export function IfcViewer({ className }: IfcViewerProps) {
                     파일 열기
                   </Button>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="px-2 py-1 rounded bg-slate-800">.ifc</span>
+                <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-slate-500">
+                  <span className="px-2 py-1 rounded bg-zinc-200 dark:bg-slate-800">.ifc</span>
                 </div>
               </div>
             </div>
@@ -474,12 +495,12 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
           {/* Loading/Initializing state */}
           {(loadingState.phase === 'initializing' || loadingState.phase === 'loading' || loadingState.phase === 'processing') && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm z-20">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-20">
               <div className="flex flex-col items-center gap-4 text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <div>
-                  <p className="font-medium text-white">{loadingState.message}</p>
-                  <div className="w-48 h-2 bg-slate-700 rounded-full mt-2 overflow-hidden">
+                  <p className="font-medium text-zinc-900 dark:text-white">{loadingState.message}</p>
+                  <div className="w-48 h-2 bg-zinc-300 dark:bg-slate-700 rounded-full mt-2 overflow-hidden">
                     <div
                       className="h-full bg-primary transition-all duration-300"
                       style={{ width: `${loadingState.progress}%` }}
@@ -492,14 +513,14 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
           {/* Error state */}
           {loadingState.phase === 'error' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-20">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 z-20">
               <div className="flex flex-col items-center gap-4 text-center p-8 max-w-md">
                 <div className="p-4 rounded-full bg-destructive/10">
                   <Box className="h-8 w-8 text-destructive" />
                 </div>
                 <div>
                   <h3 className="font-medium mb-1 text-destructive">로드 실패</h3>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <p className="text-sm text-zinc-600 dark:text-slate-400 mb-4">
                     {loadingState.message}
                   </p>
                   <Button variant="outline" onClick={() => setLoadingState({ phase: 'idle', progress: 0, message: '' })}>
@@ -514,13 +535,13 @@ export function IfcViewer({ className }: IfcViewerProps) {
           {loadingState.phase === 'complete' && (
             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
               {/* View Presets */}
-              <div className="bg-slate-800/90 backdrop-blur-sm rounded-lg p-1 flex flex-col gap-1">
-                <div className="text-xs text-slate-400 px-2 py-1 font-medium">뷰</div>
+              <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg p-1 flex flex-col gap-1 border border-zinc-300 dark:border-slate-600">
+                <div className="text-xs text-zinc-600 dark:text-slate-400 px-2 py-1 font-medium">뷰</div>
                 <div className="grid grid-cols-3 gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
                     onClick={() => handleViewOrientation('top')}
                     title="위에서 보기"
                   >
@@ -529,7 +550,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
                     onClick={() => handleViewOrientation('front')}
                     title="앞에서 보기"
                   >
@@ -538,7 +559,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
                     onClick={() => handleViewOrientation('right')}
                     title="오른쪽에서 보기"
                   >
@@ -547,7 +568,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
                     onClick={() => handleViewOrientation('bottom')}
                     title="아래에서 보기"
                   >
@@ -556,7 +577,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
                     onClick={() => handleViewOrientation('back')}
                     title="뒤에서 보기"
                   >
@@ -565,7 +586,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 hover:text-white hover:bg-slate-700"
+                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
                     onClick={() => handleViewOrientation('left')}
                     title="왼쪽에서 보기"
                   >
@@ -575,12 +596,12 @@ export function IfcViewer({ className }: IfcViewerProps) {
               </div>
 
               {/* Projection Toggle */}
-              <div className="bg-slate-800/90 backdrop-blur-sm rounded-lg p-1">
+              <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg p-1 border border-zinc-300 dark:border-slate-600">
                 <Button
                   variant="ghost"
                   size="sm"
                   className={`w-full justify-start gap-2 text-xs ${
-                    projectionMode === 'Orthographic' ? 'text-primary' : 'text-slate-300'
+                    projectionMode === 'Orthographic' ? 'text-primary' : 'text-zinc-600 dark:text-slate-300'
                   }`}
                   onClick={handleProjectionToggle}
                   title="투영 모드 전환"
@@ -629,7 +650,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
           {/* Selection hint */}
           {loadingState.phase === 'complete' && selectedElements.length === 0 && (
-            <div className="absolute bottom-4 right-4 z-10 bg-slate-800/80 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-slate-400">
+            <div className="absolute bottom-4 right-4 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-zinc-600 dark:text-slate-400 border border-zinc-300 dark:border-slate-600">
               <MousePointer2 className="h-3 w-3 inline-block mr-1" />
               클릭하여 선택 • Ctrl+클릭으로 다중 선택
             </div>
@@ -651,14 +672,14 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
       {/* Properties Panel */}
       {loadingState.phase === 'complete' && showPropertiesPanel && (
-        <div className="w-80 ml-4 bg-slate-800/50 rounded-lg overflow-hidden flex flex-col">
-          <div className="px-4 py-3 bg-slate-800 flex items-center justify-between">
-            <h3 className="font-medium text-white text-sm">속성 정보</h3>
+        <div className="w-80 ml-4 bg-white/50 dark:bg-slate-800/50 rounded-lg overflow-hidden flex flex-col border border-zinc-300 dark:border-slate-600">
+          <div className="px-4 py-3 bg-zinc-100 dark:bg-slate-800 flex items-center justify-between border-b border-zinc-300 dark:border-slate-600">
+            <h3 className="font-medium text-zinc-900 dark:text-white text-sm">속성 정보</h3>
             {selectedElements.length > 0 && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-slate-400 hover:text-white"
+                className="h-6 w-6 text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white"
                 onClick={handleClearSelection}
                 title="선택 해제"
               >
@@ -669,35 +690,35 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
           <div className="flex-1 overflow-auto p-4">
             {selectedElements.length === 0 ? (
-              <div className="text-center text-slate-500 py-8">
+              <div className="text-center text-zinc-500 dark:text-slate-500 py-8">
                 <MousePointer2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">요소를 선택하면<br />속성이 표시됩니다</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {selectedElements.map((element, index) => (
-                  <div key={element.id || index} className="bg-slate-700/50 rounded-lg p-3">
+                  <div key={element.id || index} className="bg-zinc-100 dark:bg-slate-700/50 rounded-lg p-3 border border-zinc-300 dark:border-slate-600">
                     <div className="flex items-center gap-2 mb-2">
                       <Box className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-white text-sm truncate">
+                      <span className="font-medium text-zinc-900 dark:text-white text-sm truncate">
                         {element.name}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-400 mb-2">
+                    <div className="text-xs text-zinc-600 dark:text-slate-400 mb-2">
                       타입: {element.type}
                     </div>
                     {Object.keys(element.properties).length > 0 && (
-                      <div className="space-y-1 border-t border-slate-600 pt-2 mt-2">
+                      <div className="space-y-1 border-t border-zinc-300 dark:border-slate-600 pt-2 mt-2">
                         {Object.entries(element.properties).slice(0, 10).map(([key, value]) => (
                           <div key={key} className="flex justify-between text-xs">
-                            <span className="text-slate-400 truncate max-w-[120px]">{key}</span>
-                            <span className="text-slate-300 truncate max-w-[120px]">
+                            <span className="text-zinc-600 dark:text-slate-400 truncate max-w-[120px]">{key}</span>
+                            <span className="text-zinc-800 dark:text-slate-300 truncate max-w-[120px]">
                               {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                             </span>
                           </div>
                         ))}
                         {Object.keys(element.properties).length > 10 && (
-                          <div className="text-xs text-slate-500 text-center pt-1">
+                          <div className="text-xs text-zinc-500 dark:text-slate-500 text-center pt-1">
                             +{Object.keys(element.properties).length - 10}개 더 보기
                           </div>
                         )}
