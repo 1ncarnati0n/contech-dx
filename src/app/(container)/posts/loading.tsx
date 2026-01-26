@@ -1,41 +1,72 @@
-import { Card, CardContent } from '@/components/ui';
+import { Card } from '@/components/ui';
 
 export default function PostsLoading() {
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       {/* Header Skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div className="space-y-2">
-          <div className="h-8 w-32 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
-          <div className="h-4 w-48 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+            <div className="w-6 h-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-7 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
         </div>
-        <div className="h-10 w-24 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+        <div className="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
       </div>
 
-      {/* Posts List Skeleton */}
-      <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-16 bg-zinc-200 dark:bg-zinc-800 rounded-full animate-pulse" />
-                    <div className="h-6 w-48 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
-                  </div>
-                  <div className="h-4 w-full bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
-                  <div className="h-4 w-2/3 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
-                  <div className="flex items-center gap-4 pt-2">
-                    <div className="h-4 w-20 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
-                    <div className="h-4 w-20 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
-                  </div>
-                </div>
-                <div className="h-10 w-10 bg-zinc-200 dark:bg-zinc-800 rounded-full animate-pulse" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Table Skeleton */}
+      <Card className="overflow-hidden border-0 shadow-md">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-900/50">
+              <tr>
+                <th className="px-6 py-4 text-left w-24">
+                  <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                </th>
+                <th className="px-6 py-4 text-left">
+                  <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                </th>
+                <th className="px-6 py-4 text-left w-40">
+                  <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                </th>
+                <th className="px-6 py-4 text-left w-36">
+                  <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <tr key={i}>
+                  <td className="px-6 py-4">
+                    <div className="h-6 w-14 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                      <div className="h-4 w-64 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
+                      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

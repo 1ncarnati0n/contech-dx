@@ -1,274 +1,199 @@
 # SQL 파일 구조 및 실행 가이드
 
-> **Contech-DX 프로젝트 데이터베이스 설정 가이드**  
-> 작성일: 2025-11-25
+> **Contech-DX 프로젝트 데이터베이스 설정 가이드**
+> 작성일: 2025-01-26
+> 버전: 2.0.0 (SA-Gantt 통합)
 
 ---
 
-## 📁 폴더 구조
+## 폴더 구조
 
 ```
 sql/
-├── schema/              # 메인 데이터베이스 스키마
-│   ├── schema-roles.sql
-│   └── schema-projects.sql
-├── migrations/          # 스키마 수정/업데이트
-│   ├── fix-existing-tables.sql
-│   ├── fix-date-type-issue.sql
-│   └── update-schema-for-dummy.sql
-└── seeds/               # 샘플 데이터
-    └── seed-construction-sample.sql
+├── schema/                    # 메인 데이터베이스 스키마
+│   ├── schema-roles.sql       # 사용자 권한 및 프로필
+│   ├── schema-projects.sql    # 프로젝트 및 멤버 관리
+│   └── schema-gantt.sql       # SA-Gantt 차트 데이터
+├── migrations/                # 스키마 수정/업데이트
+│   ├── add_project_number.sql           # 프로젝트 번호 시퀀스
+│   ├── fix-date-type-issue.sql          # 날짜 타입 수정 (선택)
+│   ├── update-project-status-values.sql # 상태값 업데이트
+│   └── add-admin-policy-project-members.sql # 관리자 정책
+└── seeds/                     # 샘플 데이터
+    └── (필요시 추가)
 ```
 
 ---
 
-## 🚀 초기 설정 (처음 시작할 때)
+## 테이블 구조
 
-### **Step 1: 기본 스키마 생성** (필수)
+### Core Tables
+| 테이블 | 설명 | 스키마 파일 |
+|--------|------|-------------|
+| `profiles` | 사용자 프로필 및 권한 | schema-roles.sql |
+| `projects` | 건축 프로젝트 정보 (project_number로 짧은 URL 지원) | schema-projects.sql |
+| `project_members` | 프로젝트 팀원 | schema-projects.sql |
 
-#### 1-1. 사용자 권한 스키마
-**파일**: `schema/schema-roles.sql`
+### Project ID 체계
+- `id`: UUID (내부 관계용, 외래키)
+- `project_number`: INTEGER (URL용, `/projects/1` 형태)
 
-```sql
--- profiles 테이블 (사용자 정보)
--- 역할: viewer, member, creator, moderator, admin, system_admin
-```
+### SA-Gantt Tables
+| 테이블 | 설명 | 스키마 파일 |
+|--------|------|-------------|
+| `gantt_tasks` | 태스크 (GROUP/CP/TASK) | schema-gantt.sql |
+| `gantt_milestones` | 마일스톤 (MASTER/DETAIL) | schema-gantt.sql |
+| `gantt_dependencies` | 앵커 기반 종속성 | schema-gantt.sql |
 
-**실행**:
+---
+
+## 초기 설정 (처음 시작할 때)
+
+### Step 1: 스키마 생성 (순서대로 실행)
+
 ```bash
-Supabase SQL Editor → schema/schema-roles.sql 내용 복사 → Run
+# Supabase SQL Editor에서 순서대로 실행
+
+1. schema/schema-roles.sql        # 사용자 권한 (필수)
+2. schema/schema-projects.sql     # 프로젝트 관리 (필수)
+3. schema/schema-gantt.sql        # SA-Gantt 테이블 (필수)
 ```
 
-#### 1-2. 프로젝트 관리 스키마
-**파일**: `schema/schema-projects.sql`
+### Step 2: 마이그레이션 (선택)
 
-```sql
--- projects 테이블 (프로젝트 정보)
--- project_members 테이블 (프로젝트 멤버)
--- gantt_charts 테이블 (Gantt 차트)
--- tasks 테이블 (작업)
--- links 테이블 (작업 연결)
--- RLS 정책 (Row Level Security)
-```
-
-**실행**:
 ```bash
-Supabase SQL Editor → schema/schema-projects.sql 내용 복사 → Run
+# 필요한 경우에만 실행
+
+4. migrations/add_project_number.sql  # 프로젝트 번호 추가 (권장)
 ```
 
 ---
 
-## 🔧 스키마 수정 (이미 테이블이 있는 경우)
+## 스키마 상세
 
-### **Migration 1: 기존 테이블 제거 및 재생성**
-**파일**: `migrations/fix-existing-tables.sql`
+### 1. schema-roles.sql
 
-**목적**: 구버전 테이블 삭제 후 새 스키마로 재생성
+사용자 프로필 및 권한 시스템
 
-**주의**: ⚠️ **모든 데이터가 삭제됩니다!**
-
-**실행**:
-```bash
-Supabase SQL Editor → migrations/fix-existing-tables.sql → Run
-↓
-schema/schema-projects.sql 다시 실행
-```
-
-### **Migration 2: 날짜 타입 수정**
-**파일**: `migrations/fix-date-type-issue.sql`
-
-**목적**: DATE 타입 → TEXT 타입 변경
-
-**문제**:
-- Supabase: `DATE` 타입 (PostgreSQL)
-- 애플리케이션: `TEXT` (문자열 'YYYY-MM-DD')
-- 충돌: 빈 문자열 `""` → DATE 변환 실패
-
-**해결**:
 ```sql
-ALTER TABLE projects 
-  ALTER COLUMN start_date TYPE TEXT;
-ALTER TABLE projects 
-  ALTER COLUMN end_date TYPE TEXT;
+-- profiles 테이블
+-- 역할: admin, main_user, vip_user, user
+-- 자동 생성: 회원가입 시 트리거로 프로필 자동 생성
 ```
 
-**실행**:
-```bash
-Supabase SQL Editor → migrations/fix-date-type-issue.sql → Run
-```
+### 2. schema-projects.sql
 
-### **Migration 3: Dummy 상태 추가**
-**파일**: `migrations/update-schema-for-dummy.sql`
+프로젝트 및 팀원 관리
 
-**목적**: 프로젝트 상태에 'dummy' 추가 (테스트용)
-
-**변경**:
 ```sql
--- 기존: 'planning', 'active', 'completed', 'on_hold', 'cancelled'
--- 추가: 'dummy'
+-- projects 테이블
+-- 상태: announcement, bidding, award, construction_start, completion
+
+-- project_members 테이블
+-- 역할: pm, engineer, supervisor, worker, member
 ```
 
-**실행**:
-```bash
-Supabase SQL Editor → migrations/update-schema-for-dummy.sql → Run
+### 3. schema-gantt.sql (SA-Gantt 전용)
+
+SA-Gantt 라이브러리용 테이블
+
+```sql
+-- gantt_tasks 테이블
+-- WBS 레벨: 1(상위), 2(하위)
+-- 타입: GROUP(그룹), CP(공정), TASK(작업)
+-- JSONB 필드: cp_data, task_data, group_data
+
+-- gantt_milestones 테이블
+-- 타입: MASTER(주요), DETAIL(세부)
+
+-- gantt_dependencies 테이블
+-- 앵커 기반 종속성 (소수점 day_index 지원)
 ```
 
 ---
 
-## 🌱 샘플 데이터 삽입
+## RLS (Row Level Security) 정책
 
-### **Seed 1: 골조공사 샘플 데이터**
-**파일**: `seeds/seed-construction-sample.sql`
+### Projects
+- 모든 사용자: 조회 가능
+- 인증된 사용자: 생성 가능
+- 생성자/PM/Engineer: 수정 가능
+- 생성자: 삭제 가능
+- Admin: 전체 권한
 
-**내용**:
-- 프로젝트 1개: "서울 강남 오피스 빌딩 신축"
-- Gantt 차트 1개: "CP 지하골조 공정표"
-- Tasks 18개: 벽체(유로폼), 슬래브(합판거푸집)
-- Links 5개: 작업 간 의존성
+### Gantt Tables
+- 프로젝트 소유자: 전체 권한
+- 프로젝트 멤버: 조회/수정 가능
 
-**실행**:
-```bash
-Supabase SQL Editor → seeds/seed-construction-sample.sql → Run
-```
+---
 
-**확인**:
+## 검증 쿼리
+
+### 테이블 존재 확인
+
 ```sql
-SELECT * FROM projects WHERE id = 'a0000000-0000-0000-0000-000000000100';
-SELECT * FROM tasks WHERE gantt_chart_id = 'b0000000-0000-0000-0000-000000000100';
-```
-
----
-
-## 📋 실행 순서 요약
-
-### **시나리오 1: 완전 새로 시작** (권장)
-
-```
-1. schema/schema-roles.sql           (필수)
-2. schema/schema-projects.sql        (필수)
-3. migrations/fix-date-type-issue.sql    (필수!)
-4. migrations/update-schema-for-dummy.sql (권장)
-5. seeds/seed-construction-sample.sql    (선택)
-```
-
-### **시나리오 2: 기존 테이블이 있는 경우**
-
-```
-1. migrations/fix-existing-tables.sql     (테이블 삭제)
-   ↓
-2. schema/schema-roles.sql
-3. schema/schema-projects.sql
-4. migrations/fix-date-type-issue.sql
-5. migrations/update-schema-for-dummy.sql
-6. seeds/seed-construction-sample.sql
-```
-
-### **시나리오 3: 날짜 타입 오류만 수정**
-
-```
-현재 상태에서:
-1. migrations/fix-date-type-issue.sql (DATE → TEXT)
-2. migrations/update-schema-for-dummy.sql (dummy 상태)
-```
-
----
-
-## 🐛 트러블슈팅
-
-### **문제 1: "relation already exists"**
-**원인**: 테이블이 이미 존재  
-**해결**: `migrations/fix-existing-tables.sql` 실행 후 다시 시도
-
-### **문제 2: "invalid input syntax for type date"**
-**원인**: DATE 타입에 빈 문자열 전송  
-**해결**: `migrations/fix-date-type-issue.sql` 실행 (DATE → TEXT)
-
-### **문제 3: "status" does not exist in CHECK constraint**
-**원인**: dummy 상태가 CHECK 제약 조건에 없음  
-**해결**: `migrations/update-schema-for-dummy.sql` 실행
-
-### **문제 4: RLS 정책 에러**
-**원인**: RLS 정책이 제대로 설정 안 됨  
-**해결**: `schema/schema-projects.sql` 다시 실행
-
----
-
-## ✅ 검증 쿼리
-
-### **테이블 존재 확인**
-```sql
-SELECT tablename 
-FROM pg_tables 
-WHERE schemaname = 'public' 
-  AND tablename IN ('projects', 'gantt_charts', 'tasks', 'links')
+SELECT tablename
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename IN (
+    'profiles', 'projects', 'project_members',
+    'gantt_tasks', 'gantt_milestones', 'gantt_dependencies'
+  )
 ORDER BY tablename;
 ```
 
-### **컬럼 타입 확인**
+### SA-Gantt 테이블 컬럼 확인
+
 ```sql
-SELECT 
-  table_name, 
-  column_name, 
-  data_type 
+SELECT table_name, column_name, data_type
 FROM information_schema.columns
-WHERE table_name IN ('projects', 'gantt_charts')
-  AND column_name IN ('start_date', 'end_date')
-ORDER BY table_name, column_name;
+WHERE table_name LIKE 'gantt_%'
+ORDER BY table_name, ordinal_position;
 ```
-**예상 결과**: 모두 `text` 타입
 
-### **CHECK 제약 조건 확인**
+### RLS 정책 확인
+
 ```sql
-SELECT 
-  conname AS constraint_name, 
-  pg_get_constraintdef(oid) AS constraint_definition
-FROM pg_constraint
-WHERE conrelid = 'projects'::regclass
-  AND conname = 'projects_status_check';
-```
-**예상 결과**: `dummy` 포함
-
-### **샘플 데이터 확인**
-```sql
--- 프로젝트 개수
-SELECT COUNT(*) FROM projects;
-
--- Tasks 개수
-SELECT COUNT(*) FROM tasks;
-
--- Links 개수
-SELECT COUNT(*) FROM links;
+SELECT tablename, policyname, cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;
 ```
 
 ---
 
-## 📝 참고 사항
+## 트러블슈팅
 
-### **DATE vs TEXT 타입**
-- **DATE**: PostgreSQL 네이티브 날짜 타입
-  - 장점: 날짜 연산, 검증, 인덱싱
-  - 단점: 빈 문자열 불가, 엄격한 형식
-- **TEXT**: 문자열 타입 ('YYYY-MM-DD')
-  - 장점: 유연함, 빈 문자열 허용, Next.js와 호환
-  - 단점: 날짜 검증 없음, 수동 형식 관리
+### 문제 1: "relation already exists"
+**원인**: 테이블이 이미 존재
+**해결**: `DROP TABLE IF EXISTS` 후 재생성 또는 기존 테이블 사용
 
-**선택**: TEXT (애플리케이션과의 일관성)
+### 문제 2: RLS 권한 오류
+**원인**: RLS 정책 미설정
+**해결**: 해당 스키마 파일의 RLS 섹션 재실행
 
-### **RLS (Row Level Security)**
-- 프로젝트 생성자만 삭제 가능
-- PM/Engineer만 Gantt 차트 수정 가능
-- 프로젝트 멤버만 데이터 조회 가능
+### 문제 3: "foreign key constraint" 오류
+**원인**: 참조 테이블 미존재
+**해결**: 스키마 파일을 순서대로 실행 (roles → projects → gantt)
 
 ---
 
-**작성자**: AI Assistant  
-**버전**: 1.0  
-**최종 업데이트**: 2025-11-25
+## 애플리케이션 연동
 
+SA-Gantt와 Supabase 연동은 `SupabaseGanttDataService` 클래스를 통해 이루어집니다.
 
+**파일 위치**: `src/lib/services/SupabaseGanttDataService.ts`
 
+```typescript
+import { createSupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
 
+// 사용 예시
+const dataService = createSupabaseGanttDataService(projectId, { debug: true });
+const ganttData = await dataService.loadAll();
+```
 
+---
 
-
-
+**작성자**: AI Assistant
+**버전**: 2.0.0
+**최종 업데이트**: 2025-01-26

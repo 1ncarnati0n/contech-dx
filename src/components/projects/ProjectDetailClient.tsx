@@ -297,7 +297,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
           {activeTab === 'gantt_chart' && (
-            <GanttChartPage projectId={project.id} />
+            <GanttChartPage projectId={project.id} projectNumber={project.project_number} />
           )}
 
           {activeTab === 'team' && (

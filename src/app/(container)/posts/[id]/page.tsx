@@ -46,20 +46,20 @@ export default async function PostDetailPage({ params }: PageProps) {
   const authorInitial = post.author?.email?.[0]?.toUpperCase() || 'A';
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       {/* 뒤로가기 */}
       <Link
         href={`/posts#post-${post.id}`}
-        className="inline-flex items-center gap-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 mb-6 transition-colors"
+        className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         목록으로
       </Link>
 
       {/* 메인 카드 */}
-      <Card className="overflow-hidden mb-6">
+      <Card className="overflow-hidden border-0 shadow-md mb-6">
         {/* 게시글 헤더 */}
-        <div className="p-6 sm:p-8 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="p-6 sm:p-8 border-b border-slate-100 dark:border-slate-800">
           {/* 배지 + 액션 버튼 */}
           <div className="flex items-start justify-between mb-4">
             <Badge variant="secondary">일반</Badge>
@@ -78,7 +78,7 @@ export default async function PostDetailPage({ params }: PageProps) {
           </div>
 
           {/* 제목 */}
-          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-6">
             {post.title}
           </h1>
 
@@ -90,10 +90,10 @@ export default async function PostDetailPage({ params }: PageProps) {
             </div>
 
             <div>
-              <div className="font-medium text-zinc-900 dark:text-zinc-100">
+              <div className="font-medium text-slate-900 dark:text-white">
                 {post.author?.email || '익명'}
               </div>
-              <div className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
+              <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                 <Calendar className="w-3.5 h-3.5" />
                 <span>
                   {formatDistanceToNow(new Date(post.created_at), {
@@ -108,13 +108,13 @@ export default async function PostDetailPage({ params }: PageProps) {
 
         {/* 본문 */}
         <CardContent className="p-6 sm:p-8">
-          <div className="prose prose-zinc dark:prose-invert max-w-none">
+          <div className="prose prose-slate dark:prose-invert max-w-none">
             <MarkdownRenderer content={post.content} />
           </div>
         </CardContent>
 
         {/* 하단 액션 바 */}
-        <div className="px-6 sm:px-8 py-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50">
+        <div className="px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="gap-2">
               <Share2 className="w-4 h-4" />
@@ -129,9 +129,9 @@ export default async function PostDetailPage({ params }: PageProps) {
       </Card>
 
       {/* 댓글 섹션 */}
-      <Card>
+      <Card className="overflow-hidden border-0 shadow-md">
         <CardContent className="p-6 sm:p-8">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-6">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
             댓글
           </h2>
 
@@ -140,8 +140,8 @@ export default async function PostDetailPage({ params }: PageProps) {
               <CommentForm postId={post.id} />
             </div>
           ) : (
-            <div className="mb-8 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg text-center border border-zinc-100 dark:border-zinc-800">
-              <p className="text-zinc-600 dark:text-zinc-400">
+            <div className="mb-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center border border-slate-100 dark:border-slate-800">
+              <p className="text-slate-600 dark:text-slate-400">
                 <Link
                   href="/login"
                   className="text-cyan-600 dark:text-cyan-400 hover:underline font-medium"

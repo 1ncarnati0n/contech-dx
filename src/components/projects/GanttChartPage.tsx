@@ -19,6 +19,7 @@ import type { ConstructionTask, Milestone, AnchorDependency } from 'sa-gantt-lib
 
 interface GanttChartPageProps {
   projectId: string;
+  projectNumber: number;
 }
 
 // 통계 카드 컴포넌트
@@ -60,7 +61,7 @@ function FeatureItem({ icon, text }: FeatureItemProps) {
   );
 }
 
-export function GanttChartPage({ projectId }: GanttChartPageProps) {
+export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<ConstructionTask[]>([]);
@@ -151,8 +152,8 @@ export function GanttChartPage({ projectId }: GanttChartPageProps) {
 
   // 전체 화면에서 열기 핸들러
   const handleOpenFullscreen = useCallback(() => {
-    window.open(`/projects/${projectId}/gantt`, '_blank', 'noopener,noreferrer');
-  }, [projectId]);
+    window.open(`/projects/${projectNumber}/gantt`, '_blank', 'noopener,noreferrer');
+  }, [projectNumber]);
 
   // 날짜 포맷팅 헬퍼
   const formatShortDate = (date: Date | null) => {

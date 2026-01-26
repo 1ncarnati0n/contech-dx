@@ -27,8 +27,10 @@ export async function DELETE(request: NextRequest) {
 
     // REST API로 문서 삭제
     // API 키를 헤더로 전달하여 URL 노출 방지
+    // force=true: 문서 내 청크(chunks)가 있어도 함께 삭제
     const response = await geminiStoreRequest(fileName, apiKey, {
       method: 'DELETE',
+      queryParams: { force: 'true' },
     });
 
     if (!response.ok) {

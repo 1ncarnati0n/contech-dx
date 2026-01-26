@@ -1,59 +1,91 @@
-import { Card, CardContent, Skeleton } from '@/components/ui';
+import { Card, CardContent } from '@/components/ui';
 
 export default function PostDetailLoading() {
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header Skeleton */}
-      <div className="mb-8">
-        <Skeleton variant="title" className="w-3/4 mb-4" />
-        <div className="flex items-center gap-4">
-          <Skeleton className="w-32 h-5" />
-          <Skeleton className="w-40 h-5" />
-        </div>
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+      {/* 뒤로가기 Skeleton */}
+      <div className="mb-6">
+        <div className="h-5 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
       </div>
 
-      {/* Content Skeleton */}
-      <Card>
-        <CardContent className="p-8">
-          <Skeleton variant="text" count={8} />
+      {/* 메인 카드 Skeleton */}
+      <Card className="overflow-hidden border-0 shadow-md mb-6">
+        {/* 게시글 헤더 */}
+        <div className="p-6 sm:p-8 border-b border-slate-100 dark:border-slate-800">
+          {/* 배지 + 액션 버튼 */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="h-6 w-14 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            </div>
+          </div>
+
+          {/* 제목 */}
+          <div className="h-9 w-3/4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-6" />
+
+          {/* 작성자 정보 영역 */}
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-5 w-40 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+              <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* 본문 */}
+        <CardContent className="p-6 sm:p-8">
+          <div className="space-y-3">
+            <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-5/6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-4/5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
         </CardContent>
+
+        {/* 하단 액션 바 */}
+        <div className="px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-8 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
+        </div>
       </Card>
 
-      {/* Action Buttons Skeleton */}
-      <div className="flex justify-between items-center mt-6">
-        <Skeleton variant="button" className="w-24" />
-        <div className="flex gap-2">
-          <Skeleton variant="button" className="w-20" />
-          <Skeleton variant="button" className="w-20" />
-        </div>
-      </div>
+      {/* 댓글 섹션 Skeleton */}
+      <Card className="overflow-hidden border-0 shadow-md">
+        <CardContent className="p-6 sm:p-8">
+          <div className="h-7 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-6" />
 
-      {/* Comments Section Skeleton */}
-      <div className="mt-12">
-        <Skeleton variant="title" className="mb-6 w-32" />
-        <Card>
-          <CardContent className="p-6">
-            <Skeleton className="w-full h-24 mb-4" />
-            <Skeleton variant="button" className="w-32" />
-          </CardContent>
-        </Card>
+          {/* 댓글 입력 폼 */}
+          <div className="mb-8">
+            <div className="h-24 w-full bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mb-3" />
+            <div className="h-10 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+          </div>
 
-        <div className="mt-6 space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3 mb-2">
-                  <Skeleton variant="avatar" className="w-8 h-8" />
-                  <div className="flex-1">
-                    <Skeleton className="w-32 h-4 mb-2" />
-                    <Skeleton variant="text" count={2} />
+          {/* 댓글 목록 */}
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-3 py-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
                   </div>
+                  <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                  <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

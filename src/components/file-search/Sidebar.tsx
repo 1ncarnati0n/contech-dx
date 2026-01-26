@@ -9,7 +9,10 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronRight,
-  FileText
+  FileText,
+  FolderOpen,
+  Database,
+  History
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { formatFileSize, ALLOWED_EXTENSIONS } from './utils';
@@ -119,37 +122,51 @@ export default function Sidebar({
 
   return (
     <div
-      className={`absolute inset-y-0 left-0 z-30 w-80 bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+      className={`absolute inset-y-0 left-0 z-30 w-80 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col`}
     >
-      {/* Mobile Header */}
-      <div className="lg:hidden p-4 pb-0 flex justify-end shrink-0">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="w-5 h-5" />
-        </Button>
+      {/* Header */}
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+              <Database className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-900 dark:text-white text-sm">AI 문서 분석</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">문서 기반 AI 검색</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} className="lg:hidden">
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
 
-        {/* 1. Store & Files Section (Top) */}
+        {/* 1. Store & Files Section */}
         <div className="space-y-3">
           <button
             onClick={() => setIsStoreExpanded(!isStoreExpanded)}
-            className="flex items-center justify-between w-full text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2 hover:text-zinc-800 dark:hover:text-zinc-200"
+            className="flex items-center justify-between w-full text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
           >
-            <span>문서함 설정</span>
-            {isStoreExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <span className="flex items-center gap-2">
+              <FolderOpen className="w-3.5 h-3.5" />
+              문서함 설정
+            </span>
+            {isStoreExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </button>
 
           {isStoreExpanded && (
-            <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+            <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
               {/* Store Selector */}
               <div className="space-y-2">
                 <select
                   value={selectedStore}
                   onChange={(e) => onSelectStore(e.target.value)}
-                  className="w-full p-2 rounded-lg text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none"
+                  className="w-full p-2.5 rounded-lg text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all"
                 >
                   <option value="">문서함 선택...</option>
                   {stores.map((s) => (
@@ -164,9 +181,15 @@ export default function Sidebar({
                     value={newStoreName}
                     onChange={(e) => setNewStoreName(e.target.value)}
                     placeholder="새 문서함 이름"
-                    className="h-8 text-xs bg-white dark:bg-zinc-800"
+                    className="h-9 text-sm bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                   />
-                  <Button type="submit" size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!newStoreName.trim()}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 w-9 p-0 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 hover:text-cyan-600"
+                    disabled={!newStoreName.trim()}
+                  >
                     <Plus className="w-4 h-4" />
                   </Button>
                 </form>
@@ -174,17 +197,24 @@ export default function Sidebar({
 
               {/* Selected Store Info */}
               {selectedStoreInfo && (
-                <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-lg p-3 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">{selectedStoreInfo.displayName}</span>
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span>{formatFileSize(selectedStoreInfo.sizeBytes || 0)}</span>
+                      <div className="p-1.5 bg-cyan-50 dark:bg-cyan-900/20 rounded-md">
+                        <FolderOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                      </div>
+                      <span className="font-medium text-sm text-slate-900 dark:text-white">{selectedStoreInfo.displayName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                        {formatFileSize(selectedStoreInfo.sizeBytes || 0)}
+                      </span>
                       <button
                         onClick={handleDeleteStore}
-                        className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                         title="문서함 삭제"
                       >
-                        <Trash2 className="w-3 h-3 text-red-500" />
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
                       </button>
                     </div>
                   </div>
@@ -194,14 +224,19 @@ export default function Sidebar({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`border border-dashed rounded-lg p-3 text-center transition-colors ${isDragging
+                    className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${isDragging
                         ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20'
-                        : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
                   >
-                    <label className="cursor-pointer flex flex-col items-center gap-1">
-                      <Upload className="w-4 h-4 text-zinc-400" />
-                      <span className="text-xs text-zinc-500">파일 추가</span>
+                    <label className="cursor-pointer flex flex-col items-center gap-2">
+                      <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full">
+                        <Upload className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">파일 추가</span>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">드래그하거나 클릭</p>
+                      </div>
                       <input
                         type="file"
                         multiple
@@ -214,27 +249,29 @@ export default function Sidebar({
 
                   {/* Attached Files */}
                   {attachedFiles.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-zinc-500">
-                        <span>대기중 ({attachedFiles.length})</span>
-                        <button onClick={onClearAttachedFiles} className="text-red-500 hover:underline">비우기</button>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">대기 중 ({attachedFiles.length})</span>
+                        <button onClick={onClearAttachedFiles} className="text-red-500 hover:text-red-600 font-medium">비우기</button>
                       </div>
-                      {attachedFiles.map((f, i) => (
-                        <div key={i} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-1.5 rounded border border-zinc-200 dark:border-zinc-700">
-                          <div className="flex-1 min-w-0">
-                            <div className="truncate text-zinc-700 dark:text-zinc-300">{f.name}</div>
-                            <div className="text-[10px] text-zinc-400">{formatFileSize(f.size)}</div>
+                      <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                        {attachedFiles.map((f, i) => (
+                          <div key={i} className="flex justify-between items-center text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                            <div className="flex-1 min-w-0">
+                              <div className="truncate text-slate-700 dark:text-slate-300 font-medium">{f.name}</div>
+                              <div className="text-slate-400">{formatFileSize(f.size)}</div>
+                            </div>
+                            <button onClick={() => onRemoveAttachedFile(i)} className="ml-2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors">
+                              <X className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
                           </div>
-                          <button onClick={() => onRemoveAttachedFile(i)} className="ml-2 p-1 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition-colors">
-                            <X className="w-3 h-3 text-zinc-400" />
-                          </button>
-                        </div>
-                      ))}
-                      <Button 
-                        onClick={onUploadFiles} 
-                        disabled={loading || attachedFiles.length === 0} 
-                        size="sm" 
-                        className="w-full h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        ))}
+                      </div>
+                      <Button
+                        onClick={onUploadFiles}
+                        disabled={loading || attachedFiles.length === 0}
+                        size="sm"
+                        className="w-full h-9 text-sm bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loading ? '업로드 중...' : `${attachedFiles.length}개 파일 업로드`}
                       </Button>
@@ -242,80 +279,78 @@ export default function Sidebar({
                   )}
 
                   {/* Uploaded Files List */}
-                  {uploadedFiles.length > 0 && (
-                    <div className="space-y-1 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                      <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                        <FileText className="w-3 h-3" />
-                        <span>업로드된 파일 ({uploadedFiles.length}개)</span>
-                      </div>
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {uploadedFiles.map((file) => (
-                          <div key={file.name} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-1.5 rounded border border-zinc-200 dark:border-zinc-700">
-                            <div className="flex-1 min-w-0">
-                              <div className="relative group/tooltip">
-                                <div className="truncate text-zinc-700 dark:text-zinc-300">{file.displayName}</div>
-                                <div className="absolute left-0 top-full mt-1 z-[9999]
-                                  opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible
-                                  transition-all duration-200 delay-500
-                                  px-2 py-1 text-xs bg-zinc-900 dark:bg-zinc-100
-                                  text-white dark:text-zinc-900 rounded shadow-lg
-                                  max-w-[200px] break-all pointer-events-none">
+                  <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span className="font-medium">업로드된 파일 ({uploadedFiles.length}개)</span>
+                    </div>
+                    {uploadedFiles.length > 0 ? (
+                      <>
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                          {uploadedFiles.map((file) => (
+                            <div key={file.name} className="flex justify-between items-center text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                              <div className="flex-1 min-w-0">
+                                <div
+                                  className="truncate text-slate-700 dark:text-slate-300 font-medium"
+                                  title={file.displayName}
+                                >
                                   {file.displayName}
                                 </div>
+                                <div className="text-slate-400">{formatFileSize(file.sizeBytes)}</div>
                               </div>
-                              <div className="text-[10px] text-zinc-400">{formatFileSize(file.sizeBytes)}</div>
+                              {onDeleteFile && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm('파일을 삭제하시겠습니까?')) {
+                                      onDeleteFile(file.name);
+                                    }
+                                  }}
+                                  className="ml-2 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                  title="파일 삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              )}
                             </div>
-                            {onDeleteFile && (
-                              <button
-                                onClick={() => {
-                                  if (confirm('파일을 삭제하시겠습니까?')) {
-                                    onDeleteFile(file.name);
-                                  }
-                                }}
-                                className="ml-2 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                title="파일 삭제"
-                              >
-                                <Trash2 className="w-3 h-3 text-red-500" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        {/* 더 보기 버튼 */}
+                        {nextPageToken && onLoadMore && (
+                          <button
+                            onClick={onLoadMore}
+                            disabled={isLoadingMore}
+                            className="w-full py-2 text-xs font-medium text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {isLoadingMore ? '로딩 중...' : '더 보기'}
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-4 text-xs text-slate-400">
+                        업로드된 파일이 없습니다
                       </div>
-                      {/* 더 보기 버튼 */}
-                      {nextPageToken && onLoadMore && (
-                        <button
-                          onClick={onLoadMore}
-                          disabled={isLoadingMore}
-                          className="w-full py-2 text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {isLoadingMore ? '로딩 중...' : '더 보기'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {uploadedFiles.length === 0 && (
-                    <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                      <FileText className="w-3 h-3" />
-                      <span>업로드된 파일: 0개</span>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-4" />
+        {/* Divider */}
+        <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
-        {/* 2. History Section (Bottom of scrollable area) */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-2">
+        {/* 2. History Section */}
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
+            <History className="w-3.5 h-3.5" />
             최근 대화
           </h3>
           <div className="space-y-1">
             {sessions.length === 0 ? (
-              <div className="text-center py-8 text-zinc-400 dark:text-zinc-500 text-sm">
-                <p>대화 내역이 없습니다.</p>
+              <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>대화 내역이 없습니다</p>
               </div>
             ) : (
               sessions.map(session => {
@@ -324,12 +359,12 @@ export default function Sidebar({
                   <div
                     key={session.id}
                     onClick={() => onSelectSession?.(session.id)}
-                    className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${isCurrent
-                        ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium'
-                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                    className={`group flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-all ${isCurrent
+                        ? 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 font-medium border border-cyan-200 dark:border-cyan-800'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
                       }`}
                   >
-                    <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
+                    <MessageSquare className={`w-4 h-4 shrink-0 ${isCurrent ? 'text-cyan-600 dark:text-cyan-400' : 'opacity-60'}`} />
                     <span className="truncate flex-1">
                       {session.title || '새로운 대화'}
                     </span>
@@ -338,7 +373,7 @@ export default function Sidebar({
                         e.stopPropagation();
                         if (confirm('대화를 삭제하시겠습니까?')) onDeleteSession?.(session.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 rounded transition-all"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -351,11 +386,11 @@ export default function Sidebar({
       </div>
 
       {/* Footer: New Chat Button */}
-      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 z-10">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
         <Button
           onClick={onCreateSession}
           disabled={!selectedStore}
-          className="w-full justify-start gap-2 h-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 shadow-sm"
+          className="w-full justify-center gap-2 h-10 bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         >
           <Plus className="w-5 h-5" />
           <span>새로운 대화</span>
