@@ -282,26 +282,42 @@ export class SupabaseGanttDataService implements DataService {
     this.log('saveTasks rows prepared:', rows.length);
 
     // 기존 태스크 삭제
-    const { error: deleteError } = await this.supabase
+    this.log('saveTasks deleting existing tasks for project:', this.projectId);
+    const { data: deletedData, error: deleteError } = await this.supabase
       .from('gantt_tasks')
       .delete()
-      .eq('project_id', this.projectId);
+      .eq('project_id', this.projectId)
+      .select('id');
 
     if (deleteError) {
-      console.error('Failed to delete existing tasks:', deleteError);
+      console.error('Failed to delete existing tasks:', {
+        message: deleteError.message,
+        code: deleteError.code,
+        details: deleteError.details,
+        hint: deleteError.hint,
+      });
       throw deleteError;
     }
+    this.log('saveTasks deleted count:', deletedData?.length ?? 0);
 
     // 새 태스크 삽입
-    const { error: insertError } = await this.supabase
+    this.log('saveTasks inserting tasks:', rows.length, 'for project:', this.projectId);
+    const { data: insertedData, error: insertError } = await this.supabase
       .from('gantt_tasks')
-      .insert(rows);
+      .insert(rows)
+      .select();
 
     if (insertError) {
-      console.error('Failed to insert tasks:', insertError);
+      console.error('Failed to insert tasks:', {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+        hint: insertError.hint,
+      });
       throw insertError;
     }
 
+    this.log('saveTasks inserted count:', insertedData?.length || 0);
     this.log('saveTasks completed successfully');
   }
 
@@ -416,7 +432,7 @@ export class SupabaseGanttDataService implements DataService {
   }
 
   async saveMilestones(milestones: Milestone[]): Promise<void> {
-    this.log('saveMilestones', milestones.length);
+    this.log('saveMilestones', milestones.length, 'for project:', this.projectId);
 
     const { error: deleteError } = await this.supabase
       .from('gantt_milestones')
@@ -424,22 +440,39 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (deleteError) {
-      console.error('Failed to delete existing milestones:', deleteError);
+      console.error('Failed to delete existing milestones:', {
+        message: deleteError.message,
+        code: deleteError.code,
+        details: deleteError.details,
+        hint: deleteError.hint,
+      });
       throw deleteError;
     }
 
-    if (milestones.length === 0) return;
+    if (milestones.length === 0) {
+      this.log('saveMilestones: no milestones to save');
+      return;
+    }
 
     const rows = milestones.map((m) => milestoneToRow(m, this.projectId));
+    this.log('saveMilestones inserting rows:', rows.length);
 
-    const { error: insertError } = await this.supabase
+    const { data: insertedData, error: insertError } = await this.supabase
       .from('gantt_milestones')
-      .insert(rows);
+      .insert(rows)
+      .select();
 
     if (insertError) {
-      console.error('Failed to insert milestones:', insertError);
+      console.error('Failed to insert milestones:', {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+        hint: insertError.hint,
+      });
       throw insertError;
     }
+
+    this.log('saveMilestones inserted count:', insertedData?.length || 0);
   }
 
   async updateMilestone(
@@ -536,7 +569,7 @@ export class SupabaseGanttDataService implements DataService {
   }
 
   async saveDependencies(dependencies: AnchorDependency[]): Promise<void> {
-    this.log('saveDependencies', dependencies.length);
+    this.log('saveDependencies', dependencies.length, 'for project:', this.projectId);
 
     const { error: deleteError } = await this.supabase
       .from('gantt_dependencies')
@@ -544,22 +577,39 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (deleteError) {
-      console.error('Failed to delete existing dependencies:', deleteError);
+      console.error('Failed to delete existing dependencies:', {
+        message: deleteError.message,
+        code: deleteError.code,
+        details: deleteError.details,
+        hint: deleteError.hint,
+      });
       throw deleteError;
     }
 
-    if (dependencies.length === 0) return;
+    if (dependencies.length === 0) {
+      this.log('saveDependencies: no dependencies to save');
+      return;
+    }
 
     const rows = dependencies.map((d) => dependencyToRow(d, this.projectId));
+    this.log('saveDependencies inserting rows:', rows.length);
 
-    const { error: insertError } = await this.supabase
+    const { data: insertedData, error: insertError } = await this.supabase
       .from('gantt_dependencies')
-      .insert(rows);
+      .insert(rows)
+      .select();
 
     if (insertError) {
-      console.error('Failed to insert dependencies:', insertError);
+      console.error('Failed to insert dependencies:', {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+        hint: insertError.hint,
+      });
       throw insertError;
     }
+
+    this.log('saveDependencies inserted count:', insertedData?.length || 0);
   }
 
   async createDependency(dependency: AnchorDependency): Promise<AnchorDependency> {

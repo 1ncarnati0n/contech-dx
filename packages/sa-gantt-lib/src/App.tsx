@@ -608,8 +608,8 @@ function App() {
         const parentIds = new Set(selectedTasks.map(t => t.parentId));
         const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
 
-        // 새 GROUP 생성
-        const newGroupId = `group-${Date.now()}`;
+        // 새 GROUP 생성 (UUID 사용)
+        const newGroupId = generateId();
         const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
         const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
 

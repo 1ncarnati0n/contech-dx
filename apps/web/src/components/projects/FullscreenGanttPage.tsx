@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   GanttChart,
   useHistory,
+  generateId,
   type ConstructionTask,
   type Milestone,
   type AnchorDependency,
@@ -390,7 +391,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask>) => {
     try {
       const taskToAdd: ConstructionTask = {
-        id: newTask.id || `task-${Date.now()}`,
+        id: newTask.id || generateId(),
         parentId: newTask.parentId ?? null,
         wbsLevel: newTask.wbsLevel || 2,
         type: newTask.type || 'TASK',
@@ -460,31 +461,47 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   // 태스크 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
   const handleTaskGroup = useCallback(async (taskIds: string[]) => {
     try {
+      // 현재 상태에서 선택된 태스크들 찾기
+      const selectedTasks = tasks.filter(t => taskIds.includes(t.id));
+      if (selectedTasks.length < 1) {
+        toast.error('그룹화할 태스크를 선택하세요.');
+        return;
+      }
+
+      // 선택된 태스크들이 같은 부모를 가지는지 확인
+      const parentIds = new Set(selectedTasks.map(t => t.parentId));
+      const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+
+      // 날짜 범위 계산
+      const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+      const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+
+      // 새 GROUP 생성 (UUID는 DB에서 생성)
+      const newGroup: Partial<ConstructionTask> = {
+        parentId: commonParentId,
+        wbsLevel: selectedTasks[0].wbsLevel,
+        type: 'GROUP',
+        name: '새 그룹',
+        startDate: minStart,
+        endDate: maxEnd,
+        dependencies: [],
+      };
+
+      // DB에 그룹 생성
+      const createdGroup = await dataService.createTask(newGroup as ConstructionTask);
+      const newGroupId = createdGroup.id;
+
+      console.log('[handleTaskGroup] Created group with ID:', newGroupId);
+
+      // 선택된 태스크들의 parentId를 새 그룹으로 업데이트 (DB)
+      await Promise.all(
+        taskIds.map(taskId =>
+          dataService.updateTask(taskId, { parentId: newGroupId })
+        )
+      );
+
+      // 로컬 상태 업데이트
       setAppState(prev => {
-        // 선택된 태스크들 찾기
-        const selectedTasks = prev.tasks.filter(t => taskIds.includes(t.id));
-        if (selectedTasks.length < 1) return prev;
-
-        // 선택된 태스크들이 같은 부모를 가지는지 확인
-        const parentIds = new Set(selectedTasks.map(t => t.parentId));
-        const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
-
-        // 새 GROUP 생성
-        const newGroupId = `group-${Date.now()}`;
-        const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
-        const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
-
-        const newGroup: ConstructionTask = {
-          id: newGroupId,
-          parentId: commonParentId,
-          wbsLevel: selectedTasks[0].wbsLevel,
-          type: 'GROUP',
-          name: '새 그룹',
-          startDate: minStart,
-          endDate: maxEnd,
-          dependencies: [],
-        };
-
         // 선택된 태스크들의 parentId를 새 그룹으로 변경
         let newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
@@ -495,7 +512,11 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
         // 첫 번째 선택된 태스크 위치에 GROUP 삽입
         const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
-        newTasks.splice(firstSelectedIndex, 0, newGroup);
+        const groupTask: ConstructionTask = {
+          ...newGroup as ConstructionTask,
+          id: newGroupId,
+        };
+        newTasks.splice(firstSelectedIndex, 0, groupTask);
 
         return { ...prev, tasks: newTasks };
       });
@@ -505,22 +526,40 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       console.error('Failed to group tasks:', error);
       toast.error('그룹화 실패');
     }
-  }, [setAppState]);
+  }, [tasks, dataService, setAppState]);
 
   // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
   const handleTaskUngroup = useCallback(async (groupId: string) => {
     try {
+      const group = tasks.find(t => t.id === groupId);
+      if (!group || group.type !== 'GROUP') {
+        toast.error('유효한 그룹이 아닙니다.');
+        return;
+      }
+
+      // 그룹의 자식들 찾기
+      const children = tasks.filter(t => t.parentId === groupId);
+
+      console.log('[handleTaskUngroup] Ungrouping:', {
+        groupId,
+        groupParentId: group.parentId,
+        childrenCount: children.length,
+      });
+
+      // 자식들의 parentId를 그룹의 parentId로 업데이트 (DB)
+      if (children.length > 0) {
+        await Promise.all(
+          children.map(child =>
+            dataService.updateTask(child.id, { parentId: group.parentId })
+          )
+        );
+      }
+
+      // 그룹 삭제 (DB)
+      await dataService.deleteTask(groupId);
+
+      // 로컬 상태 업데이트
       setAppState(prev => {
-        const group = prev.tasks.find(t => t.id === groupId);
-        if (!group || group.type !== 'GROUP') return prev;
-
-        // 그룹의 자식들 찾기
-        const children = prev.tasks.filter(t => t.parentId === groupId);
-        if (children.length === 0) {
-          // 자식이 없으면 그룹만 삭제
-          return { ...prev, tasks: prev.tasks.filter(t => t.id !== groupId) };
-        }
-
         // 자식들의 parentId를 그룹의 parentId로 변경
         let newTasks = prev.tasks.map(t => {
           if (t.parentId === groupId) {
@@ -540,7 +579,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       console.error('Failed to ungroup tasks:', error);
       toast.error('그룹 해제 실패');
     }
-  }, [setAppState]);
+  }, [tasks, dataService, setAppState]);
 
   // 그룹 드래그 핸들러
   const handleGroupDrag = useCallback(async (result: GroupDragResult) => {

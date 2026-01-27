@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { ConstructionTask, ViewMode } from '../../../types';
+import { generateId } from '../../../utils/uuid';
 
 interface UseClipboardOptions {
     selectedTaskIds: Set<string>;
@@ -68,11 +69,11 @@ export const useClipboard = ({
     const handlePaste = useCallback(() => {
         if (clipboardTasks.length === 0 || !onTaskCreate) return;
 
-        const timestamp = Date.now();
         const idMap = new Map<string, string>();
 
-        clipboardTasks.forEach((task, index) => {
-            const newId = `${task.type.toLowerCase()}-${timestamp + index}`;
+        // 각 태스크에 대해 고유 UUID 생성
+        clipboardTasks.forEach((task) => {
+            const newId = generateId();
             idMap.set(task.id, newId);
         });
 
