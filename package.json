@@ -12,7 +12,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "sa-gantt-lib": "file:../sa-gantt-lib",
+    "sa-gantt-lib": "github:1ncarnati0n/sa-gantt-lib",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-dialog": "^1.1.15",
