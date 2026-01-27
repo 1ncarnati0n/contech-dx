@@ -427,6 +427,85 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     }
   }, [setAppState, recalculateCPData, dataService]);
 
+  // 태스크 순서 변경 핸들러
+  const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
+    try {
+      setAppState(prev => {
+        const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) return prev;
+
+        const task = prev.tasks[taskIndex];
+        const newTasks = [...prev.tasks];
+
+        // 기존 위치에서 제거
+        newTasks.splice(taskIndex, 1);
+
+        // 새 위치에 삽입 (인덱스 조정)
+        const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
+        newTasks.splice(adjustedIndex, 0, task);
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      // TODO: Supabase에 순서 정보 저장 (order 컬럼 필요 시)
+    } catch (error) {
+      console.error('Failed to reorder task:', error);
+      toast.error('순서 변경 실패');
+    }
+  }, [setAppState]);
+
+  // 태스크 이동 핸들러 (그룹 간 이동 지원)
+  const handleTaskMove = useCallback(async (
+    taskId: string,
+    targetId: string,
+    position: 'before' | 'after' | 'into'
+  ) => {
+    try {
+      setAppState(prev => {
+        const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
+        const targetIndex = prev.tasks.findIndex(t => t.id === targetId);
+        if (taskIndex === -1 || targetIndex === -1) return prev;
+
+        const task = prev.tasks[taskIndex];
+        const targetTask = prev.tasks[targetIndex];
+        const newTasks = [...prev.tasks];
+
+        // 기존 위치에서 제거
+        newTasks.splice(taskIndex, 1);
+
+        // 새 위치 계산 (제거 후 인덱스 조정)
+        const adjustedTargetIndex = taskIndex < targetIndex ? targetIndex - 1 : targetIndex;
+
+        let updatedTask: ConstructionTask;
+
+        if (position === 'into') {
+          // 그룹 안에 넣기: parentId 변경
+          updatedTask = { ...task, parentId: targetId };
+          // 타겟 그룹 바로 뒤에 삽입
+          newTasks.splice(adjustedTargetIndex + 1, 0, updatedTask);
+        } else if (position === 'before') {
+          // 타겟 앞에 삽입, 같은 부모로 설정
+          updatedTask = { ...task, parentId: targetTask.parentId };
+          newTasks.splice(adjustedTargetIndex, 0, updatedTask);
+        } else {
+          // 타겟 뒤에 삽입, 같은 부모로 설정
+          updatedTask = { ...task, parentId: targetTask.parentId };
+          newTasks.splice(adjustedTargetIndex + 1, 0, updatedTask);
+        }
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      // Supabase에 parentId 업데이트
+      const targetTask = tasks.find(t => t.id === targetId);
+      const newParentId = position === 'into' ? targetId : (targetTask?.parentId ?? null);
+      await dataService.updateTask(taskId, { parentId: newParentId });
+    } catch (error) {
+      console.error('Failed to move task:', error);
+      toast.error('태스크 이동 실패');
+    }
+  }, [setAppState, tasks, dataService]);
+
   // 태스크 삭제 핸들러
   const handleTaskDelete = useCallback(async (taskId: string) => {
     try {
@@ -877,6 +956,8 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
           onTaskUpdate={handleTaskUpdate}
           onTaskCreate={handleTaskCreate}
           onTaskDelete={handleTaskDelete}
+          onTaskReorder={handleTaskReorder}
+          onTaskMove={handleTaskMove}
           onTaskGroup={handleTaskGroup}
           onTaskUngroup={handleTaskUngroup}
           onViewChange={handleViewChange}

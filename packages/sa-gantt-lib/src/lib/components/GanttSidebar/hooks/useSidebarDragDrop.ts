@@ -23,11 +23,11 @@ export const useSidebarDragDrop = ({
         e.dataTransfer.setData('text/plain', taskId);
         setDraggedTaskId(taskId);
 
-        const dragImage = document.createElement('div');
-        dragImage.style.opacity = '0';
-        document.body.appendChild(dragImage);
-        e.dataTransfer.setDragImage(dragImage, 0, 0);
-        setTimeout(() => document.body.removeChild(dragImage), 0);
+        // SVG 1x1px 투명 이미지 (모든 브라우저 호환 - Safari/Firefox 포함)
+        // DOM 요소 방식은 화면 외부 요소를 일부 브라우저가 무시함
+        const transparentImg = new Image();
+        transparentImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
+        e.dataTransfer.setDragImage(transparentImg, 0, 0);
     }, []);
 
     const handleDragOver = useCallback((e: React.DragEvent, taskId: string, isTargetGroup: boolean) => {
@@ -90,6 +90,7 @@ export const useSidebarDragDrop = ({
         setDraggedTaskId(null);
         setDragOverTaskId(null);
         setDragOverPosition(null);
+        // DOM 정리 불필요 - Image 객체는 자동으로 가비지 컬렉션됨
     }, []);
 
     return {
