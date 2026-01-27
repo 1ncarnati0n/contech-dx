@@ -371,13 +371,37 @@ export class SupabaseGanttDataService implements DataService {
   }
 
   async createTask(
-    task: Omit<ConstructionTask, 'id'>
+    task: Omit<ConstructionTask, 'id'> & { id?: string; sortOrder?: number }
   ): Promise<ConstructionTask> {
     this.log('createTask', task);
 
-    const newId = crypto.randomUUID();
-    const newTask: ConstructionTask = { ...task, id: newId };
-    const row = taskToRow(newTask, this.projectId);
+    // Phase 2: 인증 상태 사전 검증
+    const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+    if (authError) {
+      console.error('[createTask] Auth error:', {
+        message: authError.message,
+        code: authError.code,
+        status: authError.status,
+      });
+      throw new Error(`Authentication error: ${authError.message}`);
+    }
+    if (!user) {
+      console.error('[createTask] No authenticated user session');
+      throw new Error('Authentication required: No user session. Please log in again.');
+    }
+    this.log('createTask auth verified:', { userId: user.id, email: user.email });
+
+    // 전달된 ID가 있으면 사용 (복사/붙여넣기 시 부모-자식 관계 유지), 없으면 새로 생성
+    const newId = task.id || crypto.randomUUID();
+    const { sortOrder, ...taskWithoutSortOrder } = task;
+    const newTask: ConstructionTask = { ...taskWithoutSortOrder, id: newId };
+    const row = {
+      ...taskToRow(newTask, this.projectId),
+      sort_order: sortOrder ?? 0,  // 전달된 sortOrder 사용, 없으면 0
+    };
+
+    // 디버그: DB에 전송되는 데이터 확인
+    this.log('createTask row data:', row);
 
     const { data, error } = await this.supabase
       .from('gantt_tasks')
@@ -386,7 +410,37 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to create task:', error);
+      // Phase 1: 향상된 에러 디버깅
+      // Next.js 에러 오버레이는 중첩 객체를 표시 못함 → 문자열로 출력
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('[createTask] ❌ TASK CREATION FAILED');
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log(`[createTask] error.message: "${error.message}"`);
+      console.log(`[createTask] error.code: "${error.code}"`);
+      console.log(`[createTask] error.details: "${error.details}"`);
+      console.log(`[createTask] error.hint: "${error.hint}"`);
+      console.log(`[createTask] error type: ${error.constructor?.name}`);
+      console.log(`[createTask] error keys: ${Object.keys(error).join(', ') || '(none)'}`);
+      console.log(`[createTask] error own props: ${Object.getOwnPropertyNames(error).join(', ') || '(none)'}`);
+
+      // 전체 에러 객체를 문자열로 덤프
+      try {
+        console.log('[createTask] Full error (JSON):', JSON.stringify(error, null, 2));
+      } catch {
+        console.log('[createTask] Full error (cannot stringify):', String(error));
+      }
+
+      // console.dir로 전체 객체 탐색 (브라우저 콘솔에서만 유효)
+      console.dir(error, { depth: 5 });
+
+      // 에러 발생 시 인증 상태 재확인
+      const { data: { user: currentUser } } = await this.supabase.auth.getUser();
+      console.log(`[createTask] Auth state - userId: ${currentUser?.id}, email: ${currentUser?.email}, hasUser: ${!!currentUser}`);
+
+      // 전송 시도한 데이터
+      console.log(`[createTask] Failed row - projectId: ${row.project_id}, taskId: ${row.id}, name: ${row.name}`);
+      console.log('═══════════════════════════════════════════════════════════');
+
       throw error;
     }
 
@@ -513,6 +567,14 @@ export class SupabaseGanttDataService implements DataService {
   async createMilestone(milestone: Omit<Milestone, 'id'>): Promise<Milestone> {
     this.log('createMilestone', milestone);
 
+    // 인증 상태 사전 검증
+    const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+    if (authError || !user) {
+      const msg = authError?.message || 'No user session';
+      console.error('[createMilestone] Auth check failed:', msg);
+      throw new Error(`Authentication required: ${msg}`);
+    }
+
     const newId = crypto.randomUUID();
     const newMilestone: Milestone = { ...milestone, id: newId };
     const row = milestoneToRow(newMilestone, this.projectId);
@@ -524,7 +586,13 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to create milestone:', error);
+      console.error('[createMilestone] Failed:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
       throw error;
     }
 
@@ -615,6 +683,14 @@ export class SupabaseGanttDataService implements DataService {
   async createDependency(dependency: AnchorDependency): Promise<AnchorDependency> {
     this.log('createDependency', dependency);
 
+    // 인증 상태 사전 검증
+    const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+    if (authError || !user) {
+      const msg = authError?.message || 'No user session';
+      console.error('[createDependency] Auth check failed:', msg);
+      throw new Error(`Authentication required: ${msg}`);
+    }
+
     const row = dependencyToRow(dependency, this.projectId);
 
     const { data, error } = await this.supabase
@@ -624,7 +700,13 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to create dependency:', error);
+      console.error('[createDependency] Failed:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
       throw error;
     }
 

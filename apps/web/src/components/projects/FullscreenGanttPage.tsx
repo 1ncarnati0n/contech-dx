@@ -382,13 +382,15 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // Supabase 업데이트
       await dataService.updateTask(updatedTask.id, updatedTask);
     } catch (error) {
-      console.error('Failed to update task:', error);
-      toast.error('태스크 업데이트 실패');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.log('[handleTaskUpdate] ❌ Error:', errMsg);
+      console.log('[handleTaskUpdate] Full error:', error);
+      toast.error(`태스크 업데이트 실패: ${errMsg}`);
     }
   }, [setAppState, recalculateCPData, dataService]);
 
   // 태스크 생성 핸들러
-  const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask>) => {
+  const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask> & { sortOrder?: number }) => {
     try {
       const taskToAdd: ConstructionTask = {
         id: newTask.id || generateId(),
@@ -403,7 +405,10 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         dependencies: newTask.dependencies || [],
       };
 
-      const createdTask = await dataService.createTask(taskToAdd);
+      // sortOrder가 전달되면 사용, 없으면 현재 tasks 배열 길이 사용 (맨 뒤에 추가)
+      const sortOrder = newTask.sortOrder ?? tasks.length;
+      // DataService 인터페이스는 sortOrder를 정의하지 않으므로 타입 단언 사용
+      const createdTask = await (dataService as { createTask: (task: ConstructionTask & { sortOrder?: number }) => Promise<ConstructionTask> }).createTask({ ...taskToAdd, sortOrder });
 
       setAppState(prev => {
         let newTasks = [...prev.tasks, { ...taskToAdd, id: createdTask.id }];
@@ -422,8 +427,12 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('태스크가 생성되었습니다.');
     } catch (error) {
-      console.error('Failed to create task:', error);
-      toast.error('태스크 생성 실패');
+      // 에러 정보를 문자열로 추출
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errName = error instanceof Error ? error.name : 'Unknown';
+      console.log('[handleTaskCreate] ❌ Error:', errName, '-', errMsg);
+      console.log('[handleTaskCreate] Full error:', error);
+      toast.error(`태스크 생성 실패: ${errMsg}`);
     }
   }, [setAppState, recalculateCPData, dataService]);
 

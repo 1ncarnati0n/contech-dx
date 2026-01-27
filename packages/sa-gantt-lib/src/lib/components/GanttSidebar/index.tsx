@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState, useCallback, useEffect, memo } from 'react';
+import { forwardRef, useState, useCallback, useEffect, memo, useRef } from 'react';
 import { addDays } from 'date-fns';
 import {
     ConstructionTask,
@@ -23,6 +23,8 @@ import { MilestoneLaneSpacer } from './MilestoneLaneSpacer';
 import {
     useSidebarColumns,
     useSidebarDragDrop,
+    DROP_ZONE_FIRST,
+    DROP_ZONE_LAST,
     useMultiSelect,
     useClipboard,
     useInlineEdit,
@@ -161,7 +163,12 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             handleDragLeave,
             handleDrop,
             handleDragEnd,
-        } = useSidebarDragDrop({ tasks, onTaskReorder, onTaskMove });
+            handleContainerDragOver,
+            handleContainerDrop,
+        } = useSidebarDragDrop({ tasks, onTaskReorder, onTaskMove, rowHeight: effectiveRowHeight });
+
+        // 컨테이너 ref (드래그 이벤트용)
+        const containerRef = useRef<HTMLDivElement>(null);
 
         // ====================================
         // Selection Hook
@@ -533,6 +540,17 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         // Content Only Mode (스크롤 내부용)
         // ====================================
         if (renderMode === 'content') {
+            // 드롭 존 인디케이터 스타일
+            const dropIndicatorStyle = {
+                position: 'absolute' as const,
+                left: 0,
+                right: 0,
+                height: 2,
+                backgroundColor: 'var(--gantt-teal)',
+                zIndex: 10,
+                pointerEvents: 'none' as const,
+            };
+
             return (
                 <div
                     ref={ref}
@@ -541,14 +559,31 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     onClick={clearSelection}
                 >
                     <div
+                        ref={containerRef}
                         style={{
                             minWidth: totalWidth,
                             height: isVirtualized ? totalHeight : dynamicTotalHeight,
                             position: 'relative',
                         }}
                         onClick={clearSelection}
+                        onDragOver={(e) => {
+                            if (containerRef.current) {
+                                handleContainerDragOver(e, containerRef.current.getBoundingClientRect());
+                            }
+                        }}
+                        onDrop={handleContainerDrop}
                     >
+                        {/* 최상단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_FIRST && (
+                            <div style={{ ...dropIndicatorStyle, top: 0 }} />
+                        )}
+
                         {renderRowContent()}
+
+                        {/* 최하단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_LAST && (
+                            <div style={{ ...dropIndicatorStyle, bottom: 0 }} />
+                        )}
                     </div>
 
                     {contextMenuElement}
@@ -559,6 +594,17 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         // ====================================
         // Full Mode (기존 방식, 하위 호환용)
         // ====================================
+        // 드롭 존 인디케이터 스타일
+        const dropIndicatorStyleFull = {
+            position: 'absolute' as const,
+            left: 0,
+            right: 0,
+            height: 2,
+            backgroundColor: 'var(--gantt-teal)',
+            zIndex: 10,
+            pointerEvents: 'none' as const,
+        };
+
         return (
             <div
                 className="flex h-full flex-col select-none"
@@ -596,14 +642,31 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     />
 
                     <div
+                        ref={containerRef}
                         style={{
                             minWidth: totalWidth,
                             height: isVirtualized ? totalHeight : dynamicTotalHeight,
                             position: 'relative',
                         }}
                         onClick={clearSelection}
+                        onDragOver={(e) => {
+                            if (containerRef.current) {
+                                handleContainerDragOver(e, containerRef.current.getBoundingClientRect());
+                            }
+                        }}
+                        onDrop={handleContainerDrop}
                     >
+                        {/* 최상단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_FIRST && (
+                            <div style={{ ...dropIndicatorStyleFull, top: 0 }} />
+                        )}
+
                         {renderRowContent()}
+
+                        {/* 최하단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_LAST && (
+                            <div style={{ ...dropIndicatorStyleFull, bottom: 0 }} />
+                        )}
                     </div>
                 </div>
 

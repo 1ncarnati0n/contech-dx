@@ -69,6 +69,30 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
         return differenceInDays(task.endDate, task.startDate) + 1;
     }, [task.startDate, task.endDate]);
 
+    // 드롭 인디케이터 스타일 계산
+    const dropIndicatorStyle = useMemo(() => {
+        if (!isDragOver || !dragOverPosition) return null;
+
+        switch (dragOverPosition) {
+            case 'before':
+                return {
+                    type: 'line' as const,
+                    position: 'top' as const,
+                };
+            case 'after':
+                return {
+                    type: 'line' as const,
+                    position: 'bottom' as const,
+                };
+            case 'into':
+                return {
+                    type: 'box' as const,
+                };
+            default:
+                return null;
+        }
+    }, [isDragOver, dragOverPosition]);
+
     // 행 스타일 계산 (메모이제이션)
     const rowStyle = useMemo(() => {
         let backgroundColor = 'var(--gantt-bg-primary)';
@@ -79,10 +103,11 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
             backgroundColor = 'var(--gantt-bg-selected)';
         } else if (isDragOver) {
             if (dragOverPosition === 'into') {
-                backgroundColor = 'var(--gantt-bg-selected)';
-                borderColor = 'var(--gantt-focus)';
+                // 'into' 인디케이터: 전체 테두리 + 배경 하이라이트
+                backgroundColor = 'rgba(59, 130, 246, 0.1)';
                 boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
             }
+            // 'before'/'after'는 별도 인디케이터로 처리
         } else if (isFocused) {
             backgroundColor = 'var(--gantt-bg-selected)';
             boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
@@ -103,9 +128,9 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
             height: effectiveRowHeight,
             backgroundColor,
             borderBottom: `1px solid ${borderColor}`,
-            borderTop: isDragOver && dragOverPosition === 'before' ? '2px solid var(--gantt-focus)' : 'none',
             boxShadow,
             opacity: isDragging ? 0.5 : 1,
+            position: 'relative' as const,
             ...(isVirtualized ? {
                 position: 'absolute' as const,
                 top: 0,
@@ -179,6 +204,21 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
             }}
             title={canExpand ? '더블클릭하여 접기/펼치기' : undefined}
         >
+            {/* Drop Indicator: before/after 위치에 2px 라인 표시 */}
+            {dropIndicatorStyle?.type === 'line' && (
+                <div
+                    className="pointer-events-none absolute left-0 right-0 z-10"
+                    style={{
+                        height: '2px',
+                        backgroundColor: 'var(--gantt-focus)',
+                        boxShadow: '0 0 4px var(--gantt-focus)',
+                        ...(dropIndicatorStyle.position === 'top'
+                            ? { top: '-1px' }
+                            : { bottom: '-1px' }
+                        ),
+                    }}
+                />
+            )}
             {/* Drag Handle */}
             {onTaskReorder && (
                 <div

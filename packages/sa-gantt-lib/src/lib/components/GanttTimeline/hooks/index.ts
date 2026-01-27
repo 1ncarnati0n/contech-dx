@@ -1,8 +1,12 @@
 export { useBarDrag } from './useBarDrag';
 export { useMilestoneDrag } from './useMilestoneDrag';
 export { useGroupDrag } from './useGroupDrag';
+export { useMultiDrag } from './useMultiDrag';
+export type { MultiDragResult } from './useMultiDrag';
 export { useAnchorConnection } from './useAnchorConnection';
 export type { CycleDetectedInfo, ConnectingState } from './useAnchorConnection';
 export { useHoverZone, getHoverCursor } from './useHoverZone';
 export type { HoverZone, HoverInfo } from './useHoverZone';
 export { useEffectiveDates } from './useEffectiveDates';
+export { useDragState, updateDragState } from './useDragState';
+export type { UseDragStateOptions, UseDragStateReturn } from './useDragState';
