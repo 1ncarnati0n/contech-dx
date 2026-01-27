@@ -175,7 +175,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         } = useMultiSelect({ tasks, draggedTaskId });
 
         // ====================================
-        // Clipboard Hook
+        // Clipboard Hook (header 모드에서는 비활성화하여 이벤트 리스너 중복 방지)
         // ====================================
         useClipboard({
             selectedTaskIds,
@@ -183,6 +183,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             viewMode,
             activeCPId,
             onTaskCreate,
+            enabled: renderMode === 'content' || renderMode === 'all',
         });
 
         // ====================================
@@ -229,8 +230,10 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             }
         }, [contextMenu]);
 
-        // 키보드 단축키 (ESC)
+        // 키보드 단축키 (ESC) - header 모드에서는 불필요
         useEffect(() => {
+            if (renderMode === 'header') return;
+
             const handleKeyDown = (e: KeyboardEvent) => {
                 if (e.key === 'Escape') {
                     clearSelection();
@@ -239,7 +242,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             };
             document.addEventListener('keydown', handleKeyDown);
             return () => document.removeEventListener('keydown', handleKeyDown);
-        }, [clearSelection]);
+        }, [clearSelection, renderMode]);
 
         // ====================================
         // Duration Change Handler

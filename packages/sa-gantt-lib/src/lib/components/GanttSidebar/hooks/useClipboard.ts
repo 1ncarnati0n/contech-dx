@@ -10,6 +10,7 @@ interface UseClipboardOptions {
     viewMode: ViewMode;
     activeCPId?: string | null;
     onTaskCreate?: (task: Partial<ConstructionTask>) => void | Promise<void>;
+    enabled?: boolean;  // header 모드에서 비활성화하여 이벤트 리스너 중복 방지
 }
 
 export const useClipboard = ({
@@ -18,6 +19,7 @@ export const useClipboard = ({
     viewMode,
     activeCPId,
     onTaskCreate,
+    enabled = true,  // 기본값 true (하위 호환성)
 }: UseClipboardOptions) => {
     const [clipboardTasks, setClipboardTasks] = useState<ConstructionTask[]>([]);
 
@@ -58,6 +60,9 @@ export const useClipboard = ({
 
     // 키보드 이벤트 핸들러 (useEffect 내부에서 정의하여 클로저 문제 해결)
     useEffect(() => {
+        // enabled가 false면 이벤트 리스너를 등록하지 않음 (중복 방지)
+        if (!enabled) return;
+
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
             const isInputField = target.tagName === 'INPUT' ||
@@ -141,7 +146,7 @@ export const useClipboard = ({
         // capture: true로 이벤트 캡처 단계에서 먼저 처리
         document.addEventListener('keydown', handleKeyDown, { capture: true });
         return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
-    }, [viewMode, activeCPId, onTaskCreate, generateCopyName]);  // 의존성 최소화
+    }, [viewMode, activeCPId, onTaskCreate, generateCopyName, enabled]);  // enabled 의존성 추가
 
     return {
         clipboardTasks,
