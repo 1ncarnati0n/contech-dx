@@ -55,12 +55,6 @@ export function getQuantityFromFloor(
   subField: string,
   rangeFloorId?: string // 범위 형식 기준층의 floor.id (선택적)
 ): number {
-  // #region agent log
-  if (floorLabel === '13F') {
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:entry',message:'13F getQuantityFromFloor entry',data:{floorLabel,field,subField,rangeFloorId,buildingId:building.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  }
-  // #endregion
-  
   // rangeFloorId가 제공된 경우 (기준층 범위 형식), 범위 기준층을 우선 처리
   let rangeFloor: typeof building.floors[0] | null = null;
   let individualFloorId: string | null = null;
@@ -74,12 +68,6 @@ export function getQuantityFromFloor(
         individualFloorId = `${rangeFloor.id}-${floorNum}F`;
       }
     }
-    
-    // #region agent log
-    if (floorLabel === '13F') {
-      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:rangeFloorIdProvided',message:'13F rangeFloorId processing',data:{rangeFloorId,rangeFloorFound:!!rangeFloor,rangeFloorLabel:rangeFloor?.floorLabel,individualFloorId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    }
-    // #endregion
   }
   
   // 개별 층 찾기 (rangeFloorId가 있어도 개별 층을 먼저 확인 - 개별 층 데이터가 있으면 우선 사용)
@@ -111,12 +99,6 @@ export function getQuantityFromFloor(
         }
         return cleanFloorLabel === cleanLabel;
       }) ?? null;
-      
-      // #region agent log
-      if (floorLabel === '13F') {
-        fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:afterCleanMatch',message:'13F after clean match',data:{cleanLabel,floorFound:!!floor,floorId:floor?.id,floorLabelFromFloor:floor?.floorLabel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      }
-      // #endregion
     }
     
     // 개별 층이 없으면 범위 형식의 기준층 찾기 (예: "7F" -> "2~14F 기준층" 또는 "코어1-2~14F 기준층")
@@ -157,13 +139,7 @@ export function getQuantityFromFloor(
   // 개별 층이 있으면 개별 층의 trade를 우선 사용, 없으면 범위 기반 individualFloorId 사용
   // 개별 층 ID로 trade를 찾지 못하면 범위 기반 individualFloorId를 fallback으로 사용
   let primaryTargetFloorId = (floor ? floor.id : null) || individualFloorId;
-  
-  // #region agent log
-  if (floorLabel === '13F') {
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:beforeTradeSearch',message:'13F before trade search',data:{primaryTargetFloorId,usingIndividualFloor:!!floor,floorId:floor?.id,individualFloorId,allFloorTradeIds:building.floorTrades.slice(0,20).map(ft=>({floorId:ft.floorId,tradeGroup:ft.tradeGroup})),matchingTrades:building.floorTrades.filter(ft=>ft.floorId.includes('13F')||ft.floorId===primaryTargetFloorId||ft.floorId===individualFloorId).slice(0,10).map(ft=>({floorId:ft.floorId,tradeGroup:ft.tradeGroup}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  }
-  // #endregion
-  
+
   if (!primaryTargetFloorId) {
     return 0;
   }
@@ -180,12 +156,6 @@ export function getQuantityFromFloor(
   
   // 개별 층 ID로 trade를 찾지 못하고 범위 기반 individualFloorId가 있으면 fallback
   if (!trade && primaryTargetFloorId === floor?.id && individualFloorId) {
-    // #region agent log
-    if (floorLabel === '13F') {
-      fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:fallbackToRangeId',message:'13F fallback to range-based individualFloorId',data:{primaryTargetFloorId,individualFloorId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    }
-    // #endregion
-    
     trade = building.floorTrades.find(ft => 
       ft.floorId === individualFloorId && ft.tradeGroup === '아파트'
     );
@@ -194,13 +164,7 @@ export function getQuantityFromFloor(
       trade = building.floorTrades.find(ft => ft.floorId === individualFloorId);
     }
   }
-  
-  // #region agent log
-  if (floorLabel === '13F') {
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:afterTradeSearch',message:'13F after trade search',data:{primaryTargetFloorId,individualFloorId,tradeFound:!!trade,tradeId:trade?.id,tradeGroup:trade?.tradeGroup,hasTradeData:!!trade?.trades[field],usedFallback:!trade && primaryTargetFloorId === floor?.id && !!individualFloorId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-  }
-  // #endregion
-  
+
   if (!trade) {
     return 0;
   }
@@ -211,14 +175,7 @@ export function getQuantityFromFloor(
   }
   
   const result = (tradeData as any)[subField] || 0;
-  
-  // #region agent log
-  if (floorLabel === '13F') {
-    const finalTargetFloorId = trade?.floorId || primaryTargetFloorId || individualFloorId;
-    fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quantity-reference.ts:getQuantityFromFloor:13F:return',message:'13F getQuantityFromFloor return',data:{floorLabel,field,subField,result,finalTargetFloorId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-  }
-  // #endregion
-  
+
   return result;
 }
 

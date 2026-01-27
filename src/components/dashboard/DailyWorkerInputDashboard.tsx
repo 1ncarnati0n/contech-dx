@@ -207,14 +207,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
   }, [buildings]);
 
   useEffect(() => {
-    // TODO: 계산 로직 개선 필요 - 현재는 고정값 사용
-    setWorkerCounts({
-      gangForm: 20,
-      alForm: 50,
-      formwork: 60,
-      rebar: 60,
-      concrete: 24,
-    });
+    setWorkerCounts(calculatedWorkerCounts);
   }, [calculatedWorkerCounts]);
 
   return (

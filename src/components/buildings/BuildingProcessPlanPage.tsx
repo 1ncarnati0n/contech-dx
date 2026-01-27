@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Building2, Clock, Layers, CalendarDays } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
@@ -1287,15 +1287,113 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   }, [processRows]);
 
   return (
-    <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Calendar className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">동별 공정계획</h2>
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+      {/* 헤더 - 아이콘 배지 스타일 */}
+      <div className="mb-8 flex items-center gap-3">
+        <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+          <Calendar className="w-6 h-6 text-slate-700 dark:text-slate-300" />
         </div>
-        <p className="text-slate-600 dark:text-slate-400">
-          동별 주요정보와 구분별 공정일수를 한눈에 확인하고 관리합니다. 산정된 일수는 간트차트에서 활용됩니다.
-        </p>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">동별 공정계획</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            동별 주요정보와 구분별 공정일수를 한눈에 확인하고 관리합니다.
+          </p>
+        </div>
+      </div>
+
+      {/* 통계 카드 섹션 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* 전체 동 수 */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <Building2 className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">전체 동 수</p>
+              <p className="text-xl font-bold text-slate-900 dark:text-white">{buildings.length}개</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 현재 선택된 동 */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">현재 선택</p>
+              <p className="text-xl font-bold text-slate-900 dark:text-white">
+                {activeBuilding?.buildingName || '-'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 현재 동 공정일수 */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">현재 동 공정일수</p>
+              <p className="text-xl font-bold text-slate-900 dark:text-white">
+                {activeBuilding ? (() => {
+                  const plan = processPlans.get(activeBuilding.id);
+                  let totalDays = 0;
+                  processRows.forEach(row => {
+                    const isNormalFloor = row.floorClass === '일반층';
+                    const effectiveCategory = isNormalFloor ? '옥탑층' : row.category;
+                    const processType = row.floorLabel && (row.category === '지하층' || row.category === '옥탑층' || isNormalFloor)
+                      ? (isNormalFloor
+                          ? getProcessTypeForFloor(plan, '옥탑층', row.floorLabel)
+                          : getProcessTypeForFloor(plan, row.category, row.floorLabel))
+                      : plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category];
+                    const module = getProcessModule(effectiveCategory, processType);
+                    if (module?.items) {
+                      module.items.forEach(item => {
+                        if (item.directWorkDays) totalDays += item.directWorkDays;
+                      });
+                    }
+                  });
+                  return totalDays;
+                })() : 0}일
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 전체 공정일수 합계 */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <CalendarDays className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">전체 공정일수</p>
+              <p className="text-xl font-bold text-slate-900 dark:text-white">
+                {(() => {
+                  let grandTotal = 0;
+                  buildings.forEach(building => {
+                    const plan = processPlans.get(building.id);
+                    PROCESS_CATEGORIES.forEach(category => {
+                      const processType = plan?.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+                      const module = getProcessModule(category, processType);
+                      if (module?.items) {
+                        module.items.forEach(item => {
+                          if (item.directWorkDays) grandTotal += item.directWorkDays;
+                        });
+                      }
+                    });
+                  });
+                  return grandTotal;
+                })()}일
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {buildings.length > 0 ? (
@@ -1308,7 +1406,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
           onReorder={handleReorder}
         >
           {activeBuilding && (
-            <Card className="w-full">
+            <Card className="w-full overflow-hidden border-0 shadow-md">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto w-full">
                     {/* 호수, 펌프카 대수 정보 - 헤더 위에 표시 */}
@@ -1381,26 +1479,26 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                       {/* 세부공정 */}<col style={{ width: '80px' }} />
                       {/* 세부공정 상세 */}<col />
                     </colgroup>
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800" style={{ height: '24px' }}>
+                    <thead className="bg-slate-50 dark:bg-slate-900/50">
+                      <tr className="border-b border-slate-200 dark:border-slate-800" style={{ height: '24px' }}>
                         {/* 첫 번째 열: 구분 항목 */}
-                        <th className="px-2 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-2 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           구분
                         </th>
                         {/* 두 번째 열: 층수 */}
-                        <th className="px-2 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-2 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           층수
                         </th>
                         {/* 세 번째 열: 형틀 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           형틀
                         </th>
                         {/* 네 번째 열: 철근 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           철근
                         </th>
                         {/* 다섯 번째 열: 콘크리트 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r-2 border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r-2 border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           콘크리트
                         </th>
                         
@@ -1408,23 +1506,23 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         {processColumns.length > 0 && (
                           <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
                             {/* 일수 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               순작업일수
                             </th>
                             {/* 셀렉트박스 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               공정타입
                             </th>
                             {/* 버튼 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               세부공정
                             </th>
                           </Fragment>
                         )}
                         
                         {/* 마지막 열: 세부공정 확장 영역 (모든 행에 걸친 넓은 칸) */}
-                        <th 
-                          className="px-4 py-2 text-center text-sm font-semibold text-slate-900 dark:text-white"
+                        <th
+                          className="px-4 py-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                           rowSpan={totalRows}
                           style={{ height: '30px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', maxWidth: '218px' }}
                         >
@@ -1432,7 +1530,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
                       {(() => {
                         const building = activeBuilding;
                         const plan = processPlans.get(building.id);
@@ -1776,24 +1874,12 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                 const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
                                   ? row.floor.floorLabel.replace(/코어\d+-/, '') // 코어 정보 제거
                                   : row.floorLabel;
-                                
-                                // #region agent log
-                                if (row.floorLabel === '13F' || quantityFloorLabel === '13F') {
-                                  fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BuildingProcessPlanPage.tsx:getFormworkQuantity:13F:entry',message:'13F formwork quantity calculation',data:{category:row.category,floorLabel:row.floorLabel,quantityFloorLabel,rangeFloorId,floorId:row.floor?.id,floorLabelFromFloor:row.floor?.floorLabel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                                }
-                                // #endregion
-                                
+
                                 const gangForm = getQuantityFromFloor(building, quantityFloorLabel, 'gangForm', 'areaM2', rangeFloorId);
                                 const alForm = getQuantityFromFloor(building, quantityFloorLabel, 'alForm', 'areaM2', rangeFloorId);
                                 const formwork = getQuantityFromFloor(building, quantityFloorLabel, 'formwork', 'areaM2', rangeFloorId);
                                 const result = gangForm + alForm + formwork;
-                                
-                                // #region agent log
-                                if (row.floorLabel === '13F' || quantityFloorLabel === '13F') {
-                                  fetch('http://127.0.0.1:7242/ingest/a7e9fc51-dfaa-4483-8da9-69eb13479c9c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'BuildingProcessPlanPage.tsx:getFormworkQuantity:13F:result',message:'13F formwork quantity result',data:{gangForm,alForm,formwork,result,isZero:result===0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                                }
-                                // #endregion
-                                
+
                                 return result;
                               };
                               

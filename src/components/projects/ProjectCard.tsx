@@ -40,7 +40,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/projects/${project.project_number || project.id}`} className="block h-full group">
-      <div className="h-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden hover:shadow-lg hover:border-cyan-400 dark:hover:border-cyan-600 transition-all duration-300 flex flex-col">
+      <div className="h-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden hover:shadow-lg hover:border-zinc-900 dark:hover:border-zinc-100 transition-all duration-300 flex flex-col">
         {/* Project Image */}
         <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
           {imageError ? (
@@ -80,11 +80,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
         <div className="p-5 flex flex-col flex-1 gap-4">
           {/* Header */}
           <div>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white truncate group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
               {project.name}
             </h3>
             <div className="flex items-center gap-1.5 mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-              <MapPin className="w-3.5 h-3.5" />
+              <MapPin className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
               <span className="truncate">{project.location || '위치 미정'}</span>
             </div>
           </div>
@@ -93,11 +93,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-medium">
               <span className="text-zinc-600 dark:text-zinc-400">공정률</span>
-              <span className="text-cyan-600 dark:text-cyan-400">{stableValues.progress}%</span>
+              <span className="text-zinc-900 dark:text-zinc-100">{stableValues.progress}%</span>
             </div>
             <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-cyan-500 rounded-full transition-all duration-1000 ease-out"
+                className="h-full bg-zinc-900 dark:bg-zinc-100 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${stableValues.progress}%` }}
               />
             </div>
@@ -108,14 +108,14 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <div className="space-y-0.5">
               <span className="text-xs text-zinc-400 dark:text-zinc-500">계약금액</span>
               <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                <DollarSign className="w-3.5 h-3.5 text-zinc-400" />
+                <DollarSign className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
                 {formatCurrency(project.contract_amount)}
               </div>
             </div>
             <div className="space-y-0.5">
               <span className="text-xs text-zinc-400 dark:text-zinc-500">착공일</span>
               <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                <Calendar className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
                 {formatDate(project.start_date)}
               </div>
             </div>
@@ -136,7 +136,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
             {project.client && (
               <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md">
-                <Building2 className="w-3 h-3" />
+                <Building2 className="w-3 h-3 text-zinc-700 dark:text-zinc-300" />
                 <span className="max-w-[80px] truncate">{project.client}</span>
               </div>
             )}
