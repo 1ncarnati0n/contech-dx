@@ -36,16 +36,24 @@ export const useBarDrag = ({
     // 커서 cleanup ref (동적 커서 처리를 위해)
     const cleanupRef = useRef<(() => void) | null>(null);
 
+    // 마지막 계산된 deltaDays 캐시 (불필요한 재계산 방지)
+    const lastDeltaDaysRef = useRef<number>(0);
+
     // ========================================
     // 공통 드래그 상태 관리 훅 사용
     // ========================================
-    const { state: dragState, start, isDragging } = useDragState<BarDragState>({
+    const { state: dragState, scheduleUpdate, start, isDragging } = useDragState<BarDragState>({
         // 드래그 중 처리
-        onMove: (e, state, setState) => {
+        onMove: (e, state) => {
             if (!onBarDrag) return;
 
             const deltaX = e.clientX - state.startX;
             const deltaDays = calculateDeltaDays(deltaX, pixelsPerDay);
+
+            // deltaDays가 변하지 않았으면 업데이트 스킵 (성능 최적화)
+            if (deltaDays === lastDeltaDaysRef.current) return;
+            lastDeltaDaysRef.current = deltaDays;
+
             const direction = calculateDragDirection(deltaX);
 
             // 전략 패턴으로 드래그 결과 계산
@@ -61,15 +69,15 @@ export const useBarDrag = ({
                 { deltaDays, direction, holidays, calendarSettings }
             );
 
-            setState(prev => prev ? {
-                ...prev,
+            // RAF 스케줄러로 배칭 업데이트
+            scheduleUpdate({
                 currentStartDate: result.currentStartDate,
                 currentEndDate: result.currentEndDate,
                 currentIndirectWorkDaysPre: result.currentIndirectWorkDaysPre,
                 currentNetWorkDays: result.currentNetWorkDays,
                 currentIndirectWorkDaysPost: result.currentIndirectWorkDaysPost,
                 lastDeltaX: deltaX,
-            } : null);
+            });
         },
         // 드래그 완료 처리
         onEnd: (state) => {
@@ -161,6 +169,9 @@ export const useBarDrag = ({
         if (!onBarDrag) return;
         e.preventDefault();
         e.stopPropagation();
+
+        // 캐시 초기화
+        lastDeltaDaysRef.current = 0;
 
         start({
             taskId,

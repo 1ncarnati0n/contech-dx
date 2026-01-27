@@ -15,6 +15,99 @@ const { BAR_HEIGHT } = GANTT_LAYOUT;
 export type { HoverInfo };
 export type HoverZone = 'resize-left' | 'resize-right' | 'move' | null;
 
+// ============================================
+// 성능 최적화: 커스텀 비교 함수
+// ============================================
+// 드래그 중 불필요한 리렌더링 방지를 위해
+// 해당 Task의 드래그 정보만 비교
+
+/**
+ * DragInfo 얕은 비교 (날짜는 getTime()으로 비교)
+ */
+const areDragInfosEqual = (
+    a: DragInfo | null | undefined,
+    b: DragInfo | null | undefined
+): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return a === b;
+
+    return (
+        a.startDate.getTime() === b.startDate.getTime() &&
+        a.endDate.getTime() === b.endDate.getTime() &&
+        a.indirectWorkDaysPre === b.indirectWorkDaysPre &&
+        a.indirectWorkDaysPost === b.indirectWorkDaysPost &&
+        a.netWorkDays === b.netWorkDays
+    );
+};
+
+/**
+ * GroupDragInfo 얕은 비교
+ */
+const areGroupDragInfosEqual = (
+    a: { startDate: Date; endDate: Date } | null | undefined,
+    b: { startDate: Date; endDate: Date } | null | undefined
+): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return a === b;
+
+    return (
+        a.startDate.getTime() === b.startDate.getTime() &&
+        a.endDate.getTime() === b.endDate.getTime()
+    );
+};
+
+/**
+ * DetailTaskBar 전용 비교 함수
+ * 드래그 중에는 해당 Task의 드래그 관련 props만 비교
+ */
+const arePropsEqual = (
+    prevProps: DetailTaskBarProps,
+    nextProps: DetailTaskBarProps
+): boolean => {
+    // Task ID가 다르면 무조건 리렌더링
+    if (prevProps.task.id !== nextProps.task.id) return false;
+
+    // 드래그 정보 비교 (핵심 최적화 포인트)
+    if (!areDragInfosEqual(prevProps.dragInfo, nextProps.dragInfo)) return false;
+    if (!areGroupDragInfosEqual(prevProps.groupDragInfo, nextProps.groupDragInfo)) return false;
+    if (!areGroupDragInfosEqual(prevProps.dependencyDragInfo, nextProps.dependencyDragInfo)) return false;
+
+    // 기본 props 얕은 비교
+    if (
+        prevProps.y !== nextProps.y ||
+        prevProps.minDate.getTime() !== nextProps.minDate.getTime() ||
+        prevProps.pixelsPerDay !== nextProps.pixelsPerDay ||
+        prevProps.barHeight !== nextProps.barHeight ||
+        prevProps.renderMode !== nextProps.renderMode ||
+        prevProps.isDraggable !== nextProps.isDraggable ||
+        prevProps.groupDragDeltaDays !== nextProps.groupDragDeltaDays ||
+        prevProps.dependencyDragDeltaDays !== nextProps.dependencyDragDeltaDays ||
+        prevProps.hasDependency !== nextProps.hasDependency ||
+        prevProps.isFocused !== nextProps.isFocused
+    ) {
+        return false;
+    }
+
+    // Task 데이터 비교 (날짜 및 작업일)
+    if (
+        prevProps.task.startDate.getTime() !== nextProps.task.startDate.getTime() ||
+        prevProps.task.endDate.getTime() !== nextProps.task.endDate.getTime() ||
+        prevProps.task.name !== nextProps.task.name ||
+        prevProps.task.task?.netWorkDays !== nextProps.task.task?.netWorkDays ||
+        prevProps.task.task?.indirectWorkDaysPre !== nextProps.task.task?.indirectWorkDaysPre ||
+        prevProps.task.task?.indirectWorkDaysPost !== nextProps.task.task?.indirectWorkDaysPost
+    ) {
+        return false;
+    }
+
+    // holidays 배열 참조 비교 (deep 비교는 비용이 높음)
+    // calendarSettings도 참조 비교만 수행
+    if (prevProps.holidays !== nextProps.holidays) return false;
+    if (prevProps.calendarSettings !== nextProps.calendarSettings) return false;
+
+    return true;
+};
+
 /**
  * DetailTaskBar Props (Level 2 전용)
  */
@@ -59,8 +152,12 @@ export interface DetailTaskBarProps {
 
 /**
  * Detail View 전용 태스크 바 컴포넌트 (Level 2: 주공정표)
+ *
+ * 성능 최적화:
+ * - 커스텀 비교 함수로 드래그 중 불필요한 리렌더링 방지
+ * - 해당 Task의 드래그 정보가 변경된 경우에만 리렌더링
  */
-export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
+const DetailTaskBarComponent: React.FC<DetailTaskBarProps> = ({
     task,
     y,
     minDate,
@@ -479,6 +576,9 @@ export const DetailTaskBar: React.FC<DetailTaskBarProps> = React.memo(({
             )}
         </g>
     );
-});
+};
+
+// 커스텀 비교 함수로 메모이제이션된 컴포넌트 export
+export const DetailTaskBar = React.memo(DetailTaskBarComponent, arePropsEqual);
 
 DetailTaskBar.displayName = 'DetailTaskBar';
