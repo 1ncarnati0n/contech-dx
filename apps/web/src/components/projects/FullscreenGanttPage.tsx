@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   GanttChart,
   useHistory,
+  generateId,
   type ConstructionTask,
   type Milestone,
   type AnchorDependency,
@@ -230,9 +231,23 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   // 저장 핸들러
   const handleSave = useCallback(async () => {
     if (!hasUnsavedChanges) return;
+
+    // 안전 장치: 데이터가 비어있으면 저장하지 않음
+    if (tasks.length === 0) {
+      console.warn('[handleSave] Tasks array is empty. Skipping save to prevent data loss.');
+      toast.error('저장할 데이터가 없습니다. 데이터 로드 상태를 확인하세요.');
+      return;
+    }
+
     setSaveStatus('saving');
 
     try {
+      console.log('[handleSave] Saving data:', {
+        tasks: tasks.length,
+        milestones: milestones.length,
+        dependencies: anchorDependencies.length,
+      });
+
       await dataService.saveAll({
         tasks,
         milestones,
@@ -367,16 +382,18 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // Supabase 업데이트
       await dataService.updateTask(updatedTask.id, updatedTask);
     } catch (error) {
-      console.error('Failed to update task:', error);
-      toast.error('태스크 업데이트 실패');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.log('[handleTaskUpdate] ❌ Error:', errMsg);
+      console.log('[handleTaskUpdate] Full error:', error);
+      toast.error(`태스크 업데이트 실패: ${errMsg}`);
     }
   }, [setAppState, recalculateCPData, dataService]);
 
   // 태스크 생성 핸들러
-  const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask>) => {
+  const handleTaskCreate = useCallback(async (newTask: Partial<ConstructionTask> & { sortOrder?: number }) => {
     try {
       const taskToAdd: ConstructionTask = {
-        id: newTask.id || `task-${Date.now()}`,
+        id: newTask.id || generateId(),
         parentId: newTask.parentId ?? null,
         wbsLevel: newTask.wbsLevel || 2,
         type: newTask.type || 'TASK',
@@ -388,7 +405,10 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         dependencies: newTask.dependencies || [],
       };
 
-      const createdTask = await dataService.createTask(taskToAdd);
+      // sortOrder가 전달되면 사용, 없으면 현재 tasks 배열 길이 사용 (맨 뒤에 추가)
+      const sortOrder = newTask.sortOrder ?? tasks.length;
+      // DataService 인터페이스는 sortOrder를 정의하지 않으므로 타입 단언 사용
+      const createdTask = await (dataService as { createTask: (task: ConstructionTask & { sortOrder?: number }) => Promise<ConstructionTask> }).createTask({ ...taskToAdd, sortOrder });
 
       setAppState(prev => {
         let newTasks = [...prev.tasks, { ...taskToAdd, id: createdTask.id }];
@@ -407,10 +427,93 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('태스크가 생성되었습니다.');
     } catch (error) {
-      console.error('Failed to create task:', error);
-      toast.error('태스크 생성 실패');
+      // 에러 정보를 문자열로 추출
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errName = error instanceof Error ? error.name : 'Unknown';
+      console.log('[handleTaskCreate] ❌ Error:', errName, '-', errMsg);
+      console.log('[handleTaskCreate] Full error:', error);
+      toast.error(`태스크 생성 실패: ${errMsg}`);
     }
   }, [setAppState, recalculateCPData, dataService]);
+
+  // 태스크 순서 변경 핸들러
+  const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
+    try {
+      setAppState(prev => {
+        const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) return prev;
+
+        const task = prev.tasks[taskIndex];
+        const newTasks = [...prev.tasks];
+
+        // 기존 위치에서 제거
+        newTasks.splice(taskIndex, 1);
+
+        // 새 위치에 삽입 (인덱스 조정)
+        const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
+        newTasks.splice(adjustedIndex, 0, task);
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      // TODO: Supabase에 순서 정보 저장 (order 컬럼 필요 시)
+    } catch (error) {
+      console.error('Failed to reorder task:', error);
+      toast.error('순서 변경 실패');
+    }
+  }, [setAppState]);
+
+  // 태스크 이동 핸들러 (그룹 간 이동 지원)
+  const handleTaskMove = useCallback(async (
+    taskId: string,
+    targetId: string,
+    position: 'before' | 'after' | 'into'
+  ) => {
+    try {
+      setAppState(prev => {
+        const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
+        const targetIndex = prev.tasks.findIndex(t => t.id === targetId);
+        if (taskIndex === -1 || targetIndex === -1) return prev;
+
+        const task = prev.tasks[taskIndex];
+        const targetTask = prev.tasks[targetIndex];
+        const newTasks = [...prev.tasks];
+
+        // 기존 위치에서 제거
+        newTasks.splice(taskIndex, 1);
+
+        // 새 위치 계산 (제거 후 인덱스 조정)
+        const adjustedTargetIndex = taskIndex < targetIndex ? targetIndex - 1 : targetIndex;
+
+        let updatedTask: ConstructionTask;
+
+        if (position === 'into') {
+          // 그룹 안에 넣기: parentId 변경
+          updatedTask = { ...task, parentId: targetId };
+          // 타겟 그룹 바로 뒤에 삽입
+          newTasks.splice(adjustedTargetIndex + 1, 0, updatedTask);
+        } else if (position === 'before') {
+          // 타겟 앞에 삽입, 같은 부모로 설정
+          updatedTask = { ...task, parentId: targetTask.parentId };
+          newTasks.splice(adjustedTargetIndex, 0, updatedTask);
+        } else {
+          // 타겟 뒤에 삽입, 같은 부모로 설정
+          updatedTask = { ...task, parentId: targetTask.parentId };
+          newTasks.splice(adjustedTargetIndex + 1, 0, updatedTask);
+        }
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      // Supabase에 parentId 업데이트
+      const targetTask = tasks.find(t => t.id === targetId);
+      const newParentId = position === 'into' ? targetId : (targetTask?.parentId ?? null);
+      await dataService.updateTask(taskId, { parentId: newParentId });
+    } catch (error) {
+      console.error('Failed to move task:', error);
+      toast.error('태스크 이동 실패');
+    }
+  }, [setAppState, tasks, dataService]);
 
   // 태스크 삭제 핸들러
   const handleTaskDelete = useCallback(async (taskId: string) => {
@@ -446,31 +549,47 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   // 태스크 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
   const handleTaskGroup = useCallback(async (taskIds: string[]) => {
     try {
+      // 현재 상태에서 선택된 태스크들 찾기
+      const selectedTasks = tasks.filter(t => taskIds.includes(t.id));
+      if (selectedTasks.length < 1) {
+        toast.error('그룹화할 태스크를 선택하세요.');
+        return;
+      }
+
+      // 선택된 태스크들이 같은 부모를 가지는지 확인
+      const parentIds = new Set(selectedTasks.map(t => t.parentId));
+      const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+
+      // 날짜 범위 계산
+      const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+      const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+
+      // 새 GROUP 생성 (UUID는 DB에서 생성)
+      const newGroup: Partial<ConstructionTask> = {
+        parentId: commonParentId,
+        wbsLevel: selectedTasks[0].wbsLevel,
+        type: 'GROUP',
+        name: '새 그룹',
+        startDate: minStart,
+        endDate: maxEnd,
+        dependencies: [],
+      };
+
+      // DB에 그룹 생성
+      const createdGroup = await dataService.createTask(newGroup as ConstructionTask);
+      const newGroupId = createdGroup.id;
+
+      console.log('[handleTaskGroup] Created group with ID:', newGroupId);
+
+      // 선택된 태스크들의 parentId를 새 그룹으로 업데이트 (DB)
+      await Promise.all(
+        taskIds.map(taskId =>
+          dataService.updateTask(taskId, { parentId: newGroupId })
+        )
+      );
+
+      // 로컬 상태 업데이트
       setAppState(prev => {
-        // 선택된 태스크들 찾기
-        const selectedTasks = prev.tasks.filter(t => taskIds.includes(t.id));
-        if (selectedTasks.length < 1) return prev;
-
-        // 선택된 태스크들이 같은 부모를 가지는지 확인
-        const parentIds = new Set(selectedTasks.map(t => t.parentId));
-        const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
-
-        // 새 GROUP 생성
-        const newGroupId = `group-${Date.now()}`;
-        const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
-        const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
-
-        const newGroup: ConstructionTask = {
-          id: newGroupId,
-          parentId: commonParentId,
-          wbsLevel: selectedTasks[0].wbsLevel,
-          type: 'GROUP',
-          name: '새 그룹',
-          startDate: minStart,
-          endDate: maxEnd,
-          dependencies: [],
-        };
-
         // 선택된 태스크들의 parentId를 새 그룹으로 변경
         let newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
@@ -481,7 +600,11 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
         // 첫 번째 선택된 태스크 위치에 GROUP 삽입
         const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
-        newTasks.splice(firstSelectedIndex, 0, newGroup);
+        const groupTask: ConstructionTask = {
+          ...newGroup as ConstructionTask,
+          id: newGroupId,
+        };
+        newTasks.splice(firstSelectedIndex, 0, groupTask);
 
         return { ...prev, tasks: newTasks };
       });
@@ -491,22 +614,40 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       console.error('Failed to group tasks:', error);
       toast.error('그룹화 실패');
     }
-  }, [setAppState]);
+  }, [tasks, dataService, setAppState]);
 
   // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
   const handleTaskUngroup = useCallback(async (groupId: string) => {
     try {
+      const group = tasks.find(t => t.id === groupId);
+      if (!group || group.type !== 'GROUP') {
+        toast.error('유효한 그룹이 아닙니다.');
+        return;
+      }
+
+      // 그룹의 자식들 찾기
+      const children = tasks.filter(t => t.parentId === groupId);
+
+      console.log('[handleTaskUngroup] Ungrouping:', {
+        groupId,
+        groupParentId: group.parentId,
+        childrenCount: children.length,
+      });
+
+      // 자식들의 parentId를 그룹의 parentId로 업데이트 (DB)
+      if (children.length > 0) {
+        await Promise.all(
+          children.map(child =>
+            dataService.updateTask(child.id, { parentId: group.parentId })
+          )
+        );
+      }
+
+      // 그룹 삭제 (DB)
+      await dataService.deleteTask(groupId);
+
+      // 로컬 상태 업데이트
       setAppState(prev => {
-        const group = prev.tasks.find(t => t.id === groupId);
-        if (!group || group.type !== 'GROUP') return prev;
-
-        // 그룹의 자식들 찾기
-        const children = prev.tasks.filter(t => t.parentId === groupId);
-        if (children.length === 0) {
-          // 자식이 없으면 그룹만 삭제
-          return { ...prev, tasks: prev.tasks.filter(t => t.id !== groupId) };
-        }
-
         // 자식들의 parentId를 그룹의 parentId로 변경
         let newTasks = prev.tasks.map(t => {
           if (t.parentId === groupId) {
@@ -526,7 +667,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       console.error('Failed to ungroup tasks:', error);
       toast.error('그룹 해제 실패');
     }
-  }, [setAppState]);
+  }, [tasks, dataService, setAppState]);
 
   // 그룹 드래그 핸들러
   const handleGroupDrag = useCallback(async (result: GroupDragResult) => {
@@ -824,6 +965,8 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
           onTaskUpdate={handleTaskUpdate}
           onTaskCreate={handleTaskCreate}
           onTaskDelete={handleTaskDelete}
+          onTaskReorder={handleTaskReorder}
+          onTaskMove={handleTaskMove}
           onTaskGroup={handleTaskGroup}
           onTaskUngroup={handleTaskUngroup}
           onViewChange={handleViewChange}

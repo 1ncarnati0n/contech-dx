@@ -46,6 +46,10 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     dragType: null,
     dragTaskId: null,
 
+    // Multi-Drag State (다중 선택 드래그)
+    isMultiDragging: false,
+    multiDragPrimaryId: null,
+
     // Compact Mode (Detail View 전용)
     isCompactMode: false,
 
@@ -255,6 +259,38 @@ export const useGanttStore = create<GanttStore>((set, get) => ({
     },
 
     // ====================================
+    // Multi-Drag Actions (다중 선택 드래그)
+    // ====================================
+
+    startMultiDrag: (primaryId: string) => {
+        const { selectedTaskIds } = get();
+
+        // primaryId가 선택된 Task에 포함되어 있어야 함
+        if (!selectedTaskIds.has(primaryId)) {
+            // 선택되지 않은 Task를 드래그하면 단일 선택 후 드래그
+            set({
+                selectedTaskIds: new Set([primaryId]),
+                focusedTaskId: primaryId,
+                isMultiDragging: true,
+                multiDragPrimaryId: primaryId,
+            });
+        } else {
+            // 선택된 Task 중 하나를 드래그하면 다중 드래그 시작
+            set({
+                isMultiDragging: true,
+                multiDragPrimaryId: primaryId,
+            });
+        }
+    },
+
+    endMultiDrag: () => {
+        set({
+            isMultiDragging: false,
+            multiDragPrimaryId: null,
+        });
+    },
+
+    // ====================================
     // Compact Mode Actions
     // ====================================
 
@@ -345,6 +381,18 @@ export const useGanttDrag = () =>
             dragTaskId: state.dragTaskId,
             startDrag: state.startDrag,
             endDrag: state.endDrag,
+        }))
+    );
+
+/** 다중 선택 드래그 상태 구독 */
+export const useGanttMultiDrag = () =>
+    useGanttStore(
+        useShallow((state) => ({
+            selectedTaskIds: state.selectedTaskIds,
+            isMultiDragging: state.isMultiDragging,
+            multiDragPrimaryId: state.multiDragPrimaryId,
+            startMultiDrag: state.startMultiDrag,
+            endMultiDrag: state.endMultiDrag,
         }))
     );
 

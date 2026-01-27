@@ -8,9 +8,45 @@
  * - 타입 가드 (런타임 데이터 검증)
  */
 
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import type { ConstructionTask, Milestone, AnchorDependency, Dependency, DependencyType, AnchorPoint } from '../types';
 import type { GanttData } from './DataService';
+
+// ============================================
+// 날짜 파싱 유틸리티
+// ============================================
+
+/**
+ * 'YYYY-MM-DD' 형식을 로컬 시간대 자정으로 파싱
+ *
+ * parseISO('2025-01-26')는 UTC 자정으로 파싱되어 timezone에 따라
+ * 날짜가 하루 밀릴 수 있음. 이 함수는 로컬 시간대 자정으로 파싱하여
+ * 어떤 timezone에서도 동일한 날짜(요일)를 보장합니다.
+ */
+function parseLocalDate(dateStr: string | null | undefined): Date {
+    if (!dateStr) {
+        console.warn('[parseLocalDate] Empty date string, using current date');
+        return new Date();
+    }
+
+    // ISO 문자열에서 날짜 부분만 추출 (T 이전 부분)
+    const datePart = String(dateStr).split('T')[0];
+    const parts = datePart.split('-');
+
+    if (parts.length !== 3) {
+        console.warn('[parseLocalDate] Invalid date format:', dateStr);
+        return new Date();
+    }
+
+    const [year, month, day] = parts.map(Number);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        console.warn('[parseLocalDate] Invalid date numbers:', dateStr);
+        return new Date();
+    }
+
+    return new Date(year, month - 1, day); // 월은 0-based
+}
 
 // ============================================
 // 타입 가드 (Type Guards)
@@ -172,8 +208,8 @@ export const deserializeTasks = (json: string): ConstructionTask[] | null => {
                 wbsLevel: t.wbsLevel,
                 type: t.type,
                 name: t.name,
-                startDate: parseISO(t.startDate),
-                endDate: parseISO(t.endDate),
+                startDate: parseLocalDate(t.startDate),
+                endDate: parseLocalDate(t.endDate),
                 cp,
                 task,
                 group,
@@ -212,7 +248,7 @@ export const deserializeMilestones = (json: string): Milestone[] | null => {
             .filter(isValidMilestoneData)
             .map((m) => ({
                 ...m,
-                date: parseISO(m.date),
+                date: parseLocalDate(m.date),
             })) as Milestone[];
     } catch (error) {
         console.error('Failed to deserialize milestones:', error);
@@ -331,8 +367,8 @@ export const parseImportedData = (jsonString: string): GanttData | null => {
                 ...t,
                 wbsLevel: t.wbsLevel as 1 | 2,
                 type: t.type as 'GROUP' | 'CP' | 'TASK',
-                startDate: parseISO(t.startDate as string),
-                endDate: parseISO(t.endDate as string),
+                startDate: parseLocalDate(t.startDate as string),
+                endDate: parseLocalDate(t.endDate as string),
                 dependencies: (t.dependencies as Array<Record<string, unknown>>)?.map(d => ({
                     ...d,
                     type: d.type as DependencyType,
@@ -346,7 +382,7 @@ export const parseImportedData = (jsonString: string): GanttData | null => {
             .filter(isValidMilestoneData)
             .map((m: Record<string, unknown>) => ({
                 ...m,
-                date: parseISO(m.date as string),
+                date: parseLocalDate(m.date as string),
             }));
 
         // AnchorDependencies 파싱 (선택적)
@@ -377,8 +413,8 @@ export const parseMockTasks = (mockTasks: Array<Record<string, unknown>>): Const
             ...t,
             wbsLevel: t.wbsLevel as 1 | 2,
             type: t.type as 'GROUP' | 'CP' | 'TASK',
-            startDate: parseISO(t.startDate as string),
-            endDate: parseISO(t.endDate as string),
+            startDate: parseLocalDate(t.startDate as string),
+            endDate: parseLocalDate(t.endDate as string),
             cp: t.cp ? { ...(t.cp as object) } : undefined,
             task: t.task ? { ...(t.task as object) } : undefined,
             dependencies: (t.dependencies as Dependency[]) || [],
@@ -390,7 +426,7 @@ export const parseMockMilestones = (mockMilestones: Array<Record<string, unknown
         .filter(isValidMilestoneData)
         .map(m => ({
             ...m,
-            date: parseISO(m.date as string),
+            date: parseLocalDate(m.date as string),
             milestoneType: (m as { milestoneType?: string }).milestoneType as 'MASTER' | 'DETAIL' | undefined,
         })) as Milestone[];
 };

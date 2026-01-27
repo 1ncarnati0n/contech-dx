@@ -44,6 +44,10 @@ export interface GanttUIState {
     dragType: 'MOVE' | 'RESIZE_PRE' | 'RESIZE_POST' | 'RESIZE_NET' | 'LINK' | null;
     dragTaskId: string | null;
 
+    // Multi-Drag State (다중 선택 드래그)
+    isMultiDragging: boolean;              // 다중 선택 드래그 진행 중
+    multiDragPrimaryId: string | null;     // 기준 Task ID (마우스로 드래그 시작한 Task)
+
     // Compact Mode (Detail View 전용)
     isCompactMode: boolean;
 }
@@ -73,6 +77,10 @@ export interface GanttUIActions {
     // Drag Actions
     startDrag: (type: GanttUIState['dragType'], taskId: string) => void;
     endDrag: () => void;
+
+    // Multi-Drag Actions (다중 선택 드래그)
+    startMultiDrag: (primaryId: string) => void;
+    endMultiDrag: () => void;
 
     // Compact Mode Actions
     toggleCompactMode: () => void;

@@ -8,6 +8,10 @@ import { setupDragListeners } from './dragUtils';
 // ============================================
 // State-Ref 동기화 + 이벤트 리스너 관리를 하나로 통합
 // useBarDrag, useGroupDrag, useDependencyDrag, useMilestoneDrag에서 공통 사용
+//
+// Phase 1 성능 최적화:
+// - requestAnimationFrame으로 상태 업데이트 배칭
+// - 프레임당 최대 1회 업데이트로 60fps 유지
 
 export interface UseDragStateOptions<T> {
     /** 드래그 중 마우스 이동 핸들러 */
@@ -16,6 +20,8 @@ export interface UseDragStateOptions<T> {
     onEnd: (state: T) => void;
     /** 드래그 중 커서 스타일 */
     cursor?: 'grabbing' | 'ew-resize' | 'col-resize';
+    /** RAF 배칭 사용 여부 (기본: true) */
+    useRAF?: boolean;
 }
 
 export interface UseDragStateReturn<T> {
@@ -25,6 +31,8 @@ export interface UseDragStateReturn<T> {
     stateRef: RefObject<T | null>;
     /** 상태 setter (드래그 중 상태 업데이트용) */
     setState: React.Dispatch<React.SetStateAction<T | null>>;
+    /** RAF 배칭을 사용하는 상태 업데이트 스케줄러 */
+    scheduleUpdate: (updates: Partial<T>) => void;
     /** 드래그 시작 */
     start: (initialState: T) => void;
     /** 드래그 종료 (수동 종료 필요시) */
@@ -54,9 +62,15 @@ export function useDragState<T extends object>({
     onMove,
     onEnd,
     cursor = 'grabbing',
+    // useRAF는 향후 옵션으로 활용 가능 (현재는 항상 RAF 사용)
+    useRAF: _useRAF = true,
 }: UseDragStateOptions<T>): UseDragStateReturn<T> {
     const [state, setState] = useState<T | null>(null);
     const stateRef = useRef<T | null>(null);
+
+    // RAF 배칭을 위한 refs
+    const rafIdRef = useRef<number | null>(null);
+    const pendingUpdateRef = useRef<Partial<T> | null>(null);
 
     // 콜백 ref (클로저 문제 방지)
     const onMoveRef = useRef(onMove);
@@ -73,6 +87,25 @@ export function useDragState<T extends object>({
         stateRef.current = state;
     }, [state]);
 
+    // RAF 배칭 스케줄러: 프레임당 최대 1회 업데이트
+    const scheduleUpdate = useCallback((updates: Partial<T>) => {
+        // 기존 pending 업데이트와 병합
+        pendingUpdateRef.current = { ...pendingUpdateRef.current, ...updates };
+
+        // RAF가 이미 스케줄되어 있으면 스킵
+        if (rafIdRef.current !== null) return;
+
+        rafIdRef.current = requestAnimationFrame(() => {
+            if (pendingUpdateRef.current && stateRef.current) {
+                const finalUpdates = pendingUpdateRef.current;
+                setState(prev => prev ? { ...prev, ...finalUpdates } : null);
+                stateRef.current = stateRef.current ? { ...stateRef.current, ...finalUpdates } : null;
+            }
+            pendingUpdateRef.current = null;
+            rafIdRef.current = null;
+        });
+    }, []);
+
     // 드래그 시작
     const start = useCallback((initialState: T) => {
         setState(initialState);
@@ -81,6 +114,13 @@ export function useDragState<T extends object>({
 
     // 드래그 종료
     const stop = useCallback(() => {
+        // RAF 정리
+        if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+        }
+        pendingUpdateRef.current = null;
+
         setState(null);
         stateRef.current = null;
     }, []);
@@ -95,6 +135,16 @@ export function useDragState<T extends object>({
 
     // 마우스 업 핸들러
     const handleMouseUp = useCallback(() => {
+        // RAF 정리 (pending 업데이트가 있으면 즉시 적용)
+        if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+        }
+        if (pendingUpdateRef.current && stateRef.current) {
+            stateRef.current = { ...stateRef.current, ...pendingUpdateRef.current };
+        }
+        pendingUpdateRef.current = null;
+
         const currentState = stateRef.current;
         if (currentState) {
             onEndRef.current(currentState);
@@ -110,10 +160,20 @@ export function useDragState<T extends object>({
         }
     }, [state, handleMouseMove, handleMouseUp, cursor]);
 
+    // 컴포넌트 언마운트 시 RAF 정리
+    useEffect(() => {
+        return () => {
+            if (rafIdRef.current !== null) {
+                cancelAnimationFrame(rafIdRef.current);
+            }
+        };
+    }, []);
+
     return {
         state,
         stateRef,
         setState,
+        scheduleUpdate,
         start,
         stop,
         isDragging: !!state,

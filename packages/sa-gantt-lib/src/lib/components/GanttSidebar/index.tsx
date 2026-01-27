@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState, useCallback, useEffect, memo } from 'react';
+import { forwardRef, useState, useCallback, useEffect, memo, useRef } from 'react';
 import { addDays } from 'date-fns';
 import {
     ConstructionTask,
@@ -9,6 +9,8 @@ import {
 import { GanttSidebarContextMenu } from '../GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from '../GanttSidebarNewTaskForm';
 import { GanttSidebarNewCPForm } from '../GanttSidebarNewCPForm';
+import { GanttSidebarNewCPFormUnified } from '../GanttSidebarNewCPFormUnified';
+import { GanttSidebarNewTaskFormUnified } from '../GanttSidebarNewTaskFormUnified';
 
 // Sub-components
 import { SidebarHeader } from './SidebarHeader';
@@ -21,6 +23,8 @@ import { MilestoneLaneSpacer } from './MilestoneLaneSpacer';
 import {
     useSidebarColumns,
     useSidebarDragDrop,
+    DROP_ZONE_FIRST,
+    DROP_ZONE_LAST,
     useMultiSelect,
     useClipboard,
     useInlineEdit,
@@ -159,7 +163,12 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             handleDragLeave,
             handleDrop,
             handleDragEnd,
-        } = useSidebarDragDrop({ tasks, onTaskReorder, onTaskMove });
+            handleContainerDragOver,
+            handleContainerDrop,
+        } = useSidebarDragDrop({ tasks, onTaskReorder, onTaskMove, rowHeight: effectiveRowHeight });
+
+        // 컨테이너 ref (드래그 이벤트용)
+        const containerRef = useRef<HTMLDivElement>(null);
 
         // ====================================
         // Selection Hook
@@ -173,7 +182,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         } = useMultiSelect({ tasks, draggedTaskId });
 
         // ====================================
-        // Clipboard Hook
+        // Clipboard Hook (header 모드에서는 비활성화하여 이벤트 리스너 중복 방지)
         // ====================================
         useClipboard({
             selectedTaskIds,
@@ -181,6 +190,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             viewMode,
             activeCPId,
             onTaskCreate,
+            enabled: renderMode === 'content' || renderMode === 'all',
         });
 
         // ====================================
@@ -227,8 +237,10 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             }
         }, [contextMenu]);
 
-        // 키보드 단축키 (ESC)
+        // 키보드 단축키 (ESC) - header 모드에서는 불필요
         useEffect(() => {
+            if (renderMode === 'header') return;
+
             const handleKeyDown = (e: KeyboardEvent) => {
                 if (e.key === 'Escape') {
                     clearSelection();
@@ -237,7 +249,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             };
             document.addEventListener('keydown', handleKeyDown);
             return () => document.removeEventListener('keydown', handleKeyDown);
-        }, [clearSelection]);
+        }, [clearSelection, renderMode]);
 
         // ====================================
         // Duration Change Handler
@@ -376,39 +388,66 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             }
 
             if (viewMode === 'UNIFIED') {
-                return rowData.map((row) => {
-                    const task = tasks[row.index];
-                    if (!task) return null;
+                return (
+                    <>
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
 
-                    const isCP = task.type === 'CP';
-                    const isGroup = task.type === 'GROUP';
-                    const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
-                    const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
-                    const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
+                            const isCP = task.type === 'CP';
+                            const isGroup = task.type === 'GROUP';
+                            const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
+                            const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
+                            const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
 
-                    return (
-                        <SidebarRowUnified
-                            key={row.key}
-                            task={task}
-                            rowIndex={row.index}
-                            rowStart={row.start}
-                            isDragging={draggedTaskId === task.id}
-                            isDragOver={dragOverTaskId === task.id}
-                            isSelected={selectedTaskIds.has(task.id)}
-                            isFocused={focusedTaskId === task.id}
-                            isExpanded={expandedIds.has(task.id)}
-                            canExpand={canExpand}
-                            indent={getUnifiedDepth(task) * 16}
-                            isGroup={isGroup && !isBlock}
-                            isCP={isCP}
-                            isBlock={isBlock}
-                            rowHeight={row.size}
-                            onTaskClick={onTaskClick}
-                            onTaskDoubleClick={onTaskDoubleClick}
-                            {...sharedRowProps}
-                        />
-                    );
-                });
+                            return (
+                                <SidebarRowUnified
+                                    key={row.key}
+                                    task={task}
+                                    rowIndex={row.index}
+                                    rowStart={row.start}
+                                    isDragging={draggedTaskId === task.id}
+                                    isDragOver={dragOverTaskId === task.id}
+                                    isSelected={selectedTaskIds.has(task.id)}
+                                    isFocused={focusedTaskId === task.id}
+                                    isExpanded={expandedIds.has(task.id)}
+                                    canExpand={canExpand}
+                                    indent={getUnifiedDepth(task) * 16}
+                                    isGroup={isGroup && !isBlock}
+                                    isCP={isCP}
+                                    isBlock={isBlock}
+                                    rowHeight={row.size}
+                                    onTaskClick={onTaskClick}
+                                    onTaskDoubleClick={onTaskDoubleClick}
+                                    {...sharedRowProps}
+                                />
+                            );
+                        })}
+                        {isAddingCP && (
+                            <GanttSidebarNewCPFormUnified
+                                columns={columns}
+                                tasks={tasks}
+                                onTaskCreate={onTaskCreate}
+                                onCancel={onCancelAddCP || (() => { })}
+                                isVirtualized={isVirtualized}
+                                virtualRowIndex={tasks.length}
+                                dragHandleWidth={dragHandleWidth}
+                            />
+                        )}
+                        {isAddingTask && (
+                            <GanttSidebarNewTaskFormUnified
+                                columns={columns}
+                                tasks={tasks}
+                                activeCPId={activeCPId}
+                                onTaskCreate={onTaskCreate}
+                                onCancel={onCancelAddTask || (() => { })}
+                                isVirtualized={isVirtualized}
+                                virtualRowIndex={tasks.length}
+                                dragHandleWidth={dragHandleWidth}
+                            />
+                        )}
+                    </>
+                );
             }
 
             // DETAIL View
@@ -501,6 +540,17 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         // Content Only Mode (스크롤 내부용)
         // ====================================
         if (renderMode === 'content') {
+            // 드롭 존 인디케이터 스타일
+            const dropIndicatorStyle = {
+                position: 'absolute' as const,
+                left: 0,
+                right: 0,
+                height: 2,
+                backgroundColor: 'var(--gantt-teal)',
+                zIndex: 10,
+                pointerEvents: 'none' as const,
+            };
+
             return (
                 <div
                     ref={ref}
@@ -509,14 +559,31 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     onClick={clearSelection}
                 >
                     <div
+                        ref={containerRef}
                         style={{
                             minWidth: totalWidth,
                             height: isVirtualized ? totalHeight : dynamicTotalHeight,
                             position: 'relative',
                         }}
                         onClick={clearSelection}
+                        onDragOver={(e) => {
+                            if (containerRef.current) {
+                                handleContainerDragOver(e, containerRef.current.getBoundingClientRect());
+                            }
+                        }}
+                        onDrop={handleContainerDrop}
                     >
+                        {/* 최상단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_FIRST && (
+                            <div style={{ ...dropIndicatorStyle, top: 0 }} />
+                        )}
+
                         {renderRowContent()}
+
+                        {/* 최하단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_LAST && (
+                            <div style={{ ...dropIndicatorStyle, bottom: 0 }} />
+                        )}
                     </div>
 
                     {contextMenuElement}
@@ -527,6 +594,17 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         // ====================================
         // Full Mode (기존 방식, 하위 호환용)
         // ====================================
+        // 드롭 존 인디케이터 스타일
+        const dropIndicatorStyleFull = {
+            position: 'absolute' as const,
+            left: 0,
+            right: 0,
+            height: 2,
+            backgroundColor: 'var(--gantt-teal)',
+            zIndex: 10,
+            pointerEvents: 'none' as const,
+        };
+
         return (
             <div
                 className="flex h-full flex-col select-none"
@@ -564,14 +642,31 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                     />
 
                     <div
+                        ref={containerRef}
                         style={{
                             minWidth: totalWidth,
                             height: isVirtualized ? totalHeight : dynamicTotalHeight,
                             position: 'relative',
                         }}
                         onClick={clearSelection}
+                        onDragOver={(e) => {
+                            if (containerRef.current) {
+                                handleContainerDragOver(e, containerRef.current.getBoundingClientRect());
+                            }
+                        }}
+                        onDrop={handleContainerDrop}
                     >
+                        {/* 최상단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_FIRST && (
+                            <div style={{ ...dropIndicatorStyleFull, top: 0 }} />
+                        )}
+
                         {renderRowContent()}
+
+                        {/* 최하단 드롭 존 인디케이터 */}
+                        {dragOverTaskId === DROP_ZONE_LAST && (
+                            <div style={{ ...dropIndicatorStyleFull, bottom: 0 }} />
+                        )}
                     </div>
                 </div>
 
