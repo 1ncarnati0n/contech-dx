@@ -1,0 +1,519 @@
+@import "tailwindcss";
+
+/* ============================================
+ * SA-Gantt-Lib 테마 시스템
+ * ============================================ */
+
+/* ============================================
+ * 라이트 모드 (기본)
+ * ============================================ */
+:root {
+  /* Level 1: 공구 공정표 */
+  --gantt-vermilion: #E34234;
+  --gantt-teal: #008080;
+
+  /* Level 2: 주공정표 */
+  --gantt-red: #FF5252;
+  --gantt-blue: #448AFF;
+
+  /* 마일스톤 */
+  --gantt-milestone: #4B5563;
+  --gantt-milestone-detail: #b30bf5;
+  --gantt-milestone-detail-hover: #d86bff;
+
+  /* UI 요소 */
+  --gantt-dependency: #9CA3AF;
+  --gantt-grid: #E5E7EB;
+  --gantt-grid-dark: #D1D5DB;
+  --gantt-focus: #3B82F6;
+  --gantt-success: #10B981;
+  --gantt-excel: #217346;
+
+  /* 배경 */
+  --gantt-bg-primary: #ffffff;
+  --gantt-bg-secondary: #f9fafb;
+  --gantt-bg-tertiary: #f3f4f6;
+  --gantt-bg-hover: #e5e7eb;
+  --gantt-bg-selected: #eff6ff;
+
+  /* 텍스트 */
+  --gantt-text-primary: #111827;
+  --gantt-text-secondary: #4B5563;
+  --gantt-text-muted: #9CA3AF;
+  --gantt-text-inverse: #ffffff;
+
+  /* 테두리 */
+  --gantt-border: #E5E7EB;
+  --gantt-border-light: #D1D5DB;
+  --gantt-border-focus: #3B82F6;
+
+  /* 주말/휴일 배경 */
+  --gantt-weekend-bg: rgba(239, 246, 255, 0.5);
+  --gantt-holiday-bg: rgba(254, 242, 242, 0.5);
+  --gantt-sunday-bg: rgba(254, 242, 242, 0.5);
+
+  /* 주말/휴일 텍스트 */
+  --gantt-weekend-text: #3B82F6;
+  --gantt-holiday-text: #EF4444;
+  --gantt-sunday-text: #EF4444;
+
+  /* 그룹/요약 바 */
+  --gantt-summary-bar: #888b90;
+  --gantt-summary-progress: #6B7280;
+
+  /* 앵커 포인트 */
+  --gantt-anchor-fill: #ffffff;
+  --gantt-anchor-stroke: #9CA3AF;
+  --gantt-anchor-hover: #10B981;
+
+  /* 툴팁 */
+  --gantt-tooltip-bg: #1F2937;
+  --gantt-tooltip-text: #ffffff;
+
+  /* 드래그 상태 */
+  --gantt-drag-preview: #3B82F6;
+
+  /* 리사이저 */
+  --gantt-resizer: #D1D5DB;
+  --gantt-resizer-hover: #9CA3AF;
+  --gantt-resizer-active: #3B82F6;
+}
+
+/* ============================================
+ * 다크 모드 (클래스 기반)
+ * ============================================ */
+:root.dark,
+.dark {
+  /* Level 1: 공구 공정표 (밝기 증가) */
+  --gantt-vermilion: #F97066;
+  --gantt-teal: #2DD4BF;
+
+  /* Level 2: 주공정표 (밝기 증가) */
+  --gantt-red: #F87171;
+  --gantt-blue: #60A5FA;
+
+  /* 마일스톤 - Master는 밝은 청록, Detail은 채도 낮춤 */
+  --gantt-milestone: #67E8F9;
+  --gantt-milestone-detail: #d86bff;
+  --gantt-milestone-detail-hover: #b30bf5;
+
+  /* UI 요소 */
+  --gantt-dependency: #6B7280;
+  --gantt-grid: #374151;
+  --gantt-grid-dark: #4B5563;
+  --gantt-focus: #60A5FA;
+  --gantt-success: #34D399;
+  --gantt-excel: #2d8a5e;
+
+  /* 배경 */
+  --gantt-bg-primary: #111827;
+  --gantt-bg-secondary: #1F2937;
+  --gantt-bg-tertiary: #374151;
+  --gantt-bg-hover: #4B5563;
+  --gantt-bg-selected: #1e3a5f;
+
+  /* 텍스트 */
+  --gantt-text-primary: #F9FAFB;
+  --gantt-text-secondary: #D1D5DB;
+  --gantt-text-muted: #6B7280;
+  --gantt-text-inverse: #111827;
+
+  /* 테두리 */
+  --gantt-border: #374151;
+  --gantt-border-light: #4B5563;
+  --gantt-border-focus: #60A5FA;
+
+  /* 주말/휴일 배경 */
+  --gantt-weekend-bg: rgba(30, 58, 138, 0.3);
+  --gantt-holiday-bg: rgba(127, 29, 29, 0.3);
+  --gantt-sunday-bg: rgba(127, 29, 29, 0.3);
+
+  /* 주말/휴일 텍스트 */
+  --gantt-weekend-text: #60A5FA;
+  --gantt-holiday-text: #F87171;
+  --gantt-sunday-text: #F87171;
+
+  /* 그룹/요약 바 */
+  --gantt-summary-bar: #6B7280;
+  --gantt-summary-progress: #9CA3AF;
+
+  /* 앵커 포인트 */
+  --gantt-anchor-fill: #1F2937;
+  --gantt-anchor-stroke: #6B7280;
+  --gantt-anchor-hover: #34D399;
+
+  /* 툴팁 */
+  --gantt-tooltip-bg: #F9FAFB;
+  --gantt-tooltip-text: #111827;
+
+  /* 드래그 상태 */
+  --gantt-drag-preview: #60A5FA;
+
+  /* 리사이저 */
+  --gantt-resizer: #4B5563;
+  --gantt-resizer-hover: #6B7280;
+  --gantt-resizer-active: #60A5FA;
+}
+
+/* ============================================
+ * 시스템 설정 자동 적용 (수동 선택 없을 때)
+ * .dark 클래스가 없고 시스템이 다크모드일 때 적용
+ * ============================================ */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    /* 다크모드 색상은 .dark 클래스와 동일하게 적용 */
+    /* Level 1: 공구 공정표 */
+    --gantt-vermilion: #F97066;
+    --gantt-teal: #2DD4BF;
+    /* Level 2: 주공정표 */
+    --gantt-red: #F87171;
+    --gantt-blue: #60A5FA;
+    /* 마일스톤 */
+    --gantt-milestone: #67E8F9;
+    --gantt-milestone-detail: #d86bff;
+    --gantt-milestone-detail-hover: #b30bf5;
+    /* UI 요소 */
+    --gantt-dependency: #6B7280;
+    --gantt-grid: #374151;
+    --gantt-grid-dark: #4B5563;
+    --gantt-focus: #60A5FA;
+    --gantt-success: #34D399;
+    --gantt-excel: #2d8a5e;
+    /* 배경 */
+    --gantt-bg-primary: #111827;
+    --gantt-bg-secondary: #1F2937;
+    --gantt-bg-tertiary: #374151;
+    --gantt-bg-hover: #4B5563;
+    --gantt-bg-selected: #1e3a5f;
+    /* 텍스트 */
+    --gantt-text-primary: #F9FAFB;
+    --gantt-text-secondary: #D1D5DB;
+    --gantt-text-muted: #6B7280;
+    --gantt-text-inverse: #111827;
+    /* 테두리 */
+    --gantt-border: #374151;
+    --gantt-border-light: #4B5563;
+    --gantt-border-focus: #60A5FA;
+    /* 주말/휴일 배경 */
+    --gantt-weekend-bg: rgba(30, 58, 138, 0.3);
+    --gantt-holiday-bg: rgba(127, 29, 29, 0.3);
+    --gantt-sunday-bg: rgba(127, 29, 29, 0.3);
+    /* 주말/휴일 텍스트 */
+    --gantt-weekend-text: #60A5FA;
+    --gantt-holiday-text: #F87171;
+    --gantt-sunday-text: #F87171;
+    /* 그룹/요약 바 */
+    --gantt-summary-bar: #6B7280;
+    --gantt-summary-progress: #9CA3AF;
+    /* 앵커 포인트 */
+    --gantt-anchor-fill: #1F2937;
+    --gantt-anchor-stroke: #6B7280;
+    --gantt-anchor-hover: #34D399;
+    /* 툴팁 */
+    --gantt-tooltip-bg: #F9FAFB;
+    --gantt-tooltip-text: #111827;
+    /* 드래그 상태 */
+    --gantt-drag-preview: #60A5FA;
+    /* 리사이저 */
+    --gantt-resizer: #4B5563;
+    --gantt-resizer-hover: #6B7280;
+    --gantt-resizer-active: #60A5FA;
+  }
+}
+
+/* ============================================
+ * Tailwind Design Token 시스템
+ * 모든 CSS 변수를 Tailwind 유틸리티로 사용 가능
+ * 예: bg-gantt-bg-primary, text-gantt-text-secondary
+ * ============================================ */
+@theme {
+  /* ===== Color Palette ===== */
+  
+  /* Level 1: 공구 공정표 */
+  --color-vermilion: var(--gantt-vermilion);
+  --color-teal: var(--gantt-teal);
+
+  /* Level 2: 주공정표 */
+  --color-gantt-red: var(--gantt-red);
+  --color-gantt-blue: var(--gantt-blue);
+
+  /* Milestone */
+  --color-gantt-milestone: var(--gantt-milestone);
+  --color-gantt-milestone-detail: var(--gantt-milestone-detail);
+  --color-gantt-milestone-detail-hover: var(--gantt-milestone-detail-hover);
+
+  /* UI Elements */
+  --color-gantt-dependency: var(--gantt-dependency);
+  --color-gantt-grid: var(--gantt-grid);
+  --color-gantt-grid-dark: var(--gantt-grid-dark);
+  --color-gantt-focus: var(--gantt-focus);
+  --color-gantt-success: var(--gantt-success);
+
+  /* Backgrounds */
+  --color-gantt-bg-primary: var(--gantt-bg-primary);
+  --color-gantt-bg-secondary: var(--gantt-bg-secondary);
+  --color-gantt-bg-tertiary: var(--gantt-bg-tertiary);
+  --color-gantt-bg-hover: var(--gantt-bg-hover);
+  --color-gantt-bg-selected: var(--gantt-bg-selected);
+
+  /* Text */
+  --color-gantt-text-primary: var(--gantt-text-primary);
+  --color-gantt-text-secondary: var(--gantt-text-secondary);
+  --color-gantt-text-muted: var(--gantt-text-muted);
+  --color-gantt-text-inverse: var(--gantt-text-inverse);
+
+  /* Borders */
+  --color-gantt-border: var(--gantt-border);
+  --color-gantt-border-light: var(--gantt-border-light);
+  --color-gantt-border-focus: var(--gantt-border-focus);
+
+  /* Special Days Background */
+  --color-gantt-weekend-bg: var(--gantt-weekend-bg);
+  --color-gantt-holiday-bg: var(--gantt-holiday-bg);
+  --color-gantt-sunday-bg: var(--gantt-sunday-bg);
+
+  /* Special Days Text */
+  --color-gantt-weekend-text: var(--gantt-weekend-text);
+  --color-gantt-holiday-text: var(--gantt-holiday-text);
+  --color-gantt-sunday-text: var(--gantt-sunday-text);
+
+  /* Summary Bar */
+  --color-gantt-summary-bar: var(--gantt-summary-bar);
+  --color-gantt-summary-progress: var(--gantt-summary-progress);
+
+  /* Anchor Points */
+  --color-gantt-anchor-fill: var(--gantt-anchor-fill);
+  --color-gantt-anchor-stroke: var(--gantt-anchor-stroke);
+  --color-gantt-anchor-hover: var(--gantt-anchor-hover);
+
+  /* Tooltip */
+  --color-gantt-tooltip-bg: var(--gantt-tooltip-bg);
+  --color-gantt-tooltip-text: var(--gantt-tooltip-text);
+
+  /* Drag Preview */
+  --color-gantt-drag-preview: var(--gantt-drag-preview);
+
+  /* Resizer */
+  --color-gantt-resizer: var(--gantt-resizer);
+  --color-gantt-resizer-hover: var(--gantt-resizer-hover);
+  --color-gantt-resizer-active: var(--gantt-resizer-active);
+
+  /* ===== Spacing ===== */
+  --spacing-gantt-row: 30px;
+  --spacing-gantt-header: 80px;
+  --spacing-gantt-milestone-lane: 40px;
+  --spacing-gantt-bar: 14px;
+  --spacing-gantt-sidebar: 500px;
+  --spacing-gantt-sidebar-min: 300px;
+  --spacing-gantt-sidebar-max: 800px;
+
+  /* ===== Animation ===== */
+  --transition-timing-gantt-fast: 150ms;
+  --transition-timing-gantt-normal: 200ms;
+  --transition-timing-gantt-slow: 300ms;
+}
+
+/* ============================================
+ * 커스텀 유틸리티 클래스
+ * Tailwind @apply로 조합하여 재사용 가능한 클래스
+ * ============================================ */
+@layer utilities {
+  /* ===== Background Colors ===== */
+  .gantt-bg {
+    background-color: var(--gantt-bg-primary);
+  }
+  .gantt-bg-secondary {
+    background-color: var(--gantt-bg-secondary);
+  }
+  .gantt-bg-tertiary {
+    background-color: var(--gantt-bg-tertiary);
+  }
+  .gantt-bg-hover {
+    background-color: var(--gantt-bg-hover);
+  }
+  .gantt-bg-selected {
+    background-color: var(--gantt-bg-selected);
+  }
+
+  /* ===== Text Colors ===== */
+  .gantt-text {
+    color: var(--gantt-text-primary);
+  }
+  .gantt-text-secondary {
+    color: var(--gantt-text-secondary);
+  }
+  .gantt-text-muted {
+    color: var(--gantt-text-muted);
+  }
+  .gantt-text-inverse {
+    color: var(--gantt-text-inverse);
+  }
+
+  /* ===== Border Colors ===== */
+  .gantt-border {
+    border-color: var(--gantt-border);
+  }
+  .gantt-border-light {
+    border-color: var(--gantt-border-light);
+  }
+  .gantt-border-focus {
+    border-color: var(--gantt-border-focus);
+  }
+
+  /* ===== Focus Ring ===== */
+  .gantt-ring-focus {
+    --tw-ring-color: var(--gantt-focus);
+    box-shadow: 0 0 0 2px var(--tw-ring-color);
+  }
+
+  /* ===== SVG Fill ===== */
+  .gantt-fill {
+    fill: var(--gantt-text-primary);
+  }
+  .gantt-fill-secondary {
+    fill: var(--gantt-text-secondary);
+  }
+  .gantt-fill-muted {
+    fill: var(--gantt-text-muted);
+  }
+  .gantt-fill-vermilion {
+    fill: var(--gantt-vermilion);
+  }
+  .gantt-fill-teal {
+    fill: var(--gantt-teal);
+  }
+  .gantt-fill-grid {
+    fill: var(--gantt-grid);
+  }
+
+  /* ===== SVG Stroke ===== */
+  .gantt-stroke-grid {
+    stroke: var(--gantt-grid);
+  }
+  .gantt-stroke-border {
+    stroke: var(--gantt-border);
+  }
+  .gantt-stroke-dependency {
+    stroke: var(--gantt-dependency);
+  }
+  .gantt-stroke-focus {
+    stroke: var(--gantt-focus);
+  }
+
+  /* ===== Interactive States ===== */
+  .gantt-hover-bg {
+    transition: background-color 150ms ease;
+  }
+  .gantt-hover-bg:hover {
+    background-color: var(--gantt-bg-hover);
+  }
+
+  .gantt-focus-visible:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--gantt-focus);
+  }
+
+  /* ===== Compound Utilities (복합 클래스) ===== */
+  
+  /* 간트 행 (Sidebar/Timeline 공통) */
+  .gantt-row {
+    height: 30px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--gantt-border);
+    transition: background-color 150ms ease;
+  }
+  .gantt-row:hover {
+    background-color: var(--gantt-bg-hover);
+  }
+
+  /* 간트 셀 */
+  .gantt-cell {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--gantt-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 간트 입력 필드 */
+  .gantt-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    background-color: var(--gantt-bg-primary);
+    border: 1px solid var(--gantt-border);
+    border-radius: 0.25rem;
+    color: var(--gantt-text-primary);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .gantt-input:focus {
+    outline: none;
+    border-color: var(--gantt-focus);
+    box-shadow: 0 0 0 2px var(--gantt-focus);
+  }
+
+  /* 간트 버튼 (기본) */
+  .gantt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    transition: all 150ms ease;
+    cursor: pointer;
+  }
+  .gantt-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* 간트 버튼 - Primary */
+  .gantt-btn-primary {
+    background-color: var(--gantt-focus);
+    color: var(--gantt-text-inverse);
+    border: none;
+  }
+  .gantt-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  /* 간트 버튼 - Secondary */
+  .gantt-btn-secondary {
+    background-color: var(--gantt-bg-secondary);
+    color: var(--gantt-text-primary);
+    border: 1px solid var(--gantt-border);
+  }
+  .gantt-btn-secondary:hover:not(:disabled) {
+    background-color: var(--gantt-bg-hover);
+  }
+
+  /* ===== Scrollbar Styling ===== */
+  .gantt-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .gantt-scrollbar::-webkit-scrollbar-track {
+    background: var(--gantt-bg-secondary);
+  }
+  .gantt-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--gantt-border-light);
+    border-radius: 4px;
+  }
+  .gantt-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--gantt-text-muted);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+

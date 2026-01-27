@@ -1,0 +1,53 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "useDefineForClassFields": true,
+        "lib": [
+            "ES2020",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "module": "ESNext",
+        "skipLibCheck": true,
+        /* Bundler mode */
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        /* Linting */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "declaration": true,
+        "declarationDir": "./dist",
+        /* Path Aliases */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/lib/*"],
+            "@/components/*": ["src/lib/components/*"],
+            "@/hooks/*": ["src/lib/hooks/*"],
+            "@/utils/*": ["src/lib/utils/*"],
+            "@/types/*": ["src/lib/types/*"],
+            "@/store/*": ["src/lib/store/*"],
+            "@/context/*": ["src/lib/context/*"],
+            "@/services/*": ["src/lib/services/*"]
+        }
+    },
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "src/**/__tests__/**",
+        "src/**/*.test.ts",
+        "src/**/*.spec.ts",
+        "src/test/**"
+    ],
+    "references": [
+        {
+            "path": "./tsconfig.node.json"
+        }
+    ]
+}

@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-vermilion: #E34234;
+  --color-teal: #008080;
+}
+
+@layer utilities {
+  .gantt-grid-row {
+    @apply border-b border-gray-200 hover:bg-gray-50 transition-colors;
+  }
+}
