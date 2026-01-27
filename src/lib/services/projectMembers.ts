@@ -10,6 +10,7 @@ import type {
   AddProjectMemberDTO,
   UpdateProjectMemberRoleDTO,
 } from '@/lib/types';
+import { MemoryCache, SHORT_TTL, createCacheKey } from './cache';
 
 // Database record type with joined profile data
 interface ProjectMemberRecord {
@@ -33,6 +34,47 @@ const USE_MOCK =
 
 // Mock Storage Keys
 const STORAGE_KEY_MEMBERS = 'contech_dx_project_members';
+
+// ============================================
+// 캐시 설정 (1분 TTL - 멤버 정보는 자주 변경될 수 있음)
+// ============================================
+
+/** 프로젝트 멤버 목록 캐시 */
+const membersCache = new MemoryCache<ProjectMember[]>({
+  name: 'project-members',
+  ttl: SHORT_TTL,
+});
+
+/** 멤버십 확인 캐시 */
+const membershipCache = new MemoryCache<boolean>({
+  name: 'membership-check',
+  ttl: SHORT_TTL,
+});
+
+/** 역할 캐시 */
+const roleCache = new MemoryCache<string | null>({
+  name: 'member-role',
+  ttl: SHORT_TTL,
+});
+
+/**
+ * 특정 프로젝트의 멤버 관련 캐시 무효화
+ */
+export function invalidateMemberCache(projectId: string): void {
+  membersCache.invalidate(projectId);
+  // 멤버십/역할 캐시는 패턴 매칭이 어려우므로 전체 무효화
+  membershipCache.invalidateAll();
+  roleCache.invalidateAll();
+}
+
+/**
+ * 전체 멤버 캐시 무효화
+ */
+export function invalidateAllMemberCache(): void {
+  membersCache.invalidateAll();
+  membershipCache.invalidateAll();
+  roleCache.invalidateAll();
+}
 
 // ============================================
 // Mock Storage Functions
@@ -90,6 +132,7 @@ function initializeMockMembers(): void {
 
 /**
  * Get all members of a project
+ * 캐시를 사용하여 DB 부하 감소
  */
 export async function getProjectMembers(
   projectId: string
@@ -100,39 +143,42 @@ export async function getProjectMembers(
     return members.filter((m) => m.project_id === projectId);
   }
 
-  const supabase = createClient();
+  // 캐시에서 먼저 조회
+  return membersCache.getOrFetch(projectId, async () => {
+    const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from('project_members')
-    .select(
+    const { data, error } = await supabase
+      .from('project_members')
+      .select(
+        `
+        *,
+        user:profiles(email, display_name, avatar_url)
       `
-      *,
-      user:profiles(email, display_name, avatar_url)
-    `
-    )
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching project members:', error);
-    initializeMockMembers();
-    const members = getMockMembers();
-    return members.filter((m) => m.project_id === projectId);
-  }
+    if (error) {
+      console.error('Error fetching project members:', error);
+      initializeMockMembers();
+      const members = getMockMembers();
+      return members.filter((m) => m.project_id === projectId);
+    }
 
-  // Transform the joined data
-  return (data as ProjectMemberRecord[]).map((item) => ({
-    id: item.id,
-    project_id: item.project_id,
-    user_id: item.user_id,
-    role: item.role,
-    created_at: item.created_at,
-    user: item.user ? {
-      email: item.user.email,
-      display_name: item.user.display_name,
-      avatar_url: item.user.avatar_url,
-    } : undefined,
-  }));
+    // Transform the joined data
+    return (data as ProjectMemberRecord[]).map((item) => ({
+      id: item.id,
+      project_id: item.project_id,
+      user_id: item.user_id,
+      role: item.role,
+      created_at: item.created_at,
+      user: item.user ? {
+        email: item.user.email,
+        display_name: item.user.display_name,
+        avatar_url: item.user.avatar_url,
+      } : undefined,
+    }));
+  });
 }
 
 /**
@@ -217,6 +263,9 @@ export async function addProjectMember(
     throw new Error(errorMessage);
   }
 
+  // 캐시 무효화 (새 멤버 추가됨)
+  invalidateMemberCache(memberData.project_id);
+
   // Transform the joined data
   const item = data as ProjectMemberRecord;
   return {
@@ -296,6 +345,10 @@ export async function updateProjectMemberRole(
 
   // Transform the joined data
   const item = data as ProjectMemberRecord;
+
+  // 캐시 무효화 (역할 변경됨)
+  invalidateMemberCache(item.project_id);
+
   return {
     id: item.id,
     project_id: item.project_id,
@@ -313,7 +366,7 @@ export async function updateProjectMemberRole(
 /**
  * Remove a member from a project
  */
-export async function removeProjectMember(memberId: string): Promise<void> {
+export async function removeProjectMember(memberId: string, projectId?: string): Promise<void> {
   if (USE_MOCK) {
     const members = getMockMembers();
     const filtered = members.filter((m) => m.id !== memberId);
@@ -323,6 +376,17 @@ export async function removeProjectMember(memberId: string): Promise<void> {
   }
 
   const supabase = createClient();
+
+  // projectId가 제공되지 않은 경우, 삭제 전에 project_id를 조회
+  let targetProjectId = projectId;
+  if (!targetProjectId) {
+    const { data: memberData } = await supabase
+      .from('project_members')
+      .select('project_id')
+      .eq('id', memberId)
+      .single();
+    targetProjectId = memberData?.project_id;
+  }
 
   const { error } = await supabase
     .from('project_members')
@@ -340,7 +404,7 @@ export async function removeProjectMember(memberId: string): Promise<void> {
     });
 
     let errorMessage = '멤버 제거에 실패했습니다.';
-    
+
     if (error.code === '42501') {
       errorMessage = '멤버를 제거할 권한이 없습니다. 프로젝트 생성자 또는 PM만 멤버를 제거할 수 있습니다.';
     } else if (error.message) {
@@ -349,10 +413,19 @@ export async function removeProjectMember(memberId: string): Promise<void> {
 
     throw new Error(errorMessage);
   }
+
+  // 캐시 무효화 (멤버 제거됨)
+  if (targetProjectId) {
+    invalidateMemberCache(targetProjectId);
+  } else {
+    // projectId를 알 수 없는 경우 전체 무효화
+    invalidateAllMemberCache();
+  }
 }
 
 /**
  * Check if a user is a member of a project
+ * 캐시를 사용하여 권한 확인 성능 개선
  */
 export async function isProjectMember(
   projectId: string,
@@ -365,29 +438,34 @@ export async function isProjectMember(
     );
   }
 
-  const supabase = createClient();
+  const cacheKey = createCacheKey('membership', projectId, userId);
 
-  const { data, error } = await supabase
-    .from('project_members')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .single();
+  return membershipCache.getOrFetch(cacheKey, async () => {
+    const supabase = createClient();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // Not found
+    const { data, error } = await supabase
+      .from('project_members')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Not found
+        return false;
+      }
+      console.error('Error checking project membership:', error);
       return false;
     }
-    console.error('Error checking project membership:', error);
-    return false;
-  }
 
-  return !!data;
+    return !!data;
+  });
 }
 
 /**
  * Get a user's role in a project
+ * 캐시를 사용하여 역할 조회 성능 개선
  */
 export async function getUserRoleInProject(
   projectId: string,
@@ -401,24 +479,28 @@ export async function getUserRoleInProject(
     return member?.role || null;
   }
 
-  const supabase = createClient();
+  const cacheKey = createCacheKey('role', projectId, userId);
 
-  const { data, error } = await supabase
-    .from('project_members')
-    .select('role')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .single();
+  return roleCache.getOrFetch(cacheKey, async () => {
+    const supabase = createClient();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      // Not found
+    const { data, error } = await supabase
+      .from('project_members')
+      .select('role')
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Not found
+        return null;
+      }
+      console.error('Error fetching user role:', error);
       return null;
     }
-    console.error('Error fetching user role:', error);
-    return null;
-  }
 
-  return data.role;
+    return data.role;
+  });
 }
 

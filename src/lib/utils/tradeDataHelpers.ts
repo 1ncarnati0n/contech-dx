@@ -6,6 +6,8 @@
 
 import type { TradeData, TradeFieldData } from '@/lib/types';
 
+export type { TradeData, TradeFieldData };
+
 /**
  * TradeData에서 카테고리 데이터 가져오기
  */
@@ -135,8 +137,70 @@ export function setTradeValueByPath(
 }
 
 /**
+ * TradeFieldData의 알려진 키 목록
+ */
+const KNOWN_TRADE_FIELD_KEYS = [
+  'areaM2',
+  'productivity',
+  'productivityM2',
+  'productivityM3',
+  'workers',
+  'cost',
+  'ton',
+  'volumeM3',
+  'wall',
+  'beamSlab',
+] as const;
+
+/**
  * TradeData 타입 가드
+ * 객체가 TradeFieldData의 알려진 키 중 하나라도 포함하는지 확인
  */
 export function isTradeFieldData(value: unknown): value is TradeFieldData {
-  return typeof value === 'object' && value !== null;
+  // 기본 타입 체크
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj);
+
+  // 빈 객체도 유효 (빈 TradeFieldData는 허용)
+  if (keys.length === 0) {
+    return true;
+  }
+
+  // 알려진 키 중 하나라도 포함하는지 확인
+  const hasKnownKey = keys.some((key) =>
+    KNOWN_TRADE_FIELD_KEYS.includes(key as (typeof KNOWN_TRADE_FIELD_KEYS)[number])
+  );
+
+  // 포함된 알려진 키의 값이 number 또는 undefined인지 확인
+  if (hasKnownKey) {
+    for (const key of KNOWN_TRADE_FIELD_KEYS) {
+      const val = obj[key];
+      if (val !== undefined && typeof val !== 'number') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * 값이 TradeData인지 확인하는 타입 가드
+ */
+export function isTradeData(value: unknown): value is TradeData {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  // 모든 값이 TradeFieldData이거나 undefined인지 확인
+  return Object.values(obj).every(
+    (val) => val === undefined || isTradeFieldData(val)
+  );
 }

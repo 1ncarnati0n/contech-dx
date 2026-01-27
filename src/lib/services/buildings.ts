@@ -30,63 +30,30 @@ import {
   deleteFloor as deleteFloorFromStorage,
   deleteFloorTrade as deleteFloorTradeFromStorage,
 } from './mockStorage';
+import { MemoryCache, DEFAULT_TTL } from './cache';
 
 // ============================================
-// TTL 기반 캐시 시스템
+// TTL 기반 캐시 시스템 (통합된 MemoryCache 사용)
 // ============================================
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-/** 캐시 TTL (5분) */
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-/** TTL 기반 메모리 캐시 */
-const buildingsCache = new Map<string, CacheEntry<Building[]>>();
-
-/**
- * 캐시에서 데이터 조회 (TTL 확인)
- */
-function getCacheEntry(projectId: string): Building[] | null {
-  const entry = buildingsCache.get(projectId);
-  if (!entry) return null;
-
-  const isExpired = Date.now() - entry.timestamp > CACHE_TTL_MS;
-  if (isExpired) {
-    buildingsCache.delete(projectId);
-    logger.debug(`Cache expired for project ${projectId}`);
-    return null;
-  }
-
-  return entry.data;
-}
-
-/**
- * 캐시에 데이터 저장
- */
-function setCacheEntry(projectId: string, data: Building[]): void {
-  buildingsCache.set(projectId, {
-    data,
-    timestamp: Date.now(),
-  });
-}
+/** 빌딩 데이터용 캐시 인스턴스 */
+const buildingsCache = new MemoryCache<Building[]>({
+  name: 'buildings',
+  ttl: DEFAULT_TTL,
+});
 
 /**
  * 특정 프로젝트의 캐시 무효화
  */
 export function invalidateCache(projectId: string): void {
-  buildingsCache.delete(projectId);
-  logger.debug(`Cache invalidated for project ${projectId}`);
+  buildingsCache.invalidate(projectId);
 }
 
 /**
  * 전체 캐시 무효화
  */
 export function invalidateAllCache(): void {
-  buildingsCache.clear();
-  logger.debug('All cache invalidated');
+  buildingsCache.invalidateAll();
 }
 
 // ============================================
@@ -278,26 +245,29 @@ function preserveFloorTrades(
 /**
  * 캐시에서 buildings 로드 (TTL 기반)
  * 캐시가 만료되었거나 없으면 스토리지에서 로드
+ * N+1 쿼리 최적화: Promise.all로 병렬 로딩
  */
 async function loadBuildingsWithCache(projectId: string): Promise<Building[]> {
-  // TTL 기반 캐시 확인
-  const cached = getCacheEntry(projectId);
-  if (cached) {
-    logger.debug(`Fetched ${cached.length} buildings from cache for project ${projectId}`);
-    return cached;
-  }
+  // MemoryCache의 getOrFetch를 사용하여 캐시 로직 단순화
+  return buildingsCache.getOrFetch(projectId, async () => {
+    // 스토리지에서 로드
+    const buildings = await loadBuildingsByProject(projectId);
 
-  // 스토리지에서 로드
-  const buildings = await loadBuildingsByProject(projectId);
-  for (const building of buildings) {
-    building.floors = await loadFloorsByBuilding(building.id);
-    building.floorTrades = await loadFloorTradesByBuilding(building.id);
-  }
+    // N+1 쿼리 최적화: 모든 빌딩의 floors와 floorTrades를 병렬로 로드
+    const [floorsResults, tradesResults] = await Promise.all([
+      Promise.all(buildings.map(b => loadFloorsByBuilding(b.id))),
+      Promise.all(buildings.map(b => loadFloorTradesByBuilding(b.id))),
+    ]);
 
-  // TTL 캐시에 저장
-  setCacheEntry(projectId, buildings);
-  logger.debug(`Loaded ${buildings.length} buildings from storage for project ${projectId}`);
-  return buildings;
+    // 결과를 각 빌딩에 할당
+    buildings.forEach((building, index) => {
+      building.floors = floorsResults[index];
+      building.floorTrades = tradesResults[index];
+    });
+
+    logger.debug(`Loaded ${buildings.length} buildings from storage for project ${projectId}`);
+    return buildings;
+  });
 }
 
 // ============================================
@@ -344,7 +314,7 @@ export async function createBuilding(dto: CreateBuildingDTO): Promise<Building> 
   await saveFloors(newBuilding.floors);
 
   // TTL 캐시 업데이트 (타임스탬프 갱신)
-  setCacheEntry(dto.projectId, buildings);
+  buildingsCache.set(dto.projectId, buildings);
 
   logger.debug(`Created building: ${newBuilding.buildingName}`);
   return newBuilding;
@@ -463,7 +433,7 @@ export async function updateBuilding(
   await saveFloorTrades(building.floorTrades);
   
   // 캐시 업데이트
-  setCacheEntry(projectId, buildings);
+  buildingsCache.set(projectId, buildings);
   
   return building;
 }
@@ -476,9 +446,9 @@ export async function deleteBuilding(buildingId: string, projectId: string): Pro
   await deleteBuildingFromStorage(buildingId);
 
   // TTL 캐시 업데이트
-  const buildings = getCacheEntry(projectId) || [];
+  const buildings = buildingsCache.get(projectId) || [];
   const filtered = buildings.filter(b => b.id !== buildingId);
-  setCacheEntry(projectId, filtered);
+  buildingsCache.set(projectId, filtered);
 
   logger.debug(`Deleted building: ${buildingId}`);
 }
@@ -509,7 +479,7 @@ export async function reorderBuildings(
   await saveBuildings(buildings);
   
   // 캐시 업데이트
-  setCacheEntry(projectId, buildings);
+  buildingsCache.set(projectId, buildings);
   
   logger.debug(`Reordered buildings: ${fromIndex} -> ${toIndex}`);
 }
@@ -540,7 +510,7 @@ export async function updateBuildingFloorsAndTrades(
   await saveFloorTrades(floorTrades);
   
   // 캐시 업데이트
-  setCacheEntry(projectId, buildings);
+  buildingsCache.set(projectId, buildings);
   
   logger.debug(`Updated floors and trades for building: ${buildingId}`);
   return building;
@@ -582,7 +552,7 @@ export async function updateFloor(
   await saveFloorToStorage(floor);
   
   // 캐시 업데이트
-  setCacheEntry(projectId, buildings);
+  buildingsCache.set(projectId, buildings);
   
   return floor;
 }
@@ -629,7 +599,7 @@ export async function saveFloorTrade(
   await saveFloorTradeToStorage(floorTrade);
   
   // 캐시 업데이트
-  setCacheEntry(projectId, buildings);
+  buildingsCache.set(projectId, buildings);
   
   return floorTrade;
 }

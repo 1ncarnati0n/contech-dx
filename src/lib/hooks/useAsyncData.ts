@@ -6,7 +6,7 @@
  * loading, error, data 상태를 자동으로 관리
  */
 
-import { useState, useEffect, useCallback, DependencyList } from 'react';
+import { useState, useEffect, useCallback, useRef, DependencyList } from 'react';
 import { logger } from '@/lib/utils/logger';
 
 interface UseAsyncDataOptions<T> {
@@ -33,6 +33,18 @@ interface UseAsyncDataReturn<T> {
   setData: React.Dispatch<React.SetStateAction<T | null>>;
   /** 로딩 상태 직접 설정 */
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+/**
+ * 의존성 배열 비교 헬퍼
+ * 얕은 비교로 deps 변경 여부 확인
+ */
+function depsAreSame(prevDeps: DependencyList, nextDeps: DependencyList): boolean {
+  if (prevDeps.length !== nextDeps.length) return false;
+  for (let i = 0; i < prevDeps.length; i++) {
+    if (!Object.is(prevDeps[i], nextDeps[i])) return false;
+  }
+  return true;
 }
 
 /**
@@ -63,29 +75,47 @@ export function useAsyncData<T>(
   const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<Error | null>(null);
 
+  // 안정적인 fetcher 참조 유지
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+
+  // 안정적인 콜백 참조 유지
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  // deps 변경 추적을 위한 ref
+  const depsRef = useRef(deps);
+  const depsChangedRef = useRef(0);
+
+  // deps가 실제로 변경된 경우에만 카운터 증가
+  if (!depsAreSame(depsRef.current, deps)) {
+    depsRef.current = deps;
+    depsChangedRef.current += 1;
+  }
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await fetcher();
+      const result = await fetcherRef.current();
       setData(result);
-      onSuccess?.(result);
+      onSuccessRef.current?.(result);
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error(String(err));
       setError(errorObj);
       logger.error('useAsyncData fetch error:', errorObj);
-      onError?.(errorObj);
+      onErrorRef.current?.(errorObj);
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher, ...deps]);
+  }, [depsChangedRef.current]); // deps 변경 시에만 새 함수 생성
 
   useEffect(() => {
     if (autoFetch) {
       fetchData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData, autoFetch]);
 
   return {

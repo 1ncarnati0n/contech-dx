@@ -2,27 +2,42 @@
 // "use client" 컴포넌트에서 사용
 
 import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// 싱글톤 패턴: 클라이언트와 리스너를 한 번만 생성
+let supabaseInstance: SupabaseClient | null = null;
+let authListenerInitialized = false;
 
 export function createClient() {
-  const supabase = createBrowserClient(
+  // 기존 인스턴스가 있으면 재사용
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  supabaseInstance = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // 세션 에러 발생 시 자동으로 세션 정리 및 리다이렉트
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'TOKEN_REFRESHED') {
-      // 토큰 갱신 성공
-      console.log('[Auth] Token refreshed successfully');
-    }
+  // 리스너는 한 번만 등록 (중복 방지)
+  if (!authListenerInitialized) {
+    authListenerInitialized = true;
 
-    if (event === 'SIGNED_OUT') {
-      // 로그아웃 시 쿠키 정리
-      console.log('[Auth] User signed out');
-    }
-  });
+    // 세션 에러 발생 시 자동으로 세션 정리 및 리다이렉트
+    supabaseInstance.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') {
+        // 토큰 갱신 성공
+        console.log('[Auth] Token refreshed successfully');
+      }
 
-  return supabase;
+      if (event === 'SIGNED_OUT') {
+        // 로그아웃 시 쿠키 정리
+        console.log('[Auth] User signed out');
+      }
+    });
+  }
+
+  return supabaseInstance;
 }
 
 // 세션 에러 발생 시 세션 정리 헬퍼 함수

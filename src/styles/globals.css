@@ -157,7 +157,84 @@ body::before {
 
 /* Component Styles */
 @layer components {
-  /* Card Component */
+  /* ============================================
+   * 반복 패턴 유틸리티 클래스
+   * 50+ 회 반복되는 Tailwind 패턴을 추출
+   * ============================================ */
+
+  /* 라벨 텍스트 (폼 라벨, 필드명 등) */
+  .label-dark {
+    @apply text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .label-muted {
+    @apply text-sm text-slate-500 dark:text-slate-400;
+  }
+
+  /* 카드 베이스 스타일 */
+  .card-base {
+    @apply bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800;
+  }
+
+  .card-base-hover {
+    @apply bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800;
+    @apply hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm transition-all;
+  }
+
+  /* 인풋 포커스 스타일 (zinc-900/black 강조) */
+  .input-focus {
+    @apply focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900;
+    @apply dark:focus:ring-white/20 dark:focus:border-white;
+  }
+
+  .input-base {
+    @apply w-full px-3 py-2 text-sm rounded-md border border-slate-200 dark:border-slate-700;
+    @apply bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100;
+    @apply placeholder:text-slate-400 dark:placeholder:text-slate-500;
+    @apply focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900;
+    @apply dark:focus:ring-white/20 dark:focus:border-white;
+    @apply transition-colors;
+  }
+
+  /* 아이콘 배지 스타일 (헤더 아이콘용) */
+  .icon-badge {
+    @apply w-8 h-8 rounded-lg bg-zinc-900 dark:bg-white flex items-center justify-center;
+    @apply text-white dark:text-zinc-900;
+  }
+
+  .icon-badge-sm {
+    @apply w-6 h-6 rounded-md bg-zinc-900 dark:bg-white flex items-center justify-center;
+    @apply text-white dark:text-zinc-900;
+  }
+
+  /* 섹션 헤더 스타일 */
+  .section-header {
+    @apply flex items-center gap-3 mb-6;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold text-slate-900 dark:text-white;
+  }
+
+  /* 빈 상태 컨테이너 */
+  .empty-state {
+    @apply text-center py-12 text-slate-500 dark:text-slate-400;
+  }
+
+  /* 테이블 셀 스타일 */
+  .table-cell {
+    @apply px-4 py-3 text-sm text-slate-900 dark:text-slate-100;
+  }
+
+  .table-header-cell {
+    @apply px-4 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider;
+  }
+
+  /* ============================================
+   * 기존 컴포넌트 스타일
+   * ============================================ */
+
+  /* Card Component (zinc 계열 통일) */
   .card {
     @apply bg-white dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800 transition-all duration-200;
   }
@@ -186,9 +263,17 @@ body::before {
   .btn-accent {
     @apply bg-accent-600 text-white border-transparent hover:bg-accent-700 dark:bg-accent-600 dark:hover:bg-accent-500 shadow-sm;
   }
-  
+
   .btn-admin {
     @apply bg-admin-500 text-white border-transparent hover:bg-admin-600 dark:bg-admin-600 dark:hover:bg-admin-500 shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800;
+  }
+
+  .btn-danger {
+    @apply bg-error-600 text-white border-transparent hover:bg-error-700 shadow-sm;
   }
 
   /* Loading Spinner */
