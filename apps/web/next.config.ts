@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   reactStrictMode: true,
+  turbopack: {},
   webpack: (config, { isServer }) => {
     // 클라이언트 번들에서 Node.js 모듈 제외
     if (!isServer) {
