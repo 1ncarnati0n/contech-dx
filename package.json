@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.15.9",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "pnpm --filter @contech/web dev",
     "build": "pnpm --filter @contech/web build",
