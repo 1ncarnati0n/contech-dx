@@ -13,7 +13,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, hover, children, ...props }, ref) => {
     const baseClassName = cn(
       "rounded-md border border-zinc-200 bg-white text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 transition-colors",
-      hover && "hover:border-cyan-400 dark:hover:border-cyan-600",
+      hover && "hover:border-accent-400 dark:hover:border-accent-600",
       className
     );
 

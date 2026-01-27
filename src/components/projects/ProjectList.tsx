@@ -77,12 +77,12 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       {/* Header - 아이콘 배지 스타일 */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-            <FolderKanban className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+          <div className="p-3 bg-white rounded-xl shadow-sm border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
+            <FolderKanban className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">프로젝트</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">프로젝트</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm">
               진행 중인 프로젝트 현황과 공정률을 한눈에 확인하세요.
             </p>
           </div>
@@ -90,7 +90,7 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
 
         <Button
           onClick={handleCreateClick}
-          className="gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30 transition-all"
+          className="gap-2 bg-zinc-900 hover:bg-black dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30 transition-all"
         >
           <Plus className="w-4 h-4" />
           새 프로젝트
@@ -101,23 +101,23 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         {/* Search */}
         <div className="flex-1 relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 dark:group-focus-within:text-white transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors" />
           <input
             type="text"
             placeholder="프로젝트명, 위치, 발주처 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 dark:focus:ring-white/20 dark:focus:border-white transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 dark:focus:ring-white/20 dark:focus:border-white transition-all shadow-sm"
           />
         </div>
 
         {/* Status Filter */}
         <div className="relative min-w-[180px]">
-          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | 'all')}
-            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 dark:focus:ring-white/20 dark:focus:border-white transition-all shadow-sm cursor-pointer"
+            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 dark:focus:ring-white/20 dark:focus:border-white transition-all shadow-sm cursor-pointer"
           >
             <option value="all">모든 상태</option>
             {statusOptions.map((option) => (
@@ -127,7 +127,7 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
             ))}
           </select>
           <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
@@ -136,8 +136,8 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
 
       {/* 검색 결과 카운트 */}
       {!loading && (
-        <div className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          총 <span className="font-semibold text-slate-700 dark:text-slate-300">{filteredProjects.length}</span>개의 프로젝트
+        <div className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+          총 <span className="font-semibold text-zinc-700 dark:text-zinc-300">{filteredProjects.length}</span>개의 프로젝트
           {(searchQuery || statusFilter !== 'all') && projects && (
             <span className="ml-1">(전체 {projects.length}개 중)</span>
           )}
@@ -163,15 +163,15 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       ) : filteredProjects.length === 0 ? (
         <Card className="p-16 text-center border-dashed border-2">
           <div className="flex flex-col items-center gap-3">
-            <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <FolderKanban className="w-8 h-8 text-slate-400" />
+            <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+              <FolderKanban className="w-8 h-8 text-zinc-400" />
             </div>
-            <p className="text-slate-600 dark:text-slate-400 font-medium">
+            <p className="text-zinc-600 dark:text-zinc-400 font-medium">
               {searchQuery || statusFilter !== 'all'
                 ? '검색 결과가 없습니다.'
                 : '프로젝트가 없습니다.'}
             </p>
-            <p className="text-slate-400 dark:text-slate-500 text-sm">
+            <p className="text-zinc-400 dark:text-zinc-500 text-sm">
               {searchQuery || statusFilter !== 'all'
                 ? '다른 검색어나 필터를 시도해보세요.'
                 : '새 프로젝트를 생성해서 시작하세요!'}

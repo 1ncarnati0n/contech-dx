@@ -607,16 +607,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   }, [processRows]);
 
   return (
-    <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Calendar className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">지하층 공정계획</h2>
-        </div>
-        <p className="text-slate-600 dark:text-slate-400">
-          지하층 공정계획을 입력하고 관리합니다. 산정된 일수는 간트차트에서 활용됩니다.
-        </p>
-      </div>
+    <div className="space-y-6">
 
       {/* 가설공사 흙막이 토공사 공사일수 입력창 - 동별 구분 탭 위에 표시 */}
       {buildings.length > 0 && activeBuilding && (() => {

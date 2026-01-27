@@ -10,7 +10,6 @@ import {
   CalendarDays,
   Clock,
   Rocket,
-  ChevronRight,
   Workflow,
   Link2,
   Undo2,
@@ -55,7 +54,7 @@ interface FeatureItemProps {
 function FeatureItem({ icon, text }: FeatureItemProps) {
   return (
     <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-      <span className="text-cyan-500">{icon}</span>
+      <span className="text-accent-500">{icon}</span>
       <span>{text}</span>
     </div>
   );
@@ -165,7 +164,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
     return (
       <div className="w-full h-full flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent-500" />
           <span className="text-zinc-500 dark:text-zinc-400">간트차트 데이터 로딩 중...</span>
         </div>
       </div>
@@ -187,25 +186,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
   }
 
   return (
-    <div className="w-full h-full p-6 space-y-6 overflow-auto">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">📊 간트차트</h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            프로젝트 공정 현황을 한눈에 확인하세요
-          </p>
-        </div>
-        <button
-          onClick={handleOpenFullscreen}
-          className="flex items-center gap-2 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
-        >
-          <Rocket className="w-4 h-4" />
-          간트앱 열기
-          <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-
+    <div className="space-y-6">
       {/* 통계 카드 그리드 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -245,8 +226,8 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
       {/* CTA 영역 */}
       <div className="bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-800/50 dark:to-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-700 p-8">
         <div className="flex flex-col items-center text-center space-y-6">
-          <div className="w-16 h-16 bg-cyan-100 dark:bg-cyan-900/30 rounded-full flex items-center justify-center">
-            <Rocket className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
+          <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900/20 rounded-full flex items-center justify-center">
+            <Rocket className="w-8 h-8 text-accent-600 dark:text-accent-400" />
           </div>
 
           <div className="space-y-2">
@@ -260,7 +241,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
 
           <button
             onClick={handleOpenFullscreen}
-            className="flex items-center gap-2 px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            className="flex items-center gap-2 px-8 py-3 bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
           >
             <Rocket className="w-5 h-5" />
             간트앱 열기

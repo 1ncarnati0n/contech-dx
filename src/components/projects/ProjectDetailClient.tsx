@@ -10,6 +10,15 @@ import {
   Edit,
   Trash2,
   Settings,
+  LayoutDashboard,
+  Calculator,
+  Database,
+  Package,
+  Layers,
+  BarChart3,
+  Users,
+  FileText,
+  type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card } from '@/components/ui';
@@ -43,6 +52,42 @@ const TAB_TITLES: Record<string, string> = {
   team: '팀 관리',
   documents: '문서 관리',
   settings: '설정',
+};
+
+// 탭별 설명 매핑
+const TAB_DESCRIPTIONS: Record<string, string> = {
+  overview: '',
+  pouring_section_review: '콘크리트 물량과 동수를 기반으로 타설구간을 개략 검토합니다.',
+  data_input: '각 동의 기본 정보와 층 구성을 입력합니다.',
+  quantity_input: '층별/공종별 물량 데이터를 입력합니다.',
+  detailed_quantity_input: '상세 물량 데이터를 입력합니다.',
+  geological_data: '지질 조사 데이터를 입력합니다.',
+  planned_unit_rate: '계획 단가를 입력합니다.',
+  executed_unit_rate: '실행 단가를 입력합니다.',
+  building_process_plan: '동별 공정계획을 수립하고 일수를 계산합니다.',
+  basement_process_plan: '지하층 공정계획을 수립하고 일수를 계산합니다.',
+  gantt_chart: '프로젝트 공정 현황을 한눈에 확인하세요.',
+  team: '프로젝트에 참여하는 팀원을 관리합니다.',
+  documents: '프로젝트 문서를 관리합니다.',
+  settings: '프로젝트 설정을 관리합니다.',
+};
+
+// 탭별 아이콘 매핑
+const TAB_ICONS: Record<string, LucideIcon> = {
+  overview: LayoutDashboard,
+  pouring_section_review: Calculator,
+  data_input: Database,
+  quantity_input: Package,
+  detailed_quantity_input: Package,
+  geological_data: Layers,
+  planned_unit_rate: DollarSign,
+  executed_unit_rate: DollarSign,
+  building_process_plan: Calendar,
+  basement_process_plan: Calendar,
+  gantt_chart: BarChart3,
+  team: Users,
+  documents: FileText,
+  settings: Settings,
 };
 
 export function ProjectDetailClient({ project: initialProject }: Props) {
@@ -113,38 +158,40 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         onTabChange={handleTabChange}
       />
 
-      <div
-        className={`flex-1 flex flex-col h-full transition-all duration-300 ${
-          sidebarCollapsed ? 'ml-16' : 'ml-72'
-        }`}
-      >
+      <div className="flex-1 flex flex-col h-full ml-16">
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
-          {/* Page Title */}
-          <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-2">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {TAB_TITLES[activeTab] || ''}
-            </h1>
-          </div>
-          {activeTab === 'overview' && (
-            <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
-              {/* Project Header Card */}
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {project.name}
-                    </h2>
-                    <span
-                      className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColors(project.status)}`}
-                    >
-                      {getStatusLabel(project.status)}
-                    </span>
-                  </div>
-                  {project.description && (
-                    <p className="text-gray-600 dark:text-gray-400">{project.description}</p>
-                  )}
+          <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+            {/* 공통 헤더 - 아이콘 배지 스타일 */}
+            <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white rounded-xl shadow-sm border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800">
+                  {(() => {
+                    const Icon = TAB_ICONS[activeTab] || LayoutDashboard;
+                    return <Icon className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />;
+                  })()}
                 </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+                      {TAB_TITLES[activeTab] || ''}
+                    </h1>
+                    {activeTab === 'overview' && (
+                      <span
+                        className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColors(project.status)}`}
+                      >
+                        {getStatusLabel(project.status)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+                    {activeTab === 'overview' && project.description
+                      ? project.description
+                      : TAB_DESCRIPTIONS[activeTab] || ''}
+                  </p>
+                </div>
+              </div>
+              {activeTab === 'overview' && (
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -166,53 +213,57 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                     {isDeleting ? '삭제 중...' : '삭제'}
                   </Button>
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Project Info Cards */}
+            {/* 탭별 콘텐츠 */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Project Info Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="p-4 flex items-start gap-3">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <MapPin className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-accent-50 dark:bg-accent-900/20 rounded-lg">
+                    <MapPin className="w-5 h-5 text-accent-600 dark:text-accent-400" />
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">위치</div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-white break-words">
+                    <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">위치</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white break-words">
                       {project.location || '-'}
                     </div>
                   </div>
                 </Card>
 
                 <Card className="p-4 flex items-start gap-3">
-                  <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  <div className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                    <Building2 className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">발주처</div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                    <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">발주처</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
                       {project.client || '-'}
                     </div>
                   </div>
                 </Card>
 
                 <Card className="p-4 flex items-start gap-3">
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                    <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="p-2 bg-success-50 dark:bg-success-900/20 rounded-lg">
+                    <DollarSign className="w-5 h-5 text-success-600 dark:text-success-400" />
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">계약금액</div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                    <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">계약금액</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">
                       {formatCurrency(project.contract_amount, { notation: 'standard' })}
                     </div>
                   </div>
                 </Card>
 
                 <Card className="p-4 flex items-start gap-3">
-                  <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                    <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  <div className="p-2 bg-admin-50 dark:bg-admin-900/20 rounded-lg">
+                    <Calendar className="w-5 h-5 text-admin-600 dark:text-admin-400" />
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">공사기간</div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                    <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">공사기간</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">
                       {formatDate(project.start_date, 'long')}
                       {project.end_date && (
                         <>
@@ -232,87 +283,70 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           )}
 
 
-          {activeTab === 'pouring_section_review' && (
-            <PouringSectionReviewPage projectId={project.id} />
-          )}
+            {activeTab === 'pouring_section_review' && (
+              <PouringSectionReviewPage projectId={project.id} />
+            )}
 
-          {activeTab === 'data_input' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            {activeTab === 'data_input' && (
               <BuildingBasicInfoPage projectId={project.id} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'quantity_input' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            {activeTab === 'quantity_input' && (
               <QuantityInputPage projectId={project.id} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'detailed_quantity_input' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            {activeTab === 'detailed_quantity_input' && (
               <DetailedQuantityInputPage projectId={project.id} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'geological_data' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            {activeTab === 'geological_data' && (
               <GeologicalDataPage projectId={project.id} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'planned_unit_rate' && (
-            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
-              <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                  <DollarSign className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            {activeTab === 'planned_unit_rate' && (
+              <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
+                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+                  <DollarSign className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
                 </div>
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">단가 입력</h3>
                 <p className="text-sm">단가 입력 기능은 준비 중입니다.</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'executed_unit_rate' && (
-            <div className="space-y-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
-              <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
-                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                  <DollarSign className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            {activeTab === 'executed_unit_rate' && (
+              <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
+                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+                  <DollarSign className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
                 </div>
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">실행 단가</h3>
                 <p className="text-sm">실행 단가 기능은 준비 중입니다.</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'building_process_plan' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            {activeTab === 'building_process_plan' && (
               <BuildingProcessPlanPage projectId={project.id} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'basement_process_plan' && (
-            <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            {activeTab === 'basement_process_plan' && (
               <BasementProcessPlanPage projectId={project.id} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'gantt_chart' && (
-            <GanttChartPage projectId={project.id} projectNumber={project.project_number} />
-          )}
+            {activeTab === 'gantt_chart' && (
+              <GanttChartPage projectId={project.id} projectNumber={project.project_number} />
+            )}
 
-          {activeTab === 'team' && (
-            <ProjectTeamPage projectId={project.id} projectCreatedBy={project.created_by} />
-          )}
+            {activeTab === 'team' && (
+              <ProjectTeamPage projectId={project.id} projectCreatedBy={project.created_by} />
+            )}
 
-          {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                <Settings className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
+              <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
+                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+                  <Settings className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
+                </div>
+                <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-1">준비 중인 기능입니다</h3>
+                <p className="text-sm">해당 메뉴는 아직 개발 중입니다.</p>
               </div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">준비 중인 기능입니다</h3>
-              <p className="text-sm">해당 메뉴는 아직 개발 중입니다.</p>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
 

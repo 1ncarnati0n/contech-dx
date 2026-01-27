@@ -41,7 +41,7 @@ export default function NavBarContent({ user, profile, isAdmin }: NavBarContentP
                                     className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 hover:text-accent-600 dark:hover:text-accent-400 hover:bg-accent-50 dark:hover:bg-accent-900/20 px-3 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                     <FolderKanban className="w-4 h-4" />
-                                    공정계획
+                                    프로젝트
                                 </Link>
                                 <Link
                                     href="/file-search"

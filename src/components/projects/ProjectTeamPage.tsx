@@ -29,11 +29,11 @@ const ROLE_LABELS: Record<ProjectMemberRole, string> = {
 };
 
 const ROLE_COLORS: Record<ProjectMemberRole, string> = {
-  pm: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  engineer: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  supervisor: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-  worker: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  member: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  pm: 'bg-admin-100 text-admin-700 dark:bg-admin-900/30 dark:text-admin-300',
+  engineer: 'bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-300',
+  supervisor: 'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300',
+  worker: 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300',
+  member: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
 };
 
 export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPageProps) {
@@ -113,24 +113,16 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-slate-400">로딩 중...</div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-zinc-400">로딩 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">팀 멤버</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            프로젝트에 참여하는 팀원을 관리합니다.
-          </p>
-        </div>
+    <div className="space-y-6 max-w-5xl">
+      {/* 멤버 추가 버튼 */}
+      <div className="flex justify-end">
         <Button onClick={() => setIsAddModalOpen(true)} className="gap-2">
           <UserPlus className="w-4 h-4" />
           멤버 추가
@@ -140,11 +132,11 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
       {/* Members List */}
       {members.length === 0 ? (
         <Card className="p-12 text-center">
-          <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+          <Users className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-zinc-900 dark:text-white mb-2">
             멤버가 없습니다
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
             프로젝트에 멤버를 추가하여 협업을 시작하세요.
           </p>
           <Button onClick={() => setIsAddModalOpen(true)} variant="outline" className="gap-2">
@@ -163,7 +155,7 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
                     {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
                       {member.user?.avatar_url ? (
                         <img
                           src={member.user.avatar_url}
@@ -171,7 +163,7 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
                           className="w-10 h-10 rounded-full"
                         />
                       ) : (
-                        <span className="text-slate-600 dark:text-slate-300 font-medium">
+                        <span className="text-zinc-600 dark:text-zinc-300 font-medium">
                           {(member.user?.display_name || member.user?.email || 'U')[0].toUpperCase()}
                         </span>
                       )}
@@ -180,7 +172,7 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-slate-900 dark:text-white truncate">
+                        <h3 className="font-medium text-zinc-900 dark:text-white truncate">
                           {member.user?.display_name || member.user?.email || '알 수 없음'}
                         </h3>
                         {isCreator && (
@@ -190,7 +182,7 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">
                         {member.user?.email}
                       </p>
                     </div>
@@ -204,7 +196,7 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
                             handleUpdateRole(member.id, e.target.value as ProjectMemberRole)
                           }
                           onBlur={() => setEditingMemberId(null)}
-                          className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          className="px-3 py-1.5 text-sm border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                           autoFocus
                         >
                           {Object.entries(ROLE_LABELS).map(([value, label]) => (

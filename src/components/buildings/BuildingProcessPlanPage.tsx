@@ -1287,20 +1287,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   }, [processRows]);
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-      {/* 헤더 - 아이콘 배지 스타일 */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-          <Calendar className="w-6 h-6 text-slate-700 dark:text-slate-300" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">동별 공정계획</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            동별 주요정보와 구분별 공정일수를 한눈에 확인하고 관리합니다.
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       {/* 통계 카드 섹션 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* 전체 동 수 */}

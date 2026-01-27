@@ -50,46 +50,33 @@ export function PouringSectionReviewPage({ projectId }: Props) {
   };
 
   return (
-    <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8 py-6">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <Calculator className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">타설구간 개략검토</h2>
-          </div>
-
-          {/* 모드 전환 버튼 */}
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('simple')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'simple'
-                  ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Simple
-            </button>
-            <button
-              onClick={() => setViewMode('visual')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'visual'
-                  ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Map className="w-4 h-4" />
-              Visual
-            </button>
-          </div>
+    <div className="space-y-6">
+      {/* 모드 전환 버튼 */}
+      <div className="flex justify-end">
+        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('simple')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'simple'
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Simple
+          </button>
+          <button
+            onClick={() => setViewMode('visual')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'visual'
+                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <Map className="w-4 h-4" />
+            Visual
+          </button>
         </div>
-        <p className="text-slate-600 dark:text-slate-400">
-          {viewMode === 'simple'
-            ? '동 기초 타설량과 동 개수를 입력하여 타설구간을 산정합니다.'
-            : 'IFC 모델을 업로드하여 3D 뷰어로 확인합니다.'}
-        </p>
       </div>
 
       {/* Simple 모드 */}
