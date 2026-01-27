@@ -443,6 +443,91 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     }
   }, [setAppState, recalculateCPData, dataService]);
 
+  // 태스크 그룹화 핸들러 (선택된 태스크들을 새 GROUP으로 묶기)
+  const handleTaskGroup = useCallback(async (taskIds: string[]) => {
+    try {
+      setAppState(prev => {
+        // 선택된 태스크들 찾기
+        const selectedTasks = prev.tasks.filter(t => taskIds.includes(t.id));
+        if (selectedTasks.length < 1) return prev;
+
+        // 선택된 태스크들이 같은 부모를 가지는지 확인
+        const parentIds = new Set(selectedTasks.map(t => t.parentId));
+        const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+
+        // 새 GROUP 생성
+        const newGroupId = `group-${Date.now()}`;
+        const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+        const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+
+        const newGroup: ConstructionTask = {
+          id: newGroupId,
+          parentId: commonParentId,
+          wbsLevel: selectedTasks[0].wbsLevel,
+          type: 'GROUP',
+          name: '새 그룹',
+          startDate: minStart,
+          endDate: maxEnd,
+          dependencies: [],
+        };
+
+        // 선택된 태스크들의 parentId를 새 그룹으로 변경
+        let newTasks = prev.tasks.map(t => {
+          if (taskIds.includes(t.id)) {
+            return { ...t, parentId: newGroupId };
+          }
+          return t;
+        });
+
+        // 첫 번째 선택된 태스크 위치에 GROUP 삽입
+        const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
+        newTasks.splice(firstSelectedIndex, 0, newGroup);
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      toast.success('그룹이 생성되었습니다.');
+    } catch (error) {
+      console.error('Failed to group tasks:', error);
+      toast.error('그룹화 실패');
+    }
+  }, [setAppState]);
+
+  // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
+  const handleTaskUngroup = useCallback(async (groupId: string) => {
+    try {
+      setAppState(prev => {
+        const group = prev.tasks.find(t => t.id === groupId);
+        if (!group || group.type !== 'GROUP') return prev;
+
+        // 그룹의 자식들 찾기
+        const children = prev.tasks.filter(t => t.parentId === groupId);
+        if (children.length === 0) {
+          // 자식이 없으면 그룹만 삭제
+          return { ...prev, tasks: prev.tasks.filter(t => t.id !== groupId) };
+        }
+
+        // 자식들의 parentId를 그룹의 parentId로 변경
+        let newTasks = prev.tasks.map(t => {
+          if (t.parentId === groupId) {
+            return { ...t, parentId: group.parentId };
+          }
+          return t;
+        });
+
+        // 그룹 삭제
+        newTasks = newTasks.filter(t => t.id !== groupId);
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      toast.success('그룹이 해제되었습니다.');
+    } catch (error) {
+      console.error('Failed to ungroup tasks:', error);
+      toast.error('그룹 해제 실패');
+    }
+  }, [setAppState]);
+
   // 그룹 드래그 핸들러
   const handleGroupDrag = useCallback(async (result: GroupDragResult) => {
     if (!result.taskUpdates) return;
@@ -739,6 +824,8 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
           onTaskUpdate={handleTaskUpdate}
           onTaskCreate={handleTaskCreate}
           onTaskDelete={handleTaskDelete}
+          onTaskGroup={handleTaskGroup}
+          onTaskUngroup={handleTaskUngroup}
           onViewChange={handleViewChange}
           onGroupDrag={handleGroupDrag}
           onMilestoneCreate={handleMilestoneCreate}
