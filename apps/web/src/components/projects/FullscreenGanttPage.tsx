@@ -230,9 +230,23 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   // 저장 핸들러
   const handleSave = useCallback(async () => {
     if (!hasUnsavedChanges) return;
+
+    // 안전 장치: 데이터가 비어있으면 저장하지 않음
+    if (tasks.length === 0) {
+      console.warn('[handleSave] Tasks array is empty. Skipping save to prevent data loss.');
+      toast.error('저장할 데이터가 없습니다. 데이터 로드 상태를 확인하세요.');
+      return;
+    }
+
     setSaveStatus('saving');
 
     try {
+      console.log('[handleSave] Saving data:', {
+        tasks: tasks.length,
+        milestones: milestones.length,
+        dependencies: anchorDependencies.length,
+      });
+
       await dataService.saveAll({
         tasks,
         milestones,

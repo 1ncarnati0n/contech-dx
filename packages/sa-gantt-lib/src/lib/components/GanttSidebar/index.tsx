@@ -9,6 +9,8 @@ import {
 import { GanttSidebarContextMenu } from '../GanttSidebarContextMenu';
 import { GanttSidebarNewTaskForm } from '../GanttSidebarNewTaskForm';
 import { GanttSidebarNewCPForm } from '../GanttSidebarNewCPForm';
+import { GanttSidebarNewCPFormUnified } from '../GanttSidebarNewCPFormUnified';
+import { GanttSidebarNewTaskFormUnified } from '../GanttSidebarNewTaskFormUnified';
 
 // Sub-components
 import { SidebarHeader } from './SidebarHeader';
@@ -376,39 +378,66 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             }
 
             if (viewMode === 'UNIFIED') {
-                return rowData.map((row) => {
-                    const task = tasks[row.index];
-                    if (!task) return null;
+                return (
+                    <>
+                        {rowData.map((row) => {
+                            const task = tasks[row.index];
+                            if (!task) return null;
 
-                    const isCP = task.type === 'CP';
-                    const isGroup = task.type === 'GROUP';
-                    const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
-                    const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
-                    const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
+                            const isCP = task.type === 'CP';
+                            const isGroup = task.type === 'GROUP';
+                            const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
+                            const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
+                            const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
 
-                    return (
-                        <SidebarRowUnified
-                            key={row.key}
-                            task={task}
-                            rowIndex={row.index}
-                            rowStart={row.start}
-                            isDragging={draggedTaskId === task.id}
-                            isDragOver={dragOverTaskId === task.id}
-                            isSelected={selectedTaskIds.has(task.id)}
-                            isFocused={focusedTaskId === task.id}
-                            isExpanded={expandedIds.has(task.id)}
-                            canExpand={canExpand}
-                            indent={getUnifiedDepth(task) * 16}
-                            isGroup={isGroup && !isBlock}
-                            isCP={isCP}
-                            isBlock={isBlock}
-                            rowHeight={row.size}
-                            onTaskClick={onTaskClick}
-                            onTaskDoubleClick={onTaskDoubleClick}
-                            {...sharedRowProps}
-                        />
-                    );
-                });
+                            return (
+                                <SidebarRowUnified
+                                    key={row.key}
+                                    task={task}
+                                    rowIndex={row.index}
+                                    rowStart={row.start}
+                                    isDragging={draggedTaskId === task.id}
+                                    isDragOver={dragOverTaskId === task.id}
+                                    isSelected={selectedTaskIds.has(task.id)}
+                                    isFocused={focusedTaskId === task.id}
+                                    isExpanded={expandedIds.has(task.id)}
+                                    canExpand={canExpand}
+                                    indent={getUnifiedDepth(task) * 16}
+                                    isGroup={isGroup && !isBlock}
+                                    isCP={isCP}
+                                    isBlock={isBlock}
+                                    rowHeight={row.size}
+                                    onTaskClick={onTaskClick}
+                                    onTaskDoubleClick={onTaskDoubleClick}
+                                    {...sharedRowProps}
+                                />
+                            );
+                        })}
+                        {isAddingCP && (
+                            <GanttSidebarNewCPFormUnified
+                                columns={columns}
+                                tasks={tasks}
+                                onTaskCreate={onTaskCreate}
+                                onCancel={onCancelAddCP || (() => { })}
+                                isVirtualized={isVirtualized}
+                                virtualRowIndex={tasks.length}
+                                dragHandleWidth={dragHandleWidth}
+                            />
+                        )}
+                        {isAddingTask && (
+                            <GanttSidebarNewTaskFormUnified
+                                columns={columns}
+                                tasks={tasks}
+                                activeCPId={activeCPId}
+                                onTaskCreate={onTaskCreate}
+                                onCancel={onCancelAddTask || (() => { })}
+                                isVirtualized={isVirtualized}
+                                virtualRowIndex={tasks.length}
+                                dragHandleWidth={dragHandleWidth}
+                            />
+                        )}
+                    </>
+                );
             }
 
             // DETAIL View

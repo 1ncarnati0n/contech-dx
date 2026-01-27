@@ -212,6 +212,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                         CP 추가 중... (Enter 저장 / Esc 취소)
                     </span>
                 )}
+                {isAddingTask && (
+                    <span className="text-xs italic" style={{ color: 'var(--gantt-text-muted)' }}>
+                        Task 추가 중... (Enter 저장 / Esc 취소)
+                    </span>
+                )}
             </div>
 
             {/* 중앙: 통합뷰 + 펼치기/접기 + Focusing 버튼 + 줌 컨트롤 + 기준일 */}

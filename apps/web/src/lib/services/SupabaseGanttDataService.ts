@@ -6,6 +6,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import { format } from 'date-fns';
 import type {
   DataService,
   GanttData,
@@ -75,8 +76,28 @@ interface GanttDependencyRow {
  * 날짜가 하루 밀릴 수 있음. 이 함수는 로컬 시간대 자정으로 파싱하여
  * 어떤 timezone에서도 동일한 날짜(요일)를 보장합니다.
  */
-function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
+function parseLocalDate(dateStr: string | null | undefined): Date {
+  if (!dateStr) {
+    console.warn('[parseLocalDate] Empty date string, using current date');
+    return new Date();
+  }
+
+  // ISO 문자열에서 날짜 부분만 추출 (T 이전 부분)
+  const datePart = String(dateStr).split('T')[0];
+  const parts = datePart.split('-');
+
+  if (parts.length !== 3) {
+    console.warn('[parseLocalDate] Invalid date format:', dateStr);
+    return new Date();
+  }
+
+  const [year, month, day] = parts.map(Number);
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    console.warn('[parseLocalDate] Invalid date numbers:', dateStr);
+    return new Date();
+  }
+
   return new Date(year, month - 1, day); // 월은 0-based
 }
 
@@ -105,6 +126,16 @@ function taskToRow(
   task: ConstructionTask,
   projectId: string
 ): Omit<GanttTaskRow, 'created_at' | 'updated_at'> {
+  // format()은 로컬 시간대 기준으로 날짜를 출력
+  // toISOString()은 UTC 기준이라 timezone에 따라 날짜가 밀릴 수 있음
+  // Date 객체가 아닌 경우도 안전하게 처리
+  const startDateStr = task.startDate instanceof Date
+    ? format(task.startDate, 'yyyy-MM-dd')
+    : String(task.startDate).split('T')[0];
+  const endDateStr = task.endDate instanceof Date
+    ? format(task.endDate, 'yyyy-MM-dd')
+    : String(task.endDate).split('T')[0];
+
   return {
     id: task.id,
     project_id: projectId,
@@ -112,8 +143,8 @@ function taskToRow(
     wbs_level: task.wbsLevel,
     type: task.type,
     name: task.name,
-    start_date: task.startDate.toISOString().split('T')[0],
-    end_date: task.endDate.toISOString().split('T')[0],
+    start_date: startDateStr,
+    end_date: endDateStr,
     cp_data: task.cp || null,
     task_data: task.task || null,
     group_data: task.group || null,
@@ -137,10 +168,15 @@ function milestoneToRow(
   milestone: Milestone,
   projectId: string
 ): Omit<GanttMilestoneRow, 'created_at' | 'updated_at'> {
+  // Date 객체가 아닌 경우도 안전하게 처리
+  const dateStr = milestone.date instanceof Date
+    ? format(milestone.date, 'yyyy-MM-dd')
+    : String(milestone.date).split('T')[0];
+
   return {
     id: milestone.id,
     project_id: projectId,
-    date: milestone.date.toISOString().split('T')[0],
+    date: dateStr,
     name: milestone.name,
     description: milestone.description || null,
     milestone_type: milestone.milestoneType || 'MASTER',
@@ -184,7 +220,8 @@ export class SupabaseGanttDataService implements DataService {
 
   constructor(projectId: string, options?: { debug?: boolean }) {
     this.projectId = projectId;
-    this.debug = options?.debug ?? false;
+    // TODO: 디버깅 완료 후 false로 변경
+    this.debug = options?.debug ?? true;
   }
 
   private log(...args: unknown[]) {
@@ -210,13 +247,41 @@ export class SupabaseGanttDataService implements DataService {
       throw error;
     }
 
-    return (data || []).map(rowToTask);
+    this.log('loadTasks raw data count:', data?.length || 0);
+
+    const tasks = (data || []).map((row, index) => {
+      try {
+        return rowToTask(row);
+      } catch (e) {
+        console.error(`Failed to parse task at index ${index}:`, row, e);
+        return null;
+      }
+    }).filter((t): t is ConstructionTask => t !== null);
+
+    this.log('loadTasks parsed count:', tasks.length);
+    return tasks;
   }
 
   async saveTasks(tasks: ConstructionTask[]): Promise<void> {
     this.log('saveTasks', tasks.length);
 
-    // 기존 태스크 삭제 후 새로 삽입 (전체 교체)
+    // 안전 장치: 빈 배열로 저장하려고 하면 경고 후 중단
+    // (실수로 데이터를 삭제하는 것을 방지)
+    if (tasks.length === 0) {
+      console.warn('[saveTasks] Attempted to save empty tasks array. Skipping to prevent data loss.');
+      console.warn('[saveTasks] If you really want to delete all tasks, use a dedicated delete method.');
+      return;
+    }
+
+    // 먼저 삽입할 데이터 준비 (에러 발생 시 삭제 전에 실패)
+    const rows = tasks.map((task, index) => ({
+      ...taskToRow(task, this.projectId),
+      sort_order: index,
+    }));
+
+    this.log('saveTasks rows prepared:', rows.length);
+
+    // 기존 태스크 삭제
     const { error: deleteError } = await this.supabase
       .from('gantt_tasks')
       .delete()
@@ -227,13 +292,7 @@ export class SupabaseGanttDataService implements DataService {
       throw deleteError;
     }
 
-    if (tasks.length === 0) return;
-
-    const rows = tasks.map((task, index) => ({
-      ...taskToRow(task, this.projectId),
-      sort_order: index,
-    }));
-
+    // 새 태스크 삽입
     const { error: insertError } = await this.supabase
       .from('gantt_tasks')
       .insert(rows);
@@ -242,6 +301,8 @@ export class SupabaseGanttDataService implements DataService {
       console.error('Failed to insert tasks:', insertError);
       throw insertError;
     }
+
+    this.log('saveTasks completed successfully');
   }
 
   async updateTask(
@@ -253,10 +314,17 @@ export class SupabaseGanttDataService implements DataService {
     const updateData: Record<string, unknown> = {};
 
     if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.startDate !== undefined)
-      updateData.start_date = updates.startDate.toISOString().split('T')[0];
-    if (updates.endDate !== undefined)
-      updateData.end_date = updates.endDate.toISOString().split('T')[0];
+    // Date 객체인 경우에만 format 호출 (문자열이 전달될 수 있음)
+    if (updates.startDate !== undefined) {
+      updateData.start_date = updates.startDate instanceof Date
+        ? format(updates.startDate, 'yyyy-MM-dd')
+        : String(updates.startDate).split('T')[0];
+    }
+    if (updates.endDate !== undefined) {
+      updateData.end_date = updates.endDate instanceof Date
+        ? format(updates.endDate, 'yyyy-MM-dd')
+        : String(updates.endDate).split('T')[0];
+    }
     if (updates.parentId !== undefined) updateData.parent_id = updates.parentId;
     if (updates.wbsLevel !== undefined) updateData.wbs_level = updates.wbsLevel;
     if (updates.type !== undefined) updateData.type = updates.type;
@@ -268,6 +336,8 @@ export class SupabaseGanttDataService implements DataService {
     if (updates.isExpanded !== undefined)
       updateData.is_expanded = updates.isExpanded;
 
+    this.log('updateTask updateData:', updateData);
+
     const { data, error } = await this.supabase
       .from('gantt_tasks')
       .update(updateData)
@@ -277,7 +347,7 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to update task:', error);
+      console.error('Failed to update task:', error.message, error.code, error.details, error.hint);
       return null;
     }
 
@@ -381,8 +451,11 @@ export class SupabaseGanttDataService implements DataService {
     const updateData: Record<string, unknown> = {};
 
     if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.date !== undefined)
-      updateData.date = updates.date.toISOString().split('T')[0];
+    if (updates.date !== undefined) {
+      updateData.date = updates.date instanceof Date
+        ? format(updates.date, 'yyyy-MM-dd')
+        : String(updates.date).split('T')[0];
+    }
     if (updates.description !== undefined)
       updateData.description = updates.description;
     if (updates.milestoneType !== undefined)
@@ -397,7 +470,7 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to update milestone:', error);
+      console.error('Failed to update milestone:', error.message, error.code, error.details, error.hint);
       return null;
     }
 
@@ -563,15 +636,16 @@ export class SupabaseGanttDataService implements DataService {
   async importFromJSON(json: string): Promise<GanttData> {
     const data = JSON.parse(json) as GanttData;
 
-    // Date 문자열을 Date 객체로 변환
+    // Date 문자열을 Date 객체로 변환 (로컬 시간대 자정으로 파싱)
+    // new Date('2025-01-26')는 UTC 자정으로 파싱되어 timezone에 따라 날짜가 밀릴 수 있음
     data.tasks = data.tasks.map((t) => ({
       ...t,
-      startDate: new Date(t.startDate),
-      endDate: new Date(t.endDate),
+      startDate: parseLocalDate(String(t.startDate).split('T')[0]),
+      endDate: parseLocalDate(String(t.endDate).split('T')[0]),
     }));
     data.milestones = data.milestones.map((m) => ({
       ...m,
-      date: new Date(m.date),
+      date: parseLocalDate(String(m.date).split('T')[0]),
     }));
 
     await this.saveAll(data);
