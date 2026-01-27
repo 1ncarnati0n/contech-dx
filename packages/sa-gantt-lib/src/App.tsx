@@ -32,6 +32,8 @@ import {
   exportToExcel,
   // Korean Holidays
   KOREAN_HOLIDAYS_ALL,
+  // UUID Utility
+  generateId,
 } from './lib';
 import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
@@ -532,7 +534,7 @@ function App() {
       setAppState(prev => {
         // 새 태스크 추가
         const taskToAdd: ConstructionTask = {
-          id: newTask.id || `task-${Date.now()}`,
+          id: newTask.id || generateId(),
           parentId: newTask.parentId ?? null,
           wbsLevel: newTask.wbsLevel || 2,
           type: newTask.type || 'TASK',
@@ -788,7 +790,7 @@ function App() {
   const handleMilestoneCreate = useCallback(async (newMilestone: Partial<Milestone>) => {
     try {
       const milestoneToAdd: Milestone = {
-        id: newMilestone.id || `milestone-${Date.now()}`,
+        id: newMilestone.id || generateId(),
         name: newMilestone.name || '새 마일스톤',
         date: newMilestone.date || new Date(),
         description: newMilestone.description,

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { AnchorDependency, ConstructionTask } from '../../../types';
 import { wouldCreateCycle } from '../../../utils/dependencyGraph';
+import { generateId } from '../../../utils/uuid';
 
 /** 연결 시작 상태 (dayIndex 기반) */
 export interface ConnectingState {
@@ -172,7 +173,7 @@ export const useAnchorConnection = ({
                         } else {
                             // 순환이 없으면 종속성 생성
                             const newDep: AnchorDependency = {
-                                id: `dep-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                id: generateId(),
                                 sourceTaskId: connectingFrom.taskId,
                                 targetTaskId: taskId,
                                 sourceDayIndex: connectingFrom.dayIndex,

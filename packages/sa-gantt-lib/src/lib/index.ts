@@ -242,6 +242,9 @@ export {
     isNonEmptyArray,
 } from './utils/typeGuards';
 
+// UUID Utilities
+export { generateId, isValidUUID, isLegacyId } from './utils/uuid';
+
 // ============================================
 // Services (Data Abstraction Layer)
 // ============================================

@@ -19,6 +19,7 @@ import {
     serializeGanttDataForExport,
     parseImportedData,
 } from './serializers';
+import { generateId } from '../utils/uuid';
 
 // ============================================
 // Storage Keys
@@ -137,7 +138,7 @@ export class LocalStorageService implements DataService {
         const tasks = await this.loadTasks();
         const newTask: ConstructionTask = {
             ...task,
-            id: `task-${Date.now()}`,
+            id: generateId(),
         } as ConstructionTask;
 
         tasks.push(newTask);
@@ -213,7 +214,7 @@ export class LocalStorageService implements DataService {
         const milestones = await this.loadMilestones();
         const newMilestone: Milestone = {
             ...milestone,
-            id: `milestone-${Date.now()}`,
+            id: generateId(),
         } as Milestone;
 
         milestones.push(newMilestone);

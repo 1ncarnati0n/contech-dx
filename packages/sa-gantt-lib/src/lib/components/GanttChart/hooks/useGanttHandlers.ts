@@ -12,6 +12,7 @@ import type {
     GanttErrorContext,
 } from '../../../types';
 import type { BarDragResult } from '../../GanttTimeline';
+import { generateId } from '../../../utils/uuid';
 
 // ============================================
 // useGanttHandlers Hook
@@ -122,7 +123,7 @@ export const useGanttHandlers = ({
 
     const handleStartAddMilestone = useCallback(() => {
         const newMilestone: Milestone = {
-            id: `milestone-${Date.now()}`,
+            id: generateId(),
             name: '',
             date: new Date(),
             description: '',
@@ -134,7 +135,7 @@ export const useGanttHandlers = ({
 
     const handleContextMenuAddMilestone = useCallback((date: Date) => {
         const newMilestone: Milestone = {
-            id: `milestone-${Date.now()}`,
+            id: generateId(),
             name: '',
             date: date,
             description: '',
@@ -179,7 +180,7 @@ export const useGanttHandlers = ({
         if (!activeCPId || !onTaskCreate) return;
 
         const newTask: Partial<ConstructionTask> = {
-            id: `task-${Date.now()}`,
+            id: generateId(),
             parentId: activeCPId,
             wbsLevel: 2,
             type: 'TASK',

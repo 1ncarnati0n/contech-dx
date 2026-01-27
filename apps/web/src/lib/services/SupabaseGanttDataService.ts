@@ -65,6 +65,22 @@ interface GanttDependencyRow {
 }
 
 // ============================================
+// 날짜 파싱 유틸리티
+// ============================================
+
+/**
+ * 'YYYY-MM-DD' 형식을 로컬 시간대 자정으로 파싱
+ *
+ * new Date('2025-01-26')는 UTC 자정으로 파싱되어 timezone에 따라
+ * 날짜가 하루 밀릴 수 있음. 이 함수는 로컬 시간대 자정으로 파싱하여
+ * 어떤 timezone에서도 동일한 날짜(요일)를 보장합니다.
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day); // 월은 0-based
+}
+
+// ============================================
 // 변환 함수: Supabase Row ↔ sa-gantt-lib Type
 // ============================================
 
@@ -75,8 +91,8 @@ function rowToTask(row: GanttTaskRow): ConstructionTask {
     wbsLevel: row.wbs_level as WbsLevel,
     type: row.type as TaskType,
     name: row.name,
-    startDate: new Date(row.start_date),
-    endDate: new Date(row.end_date),
+    startDate: parseLocalDate(row.start_date),
+    endDate: parseLocalDate(row.end_date),
     cp: row.cp_data as ConstructionTask['cp'],
     task: row.task_data as ConstructionTask['task'],
     group: row.group_data as ConstructionTask['group'],
@@ -110,7 +126,7 @@ function taskToRow(
 function rowToMilestone(row: GanttMilestoneRow): Milestone {
   return {
     id: row.id,
-    date: new Date(row.date),
+    date: parseLocalDate(row.date),
     name: row.name,
     description: row.description || undefined,
     milestoneType: row.milestone_type as MilestoneType,

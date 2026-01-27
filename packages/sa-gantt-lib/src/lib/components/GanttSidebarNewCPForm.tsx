@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { addDays } from 'date-fns';
 import { Check, X } from 'lucide-react';
 import { ConstructionTask, GANTT_LAYOUT } from '../types';
+import { generateId } from '../utils/uuid';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
 
@@ -71,7 +72,7 @@ export const GanttSidebarNewCPForm: React.FC<GanttSidebarNewCPFormProps> = ({
             const endDate = addDays(startDate, Math.max(totalDays - 1, 0));
 
             const newCP: Partial<ConstructionTask> = {
-                id: `cp-${Date.now()}`,
+                id: generateId(),
                 parentId: null,
                 wbsLevel: 1,
                 type: 'CP',
