@@ -60,7 +60,7 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   pouring_section_review: '콘크리트 물량과 동수를 기반으로 타설구간을 개략 검토합니다.',
   data_input: '각 동의 기본 정보와 층 구성을 입력합니다.',
   quantity_input: '층별/공종별 물량 데이터를 입력합니다.',
-  detailed_quantity_input: '상세 물량 데이터를 입력합니다.',
+  detailed_quantity_input: '동별·층별·공종별 물량을 입력합니다.',
   geological_data: '지질 조사 데이터를 입력합니다.',
   planned_unit_rate: '계획 단가를 입력합니다.',
   executed_unit_rate: '실행 단가를 입력합니다.',
@@ -95,7 +95,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [project, setProject] = useState<Project>(initialProject);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
   const handleTabChange = useCallback((tab: string) => {
@@ -130,6 +130,12 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     setSidebarCollapsed(prev => !prev);
   }, []);
 
+  const handleBodyClick = useCallback(() => {
+    if (!sidebarCollapsed) {
+      setSidebarCollapsed(true);
+    }
+  }, [sidebarCollapsed]);
+
   const handleProjectUpdate = useCallback(async () => {
     try {
       // 프로젝트 데이터 다시 로드
@@ -158,7 +164,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         onTabChange={handleTabChange}
       />
 
-      <div className="flex-1 flex flex-col h-full ml-16">
+      <div className="flex-1 flex flex-col h-full ml-16" onClick={handleBodyClick}>
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">

@@ -14,6 +14,7 @@ import {
     Database,
     ChevronDown,
     ChevronRight,
+    MoreHorizontal,
     Package,
     DollarSign,
     Building,
@@ -84,13 +85,7 @@ export function ProjectSidebar({
         }
     }, [activeTab, isDataInputActive, isDataInputExpanded, isProcessPlanActive, isProcessPlanExpanded]);
 
-    // 접힌 상태에서는 서브메뉴 확장 해제
-    useEffect(() => {
-        if (isCollapsed) {
-            setIsDataInputExpanded(false);
-            setIsProcessPlanExpanded(false);
-        }
-    }, [isCollapsed]);
+    // 접힌 상태에서도 서브메뉴 확장 상태 유지 (제거됨)
 
     // 메뉴 버튼 공통 컴포넌트
     const MenuButton = ({
@@ -113,18 +108,22 @@ export function ProjectSidebar({
         <button
             onClick={onClick}
             title={isCollapsed ? label : undefined}
-            className={`w-full flex items-center ${hasSubmenu ? 'justify-between' : ''} gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`relative w-full flex items-center ${hasSubmenu && !isCollapsed ? 'justify-between' : ''} gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                    ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
-            }`}
+                    ? hasSubmenu
+                        ? 'bg-[#ffff1d]/30 text-zinc-900 dark:bg-[#ffff1d]/40 dark:text-zinc-100'
+                        : 'bg-[#ffff1d] text-zinc-900 dark:bg-[#ffff1d] dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+            } ${isCollapsed && hasSubmenu ? 'pb-4' : ''}`}
         >
             <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`} />
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? (hasSubmenu ? 'text-zinc-700 dark:text-zinc-100' : 'text-zinc-900') : 'text-zinc-400'}`} />
                 {!isCollapsed && <span>{label}</span>}
             </div>
-            {hasSubmenu && !isCollapsed && (
-                isExpanded ? (
+            {hasSubmenu && (
+                isCollapsed ? (
+                    <MoreHorizontal className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 text-zinc-400" />
+                ) : isExpanded ? (
                     <ChevronDown className="w-4 h-4 text-zinc-400" />
                 ) : (
                     <ChevronRight className="w-4 h-4 text-zinc-400" />
@@ -136,7 +135,7 @@ export function ProjectSidebar({
     return (
         <div
             className={`fixed inset-y-0 left-0 top-16 z-30 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 transition-all duration-300 ease-in-out flex flex-col ${
-                isCollapsed ? 'w-16' : 'w-72 shadow-xl'
+                isCollapsed ? 'w-16' : 'w-54 shadow-xl'
             }`}
         >
             {/* Toggle Button - 상단 */}
@@ -177,20 +176,14 @@ export function ProjectSidebar({
                         label="데이터 입력"
                         icon={Database}
                         isActive={isDataInputActive}
-                        onClick={() => {
-                            if (isCollapsed) {
-                                onTabChange('data_input');
-                            } else {
-                                setIsDataInputExpanded(!isDataInputExpanded);
-                            }
-                        }}
-                        hasSubmenu={!isCollapsed}
+                        onClick={() => setIsDataInputExpanded(!isDataInputExpanded)}
+                        hasSubmenu={true}
                         isExpanded={isDataInputExpanded}
                     />
 
-                    {/* 서브메뉴 */}
-                    {isDataInputExpanded && !isCollapsed && (
-                        <div className="ml-4 space-y-1 border-l border-zinc-200 dark:border-zinc-700 pl-2">
+                    {/* 서브메뉴 - 접힌/펼친 상태 모두 아래로 펼쳐짐 */}
+                    {isDataInputExpanded && (
+                        <div className={`space-y-1 ${isCollapsed ? 'pl-1' : 'ml-4 border-l border-zinc-200 dark:border-zinc-700 pl-2'}`}>
                             {dataInputSubItems.map((item) => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id;
@@ -198,14 +191,15 @@ export function ProjectSidebar({
                                     <button
                                         key={item.id}
                                         onClick={() => onTabChange(item.id)}
+                                        title={isCollapsed ? item.label : undefined}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                             isActive
-                                                ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
-                                        }`}
+                                                ? 'bg-[#ffff1d]/70 text-zinc-900 dark:bg-[#ffff1d]/80 dark:text-zinc-900'
+                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+                                        } ${isCollapsed ? 'justify-center' : ''}`}
                                     >
-                                        <Icon className={`w-4 h-4 ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`} />
-                                        {item.label}
+                                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-zinc-900 dark:text-zinc-900' : 'text-zinc-400'}`} />
+                                        {!isCollapsed && item.label}
                                     </button>
                                 );
                             })}
@@ -220,20 +214,14 @@ export function ProjectSidebar({
                         label="공정계획"
                         icon={ListTodo}
                         isActive={isProcessPlanActive}
-                        onClick={() => {
-                            if (isCollapsed) {
-                                onTabChange('building_process_plan');
-                            } else {
-                                setIsProcessPlanExpanded(!isProcessPlanExpanded);
-                            }
-                        }}
-                        hasSubmenu={!isCollapsed}
+                        onClick={() => setIsProcessPlanExpanded(!isProcessPlanExpanded)}
+                        hasSubmenu={true}
                         isExpanded={isProcessPlanExpanded}
                     />
 
-                    {/* 서브메뉴 */}
-                    {isProcessPlanExpanded && !isCollapsed && (
-                        <div className="ml-4 space-y-1 border-l border-zinc-200 dark:border-zinc-700 pl-2">
+                    {/* 서브메뉴 - 접힌/펼친 상태 모두 아래로 펼쳐짐 */}
+                    {isProcessPlanExpanded && (
+                        <div className={`space-y-1 ${isCollapsed ? 'pl-1' : 'ml-4 border-l border-zinc-200 dark:border-zinc-700 pl-2'}`}>
                             {processPlanSubItems.map((item) => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id;
@@ -241,14 +229,15 @@ export function ProjectSidebar({
                                     <button
                                         key={item.id}
                                         onClick={() => onTabChange(item.id)}
+                                        title={isCollapsed ? item.label : undefined}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                             isActive
-                                                ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
-                                        }`}
+                                                ? 'bg-[#ffff1d]/70 text-zinc-900 dark:bg-[#ffff1d]/80 dark:text-zinc-900'
+                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+                                        } ${isCollapsed ? 'justify-center' : ''}`}
                                     >
-                                        <Icon className={`w-4 h-4 ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`} />
-                                        {item.label}
+                                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-zinc-900 dark:text-zinc-900' : 'text-zinc-400'}`} />
+                                        {!isCollapsed && item.label}
                                     </button>
                                 );
                             })}

@@ -104,15 +104,6 @@ export function GeologicalDataPage({ projectId }: Props) {
 
   return (
     <div className="space-y-6 w-full px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Layers className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">지질 데이터 입력</h2>
-        </div>
-        <p className="text-slate-600 dark:text-slate-400">
-          동별 지질 조사 데이터를 입력하고 관리합니다.
-        </p>
-      </div>
 
       {/* 동 탭 영역 */}
       {buildings.length > 0 ? (
