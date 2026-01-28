@@ -1041,3 +1041,112 @@ export interface VolumeExportRow {
   orderVolume: number;      // ㎥
   concreteGrade: string;
 }
+
+// ============================================
+// Supabase Database Row Types
+// ============================================
+
+/**
+ * Supabase buildings 테이블 Row 타입
+ */
+export interface BuildingRow {
+  id: string;
+  project_id: string;
+  building_name: string;
+  building_number: number;
+  meta: BuildingMeta;  // JSONB
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Supabase floors 테이블 Row 타입
+ */
+export interface FloorRow {
+  id: string;
+  building_id: string;
+  floor_label: string;
+  floor_number: number;
+  level_type: LevelType;
+  floor_class: FloorClass;
+  height: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Supabase floor_trades 테이블 Row 타입
+ */
+export interface FloorTradeRow {
+  id: string;
+  floor_id: string;
+  building_id: string;
+  trade_group: string;
+  trades: TradeData;  // JSONB
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Supabase building_process_plans 테이블 Row 타입
+ */
+export interface BuildingProcessPlanRow {
+  id: string;
+  building_id: string;
+  project_id: string;
+  processes: BuildingProcessPlan['processes'];  // JSONB
+  total_days: number;
+  item_direct_work_days_overrides: Record<string, number> | null;  // JSONB
+  temporary_work_days: number | null;
+  earth_retention_work_days: number | null;
+  earthwork_work_days: number | null;
+  special_row_quantities: BuildingProcessPlan['specialRowQuantities'] | null;  // JSONB
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Supabase pouring_sections 테이블 Row 타입
+ */
+export interface PouringSectionRow {
+  id: string;
+  project_id: string;
+  label: string;
+  concrete_volume: number | null;
+  equipment_count: number | null;
+  process_days: number | null;
+  is_passage: boolean;
+  includes_ground_floor: boolean;
+  includes_facility3: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// DB Row <-> App Model 변환 헬퍼 타입
+// ============================================
+
+/**
+ * Building 생성용 Insert 타입 (id, created_at, updated_at 제외)
+ */
+export type BuildingInsert = Omit<BuildingRow, 'id' | 'created_at' | 'updated_at'>;
+
+/**
+ * Floor 생성용 Insert 타입
+ */
+export type FloorInsert = Omit<FloorRow, 'id' | 'created_at' | 'updated_at'>;
+
+/**
+ * FloorTrade 생성용 Insert 타입
+ */
+export type FloorTradeInsert = Omit<FloorTradeRow, 'id' | 'created_at' | 'updated_at'>;
+
+/**
+ * BuildingProcessPlan 생성용 Insert 타입
+ */
+export type BuildingProcessPlanInsert = Omit<BuildingProcessPlanRow, 'id' | 'created_at' | 'updated_at'>;
+
+/**
+ * PouringSection 생성용 Insert 타입
+ */
+export type PouringSectionInsert = Omit<PouringSectionRow, 'id' | 'created_at' | 'updated_at'>;

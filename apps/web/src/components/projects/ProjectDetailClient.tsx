@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -96,6 +96,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   const handleTabChange = useCallback((tab: string) => {
@@ -126,15 +127,55 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     }
   }, [project.id, router]);
 
-  const handleToggleCollapse = useCallback(() => {
-    setSidebarCollapsed(prev => !prev);
+  const handleTogglePin = useCallback(() => {
+    setSidebarPinned(prev => {
+      const newPinned = !prev;
+      // 고정 해제 시 사이드바 접기
+      if (!newPinned) {
+        setSidebarCollapsed(true);
+      }
+      return newPinned;
+    });
   }, []);
 
   const handleBodyClick = useCallback(() => {
-    if (!sidebarCollapsed) {
+    // 고정된 상태가 아닐 때만 접기
+    if (!sidebarCollapsed && !sidebarPinned) {
       setSidebarCollapsed(true);
     }
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, sidebarPinned]);
+
+  // Hover 자동 펼침/접힘 기능
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSidebarMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    // 고정되지 않았을 때만 hover로 펼침
+    if (!sidebarPinned) {
+      setSidebarCollapsed(false);
+    }
+  }, [sidebarPinned]);
+
+  const handleSidebarMouseLeave = useCallback(() => {
+    // 고정된 상태면 자동 접힘 비활성화
+    if (sidebarPinned) return;
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      setSidebarCollapsed(true);
+    }, 300); // 300ms 딜레이로 부드러운 UX
+  }, [sidebarPinned]);
+
+  // 컴포넌트 언마운트 시 타임아웃 정리
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleProjectUpdate = useCallback(async () => {
     try {
@@ -158,10 +199,13 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     <div className="fixed inset-0 top-16 flex bg-background overflow-hidden">
       <ProjectSidebar
         isCollapsed={sidebarCollapsed}
-        onToggleCollapse={handleToggleCollapse}
+        isPinned={sidebarPinned}
+        onTogglePin={handleTogglePin}
         project={project}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
       />
 
       <div className="flex-1 flex flex-col h-full ml-16" onClick={handleBodyClick}>

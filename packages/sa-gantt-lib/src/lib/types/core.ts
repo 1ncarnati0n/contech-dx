@@ -192,6 +192,7 @@ export interface GroupDragResult {
     taskUpdates?: Array<{
         taskId: string;
         newStartDate: Date;
+        newEndDate: Date;
     }>;
 }
 
