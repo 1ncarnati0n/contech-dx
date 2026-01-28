@@ -5,6 +5,7 @@ import NavBar from '@/components/layout/NavBar';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { Toaster } from '@/components/ui/Toaster';
 import LoadingBar from '@/components/ui/LoadingBar';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
@@ -41,6 +42,7 @@ export default function RootLayout({
           </main>
           <Toaster />
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
