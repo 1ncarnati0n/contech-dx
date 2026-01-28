@@ -5,6 +5,7 @@ import NavBar from '@/components/layout/NavBar';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { Toaster } from '@/components/ui/Toaster';
 import LoadingBar from '@/components/ui/LoadingBar';
+import { GlobalChatbot } from '@/components/global/GlobalChatbot';
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
@@ -39,6 +40,9 @@ export default function RootLayout({
           <main className="pt-16 min-h-screen text-foreground transition-colors">
             {children}
           </main>
+          <Suspense fallback={null}>
+            <GlobalChatbot />
+          </Suspense>
           <Toaster />
         </ThemeProvider>
       </body>
