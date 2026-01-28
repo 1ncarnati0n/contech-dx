@@ -1627,12 +1627,13 @@ function TradeInputCell({
 
   // 포맷팅된 값 생성 (천단위 구분자 포함, 소수점 2자리 고정)
   const formatValue = (num: number | null | undefined): string => {
-    if (num === null || num === undefined || num === 0) return '';
+    if (num === null || num === undefined) return '';
+    if (num === 0) return '-';
     // 모든 값을 소수점 2자리까지 표시 (한 자리면 뒤에 0 추가)
-      return num.toLocaleString('ko-KR', { 
+    return num.toLocaleString('ko-KR', {
       minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
-      });
+      maximumFractionDigits: 2
+    });
   };
 
   // 숫자만 추출 (천단위 구분자 제거, 빈칸은 null 반환)

@@ -549,10 +549,11 @@ export async function saveFloorTrade(
 
   const supabase = await getSupabaseClient();
 
-  // 기존 데이터 조회
+  // 기존 데이터 조회 (building_id 조건 추가로 동별 데이터 독립성 보장)
   const { data: existingRow, error: selectError } = await supabase
     .from('floor_trades')
     .select('*')
+    .eq('building_id', buildingId)
     .eq('floor_id', floorId)
     .eq('trade_group', tradeGroup)
     .single();

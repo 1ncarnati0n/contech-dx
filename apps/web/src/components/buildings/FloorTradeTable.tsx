@@ -5,6 +5,13 @@ import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/compo
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
 import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
+import {
+  TRADE_GROUPS,
+  createSpecialFloorId,
+  isSpecialFloorId,
+  isDummyFloorId,
+  isValidFloorId,
+} from '@/lib/utils/floorIdUtils';
 import { logger } from '@/lib/utils/logger';
 import { toast } from 'sonner';
 
@@ -12,8 +19,6 @@ interface Props {
   building: Building;
   onUpdate: () => void;
 }
-
-const TRADE_GROUPS = ['버림', '기초', '아파트'];
 
 export interface FloorTradeTableHandle {
   flushPendingSaves: () => Promise<void>;
@@ -480,7 +485,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
             const rowInfo = rows[rowIdx];
             if (rowInfo && rowInfo.type !== 'summary') {
               const tradeGroup = rowInfo.tradeGroup || '아파트';
-              const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? `group-${tradeGroup}` : '');
+              const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? createSpecialFloorId(building.id, tradeGroup) : '');
               if (floorId) {
                 const fieldPath = getColumnFieldPath(colIdx);
                 if (fieldPath) {
@@ -502,7 +507,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   const getTrade = (floorId: string, tradeGroup: string): TradeData => {
     // 더미 층인 경우 코어1의 실제 층 찾기
     let actualFloorId = floorId;
-    if (floorId.startsWith('dummy-')) {
+    if (isDummyFloorId(floorId)) {
       const floorMatch = floorId.match(/dummy-(\d+)F/);
       if (floorMatch) {
         const floorNum = floorMatch[1];
@@ -550,7 +555,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
     // 더미 층인 경우 코어1의 실제 층 찾기
     let actualFloorId = floorId;
-    if (floorId.startsWith('dummy-')) {
+    if (isDummyFloorId(floorId)) {
       const floorMatch = floorId.match(/dummy-(\d+)F/);
       if (floorMatch) {
         const floorNum = floorMatch[1];
@@ -647,7 +652,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
           // 개별 층 데이터를 pendingSaves에 추가 (실제 저장은 saveChanges에서)
           if (tradesToSave.length > 0) {
             tradesToSave.forEach(trade => {
-              if (!trade.floorId.startsWith('dummy-')) {
+              if (!isDummyFloorId(trade.floorId)) {
                 const tradeKey = `${trade.floorId}-${trade.tradeGroup}`;
                 pendingSavesRef.current.set(tradeKey, trade);
               }
@@ -662,7 +667,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
     // 변경사항 표시 및 pendingSaves에 추가 (실제 저장은 saveChanges에서)
     setHasUnsavedChanges(true);
-    if (!updatedTrade.floorId.startsWith('dummy-')) {
+    if (!isDummyFloorId(updatedTrade.floorId)) {
       pendingSavesRef.current.set(key, updatedTrade);
     }
 
@@ -679,19 +684,9 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     setIsSaving(true);
     try {
       // UUID 형식 검증 정규식
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
     const tradesToSave = Array.from(pendingSavesRef.current.values())
-      .filter(trade => !trade.floorId.startsWith('dummy-'))
-      .filter(trade => {
-        // 1. 순수 UUID 형식 (일반 층)
-        if (uuidRegex.test(trade.floorId)) return true;
-        // 2. 기준층 개별 층 ID (uuid-숫자F 형식)
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-\d+F$/i.test(trade.floorId)) return true;
-        // 3. 버림/기초 그룹 ID
-        if (trade.floorId.startsWith('group-')) return true;
-        return false;
-      });
+      .filter(trade => !isDummyFloorId(trade.floorId))
+      .filter(trade => isValidFloorId(trade.floorId));
 
       if (tradesToSave.length > 0) {
         const promises = tradesToSave.map(trade =>
@@ -846,8 +841,8 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         if (!rowInfo || rowInfo.type === 'summary') return; // 소계 행은 건너뛰기
         
         const tradeGroup = rowInfo.tradeGroup || '아파트';
-        const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? `group-${tradeGroup}` : '');
-        
+        const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? createSpecialFloorId(building.id, tradeGroup) : '');
+
         if (!floorId) return;
         
         // 각 컬럼 처리 (colOffset은 0부터 시작하므로 첫 번째 셀도 포함)
@@ -1073,7 +1068,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   
                   // 버림/기초는 특별 처리 (버림/기초는 층이 없으므로 특별한 floorId 사용)
                   if (row.type === 'group') {
-                    const specialFloorId = `group-${tradeGroup}`;
+                    const specialFloorId = createSpecialFloorId(building.id, tradeGroup);
                     const groupTrade = getTrade(specialFloorId, tradeGroup);
                     
                     return (

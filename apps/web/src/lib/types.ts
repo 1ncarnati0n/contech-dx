@@ -3,6 +3,12 @@
  */
 
 // ============================================
+// 공종 관련 타입 (re-export from floorIdUtils)
+// ============================================
+
+export { TRADE_GROUPS, type TradeGroup, SPECIAL_FLOOR_GROUPS, type SpecialFloorGroup } from './utils/floorIdUtils';
+
+// ============================================
 // 기본 타입
 // ============================================
 

@@ -7,3 +7,4 @@ export { useAsyncData, useAsyncList } from './useAsyncData';
 export { useTabDragDrop } from './useTabDragDrop';
 export { useResizableSidebar } from './useResizableSidebar';
 export type { Dimensions, ResizeConstraints, ResizeDirection } from './useResizableSidebar';
+export { useFloorTradeSelection } from './useFloorTradeSelection';
