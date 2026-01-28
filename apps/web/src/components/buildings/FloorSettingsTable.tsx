@@ -15,7 +15,6 @@ interface Props {
 const FLOOR_CLASSES: FloorClass[] = ['지하층', '일반층', '셋팅층', '기준층', '최상층', '옥탑층'];
 
 export function FloorSettingsTable({ building, onUpdate }: Props) {
-  const isLocked = building?.meta?.isBasicInfoLocked || false;
   const [floors, setFloors] = useState<Floor[]>(building.floors);
   const [pendingHeights, setPendingHeights] = useState<Record<string, number | null>>({});
   const [savedFloorIds, setSavedFloorIds] = useState<Set<string>>(new Set());
@@ -855,7 +854,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                             await handleFloorUpdate(actualFloor.id, { floorClass: newClass });
                           }
                         }}
-                        disabled={isLocked || (!actualFloor && actualFloors.length === 0)}
+                        disabled={!actualFloor && actualFloors.length === 0}
                         className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {FLOOR_CLASSES.map((fc) => (
@@ -871,9 +870,8 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         step="1"
                         min="0"
                         value={floor.height ?? ''}
-                        disabled={isLocked || (floor.id.startsWith('dummy-') && actualFloors.length === 0 && !actualFloor)}
+                        disabled={floor.id.startsWith('dummy-') && actualFloors.length === 0 && !actualFloor}
                         onChange={async (e) => {
-                          if (isLocked) return;
                           const value = e.target.value ? Number(e.target.value) : null;
                           // 범위 형식의 층인 경우 모든 개별 층 업데이트
                           if (floor.id.startsWith('dummy-range-') && actualFloors.length > 0) {
@@ -888,7 +886,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                           }
                         }}
                         onBlur={async () => {
-                          if (isLocked) return;
                           // 범위 형식의 층인 경우 이미 onChange에서 처리됨
                           if (!floor.id.startsWith('dummy-range-')) {
                             const targetFloor = actualFloor || floor;

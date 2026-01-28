@@ -31,8 +31,6 @@ export function BuildingBasicInfo({
   onGenerationComplete,
   onBeforeRegenerate
 }: BuildingBasicInfoProps) {
-  const isLocked = building?.meta?.isBasicInfoLocked || false;
-  
   const [buildingName, setBuildingName] = useState(building?.buildingName || '');
   const [totalUnits, setTotalUnits] = useState(building?.meta?.totalUnits || 0);
   const [coreCount, setCoreCount] = useState(building?.meta?.coreCount || 0);
@@ -758,7 +756,7 @@ export function BuildingBasicInfo({
               <select
                 value={coreType}
                 onChange={(e) => setCoreType(e.target.value as CoreType)}
-                disabled={isLocked}
+                
                 className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="중복도(판상형)">중복도(판상형)</option>
@@ -773,7 +771,7 @@ export function BuildingBasicInfo({
               <select
                 value={slabType}
                 onChange={(e) => setSlabType(e.target.value as SlabType)}
-                disabled={isLocked}
+                
                 className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="벽식구조">벽식구조</option>
@@ -799,7 +797,7 @@ export function BuildingBasicInfo({
                 variant="outline"
                 size="sm"
                 onClick={addUnitTypePattern}
-                disabled={isLocked}
+                
                 className="gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-3 h-3" />
@@ -852,7 +850,7 @@ export function BuildingBasicInfo({
                   <select
                     value={pattern.coreNumber || 1}
                     onChange={(e) => updateUnitTypePattern(index, 'coreNumber', Number(e.target.value))}
-                    disabled={isLocked}
+                    
                     className="w-24 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value={1}>{currentCoreDisplayName}</option>
@@ -863,7 +861,7 @@ export function BuildingBasicInfo({
                     placeholder="시작 호수"
                     value={pattern.from || ''}
                     onChange={(e) => updateUnitTypePattern(index, 'from', Number(e.target.value))}
-                    disabled={isLocked}
+                    
                     className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
@@ -873,7 +871,7 @@ export function BuildingBasicInfo({
                     placeholder="끝 호수"
                     value={pattern.to || ''}
                     onChange={(e) => updateUnitTypePattern(index, 'to', Number(e.target.value))}
-                    disabled={isLocked}
+                    
                     className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
@@ -883,7 +881,7 @@ export function BuildingBasicInfo({
                     placeholder="타입 (예: 59A)"
                     value={pattern.type || ''}
                     onChange={(e) => updateUnitTypePattern(index, 'type', e.target.value)}
-                    disabled={isLocked}
+                    
                     className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
@@ -922,7 +920,7 @@ export function BuildingBasicInfo({
                               placeholder="지하"
                               min="0"
                               value={currentBasementFloors || ''}
-                              disabled={isLocked}
+                              
                               onChange={(e) => {
                                 const newCoreBasementFloors = [...coreBasementFloors];
                                 const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -950,7 +948,7 @@ export function BuildingBasicInfo({
                               placeholder="지상"
                               min="0"
                               value={currentGroundFloors || ''}
-                              disabled={isLocked}
+                              
                               onChange={(e) => {
                                 const newCoreGroundFloors = [...coreGroundFloors];
                                 const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -978,7 +976,7 @@ export function BuildingBasicInfo({
                               placeholder="옥탑"
                               min="0"
                               value={currentPhFloors || ''}
-                              disabled={isLocked}
+                              
                               onChange={(e) => {
                                 const newCorePhFloors = [...corePhFloors];
                                 const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1019,7 +1017,7 @@ export function BuildingBasicInfo({
                       placeholder="필로티 부대시설 제외 세대수"
                       min="0"
                       value={currentPilotisCount || ''}
-                      disabled={isLocked}
+                      
                       onChange={(e) => {
                         const newCorePilotisCounts = [...corePilotisCounts];
                         const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1054,7 +1052,7 @@ export function BuildingBasicInfo({
                           placeholder="필로티 층수"
                           min="0"
                           value={currentPilotisHeight || ''}
-                          disabled={isLocked}
+                          
                           onChange={(e) => {
                             const newCorePilotisHeights = [...corePilotisHeights];
                             const newValue = e.target.value === '' ? 0 : Number(e.target.value);
@@ -1080,7 +1078,7 @@ export function BuildingBasicInfo({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeUnitTypePattern(index)}
-                    disabled={isLocked}
+                    
                     className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1114,7 +1112,7 @@ export function BuildingBasicInfo({
                     id="hasHighCeilingEquipmentRoom"
                     checked={hasHighCeilingEquipmentRoom}
                     onChange={(e) => setHasHighCeilingEquipmentRoom(e.target.checked)}
-                    disabled={isLocked}
+                    
                     className="w-4 h-4 text-primary-600 bg-white border-slate-300 rounded focus:ring-primary-500 focus:ring-2 dark:bg-slate-800 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <label
@@ -1151,7 +1149,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.basement2 || 3500}
                 onChange={(e) => setHeights({ ...heights, basement2: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1165,7 +1163,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.basement1 || 5400}
                 onChange={(e) => setHeights({ ...heights, basement1: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1179,7 +1177,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor1 || 3050}
                 onChange={(e) => setHeights({ ...heights, floor1: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1193,7 +1191,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor2 || 2850}
                 onChange={(e) => setHeights({ ...heights, floor2: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1207,7 +1205,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor3 || 2850}
                 onChange={(e) => setHeights({ ...heights, floor3: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1221,7 +1219,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.floor4 || 2850}
                 onChange={(e) => setHeights({ ...heights, floor4: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1247,7 +1245,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.standard || 2850}
                 onChange={(e) => setHeights({ ...heights, standard: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1261,7 +1259,7 @@ export function BuildingBasicInfo({
                 min="0"
                 value={heights.top || 3050}
                 onChange={(e) => setHeights({ ...heights, top: Number(e.target.value) })}
-                disabled={isLocked}
+                
                 className="disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
@@ -1278,7 +1276,7 @@ export function BuildingBasicInfo({
                     min="0"
                     value={Array.isArray(heights.ph) ? heights.ph[0] || 2650 : heights.ph || 2650}
                     onChange={(e) => setHeights({ ...heights, ph: [Number(e.target.value)] })}
-                    disabled={isLocked}
+                    
                     className="disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
@@ -1298,7 +1296,7 @@ export function BuildingBasicInfo({
                         phArray[i] = Number(e.target.value);
                         setHeights({ ...heights, ph: phArray });
                       }}
-                      disabled={isLocked}
+                      
                       className="disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
@@ -1317,7 +1315,7 @@ export function BuildingBasicInfo({
             variant="primary"
             size="sm"
             onClick={handleSaveBuildingInfo}
-            disabled={isSaving || isLocked}
+            disabled={isSaving}
             className="gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />

@@ -20,7 +20,6 @@ export interface FloorTradeTableHandle {
 
 export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   ({ building, onUpdate }, ref) => {
-  const isLocked = building?.meta?.isDataInputLocked || false;
   const [floors, setFloors] = useState<Floor[]>(building.floors);
   const [trades, setTrades] = useState<Map<string, FloorTrade>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
@@ -1185,7 +1184,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-3`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 알폼 */}
                         <TradeInputCell
@@ -1204,7 +1203,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-4`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 유로폼 */}
                         <TradeInputCell
@@ -1223,7 +1222,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-5`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
@@ -1264,7 +1263,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-8`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 철근 보/슬라브 */}
                         <TradeInputCell
@@ -1283,7 +1282,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-9`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 콘크리트 합계 (읽기 전용) - 물량입력 페이지 값 표시 */}
                         <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
@@ -1316,7 +1315,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-11`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 콘크리트 보/슬라브 */}
                         <TradeInputCell
@@ -1335,7 +1334,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-12`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                       </tr>
                     );
@@ -1375,7 +1374,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         isDraggingText={isDraggingText}
                         isDraggingTextRef={isDraggingTextRef}
                         isSelected={selectedCells.has(`${rowIndex}-3`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 알폼 */}
                       <TradeInputCell
@@ -1393,7 +1392,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-4`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 유로폼 */}
                       <TradeInputCell
@@ -1411,7 +1410,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-5`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
                       <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
@@ -1451,7 +1450,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-8`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 철근 보/슬라브 */}
                       <TradeInputCell
@@ -1469,7 +1468,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-9`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 콘크리트 합계 (읽기 전용) - 물량입력 페이지 값 표시 */}
                       <td className={`px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14 ${
@@ -1501,7 +1500,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-11`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 콘크리트 보/슬라브 */}
                       <TradeInputCell
@@ -1519,7 +1518,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-12`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                     </tr>
                   );
@@ -1628,12 +1627,13 @@ function TradeInputCell({
 
   // 포맷팅된 값 생성 (천단위 구분자 포함, 소수점 2자리 고정)
   const formatValue = (num: number | null | undefined): string => {
-    if (num === null || num === undefined || num === 0) return '';
+    if (num === null || num === undefined) return '';
+    if (num === 0) return '-';
     // 모든 값을 소수점 2자리까지 표시 (한 자리면 뒤에 0 추가)
-      return num.toLocaleString('ko-KR', { 
+    return num.toLocaleString('ko-KR', {
       minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
-      });
+      maximumFractionDigits: 2
+    });
   };
 
   // 숫자만 추출 (천단위 구분자 제거, 빈칸은 null 반환)
@@ -1934,13 +1934,10 @@ function TradeInputCell({
         onBlur={handleBlur}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
-        disabled={isLocked}
         onMouseDown={(e) => {
           // input 필드 내부에서의 이벤트는 부모로 전파되지 않도록 함
           e.stopPropagation();
-          if (!isLocked) {
-            handleMouseDown(e);
-          }
+          handleMouseDown(e);
         }}
         onMouseMove={handleInputMouseMove}
         data-row-index={rowIndex}
