@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Shield, TestTube, ChevronDown, Settings } from 'lucide-react';
+import { Shield, TestTube, ChevronDown, Settings, Building2 } from 'lucide-react';
 
 export default function AdminDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,6 +42,14 @@ export default function AdminDropdown() {
             >
               <Shield className="w-4 h-4" />
               User Manage
+            </Link>
+            <Link
+              href="/admin/buildings"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              Building Data
             </Link>
             <Link
               href="/test-connection"

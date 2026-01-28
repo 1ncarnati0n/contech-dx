@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Calendar, ChevronDown, ChevronUp, Building2, Clock, Layers, CalendarDays } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
+import { ProcessPlanChatbotSidebar } from './ProcessPlanChatbotSidebar';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
 import { 
   calculateTotalWorkers, 
@@ -2966,6 +2967,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
           )}
         </BuildingTabs>
       ) : null}
+
+      {/* 공정계획 도우미 챗봇 */}
+      <ProcessPlanChatbotSidebar
+        projectId={projectId}
+        buildingId={buildings[activeBuildingIndex]?.id}
+        building={buildings[activeBuildingIndex]}
+        processPlan={processPlans.get(buildings[activeBuildingIndex]?.id || '')}
+      />
     </div>
   );
 }

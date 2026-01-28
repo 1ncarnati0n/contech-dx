@@ -12,6 +12,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Trash2,
+  GripVertical,
 } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
 import ReactMarkdown from 'react-markdown';
@@ -26,6 +27,7 @@ import type {
 import { sendProcessPlanChat } from '@/lib/services/process-plan-chatbot';
 import { buildChatContext } from '@/lib/utils/chatbot-context-builder';
 import { QuickQuestionButtons } from './QuickQuestionButtons';
+import { useResizableSidebar } from '@/lib/hooks';
 
 interface ProcessPlanChatbotSidebarProps {
   projectId: string;
@@ -53,6 +55,13 @@ export function ProcessPlanChatbotSidebar({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 리사이즈 기능
+  const { dimensions, isResizing, resizeDirection, startResize, resetToDefault } =
+    useResizableSidebar({
+      storageKey: 'process-plan-chatbot-dimensions',
+      defaultDimensions: { width: 400, height: 600 },
+    });
 
   // 메시지 스크롤
   useEffect(() => {
@@ -244,7 +253,54 @@ export function ProcessPlanChatbotSidebar({
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-[400px] h-[600px] bg-white dark:bg-zinc-900 rounded-lg shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col">
+    <div
+      className="fixed bottom-4 right-4 z-40 bg-white dark:bg-zinc-900 rounded-lg shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col"
+      style={{ width: dimensions.width, height: dimensions.height }}
+    >
+      {/* 리사이즈 중 전역 커서 오버레이 */}
+      {isResizing && (
+        <div
+          className="fixed inset-0 z-50"
+          style={{
+            cursor:
+              resizeDirection === 'top'
+                ? 'ns-resize'
+                : resizeDirection === 'left'
+                  ? 'ew-resize'
+                  : 'nwse-resize',
+          }}
+        />
+      )}
+
+      {/* 상단 리사이즈 핸들 */}
+      <div
+        className="absolute top-0 left-8 right-0 h-2 cursor-ns-resize group"
+        onMouseDown={startResize('top')}
+        onDoubleClick={resetToDefault}
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-transparent group-hover:bg-cyan-400/50 transition-colors rounded-t" />
+      </div>
+
+      {/* 좌측 리사이즈 핸들 */}
+      <div
+        className="absolute left-0 top-8 bottom-0 w-2 cursor-ew-resize group"
+        onMouseDown={startResize('left')}
+        onDoubleClick={resetToDefault}
+      >
+        <div className="absolute inset-y-0 left-0 w-1 bg-transparent group-hover:bg-cyan-400/50 transition-colors rounded-l" />
+      </div>
+
+      {/* 코너 리사이즈 핸들 (좌상단) */}
+      <div
+        className="absolute top-0 left-0 w-8 h-8 cursor-nwse-resize group z-10"
+        onMouseDown={startResize('top-left')}
+        onDoubleClick={resetToDefault}
+      >
+        <div className="absolute top-1 left-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical className="w-3 h-3 text-cyan-500 rotate-45" />
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-2">
