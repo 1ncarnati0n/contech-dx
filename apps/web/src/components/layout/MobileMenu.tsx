@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, FileText, FileSearch, FolderKanban, Shield, TestTube, User, LogOut } from 'lucide-react';
+import { Menu, X, FileText, FileSearch, FolderKanban, Shield, TestTube, User, LogOut, Building2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Profile } from '@/lib/types';
@@ -111,6 +111,15 @@ export default function MobileMenu({ user, profile, isAdmin }: MobileMenuProps) 
                   >
                     <Shield className="w-5 h-5" />
                     <span className="font-medium">User Admin</span>
+                  </Link>
+
+                  <Link
+                    href="/admin/buildings"
+                    onClick={closeMenu}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 transition-all"
+                  >
+                    <Building2 className="w-5 h-5" />
+                    <span className="font-medium">Building Data</span>
                   </Link>
 
                   <Link
