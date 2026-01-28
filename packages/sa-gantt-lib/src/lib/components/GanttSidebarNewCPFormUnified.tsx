@@ -45,6 +45,7 @@ export const GanttSidebarNewCPFormUnified: React.FC<GanttSidebarNewCPFormUnified
     dragHandleWidth = 0,
 }) => {
     const [form, setForm] = useState<NewCPFormUnified>(getInitialForm);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
     // 마운트 시 초기화 및 포커스
@@ -79,12 +80,15 @@ export const GanttSidebarNewCPFormUnified: React.FC<GanttSidebarNewCPFormUnified
     }, [onCancel]);
 
     const handleSave = useCallback(async () => {
+        if (isSubmitting) return;
         if (!form.name.trim() || !onTaskCreate) return;
 
+        setIsSubmitting(true);
         try {
             const startDate = parse(form.startDate, 'yyyy-MM-dd', new Date());
             if (!isValid(startDate)) {
                 alert('유효한 시작일을 입력해주세요.');
+                setIsSubmitting(false);
                 return;
             }
 
@@ -115,8 +119,10 @@ export const GanttSidebarNewCPFormUnified: React.FC<GanttSidebarNewCPFormUnified
         } catch (error) {
             console.error('Failed to create CP:', error);
             alert('CP 생성 중 오류가 발생했습니다.');
+        } finally {
+            setIsSubmitting(false);
         }
-    }, [form, onTaskCreate, onCancel]);
+    }, [isSubmitting, form, onTaskCreate, onCancel]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -219,7 +225,7 @@ export const GanttSidebarNewCPFormUnified: React.FC<GanttSidebarNewCPFormUnified
             <div className="flex shrink-0 items-center justify-center gap-1 px-2">
                 <button
                     onClick={handleSave}
-                    disabled={!form.name.trim()}
+                    disabled={!form.name.trim() || isSubmitting}
                     className="flex items-center justify-center rounded bg-vermilion p-1.5 text-white hover:bg-vermilion/80 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     title="저장 (Enter)"
                 >

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { addDays } from 'date-fns';
 import { Check, X } from 'lucide-react';
 import { ConstructionTask, GANTT_LAYOUT } from '../types';
@@ -47,6 +47,7 @@ export const GanttSidebarNewTaskForm: React.FC<GanttSidebarNewTaskFormProps> = (
     virtualRowIndex,
 }) => {
     const [newTaskForm, setNewTaskForm] = React.useState<NewTaskForm>(INITIAL_NEW_TASK_FORM);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const newTaskNameInputRef = useRef<HTMLInputElement>(null);
 
     // isAddingTask가 true가 되면 input에 포커스
@@ -63,8 +64,10 @@ export const GanttSidebarNewTaskForm: React.FC<GanttSidebarNewTaskFormProps> = (
     }, [onCancel]);
 
     const handleSave = useCallback(async () => {
+        if (isSubmitting) return;
         if (!newTaskForm.name.trim() || !onTaskCreate || !activeCPId) return;
 
+        setIsSubmitting(true);
         try {
             // 마지막 task의 종료일을 기준으로 시작일 계산
             const lastTask = tasks[tasks.length - 1];
@@ -94,8 +97,10 @@ export const GanttSidebarNewTaskForm: React.FC<GanttSidebarNewTaskFormProps> = (
         } catch (error) {
             console.error('Failed to create task:', error);
             alert('태스크 생성 중 오류가 발생했습니다.');
+        } finally {
+            setIsSubmitting(false);
         }
-    }, [newTaskForm, onTaskCreate, activeCPId, tasks, onCancel]);
+    }, [isSubmitting, newTaskForm, onTaskCreate, activeCPId, tasks, onCancel]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -211,7 +216,7 @@ export const GanttSidebarNewTaskForm: React.FC<GanttSidebarNewTaskFormProps> = (
             >
                 <button
                     onClick={handleSave}
-                    disabled={!newTaskForm.name.trim()}
+                    disabled={!newTaskForm.name.trim() || isSubmitting}
                     className="flex items-center justify-center rounded bg-blue-500 p-1.5 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     title="저장 (Enter)"
                 >

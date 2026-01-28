@@ -673,6 +673,9 @@ export class SupabaseGanttDataService implements DataService {
         code: insertError.code,
         details: insertError.details,
         hint: insertError.hint,
+        fullError: JSON.stringify(insertError, Object.getOwnPropertyNames(insertError)),
+        rowsAttempted: rows.length,
+        sampleRow: rows[0],
       });
       throw insertError;
     }
@@ -749,11 +752,15 @@ export class SupabaseGanttDataService implements DataService {
   async saveAll(data: GanttData): Promise<void> {
     this.log('saveAll');
 
+    // Tasks와 Milestones는 병렬 저장 가능 (서로 의존성 없음)
+    // Dependencies는 tasks의 FK를 참조하므로 tasks 저장 완료 후 실행해야 함
     await Promise.all([
       this.saveTasks(data.tasks),
       this.saveMilestones(data.milestones),
-      this.saveDependencies(data.dependencies),
     ]);
+
+    // Tasks 저장 후 Dependencies 저장 (FK 제약 조건 충족)
+    await this.saveDependencies(data.dependencies);
   }
 
   // ============================================

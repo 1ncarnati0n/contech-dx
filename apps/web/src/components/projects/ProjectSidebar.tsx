@@ -21,26 +21,32 @@ import {
     BarChart3,
     Layers,
     Calculator,
-    PanelLeftClose,
-    PanelLeft,
+    Pin,
+    PinOff,
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatDate } from '@/lib/utils/index';
 
 interface ProjectSidebarProps {
     isCollapsed: boolean;
-    onToggleCollapse: () => void;
+    isPinned: boolean;
+    onTogglePin: () => void;
     project: Project;
     activeTab: string;
     onTabChange: (tab: string) => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
 export function ProjectSidebar({
     isCollapsed,
-    onToggleCollapse,
+    isPinned,
+    onTogglePin,
     project,
     activeTab,
     onTabChange,
+    onMouseEnter,
+    onMouseLeave,
 }: ProjectSidebarProps) {
     const [isDataInputExpanded, setIsDataInputExpanded] = useState(
         activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data'
@@ -134,29 +140,38 @@ export function ProjectSidebar({
 
     return (
         <div
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
             className={`fixed inset-y-0 left-0 top-16 z-30 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 transition-all duration-300 ease-in-out flex flex-col ${
                 isCollapsed ? 'w-16' : 'w-54 shadow-xl'
             }`}
         >
-            {/* Toggle Button - 상단 */}
-            <div className={`${isCollapsed ? 'p-2' : 'p-3'}`}>
-                <button
-                    onClick={onToggleCollapse}
-                    title={isCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${
-                        isCollapsed ? 'justify-center' : ''
-                    }`}
-                >
-                    {isCollapsed ? (
-                        <PanelLeft className="w-5 h-5" />
-                    ) : (
-                        <>
-                            <PanelLeftClose className="w-5 h-5" />
-                            <span>사이드바 접기</span>
-                        </>
-                    )}
-                </button>
-            </div>
+            {/* Pin/Unpin Button - 상단 (펼쳐진 상태에서만 표시) */}
+            {!isCollapsed && (
+                <div className="p-3">
+                    <button
+                        onClick={onTogglePin}
+                        title={isPinned ? '사이드바 고정 해제' : '사이드바 고정'}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                            isPinned
+                                ? 'bg-[#ffff1d]/50 text-zinc-900 dark:bg-[#ffff1d]/60 dark:text-zinc-900'
+                                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                        }`}
+                    >
+                        {isPinned ? (
+                            <>
+                                <PinOff className="w-5 h-5" />
+                                <span>고정 해제</span>
+                            </>
+                        ) : (
+                            <>
+                                <Pin className="w-5 h-5" />
+                                <span>사이드바 고정</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
 
             {/* Navigation */}
             <div className={`flex-1 overflow-y-auto py-4 space-y-1 ${isCollapsed ? 'px-2' : 'px-3'}`}>
