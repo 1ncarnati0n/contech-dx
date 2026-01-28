@@ -2,6 +2,21 @@
 
 건축직영공사 공정관리 시스템 (Construction Technology Digital Transformation)
 
+## Monorepo Structure
+
+```
+contech-dx/
+├── apps/
+│   └── web/                 # Next.js 16 웹 애플리케이션 (@contech/web)
+├── packages/
+│   └── sa-gantt-lib/        # 간트차트 라이브러리 (sa-gantt-lib)
+├── package.json             # 루트 (npm workspaces)
+├── turbo.json               # Turborepo 설정
+└── vercel.json              # Vercel 배포 설정
+```
+
+**Package Manager**: npm (workspaces)
+
 ## Tech Stack
 
 | 영역 | 기술 | 버전 |
@@ -24,23 +39,38 @@
 ## Getting Started
 
 ```bash
-# 의존성 설치
+# 의존성 설치 (모든 워크스페이스)
 npm install
 
 # 개발 서버 실행
 npm run dev
 
-# 프로덕션 빌드
-npm run build
+# 프로덕션 빌드 (sa-gantt-lib → web 순서)
+npm run build:lib    # sa-gantt-lib 빌드
+npm run build        # web 앱 빌드
 
 # 테스트 실행
 npm run test
 
-# 테스트 워치 모드
-npm run test:watch
+# 테스트 워치 모드 (web 앱)
+npm -w @contech/web run test:watch
 
-# 테스트 커버리지
-npm run test:coverage
+# 테스트 커버리지 (web 앱)
+npm -w @contech/web run test:coverage
+
+# 모든 node_modules 정리
+npm run clean
+```
+
+### Workspace Commands
+
+```bash
+# 특정 워크스페이스에서 명령 실행
+npm -w @contech/web run <script>     # web 앱
+npm -w sa-gantt-lib run <script>     # gantt 라이브러리
+
+# 모든 워크스페이스에서 lint 실행
+npm run lint
 ```
 
 ## Project Structure
@@ -359,6 +389,19 @@ Supabase PostgreSQL 기반 데이터베이스
 | `src/components/dashboard/DailyWorkerInputDashboard.tsx` | 계산 로직 활성화 | 2025-01-27 |
 
 ## Changelog
+
+### 2025-01-28
+#### Changed
+- **pnpm → npm 마이그레이션**: Vercel 배포 호환성을 위해 패키지 매니저를 npm workspaces로 전환
+  - `pnpm-workspace.yaml`, `pnpm-lock.yaml` 삭제
+  - `package-lock.json` 생성
+  - 루트 `package.json` 스크립트를 npm workspace 문법으로 변환
+  - `apps/web/package.json`에서 `workspace:*` → `*` 변경
+  - `@thatopen/fragments` 의존성 명시적 추가 (peer dependency 해결)
+
+#### Fixed
+- **Vercel 빌드 실패 수정**: `sa-gantt-lib`를 web 앱보다 먼저 빌드하도록 `vercel.json` 수정
+  - `buildCommand`: `npm run build:lib && npm run build`
 
 ### 2025-01-27
 #### Fixed
