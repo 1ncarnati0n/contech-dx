@@ -2,18 +2,17 @@
   "name": "contech-dx-monorepo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@9.15.9",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm --filter @contech/web dev",
-    "build": "pnpm --filter @contech/web build",
-    "build:lib": "pnpm --filter sa-gantt-lib build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
-    "clean": "pnpm -r exec rm -rf node_modules .next dist"
+    "dev": "npm -w @contech/web run dev",
+    "build": "npm -w @contech/web run build",
+    "build:lib": "npm -w sa-gantt-lib run build",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "npm exec --workspaces -- rm -rf node_modules .next dist"
   },
   "devDependencies": {
     "turbo": "^2.3.3"
