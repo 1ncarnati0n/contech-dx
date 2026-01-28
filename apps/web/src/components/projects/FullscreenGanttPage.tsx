@@ -678,6 +678,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         result.taskUpdates.map((update) =>
           dataService.updateTask(update.taskId, {
             startDate: update.newStartDate,
+            endDate: update.newEndDate,
           })
         )
       );
@@ -686,7 +687,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         ...prev,
         tasks: prev.tasks.map(t => {
           const update = result.taskUpdates?.find(u => u.taskId === t.id);
-          return update ? { ...t, startDate: update.newStartDate } : t;
+          return update
+            ? { ...t, startDate: update.newStartDate, endDate: update.newEndDate }
+            : t;
         }),
       }));
     } catch (error) {

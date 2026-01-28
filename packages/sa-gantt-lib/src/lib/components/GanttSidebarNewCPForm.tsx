@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { addDays } from 'date-fns';
 import { Check, X } from 'lucide-react';
 import { ConstructionTask, GANTT_LAYOUT } from '../types';
@@ -45,6 +45,7 @@ export const GanttSidebarNewCPForm: React.FC<GanttSidebarNewCPFormProps> = ({
     dragHandleWidth = 0,
 }) => {
     const [newCPForm, setNewCPForm] = React.useState<NewCPForm>(INITIAL_NEW_CP_FORM);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const newCPNameInputRef = useRef<HTMLInputElement>(null);
 
     // 마운트 시 input에 포커스
@@ -61,8 +62,10 @@ export const GanttSidebarNewCPForm: React.FC<GanttSidebarNewCPFormProps> = ({
     }, [onCancel]);
 
     const handleSave = useCallback(async () => {
+        if (isSubmitting) return;
         if (!newCPForm.name.trim() || !onTaskCreate) return;
 
+        setIsSubmitting(true);
         try {
             // 마지막 CP의 종료일을 기준으로 시작일 계산
             const cpTasks = tasks.filter(t => t.type === 'CP' && !t.parentId);
@@ -92,8 +95,10 @@ export const GanttSidebarNewCPForm: React.FC<GanttSidebarNewCPFormProps> = ({
         } catch (error) {
             console.error('Failed to create CP:', error);
             alert('CP 생성 중 오류가 발생했습니다.');
+        } finally {
+            setIsSubmitting(false);
         }
-    }, [newCPForm, onTaskCreate, tasks, onCancel]);
+    }, [isSubmitting, newCPForm, onTaskCreate, tasks, onCancel]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -199,7 +204,7 @@ export const GanttSidebarNewCPForm: React.FC<GanttSidebarNewCPFormProps> = ({
             <div className="flex shrink-0 items-center justify-center gap-1 px-2">
                 <button
                     onClick={handleSave}
-                    disabled={!newCPForm.name.trim()}
+                    disabled={!newCPForm.name.trim() || isSubmitting}
                     className="flex items-center justify-center rounded bg-blue-500 p-1.5 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     title="저장 (Enter)"
                 >

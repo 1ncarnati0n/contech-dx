@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "npm -w @contech/web run dev",
+    "dev:lib": "npm -w sa-gantt-lib run build -- --watch",
     "build": "npm -w @contech/web run build",
     "build:lib": "npm -w sa-gantt-lib run build",
     "lint": "npm run lint --workspaces --if-present",
