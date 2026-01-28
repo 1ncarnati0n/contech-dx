@@ -19,42 +19,36 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import type {
+  LoadingState,
+  ViewerStats,
+  SelectedElement,
+  ViewOrientation,
+  ProjectionMode,
+  FragmentItemData,
+} from './types';
 
 interface IfcViewerProps {
   className?: string;
 }
 
-interface LoadingState {
-  phase: 'idle' | 'initializing' | 'loading' | 'processing' | 'complete' | 'error';
-  progress: number;
-  message: string;
-}
-
-interface ViewerStats {
-  meshCount: number;
-  fileSize: string;
-  loadTime: number;
-}
-
-interface SelectedElement {
-  id: number;
-  type: string;
-  name: string;
-  properties: Record<string, any>;
-}
-
-type ViewOrientation = 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
-type ProjectionMode = 'Perspective' | 'Orthographic';
-
 export function IfcViewer({ className }: IfcViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 외부 라이브러리(@thatopen/components)의 타입이 복잡하여 any 사용
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const componentsRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const worldRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ifcLoaderRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fragmentsRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const highlighterRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const boundingBoxerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const threeRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
 
@@ -143,7 +137,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         });
 
         // Handle new fragments loaded
-        fragments.list.onItemSet.add(async ({ value: model }: { value: any }) => {
+        fragments.list.onItemSet.add(async ({ value: model }) => {
           model.useCamera(world.camera.three);
           world.scene.three.add(model.object);
           await fragments.core.update(true);
@@ -186,7 +180,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
         // Handle selection events
         highlighter.events.select.onHighlight.add(async (modelIdMap: Record<string, Set<number>>) => {
-          const promises: Promise<any>[] = [];
+          const promises: Promise<FragmentItemData[]>[] = [];
           for (const [modelId, localIds] of Object.entries(modelIdMap)) {
             const model = fragments.list.get(modelId);
             if (!model) continue;
@@ -194,11 +188,11 @@ export function IfcViewer({ className }: IfcViewerProps) {
           }
           const allData = (await Promise.all(promises)).flat();
 
-          const elements: SelectedElement[] = allData.map((item: any, index: number) => ({
-            id: item.localId || index,
-            type: item.type || 'Unknown',
-            name: item.name || `Element ${index + 1}`,
-            properties: item.attributes || {},
+          const elements: SelectedElement[] = allData.map((item: FragmentItemData, index: number) => ({
+            id: item.localId ?? index,
+            type: item.type ?? 'Unknown',
+            name: item.name ?? `Element ${index + 1}`,
+            properties: item.attributes ?? {},
           }));
 
           setSelectedElements(elements);

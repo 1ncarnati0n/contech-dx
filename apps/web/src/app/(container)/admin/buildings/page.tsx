@@ -7,6 +7,7 @@ import AdminBuildingsClient, {
   type RecentBuilding,
 } from './AdminBuildingsClient';
 import type { Project } from '@/lib/types';
+import { extractBuildingDisplayData } from '@/lib/utils/building-metadata';
 
 /**
  * 서버 사이드에서 프로젝트 목록 조회
@@ -86,15 +87,16 @@ async function getRecentBuildings(limit: number = 20): Promise<RecentBuilding[]>
 
   return (rows || []).map(row => {
     const projectData = row.projects as unknown as { name: string } | null;
+    const metaData = extractBuildingDisplayData(row.meta);
     return {
       id: row.id,
       projectId: row.project_id,
       projectName: projectData?.name || 'Unknown',
       buildingName: row.building_name,
       buildingNumber: row.building_number,
-      floorCount: (row.meta as any)?.floorCount?.ground || 0,
-      coreType: (row.meta as any)?.coreType || '-',
-      slabType: (row.meta as any)?.slabType || '-',
+      floorCount: metaData.floorCount,
+      coreType: metaData.coreType,
+      slabType: metaData.slabType,
       createdAt: row.created_at,
     };
   });

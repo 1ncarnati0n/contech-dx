@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { isSystemAdmin } from '@/lib/permissions/shared';
 import type { AdminStats, RecentBuilding } from '@/app/(container)/admin/buildings/AdminBuildingsClient';
+import { extractBuildingDisplayData } from '@/lib/utils/building-metadata';
 
 /**
  * 프로젝트별 건물 통계 및 동 목록 조회 API
@@ -119,15 +120,16 @@ export async function GET(request: NextRequest) {
 
     const buildings: RecentBuilding[] = (rows || []).map(row => {
       const projectData = row.projects as unknown as { name: string } | null;
+      const metaData = extractBuildingDisplayData(row.meta);
       return {
         id: row.id,
         projectId: row.project_id,
         projectName: projectData?.name || 'Unknown',
         buildingName: row.building_name,
         buildingNumber: row.building_number,
-        floorCount: (row.meta as any)?.floorCount?.ground || 0,
-        coreType: (row.meta as any)?.coreType || '-',
-        slabType: (row.meta as any)?.slabType || '-',
+        floorCount: metaData.floorCount,
+        coreType: metaData.coreType,
+        slabType: metaData.slabType,
         createdAt: row.created_at,
       };
     });

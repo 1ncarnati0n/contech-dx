@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { Calendar, ChevronDown, ChevronUp, Building2, Clock, Layers, CalendarDays } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
@@ -1297,101 +1297,6 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* 통계 카드 섹션 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* 전체 동 수 */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Building2 className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">전체 동 수</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">{buildings.length}개</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 현재 선택된 동 */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">현재 선택</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">
-                {activeBuilding?.buildingName || '-'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 현재 동 공정일수 */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">현재 동 공정일수</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">
-                {activeBuilding ? (() => {
-                  const plan = processPlans.get(activeBuilding.id);
-                  let totalDays = 0;
-                  processRows.forEach(row => {
-                    const isNormalFloor = row.floorClass === '일반층';
-                    const effectiveCategory = isNormalFloor ? '옥탑층' : row.category;
-                    const processType = row.floorLabel && (row.category === '지하층' || row.category === '옥탑층' || isNormalFloor)
-                      ? (isNormalFloor
-                          ? getProcessTypeForFloor(plan, '옥탑층', row.floorLabel)
-                          : getProcessTypeForFloor(plan, row.category, row.floorLabel))
-                      : plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category];
-                    const module = getProcessModule(effectiveCategory, processType);
-                    if (module?.items) {
-                      module.items.forEach(item => {
-                        if (item.directWorkDays) totalDays += item.directWorkDays;
-                      });
-                    }
-                  });
-                  return totalDays;
-                })() : 0}일
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* 전체 공정일수 합계 */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <CalendarDays className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">전체 공정일수</p>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">
-                {(() => {
-                  let grandTotal = 0;
-                  buildings.forEach(building => {
-                    const plan = processPlans.get(building.id);
-                    PROCESS_CATEGORIES.forEach(category => {
-                      const processType = plan?.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-                      const module = getProcessModule(category, processType);
-                      if (module?.items) {
-                        module.items.forEach(item => {
-                          if (item.directWorkDays) grandTotal += item.directWorkDays;
-                        });
-                      }
-                    });
-                  });
-                  return grandTotal;
-                })()}일
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {buildings.length > 0 ? (
         <BuildingTabs
           buildings={buildings}
