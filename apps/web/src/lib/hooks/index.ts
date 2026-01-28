@@ -11,3 +11,4 @@ export { useFloorTradeSelection } from './useFloorTradeSelection';
 export { usePageContext, getPageTypeLabel } from './usePageContext';
 export type { PageType, PageContext } from './usePageContext';
 export { useSyncTabContext } from './useSyncTabContext';
+export { useErrorHandler, useErrorHandlerWithCallback } from './useErrorHandler';
