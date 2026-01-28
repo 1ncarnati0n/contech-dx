@@ -8,17 +8,17 @@ import { toast } from 'sonner';
 import { Calendar, ChevronDown, ChevronUp, Building2, Clock, Layers, CalendarDays } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
-import { ProcessPlanChatbotSidebar } from './ProcessPlanChatbotSidebar';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
-import { 
-  calculateTotalWorkers, 
-  calculateDailyInputWorkers, 
+import {
+  calculateTotalWorkers,
+  calculateDailyInputWorkers,
   calculateTotalWorkDays,
   calculateWorkDaysWithRounding,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
+import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
 
 interface Props {
   projectId: string;
@@ -55,6 +55,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
+
+  // 전역 챗봇과 탭 컨텍스트 동기화
+  useSyncTabContext({
+    activeBuildingIndex,
+    buildings,
+    processPlans,
+    enabled: buildings.length > 0,
+  });
 
   // 기준층에 해당하는 층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반, 최상층 포함, 코어 구분 없음, 중복 제거
   const getStandardFloors = useMemo(() => {
@@ -1920,9 +1928,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                               };
                               
                               return (
-                                <tr 
+                                <tr
                                   key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
-                                  className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                                  className={`border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 ${isExpanded ? 'bg-cyan-50 dark:bg-cyan-900/20' : ''}`}
                                   style={{ height: '24px' }}
                                 >
                                   {/* 첫 번째 열: 구분 항목 */}
@@ -2320,7 +2328,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                         ? `기준층 ${expandedRow.floorLabel}${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`
                                                         : `옥탑층 ${expandedRow.floorLabel}층${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`}
                                               </div>
-                                              <div className="space-y-2">
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {/* 모든 공정은 일반적으로 표시 */}
                                                 {colModule.items
                                                     .filter((item) => {
@@ -2852,9 +2860,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                                       const recalculatedTotalWorkDays = calculateTotalWorkDays(displayDirectWorkDays, item.indirectDays);
                                                       
                                                       return (
-                                                        <div 
+                                                        <div
                                                           key={item.id}
-                                                          className="p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700"
+                                                          className="p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 h-full"
                                                         >
                                                           <div className="font-bold text-slate-900 dark:text-white mb-1">
                                                             {item.workItem.replace(/^\d+\.\s*/, '').replace(/\s*\(1일\)/, '')}
@@ -2968,13 +2976,6 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         </BuildingTabs>
       ) : null}
 
-      {/* 공정계획 도우미 챗봇 */}
-      <ProcessPlanChatbotSidebar
-        projectId={projectId}
-        buildingId={buildings[activeBuildingIndex]?.id}
-        building={buildings[activeBuildingIndex]}
-        processPlan={processPlans.get(buildings[activeBuildingIndex]?.id || '')}
-      />
     </div>
   );
 }
