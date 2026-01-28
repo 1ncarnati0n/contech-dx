@@ -448,8 +448,6 @@ export interface BuildingMeta {
   };
   standardFloorCycle?: number; // 기준층 공정사이클
   pumpCarCount?: number | null; // 펌프카 최대 투입대수
-  isBasicInfoLocked?: boolean; // 동기본정보 데이터 고정 여부
-  isDataInputLocked?: boolean; // 물량입력표 데이터 고정 여부
 }
 
 /**

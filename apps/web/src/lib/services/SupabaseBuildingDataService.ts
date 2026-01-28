@@ -504,6 +504,25 @@ export async function updateFloor(
 // ============================================
 
 /**
+ * Supabase 에러 객체에서 정보를 안전하게 추출
+ * PostgrestError의 속성이 non-enumerable하거나 getter로 정의된 경우를 처리
+ */
+function extractSupabaseError(error: unknown): {
+  code: string;
+  message: string;
+  details: string;
+  hint: string;
+} {
+  const err = error as Record<string, unknown>;
+  return {
+    code: String(err?.code ?? 'UNKNOWN'),
+    message: String(err?.message ?? 'Unknown error'),
+    details: String(err?.details ?? ''),
+    hint: String(err?.hint ?? ''),
+  };
+}
+
+/**
  * 층별 공종 데이터 저장 (Upsert)
  */
 export async function saveFloorTrade(
@@ -513,15 +532,41 @@ export async function saveFloorTrade(
   tradeGroup: string,
   trades: Partial<TradeData>
 ): Promise<FloorTrade> {
+  // 입력 데이터 유효성 검증 (빈 문자열 체크 포함)
+  if (!floorId || floorId.trim() === '' || !buildingId || buildingId.trim() === '' || !tradeGroup || tradeGroup.trim() === '') {
+    const missingParams = [
+      (!floorId || floorId.trim() === '') && `floorId="${floorId}"`,
+      (!buildingId || buildingId.trim() === '') && `buildingId="${buildingId}"`,
+      (!tradeGroup || tradeGroup.trim() === '') && `tradeGroup="${tradeGroup}"`,
+    ].filter(Boolean).join(', ');
+    throw new Error(`Missing or empty required parameters: ${missingParams}`);
+  }
+
+  // dummy floor ID 체크
+  if (floorId.startsWith('dummy-')) {
+    throw new Error(`Cannot save floor trade for dummy floor: ${floorId}`);
+  }
+
   const supabase = await getSupabaseClient();
 
   // 기존 데이터 조회
-  const { data: existingRow } = await supabase
+  const { data: existingRow, error: selectError } = await supabase
     .from('floor_trades')
     .select('*')
     .eq('floor_id', floorId)
     .eq('trade_group', tradeGroup)
     .single();
+
+  // PGRST116은 정상 (레코드 없음), 다른 에러는 throw
+  if (selectError && selectError.code !== 'PGRST116') {
+    const errInfo = extractSupabaseError(selectError);
+    logger.error('Floor trade lookup error:', {
+      ...errInfo,
+      floorId,
+      tradeGroup,
+    });
+    throw new Error(`Failed to lookup floor trade: ${errInfo.message} (${errInfo.code})`);
+  }
 
   if (existingRow) {
     // 업데이트: 기존 trades와 병합
@@ -534,8 +579,14 @@ export async function saveFloorTrade(
       .single();
 
     if (error) {
-      logger.error('Failed to update floor trade:', error);
-      throw new Error(`Failed to update floor trade: ${error.message}`);
+      const errInfo = extractSupabaseError(error);
+      logger.error('Failed to update floor trade:', {
+        ...errInfo,
+        existingRowId: existingRow.id,
+        floorId,
+        tradeGroup,
+      });
+      throw new Error(`Failed to update floor trade: ${errInfo.message} (${errInfo.code})`);
     }
 
     buildingsCache.invalidate(projectId);
@@ -549,6 +600,13 @@ export async function saveFloorTrade(
       trades: trades as TradeData,
     };
 
+    logger.debug('Attempting to insert floor trade:', {
+      floorId,
+      buildingId,
+      tradeGroup,
+      tradesKeys: Object.keys(trades),
+    });
+
     const { data: newRow, error } = await supabase
       .from('floor_trades')
       .insert(insertData)
@@ -556,8 +614,17 @@ export async function saveFloorTrade(
       .single();
 
     if (error) {
-      logger.error('Failed to create floor trade:', error);
-      throw new Error(`Failed to create floor trade: ${error.message}`);
+      const errInfo = extractSupabaseError(error);
+      logger.error('Failed to create floor trade:', {
+        ...errInfo,
+        insertData: {
+          floor_id: insertData.floor_id,
+          building_id: insertData.building_id,
+          trade_group: insertData.trade_group,
+          tradesKeys: Object.keys(insertData.trades || {}),
+        },
+      });
+      throw new Error(`Failed to create floor trade: ${errInfo.message} (${errInfo.code})`);
     }
 
     buildingsCache.invalidate(projectId);

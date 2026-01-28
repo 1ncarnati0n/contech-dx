@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
 import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
+import { logger } from '@/lib/utils/logger';
 import { toast } from 'sonner';
 
 interface Props {
@@ -16,21 +17,23 @@ const TRADE_GROUPS = ['버림', '기초', '아파트'];
 
 export interface FloorTradeTableHandle {
   flushPendingSaves: () => Promise<void>;
+  saveChanges: () => Promise<void>;
+  hasUnsavedChanges: () => boolean;
 }
 
 export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   ({ building, onUpdate }, ref) => {
-  const isLocked = building?.meta?.isDataInputLocked || false;
   const [floors, setFloors] = useState<Floor[]>(building.floors);
   const [trades, setTrades] = useState<Map<string, FloorTrade>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [originalTrades, setOriginalTrades] = useState<Map<string, FloorTrade>>(new Map());
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [selectionStart, setSelectionStart] = useState<{ row: number; col: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggingText, setIsDraggingText] = useState(false);
   const isDraggingTextRef = useRef(false);
   const selectionStartRef = useRef<{ row: number; col: number } | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSavesRef = useRef<Map<string, FloorTrade>>(new Map()); // 저장 대기 중인 trade 객체들
 
   useEffect(() => {
@@ -41,6 +44,9 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       tradesMap.set(key, trade);
     });
     setTrades(tradesMap);
+    // 원본 데이터 저장 (취소 기능용)
+    setOriginalTrades(new Map(tradesMap));
+    setHasUnsavedChanges(false);
     // 층이 변경되면 선택 초기화
     setSelectedCells(new Set());
     setSelectionStart(null);
@@ -51,6 +57,18 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     // pendingSavesRef도 초기화
     pendingSavesRef.current = new Map();
   }, [building]);
+
+  // 페이지 이탈 경고
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '저장하지 않은 변경사항이 있습니다.';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   // 행 생성: 버림, 기초, 각 층, 소계
   const rows = useMemo(() => {
@@ -442,12 +460,18 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   // Delete/Backspace 키로 선택된 셀들 지우기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 입력 필드에 포커스가 있으면 무시
-      if (document.activeElement?.tagName === 'INPUT') {
+      // 단일 셀 선택 + input 포커스 시에는 일반 편집 허용
+      // 여러 셀 선택 시에는 블록 삭제 우선
+      const isInputFocused = document.activeElement?.tagName === 'INPUT';
+      if (isInputFocused && selectedCells.size <= 1) {
         return;
       }
-      
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedCells.size > 0) {
+        // input에 포커스가 있으면 blur 처리
+        if (isInputFocused) {
+          (document.activeElement as HTMLInputElement)?.blur();
+        }
         e.preventDefault();
         // 선택된 셀들의 데이터 지우기
         selectedCells.forEach(cellKey => {
@@ -518,6 +542,12 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   };
 
   const updateTrade = (floorId: string, tradeGroup: string, field: string, value: number | null): boolean => {
+    // floorId가 비어있으면 저장하지 않음
+    if (!floorId || floorId.trim() === '') {
+      logger.warn('updateTrade called with empty floorId:', { floorId, tradeGroup, field });
+      return false;
+    }
+
     // 더미 층인 경우 코어1의 실제 층 찾기
     let actualFloorId = floorId;
     if (floorId.startsWith('dummy-')) {
@@ -614,11 +644,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
             }
           }
           
-          // 개별 층 데이터 저장
+          // 개별 층 데이터를 pendingSaves에 추가 (실제 저장은 saveChanges에서)
           if (tradesToSave.length > 0) {
             tradesToSave.forEach(trade => {
-              const tradeKey = `${trade.floorId}-${trade.tradeGroup}`;
-              autoSave(tradeKey, trade);
+              if (!trade.floorId.startsWith('dummy-')) {
+                const tradeKey = `${trade.floorId}-${trade.tradeGroup}`;
+                pendingSavesRef.current.set(tradeKey, trade);
+              }
             });
           }
         }
@@ -627,37 +659,39 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
     const newTradesMap = new Map(trades.set(key, updatedTrade));
     setTrades(newTradesMap);
-    
-    // 자동 저장 (디바운싱 적용)
-    autoSave(key, updatedTrade);
-    
+
+    // 변경사항 표시 및 pendingSaves에 추가 (실제 저장은 saveChanges에서)
+    setHasUnsavedChanges(true);
+    if (!updatedTrade.floorId.startsWith('dummy-')) {
+      pendingSavesRef.current.set(key, updatedTrade);
+    }
+
     return true;
   };
 
-  // 저장 완료를 보장하는 함수 (층 재생성 전 호출)
-  const flushPendingSaves = async (): Promise<void> => {
-    // 더미 층 ID는 저장하지 않음
-    if (!(pendingSavesRef.current instanceof Map) || pendingSavesRef.current.size === 0) {
+  // 명시적 저장 함수
+  const saveChanges = async (): Promise<void> => {
+    if (pendingSavesRef.current.size === 0) {
+      toast.info('저장할 변경사항이 없습니다.');
       return;
     }
 
-    // 기존 타이머 취소
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-    }
-
-    // 저장 대기 중인 모든 trade를 즉시 저장
-    const savesToProcess = new Map(pendingSavesRef.current);
-    pendingSavesRef.current.clear();
-
-    if (savesToProcess.size === 0) return;
-
     setIsSaving(true);
     try {
-      const tradesToSave = Array.from(savesToProcess.values()).filter(
-        trade => !trade.floorId.startsWith('dummy-')
-      );
+      // UUID 형식 검증 정규식
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    const tradesToSave = Array.from(pendingSavesRef.current.values())
+      .filter(trade => !trade.floorId.startsWith('dummy-'))
+      .filter(trade => {
+        // 1. 순수 UUID 형식 (일반 층)
+        if (uuidRegex.test(trade.floorId)) return true;
+        // 2. 기준층 개별 층 ID (uuid-숫자F 형식)
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-\d+F$/i.test(trade.floorId)) return true;
+        // 3. 버림/기초 그룹 ID
+        if (trade.floorId.startsWith('group-')) return true;
+        return false;
+      });
 
       if (tradesToSave.length > 0) {
         const promises = tradesToSave.map(trade =>
@@ -668,75 +702,41 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
           })
         );
         await Promise.all(promises);
-        await onUpdate(); // 저장 후 업데이트
+
+        pendingSavesRef.current.clear();
+        setOriginalTrades(new Map(trades));
+        setHasUnsavedChanges(false);
+        toast.success(`${tradesToSave.length}개 항목 저장 완료`);
+        await onUpdate();
       }
     } catch (error) {
-      console.error('Flush save failed:', error);
-      throw error; // 에러를 상위로 전달
+      console.error('Save failed:', error);
+      toast.error('저장 실패. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // 변경사항 취소 함수
+  const discardChanges = () => {
+    if (confirm('변경사항을 취소하시겠습니까?')) {
+      setTrades(new Map(originalTrades));
+      pendingSavesRef.current.clear();
+      setHasUnsavedChanges(false);
+    }
+  };
+
+  // 저장 완료를 보장하는 함수 (층 재생성 전 호출)
+  const flushPendingSaves = async (): Promise<void> => {
+    await saveChanges();
   };
 
   // useImperativeHandle로 함수 노출
   useImperativeHandle(ref, () => ({
     flushPendingSaves,
+    saveChanges,
+    hasUnsavedChanges: () => hasUnsavedChanges,
   }));
-
-  // 자동 저장 함수 (디바운싱 적용)
-  const autoSave = (tradeKey: string, trade: FloorTrade) => {
-    // 더미 층 ID는 저장하지 않음 (실제 층만 저장)
-    if (trade.floorId.startsWith('dummy-')) {
-      return;
-    }
-
-    // pendingSavesRef가 Map인지 확인하고, 아니면 초기화
-    if (!(pendingSavesRef.current instanceof Map)) {
-      pendingSavesRef.current = new Map();
-    }
-
-    // 저장 대기 목록에 추가 (trade 객체를 직접 저장)
-    pendingSavesRef.current.set(tradeKey, trade);
-
-    // 기존 타이머 취소
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // 500ms 후 저장 (디바운싱)
-    saveTimeoutRef.current = setTimeout(async () => {
-      const savesToProcess = new Map(pendingSavesRef.current);
-      pendingSavesRef.current.clear();
-
-      if (savesToProcess.size === 0) return;
-
-    setIsSaving(true);
-    try {
-        // 저장할 trade 객체들을 배열로 변환
-        const tradesToSave = Array.from(savesToProcess.values()).filter(
-          trade => !trade.floorId.startsWith('dummy-')
-        );
-
-        // 저장 실행
-        if (tradesToSave.length > 0) {
-          const promises = tradesToSave.map(trade =>
-            saveFloorTrade(building.id, building.projectId, {
-              floorId: trade.floorId,
-              tradeGroup: trade.tradeGroup,
-              trades: trade.trades,
-            })
-          );
-      await Promise.all(promises);
-      onUpdate();
-        }
-    } catch (error) {
-        console.error('Auto-save failed:', error);
-        toast.error('자동 저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
-    }, 500);
-  };
 
   // 형틀 합계 계산 함수
   const calculateFormworkTotal = (trade: TradeData): number => {
@@ -917,12 +917,30 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>층별 물량 입력</CardTitle>
-          {isSaving && (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              저장 중...
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            <CardTitle>층별 물량 입력</CardTitle>
+            {hasUnsavedChanges && (
+              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                저장되지 않은 변경사항
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {hasUnsavedChanges && !isSaving && (
+              <Button variant="ghost" size="sm" onClick={discardChanges}>
+                취소
+              </Button>
+            )}
+            <Button
+              variant={hasUnsavedChanges ? "primary" : "secondary"}
+              size="sm"
+              onClick={saveChanges}
+              disabled={isSaving || !hasUnsavedChanges}
+            >
+              {isSaving ? '저장 중...' : '저장'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -1000,28 +1018,28 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                             const alFormSum = calculateSummary('alForm.areaM2');
                             const euroFormSum = calculateSummary('euroForm.areaM2');
                             const val = gangFormSum + alFormSum + euroFormSum;
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 갱폼 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('gangForm.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 알폼 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('alForm.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 유로폼 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('euroForm.areaM2');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 해체/정리 - 유로폼 소계 * 2로 자동 계산 */}
@@ -1029,21 +1047,21 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           {(() => {
                             const euroFormSum = calculateSummary('euroForm.areaM2');
                             const val = euroFormSum * 2;
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 철근 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 w-14">
                           {(() => {
                             const val = calculateSummary('rebar.ton');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 콘크리트 */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center w-14">
                           {(() => {
                             const val = calculateSummary('concrete.volumeM3');
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                       </tr>
@@ -1068,7 +1086,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
                           {(() => {
                             const val = calculateFormworkTotal(groupTrade);
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 갱폼 */}
@@ -1083,12 +1101,14 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
+                          onDragMove={handleDragMove}
+                          isDragging={isDragging}
                           onTextDragStart={handleTextDragStart}
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-3`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 알폼 */}
                         <TradeInputCell
@@ -1102,12 +1122,14 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
+                          onDragMove={handleDragMove}
+                          isDragging={isDragging}
                           onTextDragStart={handleTextDragStart}
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-4`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 유로폼 */}
                         <TradeInputCell
@@ -1121,19 +1143,21 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
+                          onDragMove={handleDragMove}
+                          isDragging={isDragging}
                           onTextDragStart={handleTextDragStart}
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-5`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
                         <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
                           {(() => {
                             const euroFormVal = groupTrade.euroForm?.areaM2 || 0;
                             const val = euroFormVal * 2;
-                            return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                           })()}
                         </td>
                         {/* 철근 */}
@@ -1148,12 +1172,14 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
+                          onDragMove={handleDragMove}
+                          isDragging={isDragging}
                           onTextDragStart={handleTextDragStart}
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-7`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                         {/* 콘크리트 */}
                         <TradeInputCell
@@ -1167,12 +1193,14 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onPaste={handlePaste}
                           onSelect={handleCellSelect}
                           onDragStart={handleDragStart}
+                          onDragMove={handleDragMove}
+                          isDragging={isDragging}
                           onTextDragStart={handleTextDragStart}
                           onTextDragEnd={handleTextDragEnd}
                           isDraggingText={isDraggingText}
                           isDraggingTextRef={isDraggingTextRef}
                           isSelected={selectedCells.has(`${rowIndex}-8`)}
-                          isLocked={isLocked}
+                          isLocked={false}
                         />
                       </tr>
                     );
@@ -1192,7 +1220,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                       <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
                         {(() => {
                           const val = calculateFormworkTotal(floorTrade);
-                          return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         })()}
                       </td>
                       {/* 갱폼 */}
@@ -1207,12 +1235,14 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
+                        onDragMove={handleDragMove}
+                        isDragging={isDragging}
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isDraggingTextRef={isDraggingTextRef}
                         isSelected={selectedCells.has(`${rowIndex}-3`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 알폼 */}
                       <TradeInputCell
@@ -1226,11 +1256,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
+                        onDragMove={handleDragMove}
+                        isDragging={isDragging}
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-4`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 유로폼 */}
                       <TradeInputCell
@@ -1244,18 +1276,20 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
+                        onDragMove={handleDragMove}
+                        isDragging={isDragging}
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-5`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
                       <td className="px-0.5 py-0 text-[10.8px] text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-14">
                         {(() => {
                           const euroFormVal = floorTrade.euroForm?.areaM2 || 0;
                           const val = euroFormVal * 2;
-                          return val === 0 ? '' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         })()}
                       </td>
                       {/* 철근 */}
@@ -1270,11 +1304,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
+                        onDragMove={handleDragMove}
+                        isDragging={isDragging}
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-7`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                       {/* 콘크리트 */}
                       <TradeInputCell
@@ -1288,11 +1324,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onPaste={handlePaste}
                         onSelect={handleCellSelect}
                         onDragStart={handleDragStart}
+                        onDragMove={handleDragMove}
+                        isDragging={isDragging}
                         onTextDragStart={handleTextDragStart}
                         onTextDragEnd={handleTextDragEnd}
                         isDraggingText={isDraggingText}
                         isSelected={selectedCells.has(`${rowIndex}-8`)}
-                        isLocked={isLocked}
+                        isLocked={false}
                       />
                     </tr>
                   );
@@ -1331,8 +1369,8 @@ function calculateFormula(formula: string): number | null {
 }
 
 // 헬퍼 컴포넌트: 입력 셀
-function TradeInputCell({ 
-  value, 
+function TradeInputCell({
+  value,
   onChange,
   rowIndex,
   colIndex,
@@ -1342,6 +1380,8 @@ function TradeInputCell({
   onPaste,
   onSelect,
   onDragStart,
+  onDragMove,
+  isDragging,
   onTextDragStart,
   onTextDragEnd,
   isDraggingText,
@@ -1359,6 +1399,8 @@ function TradeInputCell({
   onPaste?: (e: React.ClipboardEvent, startRow: number, startCol: number) => void;
   onSelect?: (rowIndex: number, colIndex: number, isMultiSelect: boolean) => void;
   onDragStart?: (rowIndex: number, colIndex: number) => void;
+  onDragMove?: (rowIndex: number, colIndex: number) => void;
+  isDragging?: boolean;
   onTextDragStart?: () => void;
   onTextDragEnd?: () => void;
   isDraggingText?: boolean;
@@ -1399,14 +1441,15 @@ function TradeInputCell({
   
   const [formula, setFormula] = useState<string | null>(getStoredFormula());
 
-  // 포맷팅된 값 생성 (천단위 구분자 포함, 소수점 2자리 고정)
+  // 포맷팅된 값 생성 (천단위 구분자 포함, 소수점 2~4자리)
   const formatValue = (num: number | null | undefined): string => {
-    if (num === null || num === undefined || num === 0) return '';
-    // 모든 값을 소수점 2자리까지 표시 (한 자리면 뒤에 0 추가)
-      return num.toLocaleString('ko-KR', { 
+    if (num === null || num === undefined) return '';
+    if (num === 0) return '-';
+    // 최소 2자리, 최대 4자리까지 표시 (건설 물량 정밀도 반영)
+    return num.toLocaleString('ko-KR', {
       minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
-      });
+      maximumFractionDigits: 4
+    });
   };
 
   // 숫자만 추출 (천단위 구분자 제거, 빈칸은 null 반환)
@@ -1656,20 +1699,25 @@ function TradeInputCell({
     
     if (rowIndex !== undefined && colIndex !== undefined) {
       const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-      
-      // input 필드 내부에서 드래그할 때는 텍스트 선택을 허용
-      // input 필드의 가장자리나 셀 외부에서 드래그할 때만 셀 선택 드래그 시작
-      // 여기서는 input 필드 내부이므로 셀 선택 드래그를 시작하지 않음
-      
+
+      // Shift/Ctrl 없이 클릭하면 드래그 시작
+      if (!isMultiSelect && onDragStart) {
+        onDragStart(rowIndex, colIndex);
+      }
+
       if (onSelect) {
         onSelect(rowIndex, colIndex, isMultiSelect);
       }
     }
   };
 
-  // input 필드에서 마우스 이동 (텍스트 선택 허용)
+  // input 필드에서 마우스 이동 (드래그 중이면 셀 선택 업데이트)
   const handleInputMouseMove = (e: React.MouseEvent<HTMLInputElement>) => {
-    // input 필드 내부에서 마우스 이동 시 기본 동작(텍스트 선택) 허용
+    // 드래그 중이면 셀 선택 업데이트
+    if (isDragging && onDragMove && rowIndex !== undefined && colIndex !== undefined) {
+      onDragMove(rowIndex, colIndex);
+    }
+    // 텍스트 선택 중이 아닐 때만 stopPropagation (드래그 중에는 셀 선택 이벤트 전파 허용)
     e.stopPropagation();
   };
 
@@ -1707,13 +1755,10 @@ function TradeInputCell({
         onBlur={handleBlur}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
-        disabled={isLocked}
         onMouseDown={(e) => {
           // input 필드 내부에서의 이벤트는 부모로 전파되지 않도록 함
           e.stopPropagation();
-          if (!isLocked) {
-            handleMouseDown(e);
-          }
+          handleMouseDown(e);
         }}
         onMouseMove={handleInputMouseMove}
         data-row-index={rowIndex}
