@@ -1,21 +1,16 @@
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions/server';
-import { redirect } from 'next/navigation';
+import { getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions/server';
+import { requireAuth } from '@/lib/auth/requireAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
 import ProfileEditForm from '@/components/profile/ProfileEditForm';
 
 export default async function ProfilePage() {
-  const profile = await getCurrentUserProfile();
-
-  // 로그인 확인
-  if (!profile) {
-    redirect('/login');
-  }
+  // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
+  const { user, profile } = await requireAuth();
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
   
   // 회원가입 시 등록한 이름과 직위 정보 가져오기
   const signupName = user?.user_metadata?.display_name || user?.user_metadata?.name || null;

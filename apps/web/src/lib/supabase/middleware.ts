@@ -89,9 +89,9 @@ export async function updateSession(request: NextRequest) {
   const isPublicPath = publicPaths.some(p => path === p || path.startsWith('/auth/'));
 
   if (!user && !isPublicPath) {
-    // Redirect unauthenticated users to login
+    // Redirect unauthenticated users to landing page
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 

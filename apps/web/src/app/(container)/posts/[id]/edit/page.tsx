@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth/requireAuth';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Edit } from 'lucide-react';
@@ -10,17 +11,11 @@ interface PageProps {
 }
 
 export default async function EditPostPage({ params }: PageProps) {
+  // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
+  const { user } = await requireAuth();
+
   const supabase = await createClient();
   const { id } = await params;
-
-  // 로그인 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
 
   // 게시글 가져오기
   const { data: post, error } = await supabase

@@ -9,7 +9,8 @@ export const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="system"
       className="toaster group"
-      position="bottom-right"
+      position="top-right"
+      offset={72}
       toastOptions={{
         classNames: {
           toast:
