@@ -22,6 +22,12 @@ export interface UseDragStateOptions<T> {
     cursor?: 'grabbing' | 'ew-resize' | 'col-resize';
     /** RAF 배칭 사용 여부 (기본: true) */
     useRAF?: boolean;
+    /**
+     * Pending Update 패턴 사용 여부 (기본: false)
+     * true면 드래그 완료 후에도 상태를 pendingState로 유지하여
+     * 외부 props 업데이트 전까지 UI 깜빡임 방지
+     */
+    usePendingUpdate?: boolean;
 }
 
 export interface UseDragStateReturn<T> {
@@ -39,6 +45,12 @@ export interface UseDragStateReturn<T> {
     stop: () => void;
     /** 드래그 중 여부 */
     isDragging: boolean;
+    /** Pending 상태 여부 (드래그 완료 후 props 업데이트 대기 중) */
+    isPending: boolean;
+    /** Pending 상태 (드래그 완료 후 props 업데이트 전까지 유지) */
+    pendingState: T | null;
+    /** Pending 상태 해제 */
+    clearPending: () => void;
 }
 
 /**
@@ -64,9 +76,13 @@ export function useDragState<T extends object>({
     cursor = 'grabbing',
     // useRAF는 향후 옵션으로 활용 가능 (현재는 항상 RAF 사용)
     useRAF: _useRAF = true,
+    usePendingUpdate = false,
 }: UseDragStateOptions<T>): UseDragStateReturn<T> {
     const [state, setState] = useState<T | null>(null);
     const stateRef = useRef<T | null>(null);
+
+    // Pending Update 패턴: 드래그 완료 후 props 업데이트 전까지 상태 유지
+    const [pendingState, setPendingState] = useState<T | null>(null);
 
     // RAF 배칭을 위한 refs
     const rafIdRef = useRef<number | null>(null);
@@ -133,6 +149,11 @@ export function useDragState<T extends object>({
         }
     }, []);
 
+    // Pending 상태 해제
+    const clearPending = useCallback(() => {
+        setPendingState(null);
+    }, []);
+
     // 마우스 업 핸들러
     const handleMouseUp = useCallback(() => {
         // RAF 정리 (pending 업데이트가 있으면 즉시 적용)
@@ -148,10 +169,15 @@ export function useDragState<T extends object>({
         const currentState = stateRef.current;
         if (currentState) {
             onEndRef.current(currentState);
+
+            // Pending Update 패턴: 드래그 완료 후에도 상태 유지
+            if (usePendingUpdate) {
+                setPendingState(currentState);
+            }
         }
         setState(null);
         stateRef.current = null;
-    }, []);
+    }, [usePendingUpdate]);
 
     // 이벤트 리스너 자동 관리
     useEffect(() => {
@@ -177,6 +203,9 @@ export function useDragState<T extends object>({
         start,
         stop,
         isDragging: !!state,
+        isPending: !!pendingState,
+        pendingState,
+        clearPending,
     };
 }
 

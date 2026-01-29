@@ -43,11 +43,14 @@ const DEFAULT_DIMENSIONS: Dimensions = {
   height: 600,
 };
 
+// 헤더 높이(4rem = 64px) + 하단 여백(16px) = 80px
+const HEADER_AND_MARGIN = 80;
+
 const DEFAULT_CONSTRAINTS: ResizeConstraints = {
   minWidth: 320,
   maxWidth: 800,
   minHeight: 400,
-  maxHeight: typeof window !== 'undefined' ? window.innerHeight - 32 : 768,
+  maxHeight: typeof window !== 'undefined' ? window.innerHeight - HEADER_AND_MARGIN : 768,
 };
 
 /**
@@ -108,7 +111,7 @@ export function useResizableSidebar(
   // 크기 제약 업데이트 (화면 크기 변경 시)
   useEffect(() => {
     const handleWindowResize = () => {
-      constraints.maxHeight = window.innerHeight - 32;
+      constraints.maxHeight = window.innerHeight - HEADER_AND_MARGIN;
       setDimensions(prev => ({
         width: clamp(prev.width, constraints.minWidth, constraints.maxWidth),
         height: clamp(prev.height, constraints.minHeight, constraints.maxHeight),

@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { getPosts } from '@/lib/services/posts.server';
+import { requireAuth } from '@/lib/auth/requireAuth';
 import Link from 'next/link';
 import {
   PenSquare,
@@ -10,14 +10,11 @@ import { Card, CardContent, Button } from '@/components/ui';
 import PostsTable from '@/components/posts/PostsTable';
 
 export default async function PostsPage() {
+  // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
+  const { user } = await requireAuth();
+
   // 서비스 레이어를 통해 게시글 목록 가져오기
   const { posts, error } = await getPosts(20);
-
-  // 현재 사용자 확인
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   if (error) {
     console.error('Error fetching posts:', error);
@@ -49,18 +46,12 @@ export default async function PostsPage() {
             <p className="text-slate-500 dark:text-slate-400 text-sm">팀원들과 정보를 공유하고 소통하세요</p>
           </div>
         </div>
-        {user ? (
-          <Button variant="primary" size="md" asChild>
-            <Link href="/posts/new" className="flex items-center gap-2">
-              <PenSquare className="w-4 h-4" />
-              글쓰기
-            </Link>
-          </Button>
-        ) : (
-          <Button variant="outline" size="md" asChild>
-            <Link href="/login">로그인 후 글쓰기</Link>
-          </Button>
-        )}
+        <Button variant="primary" size="md" asChild>
+          <Link href="/posts/new" className="flex items-center gap-2">
+            <PenSquare className="w-4 h-4" />
+            글쓰기
+          </Link>
+        </Button>
       </div>
 
       {/* Posts Table */}
@@ -74,14 +65,12 @@ export default async function PostsPage() {
             <p className="text-slate-500 dark:text-slate-400 mb-6">
               첫 번째 게시글을 작성해보세요!
             </p>
-            {user && (
-              <Button variant="primary" size="lg" asChild>
-                <Link href="/posts/new" className="flex items-center gap-2">
-                  <PenSquare className="w-4 h-4" />
-                  글 작성하기
-                </Link>
-              </Button>
-            )}
+            <Button variant="primary" size="lg" asChild>
+              <Link href="/posts/new" className="flex items-center gap-2">
+                <PenSquare className="w-4 h-4" />
+                글 작성하기
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (

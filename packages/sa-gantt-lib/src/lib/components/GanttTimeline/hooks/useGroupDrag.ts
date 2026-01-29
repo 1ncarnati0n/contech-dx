@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { collectDescendantTasks } from '../../../utils/groupUtils';
 import {
     calculateDeltaDays,
@@ -81,7 +81,15 @@ export const useGroupDrag = ({
     // ========================================
     // 드래그 상태 관리
     // ========================================
-    const { state: dragState, scheduleUpdate, start, isDragging } = useDragState<EnhancedGroupDragState>({
+    const {
+        state: dragState,
+        scheduleUpdate,
+        start,
+        isDragging,
+        isPending,
+        pendingState,
+        clearPending,
+    } = useDragState<EnhancedGroupDragState>({
         // 드래그 중: 작업일 기준으로 크리티컬 패스 유지하며 이동
         onMove: (e, state) => {
             if (!onGroupDrag || !state.referenceTask) return;
@@ -168,7 +176,46 @@ export const useGroupDrag = ({
             });
         },
         cursor: 'grabbing',
+        usePendingUpdate: true, // 드래그 완료 후 깜빡임 방지
     });
+
+    // ========================================
+    // Pending 상태 해제: props 업데이트 감지
+    // ========================================
+    useEffect(() => {
+        if (!isPending || !pendingState) return;
+
+        // 영향받는 태스크 중 하나라도 업데이트되었는지 확인
+        const isUpdated = pendingState.affectedTasks.some(task => {
+            const taskInfo = pendingState.taskDragInfoMap.get(task.id);
+            if (!taskInfo) return false;
+
+            const currentTask = allTasks.find(t => t.id === task.id);
+            if (!currentTask) return false;
+
+            // props의 날짜가 드래그 후 날짜와 일치하면 업데이트 완료
+            return (
+                currentTask.startDate.getTime() === taskInfo.currentStartDate.getTime() &&
+                currentTask.endDate.getTime() === taskInfo.currentEndDate.getTime()
+            );
+        });
+
+        if (isUpdated) {
+            clearPending();
+        }
+    }, [isPending, pendingState, allTasks, clearPending]);
+
+    // 타임아웃 안전장치: 2초 후 강제 해제
+    useEffect(() => {
+        if (!isPending) return;
+
+        const timeoutId = setTimeout(() => {
+            console.warn('[useGroupDrag] Pending state timeout - clearing');
+            clearPending();
+        }, 2000);
+
+        return () => clearTimeout(timeoutId);
+    }, [isPending, clearPending]);
 
     // ========================================
     // 드래그 시작
@@ -245,16 +292,30 @@ export const useGroupDrag = ({
         startDate: Date;
         endDate: Date;
     } | null => {
-        if (!dragState) return null;
+        // 1. 활성 드래그 상태 확인
+        if (dragState) {
+            const taskInfo = dragState.taskDragInfoMap.get(taskId);
+            if (taskInfo) {
+                return {
+                    startDate: taskInfo.currentStartDate,
+                    endDate: taskInfo.currentEndDate,
+                };
+            }
+        }
 
-        const taskInfo = dragState.taskDragInfoMap.get(taskId);
-        if (!taskInfo) return null;
+        // 2. Pending 상태 확인 (드래그 완료 후 props 업데이트 대기 중)
+        if (pendingState) {
+            const taskInfo = pendingState.taskDragInfoMap.get(taskId);
+            if (taskInfo) {
+                return {
+                    startDate: taskInfo.currentStartDate,
+                    endDate: taskInfo.currentEndDate,
+                };
+            }
+        }
 
-        return {
-            startDate: taskInfo.currentStartDate,
-            endDate: taskInfo.currentEndDate,
-        };
-    }, [dragState]);
+        return null;
+    }, [dragState, pendingState]);
 
     // 하위 호환성: deltaDays만 반환 (기존 방식)
     const getTaskDragDeltaDays = useCallback((taskId: string): number => {

@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Menu, X, FileText, FileSearch, FolderKanban, Shield, TestTube, User, LogOut, Building2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Menu, X, Settings } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { Profile } from '@/lib/types';
+
+import { filterMenuItems, groupItemsBySection, allMenuItems } from './mobile-menu/menuData';
+import MenuItem from './mobile-menu/MenuItem';
+import MenuSearch from './mobile-menu/MenuSearch';
+import UserSection from './mobile-menu/UserSection';
 
 interface MobileMenuProps {
   user: { id: string; email?: string } | null;
@@ -13,11 +18,39 @@ interface MobileMenuProps {
   isAdmin: boolean;
 }
 
+// 애니메이션 설정
+const overlayVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+};
+
+const sidebarVariants = {
+  hidden: { x: '100%' },
+  visible: {
+    x: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 400,
+      damping: 40,
+    },
+  },
+  exit: {
+    x: '100%',
+    transition: {
+      type: 'spring' as const,
+      stiffness: 400,
+      damping: 40,
+    },
+  },
+};
+
 export default function MobileMenu({ user, profile, isAdmin }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const supabase = createClient();
 
+  // 로그아웃 핸들러
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
@@ -25,172 +58,185 @@ export default function MobileMenu({ user, profile, isAdmin }: MobileMenuProps) 
     setIsOpen(false);
   };
 
-  const closeMenu = () => setIsOpen(false);
+  // 메뉴 닫기
+  const closeMenu = useCallback(() => {
+    setIsOpen(false);
+    setSearchQuery(''); // 검색어 초기화
+  }, []);
+
+  // ESC 키로 메뉴 닫기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, closeMenu]);
+
+  // 메뉴 열림 시 스크롤 방지
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // 필터링된 메뉴 아이템
+  const filteredItems = filterMenuItems(searchQuery, isAdmin);
+  const groupedItems = groupItemsBySection(filteredItems);
+  const totalItems = isAdmin ? allMenuItems.length : allMenuItems.filter(item => !item.isAdmin).length;
 
   return (
     <>
-      {/* 햄버거 버튼 */}
+      {/* 햄버거 버튼 (애니메이션 적용) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden p-2 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
-        aria-label="메뉴 열기"
+        className="md:hidden p-2 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+        aria-label={isOpen ? '메뉴 닫기' : '메뉴 열기'}
+        aria-expanded={isOpen}
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        <motion.div
+          animate={{ rotate: isOpen ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </motion.div>
       </button>
 
-      {/* 모바일 메뉴 오버레이 */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={closeMenu}
-        />
-      )}
-
-      {/* 모바일 메뉴 사이드바 */}
-      <div
-        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-background dark:bg-primary-900 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out md:hidden ${isOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-      >
-        <div className="flex flex-col h-full">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between p-4 border-b border-primary-200 dark:border-primary-700">
-            <h2 className="text-lg font-bold text-primary-900 dark:text-primary-100">메뉴</h2>
-            <button
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* 오버레이 (배경 블러 효과) */}
+            <motion.div
+              variants={overlayVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
               onClick={closeMenu}
-              className="p-2 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
-              aria-label="메뉴 닫기"
+              aria-hidden="true"
+            />
+
+            {/* 사이드바 */}
+            <motion.div
+              variants={sidebarVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed top-0 right-0 h-full w-72 max-w-[85vw] bg-white dark:bg-zinc-900 shadow-2xl z-50 md:hidden"
             >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* 메뉴 아이템들 */}
-          <nav className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-2">
-              {/* 메인 메뉴 */}
-              <Link
-                href="/projects"
-                onClick={closeMenu}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
-              >
-                <FolderKanban className="w-5 h-5" />
-                <span className="font-medium">공정관리</span>
-              </Link>
-
-              <Link
-                href="/file-search"
-                onClick={closeMenu}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
-              >
-                <FileSearch className="w-5 h-5" />
-                <span className="font-medium">AI 문서분석</span>
-              </Link>
-
-              <Link
-                href="/posts"
-                onClick={closeMenu}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
-              >
-                <FileText className="w-5 h-5" />
-                <span className="font-medium">게시판</span>
-              </Link>
-
-              {/* 관리자 메뉴 */}
-              {isAdmin && (
-                <>
-                  <div className="pt-4 pb-2">
-                    <p className="px-4 text-xs font-semibold text-primary-500 dark:text-primary-400 uppercase tracking-wider">
-                      관리자 메뉴
-                    </p>
-                  </div>
-
-                  <Link
-                    href="/admin/users"
+              <div className="flex flex-col h-full">
+                {/* 헤더 */}
+                <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">메뉴</h2>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={closeMenu}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 transition-all"
+                    className="p-2 rounded-lg text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                    aria-label="메뉴 닫기"
                   >
-                    <Shield className="w-5 h-5" />
-                    <span className="font-medium">User Admin</span>
-                  </Link>
-
-                  <Link
-                    href="/admin/buildings"
-                    onClick={closeMenu}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 transition-all"
-                  >
-                    <Building2 className="w-5 h-5" />
-                    <span className="font-medium">Building Data</span>
-                  </Link>
-
-                  <Link
-                    href="/test-connection"
-                    onClick={closeMenu}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-admin-700 dark:text-admin-400 hover:bg-admin-50 dark:hover:bg-admin-900/20 transition-all"
-                  >
-                    <TestTube className="w-5 h-5" />
-                    <span className="font-medium">DB Checker</span>
-                  </Link>
-                </>
-              )}
-            </div>
-          </nav>
-
-          {/* 하단 사용자 정보 */}
-          <div className="border-t border-primary-200 dark:border-primary-700 p-4">
-            {user && profile ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 px-4 py-2">
-                  <div className="w-10 h-10 rounded-full bg-primary-200 dark:bg-primary-700 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-primary-900 dark:text-primary-100 truncate">
-                      {profile.display_name || user.email}
-                    </p>
-                    <p className="text-xs text-primary-500 dark:text-primary-400">
-                      {user.email} • {profile.role}
-                    </p>
-                  </div>
+                    <X className="w-5 h-5" />
+                  </motion.button>
                 </div>
 
-                <Link
-                  href="/profile"
-                  onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 py-2 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all"
-                >
-                  <User className="w-5 h-5" />
-                  <span className="font-medium">프로필</span>
-                </Link>
+                {/* 검색 필드 */}
+                <MenuSearch
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  resultCount={filteredItems.length}
+                  totalCount={totalItems}
+                />
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 transition-all"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span className="font-medium">로그아웃</span>
-                </button>
+                {/* 메뉴 아이템들 */}
+                <nav className="flex-1 overflow-y-auto px-3 pb-3">
+                  <AnimatePresence mode="wait">
+                    {filteredItems.length > 0 ? (
+                      <motion.div
+                        key="menu-items"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-1"
+                      >
+                        {groupedItems.map((section, sectionIndex) => (
+                          <div key={section.title}>
+                            {/* 섹션 헤더 */}
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: sectionIndex * 0.1 }}
+                              className={`py-2 ${sectionIndex > 0 ? 'pt-4' : ''}`}
+                            >
+                              <p className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 ${
+                                section.isAdmin
+                                  ? 'text-orange-500 dark:text-orange-400'
+                                  : 'text-zinc-400 dark:text-zinc-500'
+                              }`}>
+                                {section.isAdmin && <Settings className="w-3.5 h-3.5" />}
+                                {section.title}
+                              </p>
+                            </motion.div>
+
+                            {/* 메뉴 아이템 */}
+                            {section.items.map((item, index) => (
+                              <MenuItem
+                                key={item.href}
+                                item={item}
+                                index={sectionIndex * 10 + index}
+                                onClose={closeMenu}
+                              />
+                            ))}
+                          </div>
+                        ))}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="no-results"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col items-center justify-center py-12 text-center"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
+                          <Menu className="w-6 h-6 text-zinc-400 dark:text-zinc-500" />
+                        </div>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          검색 결과가 없습니다
+                        </p>
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="mt-2 text-xs text-accent-600 dark:text-accent-400 hover:underline"
+                        >
+                          검색어 지우기
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </nav>
+
+                {/* 하단 사용자 정보 */}
+                <div className="border-t border-zinc-200 dark:border-zinc-700 p-3">
+                  <UserSection
+                    user={user}
+                    profile={profile}
+                    onLogout={handleLogout}
+                    onClose={closeMenu}
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <Link
-                  href="/login"
-                  onClick={closeMenu}
-                  className="block w-full text-center px-4 py-2 rounded-lg text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all font-medium"
-                >
-                  로그인
-                </Link>
-                <Link
-                  href="/signup"
-                  onClick={closeMenu}
-                  className="block w-full text-center px-4 py-2 rounded-lg bg-primary-700 dark:bg-primary-600 text-white hover:bg-primary-800 dark:hover:bg-primary-700 transition-all font-medium"
-                >
-                  회원가입
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
