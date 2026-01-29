@@ -25,7 +25,7 @@ export function ProjectImagePlaceholder({
       )}
     >
       <div className="p-4 rounded-full bg-white/60 dark:bg-zinc-700/50 shadow-inner">
-        <Building2 className="w-10 h-10 text-cyan-500 dark:text-cyan-400" />
+        <Building2 className="w-10 h-10 text-zinc-500 dark:text-zinc-400" />
       </div>
       {projectNumber && (
         <span className="mt-2 text-xs font-medium text-zinc-400 dark:text-zinc-500">

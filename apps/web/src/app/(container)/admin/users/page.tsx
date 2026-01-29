@@ -134,8 +134,8 @@ export default async function AdminUsersPage() {
       </div>
 
       {/* 회원 목록 테이블 */}
-      <Card className="overflow-hidden border-0 shadow-md">
-        <div className="overflow-x-auto">
+      <Card className="border-0 shadow-md">
+        <div className="overflow-visible">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
             <thead className="bg-slate-50 dark:bg-slate-900/50">
               <tr>

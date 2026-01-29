@@ -1,6 +1,6 @@
 import { ProjectList } from '@/components/projects';
-import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
+import { requireAuth } from '@/lib/auth/requireAuth';
+import { isSystemAdmin } from '@/lib/permissions/server';
 
 export const metadata = {
   title: '프로젝트 목록 - ConTech DX',
@@ -8,14 +8,9 @@ export const metadata = {
 };
 
 export default async function ProjectsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // 사용자 프로필 가져오기
-  const profile = user ? await getCurrentUserProfile() : null;
-  const isAdmin = profile ? isSystemAdmin(profile) : false;
+  // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
+  const { profile } = await requireAuth();
+  const isAdmin = isSystemAdmin(profile);
 
   return <ProjectList isAdmin={isAdmin} />;
 }

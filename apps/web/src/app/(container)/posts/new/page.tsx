@@ -1,21 +1,12 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import { requireAuth } from '@/lib/auth/requireAuth';
 import Link from 'next/link';
 import { ArrowLeft, PenSquare } from 'lucide-react';
 import PostForm from '@/components/posts/PostForm';
 import { Card, CardContent } from '@/components/ui';
 
 export default async function NewPostPage() {
-  const supabase = await createClient();
-
-  // 로그인 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
-  }
+  // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
+  await requireAuth();
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">

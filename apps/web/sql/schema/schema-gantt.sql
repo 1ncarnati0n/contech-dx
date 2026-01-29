@@ -147,10 +147,20 @@ ALTER TABLE gantt_milestones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gantt_dependencies ENABLE ROW LEVEL SECURITY;
 
 -- 프로젝트 소유자 또는 멤버 접근 가능
+-- NOTE: WITH CHECK 절이 있어야 INSERT/UPDATE가 가능함
 DROP POLICY IF EXISTS "Users can access their project tasks" ON gantt_tasks;
 CREATE POLICY "Users can access their project tasks"
     ON gantt_tasks FOR ALL
     USING (
+        project_id IN (
+            SELECT id FROM projects WHERE created_by = auth.uid()
+        )
+        OR
+        project_id IN (
+            SELECT project_id FROM project_members WHERE user_id = auth.uid()
+        )
+    )
+    WITH CHECK (
         project_id IN (
             SELECT id FROM projects WHERE created_by = auth.uid()
         )
@@ -171,6 +181,15 @@ CREATE POLICY "Users can access their project milestones"
         project_id IN (
             SELECT project_id FROM project_members WHERE user_id = auth.uid()
         )
+    )
+    WITH CHECK (
+        project_id IN (
+            SELECT id FROM projects WHERE created_by = auth.uid()
+        )
+        OR
+        project_id IN (
+            SELECT project_id FROM project_members WHERE user_id = auth.uid()
+        )
     );
 
 DROP POLICY IF EXISTS "Users can access their project dependencies" ON gantt_dependencies;
@@ -184,6 +203,53 @@ CREATE POLICY "Users can access their project dependencies"
         project_id IN (
             SELECT project_id FROM project_members WHERE user_id = auth.uid()
         )
+    )
+    WITH CHECK (
+        project_id IN (
+            SELECT id FROM projects WHERE created_by = auth.uid()
+        )
+        OR
+        project_id IN (
+            SELECT project_id FROM project_members WHERE user_id = auth.uid()
+        )
+    );
+
+-- ============================================
+-- 5.1 관리자(Admin) 전체 접근 정책
+-- ============================================
+-- admin 역할 사용자는 모든 gantt 데이터에 접근 가능
+
+DROP POLICY IF EXISTS "Admins can access all gantt tasks" ON gantt_tasks;
+CREATE POLICY "Admins can access all gantt tasks"
+    ON gantt_tasks FOR ALL
+    TO authenticated
+    USING (
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+    )
+    WITH CHECK (
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+    );
+
+DROP POLICY IF EXISTS "Admins can access all gantt milestones" ON gantt_milestones;
+CREATE POLICY "Admins can access all gantt milestones"
+    ON gantt_milestones FOR ALL
+    TO authenticated
+    USING (
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+    )
+    WITH CHECK (
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+    );
+
+DROP POLICY IF EXISTS "Admins can access all gantt dependencies" ON gantt_dependencies;
+CREATE POLICY "Admins can access all gantt dependencies"
+    ON gantt_dependencies FOR ALL
+    TO authenticated
+    USING (
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+    )
+    WITH CHECK (
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
     );
 
 -- ============================================

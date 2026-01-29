@@ -33,12 +33,12 @@ export default function AdminDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 py-1 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-orange-200 dark:border-orange-800/50 py-1 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="p-1 space-y-0.5">
             <Link
               href="/admin/users"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-900 dark:hover:text-orange-100 rounded-lg transition-colors"
             >
               <Shield className="w-4 h-4" />
               User Manage
@@ -46,15 +46,15 @@ export default function AdminDropdown() {
             <Link
               href="/admin/buildings"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-900 dark:hover:text-orange-100 rounded-lg transition-colors"
             >
               <Building2 className="w-4 h-4" />
               Building Data
             </Link>
             <Link
-              href="/test-connection"
+              href="/admin/db-checker"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-900 dark:hover:text-orange-100 rounded-lg transition-colors"
             >
               <TestTube className="w-4 h-4" />
               DB Checker

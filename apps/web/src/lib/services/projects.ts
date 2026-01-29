@@ -128,6 +128,22 @@ export async function createProject(
     throw new Error(`Failed to create project: ${error.message || error.code || 'Unknown error'}`);
   }
 
+  // 프로젝트 생성자를 PM으로 자동 추가 (RLS 정책을 위해 필수)
+  if (data && user?.id) {
+    const { error: memberError } = await supabase
+      .from('project_members')
+      .insert({
+        project_id: data.id,
+        user_id: user.id,
+        role: 'pm'
+      });
+
+    if (memberError) {
+      logger.warn('⚠️ Failed to add creator as project member:', memberError);
+      // 프로젝트 생성은 성공했으므로 에러를 throw하지 않음
+    }
+  }
+
   // 캐시 무효화
   projectsCache.invalidateAll();
 

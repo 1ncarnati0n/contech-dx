@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Trash2,
   GripVertical,
+  Lightbulb,
 } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
 import ReactMarkdown from 'react-markdown';
@@ -26,18 +27,62 @@ import {
 import type { GlobalChatMessage, ChatbotError } from '@/lib/services/global-chatbot';
 import { GlobalQuickQuestions } from './GlobalQuickQuestions';
 import { useResizableSidebar } from '@/lib/hooks';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
+
+interface GlobalChatbotProps {
+  /** 외부에서 챗봇 열기/닫기 제어 */
+  isOpen?: boolean;
+  /** 챗봇 열기/닫기 상태 변경 콜백 */
+  onOpenChange?: (isOpen: boolean) => void;
+}
 
 /**
  * 전역 챗봇 컴포넌트
  * URL pathname을 분석하여 페이지별 맞춤 컨텍스트 제공
+ * 로그인된 사용자에게만 표시됨
  */
-export function GlobalChatbot() {
+export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {}) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
   const pageContext = usePageContext();
   const config = getPageChatbotConfig(pageContext.pageType);
 
   // Zustand 스토어에서 탭 컨텍스트 구독
   const buildingContext = useTabContextStore(selectBuildingContext);
   const processPlanContext = useTabContextStore(selectProcessPlanContext);
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 초기 세션 확인
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Session check error:', error);
+        setUser(null);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    checkSession();
+
+    // 인증 상태 변화 구독
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // 탭 컨텍스트를 기반으로 동적 빠른 질문 생성
   const tabContext: TabContext | null = useMemo(() => {
@@ -64,10 +109,39 @@ export function GlobalChatbot() {
     return getDynamicQuickQuestions(tabContext, config.quickQuestions, 4);
   }, [tabContext, config.quickQuestions]);
 
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  // 외부에서 제어 가능한 열기/닫기 상태
+  const [internalCollapsed, setInternalCollapsed] = useState(true);
+  const isCollapsed = isOpen !== undefined ? !isOpen : internalCollapsed;
+
+  const setIsCollapsed = useCallback((collapsed: boolean) => {
+    setInternalCollapsed(collapsed);
+    onOpenChange?.(!collapsed);
+  }, [onOpenChange]);
+
+  // 외부에서 isOpen prop이 변경되면 내부 상태도 동기화
+  useEffect(() => {
+    if (isOpen !== undefined) {
+      setInternalCollapsed(!isOpen);
+    }
+  }, [isOpen]);
+
+  // 'chatbot:open' 커스텀 이벤트 리스너 (외부에서 챗봇 열기)
+  useEffect(() => {
+    const handleChatbotOpen = () => {
+      setInternalCollapsed(false);
+      onOpenChange?.(true);
+    };
+
+    window.addEventListener('chatbot:open', handleChatbotOpen);
+    return () => {
+      window.removeEventListener('chatbot:open', handleChatbotOpen);
+    };
+  }, [onOpenChange]);
+
   const [messages, setMessages] = useState<GlobalChatMessage[]>([]);
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [showQuickQuestions, setShowQuickQuestions] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<ChatbotError | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -238,13 +312,27 @@ export function GlobalChatbot() {
     }, 100);
   }, []);
 
+  // 로그인되지 않은 사용자에게는 챗봇 미표시
+  if (isAuthLoading) {
+    return null; // 인증 확인 중에는 아무것도 표시하지 않음
+  }
+
+  if (!user) {
+    return null; // 로그인하지 않은 사용자에게는 챗봇 숨김
+  }
+
+  // 관리자 페이지(/admin/*)에서는 챗봇 비활성화
+  if (pageContext.pathname.startsWith('/admin')) {
+    return null;
+  }
+
   // 접힌 상태
   if (isCollapsed) {
     return (
       <div className="fixed bottom-4 right-4 z-40">
         <Button
           onClick={() => setIsCollapsed(false)}
-          className="rounded-full w-14 h-14 shadow-lg bg-cyan-600 hover:bg-cyan-700 text-white"
+          className="rounded-full w-14 h-14 shadow-lg bg-zinc-600 hover:bg-zinc-700 text-white"
           size="icon"
           title={config.title}
         >
@@ -280,7 +368,7 @@ export function GlobalChatbot() {
         onMouseDown={startResize('top')}
         onDoubleClick={resetToDefault}
       >
-        <div className="absolute inset-x-0 top-0 h-1 bg-transparent group-hover:bg-cyan-400/50 transition-colors rounded-t" />
+        <div className="absolute inset-x-0 top-0 h-1 bg-transparent group-hover:bg-zinc-400/50 transition-colors rounded-t" />
       </div>
 
       {/* 좌측 리사이즈 핸들 */}
@@ -289,7 +377,7 @@ export function GlobalChatbot() {
         onMouseDown={startResize('left')}
         onDoubleClick={resetToDefault}
       >
-        <div className="absolute inset-y-0 left-0 w-1 bg-transparent group-hover:bg-cyan-400/50 transition-colors rounded-l" />
+        <div className="absolute inset-y-0 left-0 w-1 bg-transparent group-hover:bg-zinc-400/50 transition-colors rounded-l" />
       </div>
 
       {/* 코너 리사이즈 핸들 (좌상단) */}
@@ -299,14 +387,14 @@ export function GlobalChatbot() {
         onDoubleClick={resetToDefault}
       >
         <div className="absolute top-1 left-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVertical className="w-3 h-3 text-cyan-500 rotate-45" />
+          <GripVertical className="w-3 h-3 text-zinc-500 rotate-45" />
         </div>
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+          <Bot className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
           <div className="flex flex-col">
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">
               {config.title}
@@ -319,6 +407,15 @@ export function GlobalChatbot() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowQuickQuestions(!showQuickQuestions)}
+            className={`h-8 w-8 ${showQuickQuestions ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : ''}`}
+            title={showQuickQuestions ? '빠른 질문 숨기기' : '빠른 질문 표시'}
+          >
+            <Lightbulb className={`w-4 h-4 ${showQuickQuestions ? 'fill-amber-400' : ''}`} />
+          </Button>
           {messages.length > 0 && (
             <Button
               variant="ghost"
@@ -343,22 +440,29 @@ export function GlobalChatbot() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
-        {messages.length === 0 ? (
-          <div className="space-y-4">
-            <div className="flex flex-col items-center justify-center text-center text-zinc-500 dark:text-zinc-400">
-              <Bot className="w-12 h-12 mb-4 text-cyan-600 dark:text-cyan-400" />
-              <h4 className="text-lg font-semibold mb-2 text-zinc-800 dark:text-zinc-100">
-                {config.welcomeMessage}
-              </h4>
-              <p className="text-sm mb-4">{config.description}</p>
-            </div>
-            <GlobalQuickQuestions
-              questions={quickQuestions}
-              onQuestionClick={handleQuickQuestion}
-            />
+        {/* 대화가 없을 때 환영 메시지 표시 */}
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center text-center text-zinc-500 dark:text-zinc-400">
+            <Bot className="w-12 h-12 mb-4 text-zinc-600 dark:text-zinc-400" />
+            <h4 className="text-lg font-semibold mb-2 text-zinc-800 dark:text-zinc-100">
+              {config.welcomeMessage}
+            </h4>
+            <p className="text-sm mb-4">{config.description}</p>
           </div>
-        ) : (
-          messages.map(message => <MessageBubble key={message.id} message={message} />)
+        )}
+
+        {/* 메시지 목록 */}
+        {messages.map(message => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+
+        {/* 빠른 질문 - 토글 상태에 따라 표시 */}
+        {showQuickQuestions && (
+          <GlobalQuickQuestions
+            questions={quickQuestions}
+            onQuestionClick={handleQuickQuestion}
+            onClose={() => setShowQuickQuestions(false)}
+          />
         )}
 
         {/* 로딩 상태 */}
@@ -409,7 +513,7 @@ export function GlobalChatbot() {
               type="submit"
               size="icon"
               disabled={!query.trim()}
-              className="bg-cyan-600 hover:bg-cyan-700"
+              className="bg-zinc-600 hover:bg-zinc-700"
             >
               <Send className="w-4 h-4" />
             </Button>
@@ -457,7 +561,7 @@ function MessageBubble({ message }: { message: GlobalChatMessage }) {
             ? 'bg-zinc-200 dark:bg-zinc-700'
             : hasError
               ? 'bg-red-100 dark:bg-red-900/30'
-              : 'bg-cyan-100 dark:bg-cyan-900/30'
+              : 'bg-zinc-100 dark:bg-zinc-800/50'
         }`}
       >
         {isUser ? (
@@ -465,7 +569,7 @@ function MessageBubble({ message }: { message: GlobalChatMessage }) {
         ) : hasError ? (
           <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
         ) : (
-          <Bot className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+          <Bot className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
         )}
       </div>
 
@@ -494,7 +598,7 @@ function MessageBubble({ message }: { message: GlobalChatMessage }) {
                   </code>
                 ),
                 strong: ({ children }) => (
-                  <strong className="font-semibold text-cyan-700 dark:text-cyan-400">
+                  <strong className="font-semibold text-zinc-700 dark:text-zinc-400">
                     {children}
                   </strong>
                 ),

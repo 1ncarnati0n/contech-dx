@@ -50,9 +50,9 @@ export function KPICards() {
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white">인원투입 계획,실행 누계</h3>
                 </div>
-                <div className="h-[120px] w-full min-h-[120px] min-w-0">
+                <div className="h-[120px] w-full min-w-[200px]">
                     {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minHeight={120} minWidth={0}>
+                        <ResponsiveContainer width="100%" height={120}>
                             <BarChart data={planVsActualData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                 <XAxis

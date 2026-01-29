@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth/requireAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { notFound } from 'next/navigation';
@@ -16,6 +17,9 @@ interface PageProps {
 }
 
 export default async function PostDetailPage({ params }: PageProps) {
+  // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
+  const { user } = await requireAuth();
+
   const supabase = await createClient();
   const { id } = await params;
 
@@ -34,11 +38,6 @@ export default async function PostDetailPage({ params }: PageProps) {
   if (error || !post) {
     notFound();
   }
-
-  // 현재 사용자 확인
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const isAuthor = user?.id === post.author_id;
 
@@ -135,23 +134,9 @@ export default async function PostDetailPage({ params }: PageProps) {
             댓글
           </h2>
 
-          {user ? (
-            <div className="mb-8">
-              <CommentForm postId={post.id} />
-            </div>
-          ) : (
-            <div className="mb-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center border border-slate-100 dark:border-slate-800">
-              <p className="text-slate-600 dark:text-slate-400">
-                <Link
-                  href="/login"
-                  className="text-cyan-600 dark:text-cyan-400 hover:underline font-medium"
-                >
-                  로그인
-                </Link>
-                하여 댓글을 작성하세요.
-              </p>
-            </div>
-          )}
+          <div className="mb-8">
+            <CommentForm postId={post.id} />
+          </div>
 
           <CommentList postId={post.id} />
         </CardContent>
