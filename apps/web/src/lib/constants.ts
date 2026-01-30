@@ -183,7 +183,8 @@ export const TOAST_DURATION = {
  * Gemini 모델 설정
  */
 export const GEMINI_CONFIG = {
-  DEFAULT_MODEL: 'gemini-2.0-flash-exp',
+  DEFAULT_MODEL: 'gemini-2.5-flash',
+  THINKING_MODEL: 'gemini-2.5-pro',
   API_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
   MAX_TOKENS: 8192,
   TEMPERATURE: 0.7,

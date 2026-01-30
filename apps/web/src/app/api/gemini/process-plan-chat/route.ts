@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
     // Gemini API 호출
     // API 키를 헤더로 전달하여 URL 노출 방지
     const response = await geminiModelRequest(
-      'gemini-2.0-flash',
+      'gemini-2.5-flash',
       'generateContent',
       apiKey,
       {
