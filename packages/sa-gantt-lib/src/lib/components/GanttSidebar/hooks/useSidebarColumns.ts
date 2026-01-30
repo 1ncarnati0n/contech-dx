@@ -117,19 +117,36 @@ export const useSidebarColumns = ({
     }, [allTasks]);
 
     // 그룹 깊이 계산 (Unified View용)
-    // 블록(마스터 GROUP) depth 0, CP depth 1, 나머지 depth 2+
+    // BLOCK depth 0, CP depth 1, CP 하위 항목 depth 2+
     const getUnifiedDepth = useCallback((task: ConstructionTask): number => {
-        // 블록 (마스터뷰의 GROUP): 부모가 없거나 부모가 CP가 아닌 경우
-        if (task.type === 'GROUP') {
-            const parent = task.parentId ? allTasks.find(t => t.id === task.parentId) : null;
-            if (!parent || parent.type !== 'CP') return 0; // 블록은 최상위
-        }
+        // BLOCK: 최상위 (depth 0)
+        if (task.type === 'BLOCK') return 0;
 
-        // CP는 블록 아래 (depth 1)
+        // CP: BLOCK 아래 (depth 1)
         if (task.type === 'CP') return 1;
 
-        // Task와 디테일 그룹: 기본 depth 2 + 추가 GROUP 중첩
-        let depth = 2;
+        // GROUP: CP 하위 (depth 2부터 시작, 중첩 시 +1)
+        if (task.type === 'GROUP') {
+            let depth = 2;
+            let currentParentId = task.parentId;
+
+            while (currentParentId) {
+                const parent = allTasks.find(t => t.id === currentParentId);
+                if (!parent) break;
+                // CP에 도달하면 중단
+                if (parent.type === 'CP') break;
+                // GROUP을 만나면 depth 추가
+                if (parent.type === 'GROUP') {
+                    depth++;
+                }
+                currentParentId = parent.parentId;
+            }
+
+            return depth;
+        }
+
+        // TASK: CP 직속이면 depth 2, GROUP 안에 있으면 +1씩 추가
+        let depth = 2; // CP 아래이므로 최소 depth 2
         let currentParentId = task.parentId;
 
         while (currentParentId) {
@@ -137,10 +154,9 @@ export const useSidebarColumns = ({
             if (!parent) break;
             // CP에 도달하면 중단
             if (parent.type === 'CP') break;
-            // GROUP이면서 부모가 CP인 경우만 depth 추가 (디테일 그룹)
+            // GROUP을 만나면 depth 추가
             if (parent.type === 'GROUP') {
-                const grandParent = parent.parentId ? allTasks.find(t => t.id === parent.parentId) : null;
-                if (grandParent?.type === 'CP') depth++;
+                depth++;
             }
             currentParentId = parent.parentId;
         }

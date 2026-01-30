@@ -9,8 +9,7 @@ import {
     CalendarSettings,
     GANTT_LAYOUT,
     ZOOM_CONFIG,
-    AnchorDependency,
-    AnchorDependencyDragResult,
+    GroupDependency,
     GroupDragResult,
 } from '../../../types';
 import { calculateDateRange, xToDate } from '../../../utils/dateUtils';
@@ -21,8 +20,7 @@ import type { VirtualRow } from '../../../hooks/useGanttVirtualization';
 import { useBarDrag } from './useBarDrag';
 import { useMilestoneDrag } from './useMilestoneDrag';
 import { useGroupDrag } from './useGroupDrag';
-import { useAnchorConnection } from './useAnchorConnection';
-import { useDependencyDrag } from './useDependencyDrag';
+import { useGroupConnection, type GroupConnectingState } from './useGroupConnection';
 import { useGanttSelection } from '../../../store/useGanttStore';
 
 // Types
@@ -55,12 +53,11 @@ export interface UseTimelineCoreProps {
     onTaskDoubleClick?: (task: ConstructionTask) => void;
     onContextMenuAddTask?: (date: Date) => void;
     onContextMenuAddMilestone?: (date: Date) => void;
-    // Anchor Dependencies
-    anchorDependencies?: AnchorDependency[];
-    onAnchorDependencyCreate?: (dependency: AnchorDependency) => void;
-    onAnchorDependencyDelete?: (depId: string) => void;
-    onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
-    onCycleDetected?: (info: { sourceTaskId: string; targetTaskId: string }) => void;
+    // Group Dependencies
+    groupDependencies?: GroupDependency[];
+    onGroupDependencyCreate?: (dependency: GroupDependency) => void;
+    onGroupDependencyDelete?: (depId: string) => void;
+    onGroupCycleDetected?: (info: { sourceGroupId: string; targetGroupId: string }) => void;
 }
 
 // ============================================
@@ -126,29 +123,17 @@ export interface TimelineDragHandlers {
     getTaskGroupDragDeltaDays: (taskId: string) => number;
     getTaskDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
 
-    // Dependency Drag
-    handleDependencyBarMouseDown: (
-        e: React.MouseEvent,
-        taskId: string,
-        taskData: { startDate: Date; endDate: Date }
-    ) => boolean | void;
-    isDependencyDragging: boolean;
-    taskHasDependency: (taskId: string) => boolean;
-    getDependencyDragDeltaDays: (taskId: string) => number;
-    getDependencyDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
-    getConnectedTaskIds: () => string[];
-    getCombinedTaskDeltaDays: (taskId: string) => number;
-
-    // Anchor Connection
-    connectingFrom: { taskId: string; dayIndex: number } | null;
-    hoveredAnchor: { taskId: string; dayIndex: number } | null;
-    selectedDepId: string | null;
-    hoveredDepId: string | null;
-    handleAnchorClick: (taskId: string, dayIndex: number) => void;
-    handleAnchorHover: (taskId: string, dayIndex: number | null) => void;
-    handleDependencyClick: (depId: string) => void;
-    handleDependencyHover: (depId: string | null) => void;
-    clearSelection: () => void;
+    // Group Connection
+    groupConnectingFrom: GroupConnectingState | null;
+    hoveredGroupEdge: { groupId: string; edge: 'start' | 'end' } | null;
+    selectedGroupDepId: string | null;
+    hoveredGroupDepId: string | null;
+    handleGroupEdgeClick: (groupId: string, edge: 'start' | 'end') => void;
+    handleGroupEdgeHover: (groupId: string, edge: 'start' | 'end' | null) => void;
+    handleGroupDependencyClick: (depId: string) => void;
+    handleGroupDependencyHover: (depId: string | null) => void;
+    clearGroupSelection: () => void;
+    getGroupConnectionStatus: (groupId: string) => { start: boolean; end: boolean };
 }
 
 export interface TimelineEventHandlers {
@@ -158,7 +143,6 @@ export interface TimelineEventHandlers {
     handleContextMenu: (e: React.MouseEvent<SVGSVGElement>) => void;
     handleContextMenuClose: () => void;
     handleSvgClick: (e: React.MouseEvent<SVGSVGElement>) => void;
-    handleDepDelete: (depId: string) => void;
     setHoveredTaskId: (taskId: string | null) => void;
 }
 
@@ -196,11 +180,11 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
         onMilestoneDoubleClick,
         onContextMenuAddTask,
         onContextMenuAddMilestone,
-        anchorDependencies = [],
-        onAnchorDependencyCreate,
-        onAnchorDependencyDelete,
-        onAnchorDependencyDrag,
-        onCycleDetected,
+        // Group Dependencies
+        groupDependencies = [],
+        onGroupDependencyCreate,
+        onGroupDependencyDelete,
+        onGroupCycleDetected,
     } = props;
 
     // ========================================
@@ -228,31 +212,27 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
     // 행 높이 계산 함수
     // ========================================
     const getRowHeight = useCallback((task: ConstructionTask) => {
+        // BLOCK: 항상 30px
+        if (task.type === 'BLOCK') {
+            return ROW_HEIGHT;
+        }
         // CP: 항상 30px
         if (task.type === 'CP') {
             return ROW_HEIGHT;
         }
-        // Block/Group 판별
+        // GROUP (CP 하위): 컴팩트 모드에서 30% 감소
         if (task.type === 'GROUP') {
-            const parent = task.parentId ? taskMap.get(task.parentId) : null;
-            const isBlock = !parent || parent.type !== 'CP';
-            // Block: 항상 30px
-            if (isBlock) return ROW_HEIGHT;
-            // Group (CP 하위): 컴팩트 모드에서 30% 감소
             return isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT;
         }
         return effectiveRowHeight;
-    }, [effectiveRowHeight, taskMap, isCompact]);
+    }, [effectiveRowHeight, isCompact]);
 
     // ========================================
-    // Block 판별 함수
+    // Block 판별 함수 (타입 기반으로 단순화)
     // ========================================
     const isBlockTask = useCallback((task: ConstructionTask): boolean => {
-        if (task.type !== 'GROUP') return false;
-        if (!task.parentId) return true;
-        const parent = taskMap.get(task.parentId);
-        return !parent || parent.type !== 'CP';
-    }, [taskMap]);
+        return task.type === 'BLOCK';
+    }, []);
 
     // ========================================
     // Selection Hook
@@ -357,50 +337,31 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
         onGroupDrag,
     });
 
-    // Anchor Connection Hook
+    // Group Connection Hook
     const {
-        connectingFrom,
-        hoveredAnchor,
-        selectedDepId,
-        hoveredDepId,
-        handleAnchorClick,
-        handleAnchorHover,
-        handleDependencyClick,
-        handleDependencyHover,
-        cancelConnection: _cancelConnection,
-        clearSelection,
-    } = useAnchorConnection({
-        dependencies: anchorDependencies,
+        connectingFrom: groupConnectingFrom,
+        hoveredGroupEdge,
+        selectedDepId: selectedGroupDepId,
+        hoveredDepId: hoveredGroupDepId,
+        handleGroupEdgeClick,
+        handleGroupEdgeHover,
+        handleDependencyClick: handleGroupDependencyClick,
+        handleDependencyHover: handleGroupDependencyHover,
+        clearSelection: clearGroupSelection,
+    } = useGroupConnection({
+        dependencies: groupDependencies,
         tasks: allTasks || tasks,
-        onDependencyCreate: onAnchorDependencyCreate,
-        onDependencyDelete: onAnchorDependencyDelete,
-        onCycleDetected,
+        onDependencyCreate: onGroupDependencyCreate,
+        onDependencyDelete: onGroupDependencyDelete,
+        onCycleDetected: onGroupCycleDetected,
     });
 
-    // Dependency Drag Hook
-    const {
-        isDragging: isDependencyDragging,
-        taskHasDependency,
-        handleDependencyBarMouseDown,
-        getTaskDeltaDays: getDependencyDragDeltaDays,
-        getTaskDragInfo: getDependencyDragInfo,
-        isDraggingTask: _isDependencyDraggingTask,
-        getConnectedTaskIds,
-    } = useDependencyDrag({
-        pixelsPerDay,
-        holidays,
-        calendarSettings,
-        allTasks: allTasks || tasks,
-        dependencies: anchorDependencies,
-        onDependencyDrag: onAnchorDependencyDrag,
-    });
-
-    // Combined delta function
-    const getCombinedTaskDeltaDays = useCallback((taskId: string): number => {
-        const dependencyDelta = getDependencyDragDeltaDays(taskId);
-        if (dependencyDelta !== 0) return dependencyDelta;
-        return getTaskGroupDragDeltaDays(taskId);
-    }, [getDependencyDragDeltaDays, getTaskGroupDragDeltaDays]);
+    // Group 연결 상태 조회 (시작점/끝점에 연결이 있는지)
+    const getGroupConnectionStatus = useCallback((groupId: string): { start: boolean; end: boolean } => {
+        const isTargetOfAny = groupDependencies.some(dep => dep.targetGroupId === groupId);
+        const isSourceOfAny = groupDependencies.some(dep => dep.sourceGroupId === groupId);
+        return { start: isTargetOfAny, end: isSourceOfAny };
+    }, [groupDependencies]);
 
     // ========================================
     // Event Handlers
@@ -414,7 +375,10 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
     }, [onMilestoneDoubleClick]);
 
     const handleContextMenu = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-        if (!onContextMenuAddTask && !onContextMenuAddMilestone) return;
+        // 컨텍스트 메뉴를 열 이유가 하나라도 있어야 함
+        // - Task/Milestone 추가 메뉴
+        // - 종속성 삭제 메뉴 (선택된 종속성이 있을 때)
+        if (!onContextMenuAddTask && !onContextMenuAddMilestone && !onGroupDependencyDelete) return;
 
         e.preventDefault();
         const svg = e.currentTarget;
@@ -427,22 +391,18 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             y: e.clientY,
             clickedDate,
         });
-    }, [minDate, pixelsPerDay, onContextMenuAddTask, onContextMenuAddMilestone]);
+    }, [minDate, pixelsPerDay, onContextMenuAddTask, onContextMenuAddMilestone, onGroupDependencyDelete]);
 
     const handleContextMenuClose = useCallback(() => {
         setContextMenu(null);
     }, []);
 
-    const handleDepDelete = useCallback((depId: string) => {
-        onAnchorDependencyDelete?.(depId);
-    }, [onAnchorDependencyDelete]);
-
     const handleSvgClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
         if (e.target === e.currentTarget) {
-            clearSelection();
+            clearGroupSelection();
             clearTaskSelection();
         }
-    }, [clearSelection, clearTaskSelection]);
+    }, [clearGroupSelection, clearTaskSelection]);
 
     // ========================================
     // Return Value
@@ -480,22 +440,17 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             getGroupDragDeltaDays,
             getTaskGroupDragDeltaDays,
             getTaskDragInfo,
-            handleDependencyBarMouseDown,
-            isDependencyDragging,
-            taskHasDependency,
-            getDependencyDragDeltaDays,
-            getDependencyDragInfo,
-            getConnectedTaskIds,
-            getCombinedTaskDeltaDays,
-            connectingFrom,
-            hoveredAnchor,
-            selectedDepId,
-            hoveredDepId,
-            handleAnchorClick,
-            handleAnchorHover,
-            handleDependencyClick,
-            handleDependencyHover,
-            clearSelection,
+            // Group Connection
+            groupConnectingFrom,
+            hoveredGroupEdge,
+            selectedGroupDepId,
+            hoveredGroupDepId,
+            handleGroupEdgeClick,
+            handleGroupEdgeHover,
+            handleGroupDependencyClick,
+            handleGroupDependencyHover,
+            clearGroupSelection,
+            getGroupConnectionStatus,
         },
         eventHandlers: {
             selectTask,
@@ -504,7 +459,6 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             handleContextMenu,
             handleContextMenuClose,
             handleSvgClick,
-            handleDepDelete,
             setHoveredTaskId,
         },
         contextMenuState: {

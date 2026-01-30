@@ -24,8 +24,13 @@ export type AnchorPoint = 'START' | 'NET_WORK_START' | 'NET_WORK_END' | 'END';
 /** 종속성 타입 */
 export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF';
 
-/** 태스크 타입 */
-export type TaskType = 'GROUP' | 'CP' | 'TASK';
+/** 태스크 타입
+ * - BLOCK: 최상위 블록 (공구 단위)
+ * - CP: 공구 내 Critical Path (공정)
+ * - GROUP: CP 하위 태스크 그룹
+ * - TASK: 개별 작업
+ */
+export type TaskType = 'BLOCK' | 'GROUP' | 'CP' | 'TASK';
 
 /** 드래그 앤 드롭 위치 타입 */
 export type DropPosition = 'before' | 'after' | 'into';
@@ -43,27 +48,13 @@ export interface Dependency {
     targetAnchor?: AnchorPoint;       // 도착 지점
 }
 
-/** 앵커 기반 종속성 (양방향 연결 이동 지원) */
-export interface AnchorDependency {
+/** GROUP 바 기반 종속성 (FS: Finish-to-Start) */
+export interface GroupDependency {
     id: string;
-    sourceTaskId: string;             // 출발 태스크 ID
-    targetTaskId: string;             // 도착 태스크 ID
-    sourceDayIndex: number;           // 출발 앵커 위치 (태스크 시작 기준 오프셋, 0.5 단위)
-    targetDayIndex: number;           // 도착 앵커 위치 (태스크 시작 기준 오프셋, 0.5 단위)
+    sourceGroupId: string;            // 선행 GROUP ID (바 끝점에서 연결 시작)
+    targetGroupId: string;            // 후행 GROUP ID (바 시작점으로 연결 완료)
+    type: 'FS';                       // Finish-to-Start (현재는 FS만 지원)
     lag?: number;                     // 지연 일수 (음수 가능)
-}
-
-/** 앵커 종속성 드래그 결과 */
-export interface AnchorDependencyDragResult {
-    sourceTaskId: string;             // 드래그 시작한 태스크 ID
-    deltaDays: number;                // 이동한 일수 (참고용 - 하위 호환성)
-    affectedTaskIds: string[];        // 함께 이동한 연결된 태스크 ID 목록
-    /** 각 태스크의 스냅된 새 날짜 정보 (신규: 휴일 스냅 적용됨) */
-    taskUpdates?: Array<{
-        taskId: string;
-        newStartDate: Date;
-        newEndDate: Date;
-    }>;
 }
 
 // ============================================

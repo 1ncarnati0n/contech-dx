@@ -137,9 +137,8 @@ export type {
     CriticalPathDay,
     CriticalPathSummary,
 
-    // Anchor Dependency Types
-    AnchorDependency,
-    AnchorDependencyDragResult,
+    // Group Dependency Types
+    GroupDependency,
 
     // Error Types
     GanttErrorContext,
@@ -230,6 +229,7 @@ export {
 export {
     isTaskWithDetails,
     isTaskWithCP,
+    isBlockTask,
     isGroupTask,
     isCPTask,
     isRegularTask,
@@ -241,6 +241,23 @@ export {
     isRootTask,
     isNonEmptyArray,
 } from './utils/typeGuards';
+
+// Hierarchy Validation (BLOCK/GROUP 계층 구조 검증)
+export {
+    VALID_PARENT_CHILD_RELATIONS,
+    VALID_SIBLING_RELATIONS,
+    canBeChildOf,
+    canBeSiblingOf,
+    canMoveTaskTo,
+    getValidDropPositions,
+} from './utils/hierarchyValidation';
+
+// Migration Utilities (Legacy 데이터 마이그레이션)
+export {
+    needsMigration,
+    migrateTaskTypes,
+    validateHierarchy,
+} from './utils/migration';
 
 // UUID Utilities
 export { generateId, isValidUUID, isLegacyId } from './utils/uuid';
@@ -256,7 +273,7 @@ export {
     // Serializers
     isValidTaskData,
     isValidMilestoneData,
-    isValidAnchorDependencyData,
+    isValidGroupDependencyData,
     serializeGanttDataForExport,
     parseImportedData,
     parseMockTasks,

@@ -33,20 +33,20 @@ export {
     // Type Guards
     isValidTaskData,
     isValidMilestoneData,
-    isValidAnchorDependencyData,
+    isValidGroupDependencyData,
 
     // Internal Serialization (localStorage)
     serializeTasks,
     deserializeTasks,
     serializeMilestones,
     deserializeMilestones,
-    serializeAnchorDependencies,
-    deserializeAnchorDependencies,
+    serializeGroupDependencies,
+    deserializeGroupDependencies,
 
     // Export Serialization (JSON File)
     serializeTasksForExport,
     serializeMilestonesForExport,
-    serializeAnchorDependenciesForExport,
+    serializeGroupDependenciesForExport,
     serializeGanttDataForExport,
 
     // Import Parsing

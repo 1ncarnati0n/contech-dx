@@ -17,15 +17,14 @@ import {
   ViewMode,
   calculateDualCalendarDates,
   DropPosition,
-  AnchorDependency,
-  AnchorDependencyDragResult,
+  GroupDependency,
   ThemeProvider,
   ThemeToggle,
   // DataService
   createLocalStorageService,
   parseMockTasks,
   parseMockMilestones,
-  isValidAnchorDependencyData,
+  isValidGroupDependencyData,
   serializeGanttDataForExport,
   parseImportedData,
   // Excel Export
@@ -34,6 +33,8 @@ import {
   KOREAN_HOLIDAYS_ALL,
   // UUID Utility
   generateId,
+  // Hierarchy Validation
+  canMoveTaskTo,
 } from './lib';
 import { useHistory } from './lib/hooks/useHistory';
 import mockData from './data/mock.json';
@@ -70,7 +71,7 @@ declare global {
 interface AppState {
   tasks: ConstructionTask[];
   milestones: Milestone[];
-  anchorDependencies: AnchorDependency[];
+  groupDependencies: GroupDependency[];
 }
 
 // ============================================
@@ -86,13 +87,15 @@ const parseMockData = (): AppState => {
   const tasks = parseMockTasks(mockData.tasks as Array<Record<string, unknown>>);
   const milestones = parseMockMilestones(mockData.milestones as Array<Record<string, unknown>>);
 
-  // anchorDependencies 파싱 (하위 호환성 - 없으면 빈 배열)
-  const anchorDependencies: AnchorDependency[] =
-    Array.isArray((mockData as { anchorDependencies?: unknown[] }).anchorDependencies)
-      ? (mockData as { anchorDependencies: unknown[] }).anchorDependencies.filter(isValidAnchorDependencyData)
-      : [];
+  // groupDependencies 파싱 (하위 호환성 - 없으면 빈 배열)
+  // Note: mock.json은 아직 anchorDependencies를 사용할 수 있으므로 둘 다 확인
+  const mockDataTyped = mockData as { groupDependencies?: unknown[]; anchorDependencies?: unknown[] };
+  const rawDeps = mockDataTyped.groupDependencies || mockDataTyped.anchorDependencies || [];
+  const groupDependencies: GroupDependency[] = Array.isArray(rawDeps)
+    ? rawDeps.filter(isValidGroupDependencyData)
+    : [];
 
-  return { milestones, tasks, anchorDependencies };
+  return { milestones, tasks, groupDependencies };
 };
 
 // 초기 상태 로드 함수 (DataService 사용)
@@ -105,7 +108,7 @@ const loadInitialState = async (): Promise<AppState> => {
     return {
       tasks: data.tasks,
       milestones: data.milestones,
-      anchorDependencies: data.dependencies,
+      groupDependencies: data.dependencies,
     };
   }
 
@@ -116,7 +119,7 @@ const loadInitialState = async (): Promise<AppState> => {
   await dataService.saveAll({
     tasks: mockState.tasks,
     milestones: mockState.milestones,
-    dependencies: mockState.anchorDependencies,
+    dependencies: mockState.groupDependencies,
   });
 
   return mockState;
@@ -145,9 +148,9 @@ function App() {
     canRedo,
     reset: resetHistory,
     historyLength,
-  } = useHistory<AppState>({ tasks: [], milestones: [], anchorDependencies: [] });
+  } = useHistory<AppState>({ tasks: [], milestones: [], groupDependencies: [] });
 
-  const { tasks, milestones, anchorDependencies } = appState;
+  const { tasks, milestones, groupDependencies } = appState;
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -211,7 +214,7 @@ function App() {
   }, [undo, redo, canUndo, canRedo]);
 
   // ====================================
-  // 변경사항 감지 (tasks, milestones, anchorDependencies 변경 시)
+  // 변경사항 감지 (tasks, milestones, groupDependencies 변경 시)
   // ====================================
   useEffect(() => {
     // 초기 로드 시에는 변경사항으로 표시하지 않음
@@ -219,7 +222,7 @@ function App() {
 
     setHasUnsavedChanges(true);
     setSaveStatus('idle');
-  }, [tasks, milestones, anchorDependencies, isLoaded]);
+  }, [tasks, milestones, groupDependencies, isLoaded]);
 
   // ====================================
   // 수동 저장 핸들러 (DataService 사용)
@@ -234,7 +237,7 @@ function App() {
       await dataService.saveAll({
         tasks,
         milestones,
-        dependencies: anchorDependencies,
+        dependencies: groupDependencies,
       });
 
       // 저장 완료 표시
@@ -252,7 +255,7 @@ function App() {
       setSaveStatus('idle');
       alert('저장 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
-  }, [tasks, milestones, anchorDependencies, hasUnsavedChanges]);
+  }, [tasks, milestones, groupDependencies, hasUnsavedChanges]);
 
   // 초기화 핸들러 (mock.json으로 리셋, DataService 사용)
   const handleReset = useCallback(async () => {
@@ -272,7 +275,7 @@ function App() {
       await dataService.saveAll({
         tasks: mockState.tasks,
         milestones: mockState.milestones,
-        dependencies: mockState.anchorDependencies,
+        dependencies: mockState.groupDependencies,
       });
 
       setHasUnsavedChanges(false);
@@ -294,7 +297,7 @@ function App() {
       const jsonString = serializeGanttDataForExport({
         tasks,
         milestones,
-        dependencies: anchorDependencies,
+        dependencies: groupDependencies,
       });
 
       // 기본 파일명
@@ -348,7 +351,7 @@ function App() {
       console.error('Failed to export data:', error);
       alert('내보내기 중 오류가 발생했습니다.');
     }
-  }, [tasks, milestones, anchorDependencies]);
+  }, [tasks, milestones, groupDependencies]);
 
   // ====================================
   // Excel 내보내기 핸들러 (간트 차트 형태)
@@ -389,7 +392,7 @@ function App() {
       setAppState({
         tasks: importedTasks,
         milestones: importedMilestones,
-        anchorDependencies: importedDependencies,
+        groupDependencies: importedDependencies,
       });
 
       // 파일명 저장
@@ -604,6 +607,13 @@ function App() {
         // 1개 이상 선택 시 그룹화 가능
         if (selectedTasks.length < 1) return prev;
 
+        // CP가 포함되어 있으면 그룹화 차단 (블럭화를 사용해야 함)
+        const hasCP = selectedTasks.some(t => t.type === 'CP');
+        if (hasCP) {
+          console.warn('[handleTaskGroup] CP는 그룹화할 수 없습니다. 블럭화를 사용하세요.');
+          return prev;
+        }
+
         // 선택된 태스크들이 같은 부모를 가지는지 확인
         const parentIds = new Set(selectedTasks.map(t => t.parentId));
         const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
@@ -642,6 +652,62 @@ function App() {
     } catch (error) {
       console.error('Failed to group tasks:', error);
       alert('태스크 그룹화 중 오류가 발생했습니다.');
+    }
+  }, [setAppState]);
+
+  // 블럭화 핸들러 (선택된 CP들을 새 BLOCK으로 묶기)
+  const handleTaskBlockify = useCallback(async (taskIds: string[]) => {
+    try {
+      setAppState(prev => {
+        const selectedTasks = prev.tasks.filter(t => taskIds.includes(t.id));
+
+        // CP만 선택되었는지 확인
+        const allAreCP = selectedTasks.every(t => t.type === 'CP');
+        if (!allAreCP) {
+          console.warn('[handleTaskBlockify] CP만 블럭화할 수 있습니다.');
+          return prev;
+        }
+
+        if (selectedTasks.length < 1) return prev;
+
+        // 선택된 CP들이 같은 부모를 가지는지 확인
+        const parentIds = new Set(selectedTasks.map(t => t.parentId));
+        const commonParentId = parentIds.size === 1 ? Array.from(parentIds)[0] : null;
+
+        // 새 BLOCK 생성
+        const newBlockId = generateId();
+        const minStart = selectedTasks.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedTasks[0].startDate);
+        const maxEnd = selectedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedTasks[0].endDate);
+
+        const newBlock: ConstructionTask = {
+          id: newBlockId,
+          parentId: commonParentId,
+          wbsLevel: 1,
+          type: 'BLOCK',
+          name: '새 블럭',
+          startDate: minStart,
+          endDate: maxEnd,
+          dependencies: [],
+        };
+
+        // 선택된 CP들의 parentId를 새 BLOCK으로 변경
+        let newTasks = prev.tasks.map(t => {
+          if (taskIds.includes(t.id)) {
+            return { ...t, parentId: newBlockId };
+          }
+          return t;
+        });
+
+        // 첫 번째 선택된 CP 위치에 BLOCK 삽입
+        const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
+        newTasks.splice(firstSelectedIndex, 0, newBlock);
+
+        console.log('CPs blockified:', taskIds, 'into block:', newBlockId);
+        return { ...prev, tasks: newTasks };
+      });
+    } catch (error) {
+      console.error('Failed to blockify CPs:', error);
+      alert('CP 블럭화 중 오류가 발생했습니다.');
     }
   }, [setAppState]);
 
@@ -691,18 +757,10 @@ function App() {
         // 자기 자신을 자기 안에 넣으려는 경우 방지
         if (taskId === targetId) return prev;
 
-        // 부모를 자식 안에 넣으려는 경우 방지 (순환 참조 방지)
-        const isDescendant = (parentId: string | null, childId: string): boolean => {
-          let current = prev.tasks.find(t => t.id === childId);
-          while (current?.parentId) {
-            if (current.parentId === parentId) return true;
-            current = prev.tasks.find(t => t.id === current!.parentId);
-          }
-          return false;
-        };
-
-        if (position === 'into' && isDescendant(taskId, targetId)) {
-          console.warn('Cannot move parent into its own descendant');
+        // 계층 구조 검증 (canMoveTaskTo 사용)
+        const validation = canMoveTaskTo(taskToMove, targetTask, position, prev.tasks);
+        if (!validation.valid) {
+          console.warn(`[handleTaskMove] 이동 불가: ${validation.reason}`);
           return prev;
         }
 
@@ -761,17 +819,17 @@ function App() {
         // 삭제 실행
         let newTasks = prev.tasks.filter(t => !allIdsToDelete.includes(t.id));
 
-        // 삭제된 태스크와 연결된 종속성 정리
-        const newDependencies = prev.anchorDependencies.filter(dep =>
-          !allIdsToDelete.includes(dep.sourceTaskId) &&
-          !allIdsToDelete.includes(dep.targetTaskId)
+        // 삭제된 그룹과 연결된 종속성 정리 (GroupDependency)
+        const newDependencies = prev.groupDependencies.filter(dep =>
+          !allIdsToDelete.includes(dep.sourceGroupId) &&
+          !allIdsToDelete.includes(dep.targetGroupId)
         );
 
         // Level 1 태스크의 cp 재계산
         newTasks = recalculateCPData(newTasks);
 
         console.log('Task deleted:', taskId, '(total deleted:', allIdsToDelete.length, ')');
-        return { ...prev, tasks: newTasks, anchorDependencies: newDependencies };
+        return { ...prev, tasks: newTasks, groupDependencies: newDependencies };
       });
     } catch (error) {
       console.error('Failed to delete task:', error);
@@ -836,60 +894,32 @@ function App() {
   }, [setAppState]);
 
   // ====================================
-  // 앵커 종속성 핸들러
+  // 그룹 종속성 핸들러 (FS: Finish-to-Start)
   // ====================================
-  const handleAnchorDependencyCreate = useCallback((dep: AnchorDependency) => {
+  const handleGroupDependencyCreate = useCallback((dep: GroupDependency) => {
     setAppState(prev => {
-      console.log('Anchor dependency created:', dep);
+      console.log('Group dependency created:', dep);
       return {
         ...prev,
-        anchorDependencies: [...prev.anchorDependencies, dep],
+        groupDependencies: [...prev.groupDependencies, dep],
       };
     });
   }, [setAppState]);
 
-  const handleAnchorDependencyDelete = useCallback((depId: string) => {
+  const handleGroupDependencyDelete = useCallback((depId: string) => {
     setAppState(prev => {
-      console.log('Anchor dependency deleted:', depId);
+      console.log('Group dependency deleted:', depId);
       return {
         ...prev,
-        anchorDependencies: prev.anchorDependencies.filter(d => d.id !== depId),
+        groupDependencies: prev.groupDependencies.filter(d => d.id !== depId),
       };
     });
   }, [setAppState]);
 
-  // 종속성 드래그 핸들러 - 연결된 태스크들을 함께 이동
-  const handleAnchorDependencyDrag = useCallback((result: AnchorDependencyDragResult) => {
-    try {
-      // taskUpdates를 먼저 추출 (TypeScript control flow 분석을 위해)
-      const { taskUpdates } = result;
-
-      // taskUpdates가 없으면 무시 (하위 호환성)
-      if (!taskUpdates || taskUpdates.length === 0) {
-        console.warn('Dependency drag: no taskUpdates provided');
-        return;
-      }
-
-      setAppState(prev => {
-        const newTasks = prev.tasks.map(task => {
-          const update = taskUpdates.find(u => u.taskId === task.id);
-          if (update) {
-            return {
-              ...task,
-              startDate: update.newStartDate,
-              endDate: update.newEndDate,
-            };
-          }
-          return task;
-        });
-        console.log('Dependency drag completed:', result.sourceTaskId, '(affected tasks:', result.affectedTaskIds.length, ')');
-        return { ...prev, tasks: newTasks };
-      });
-    } catch (error) {
-      console.error('Failed to apply dependency drag:', error);
-      alert('종속성 드래그 적용 중 오류가 발생했습니다.');
-    }
-  }, [setAppState]);
+  const handleGroupCycleDetected = useCallback((info: { sourceGroupId: string; targetGroupId: string }) => {
+    console.warn('Cycle detected between groups:', info.sourceGroupId, '->', info.targetGroupId);
+    alert('순환 종속성이 감지되었습니다. 다른 그룹을 선택해주세요.');
+  }, []);
 
   if (tasks.length === 0) {
     return (
@@ -1007,15 +1037,16 @@ function App() {
             onTaskReorder={handleTaskReorder}
             onTaskGroup={handleTaskGroup}
             onTaskUngroup={handleTaskUngroup}
+            onTaskBlockify={handleTaskBlockify}
             onTaskMove={handleTaskMove}
             onViewChange={handleViewChange}
             onMilestoneCreate={handleMilestoneCreate}
             onMilestoneUpdate={handleMilestoneUpdate}
             onMilestoneDelete={handleMilestoneDelete}
-            anchorDependencies={anchorDependencies}
-            onAnchorDependencyCreate={handleAnchorDependencyCreate}
-            onAnchorDependencyDelete={handleAnchorDependencyDelete}
-            onAnchorDependencyDrag={handleAnchorDependencyDrag}
+            groupDependencies={groupDependencies}
+            onGroupDependencyCreate={handleGroupDependencyCreate}
+            onGroupDependencyDelete={handleGroupDependencyDelete}
+            onGroupCycleDetected={handleGroupCycleDetected}
             onSave={handleSave}
             onReset={handleReset}
             hasUnsavedChanges={hasUnsavedChanges}

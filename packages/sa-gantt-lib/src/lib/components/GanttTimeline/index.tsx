@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { forwardRef, useCallback } from 'react';
 import {
     ConstructionTask,
     Milestone,
@@ -11,8 +11,7 @@ import {
     GANTT_COLORS,
     GANTT_SUMMARY,
     GroupDragResult,
-    AnchorDependency,
-    AnchorDependencyDragResult,
+    GroupDependency,
 } from '../../types';
 import type { VirtualRow } from '../../hooks/useGanttVirtualization';
 
@@ -23,8 +22,7 @@ import { MilestoneMarker } from './MilestoneMarker';
 import { SvgDefs } from './SvgDefs';
 import { TaskBar } from './TaskBar';
 import { TimelineContextMenu } from './TimelineContextMenu';
-import { DependencyLines, ConnectionPreviewLine, InBarConnectionLines } from './DependencyLines';
-import { AnchorPoints, getAnchorPosition } from './AnchorPoints';
+import { GroupDependencyLines } from './GroupDependencyLines';
 
 // Core Hook
 import { useTimelineCore } from './hooks/useTimelineCore';
@@ -67,11 +65,11 @@ interface GanttTimelineProps {
     activeCPId?: string | null;
     onContextMenuAddTask?: (date: Date) => void;
     onContextMenuAddMilestone?: (date: Date) => void;
-    anchorDependencies?: AnchorDependency[];
-    onAnchorDependencyCreate?: (dependency: AnchorDependency) => void;
-    onAnchorDependencyDelete?: (depId: string) => void;
-    onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void;
-    onCycleDetected?: (info: { sourceTaskId: string; targetTaskId: string }) => void;
+    // Group Dependencies
+    groupDependencies?: GroupDependency[];
+    onGroupDependencyCreate?: (dependency: GroupDependency) => void;
+    onGroupDependencyDelete?: (depId: string) => void;
+    onGroupCycleDetected?: (info: { sourceGroupId: string; targetGroupId: string }) => void;
     focusedTaskId?: string | null;
     renderMode?: 'header' | 'content' | 'all';
     rowHeight?: number;
@@ -100,11 +98,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             activeCPId,
             onContextMenuAddTask,
             onContextMenuAddMilestone,
-            anchorDependencies = [],
-            onAnchorDependencyCreate,
-            onAnchorDependencyDelete,
-            onAnchorDependencyDrag,
-            onCycleDetected,
+            // Group Dependencies
+            groupDependencies = [],
+            onGroupDependencyCreate,
+            onGroupDependencyDelete,
+            onGroupCycleDetected,
             focusedTaskId,
             renderMode = 'all',
             rowHeight,
@@ -134,11 +132,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             onTaskDoubleClick,
             onContextMenuAddTask,
             onContextMenuAddMilestone,
-            anchorDependencies,
-            onAnchorDependencyCreate,
-            onAnchorDependencyDelete,
-            onAnchorDependencyDrag,
-            onCycleDetected,
+            // Group Dependencies
+            groupDependencies,
+            onGroupDependencyCreate,
+            onGroupDependencyDelete,
+            onGroupCycleDetected,
         });
 
         // 값 구조 분해
@@ -156,7 +154,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             rowData,
             fullRowData,
             milestoneLayouts,
-            isBlockTask,
         } = values;
 
         const {
@@ -169,21 +166,16 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             getGroupDragDeltaDays,
             getTaskGroupDragDeltaDays,
             getTaskDragInfo,
-            handleDependencyBarMouseDown,
-            isDependencyDragging,
-            taskHasDependency,
-            getDependencyDragDeltaDays,
-            getDependencyDragInfo,
-            getConnectedTaskIds,
-            getCombinedTaskDeltaDays,
-            connectingFrom,
-            hoveredAnchor,
-            selectedDepId,
-            hoveredDepId,
-            handleAnchorClick,
-            handleAnchorHover,
-            handleDependencyClick,
-            handleDependencyHover,
+            // Group Connection
+            groupConnectingFrom,
+            hoveredGroupEdge: _hoveredGroupEdge,
+            selectedGroupDepId,
+            hoveredGroupDepId,
+            handleGroupEdgeClick,
+            handleGroupEdgeHover,
+            handleGroupDependencyClick,
+            handleGroupDependencyHover,
+            getGroupConnectionStatus,
         } = dragHandlers;
 
         const {
@@ -192,11 +184,18 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             handleContextMenu,
             handleContextMenuClose,
             handleSvgClick,
-            handleDepDelete,
             setHoveredTaskId,
         } = eventHandlers;
 
         const { contextMenu } = contextMenuState;
+
+        // 종속성 선 우클릭 핸들러
+        const handleDependencyContextMenu = useCallback((depId: string, event: React.MouseEvent) => {
+            // 종속성 선택
+            handleGroupDependencyClick(depId);
+            // 컨텍스트 메뉴 열기 (타입 단언으로 SVG 이벤트로 변환)
+            handleContextMenu(event as React.MouseEvent<SVGSVGElement>);
+        }, [handleGroupDependencyClick, handleContextMenu]);
 
         // ====================================
         // Header Only 모드 (TimelineHeader + Milestone Lane)
@@ -303,22 +302,21 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
+                            const isBlock = task.type === 'BLOCK';
                             const isGroup = task.type === 'GROUP';
                             const isCP = task.type === 'CP';
 
                             let barHeightForTask: number;
-                            if (isCP) {
+                            if (isBlock || isCP) {
                                 barHeightForTask = BAR_HEIGHT;
                             } else if (isGroup) {
-                                const isBlock = isBlockTask(task);
-                                barHeightForTask = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                                barHeightForTask = SUMMARY_BAR_HEIGHT;
                             } else {
                                 barHeightForTask = effectiveBarHeight;
                             }
                             const y = row.start + (row.size - barHeightForTask) / 2;
 
-                            if (!isMasterView && isGroup) {
-                                const isBlock = isBlockTask(task);
+                            if (!isMasterView && (isBlock || isGroup)) {
                                 if (isBlock) {
                                     return (
                                         <BlockBar
@@ -363,6 +361,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         isFocused={focusedTaskId === task.id}
                                         parentBarHeight={BAR_HEIGHT}
                                         isCompact={isCompact}
+                                        // Group Connection props (renderMode='content')
+                                        connectingFrom={groupConnectingFrom}
+                                        hasConnection={getGroupConnectionStatus(task.id)}
+                                        onEdgeClick={onGroupDependencyCreate ? handleGroupEdgeClick : undefined}
+                                        onEdgeHover={onGroupDependencyCreate ? handleGroupEdgeHover : undefined}
                                     />
                                 );
                             }
@@ -385,11 +388,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
-                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
-                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}
-                                    onDependencyDragStart={handleDependencyBarMouseDown}
-                                    hasDependency={taskHasDependency(task.id)}
                                     isFocused={focusedTaskId === task.id}
                                     onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
                                         ? () => onTaskDoubleClick(task)
@@ -401,93 +400,46 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             );
                         })}
 
-                        {/* Dependency Lines */}
-                        {!isMasterView && anchorDependencies.length > 0 && (
-                            <DependencyLines
+                        {/* Group Dependency Lines - content mode */}
+                        {!isMasterView && groupDependencies.length > 0 && (
+                            <GroupDependencyLines
                                 tasks={tasks}
-                                dependencies={anchorDependencies}
+                                allTasks={allTasks || tasks}
+                                dependencies={groupDependencies}
                                 minDate={minDate}
                                 pixelsPerDay={pixelsPerDay}
-                                selectedDepId={selectedDepId}
-                                hoveredDepId={hoveredDepId}
-                                onDependencyClick={handleDependencyClick}
-                                onDependencyHover={handleDependencyHover}
-                                holidays={holidays}
-                                calendarSettings={calendarSettings}
-                                getTaskDeltaDays={getCombinedTaskDeltaDays}
+                                selectedDepId={selectedGroupDepId}
+                                hoveredDepId={hoveredGroupDepId}
+                                onDependencyClick={handleGroupDependencyClick}
+                                onDependencyHover={handleGroupDependencyHover}
+                                onDependencyContextMenu={onGroupDependencyDelete ? handleDependencyContextMenu : undefined}
                                 offsetY={0}
                                 rowData={fullRowData}
-                                effectiveBarHeight={effectiveBarHeight}
                                 isCompact={isCompact}
                             />
                         )}
-
-                        {/* In-Bar Connection Lines */}
-                        {!isMasterView && anchorDependencies.length > 0 && (
-                            <InBarConnectionLines
-                                tasks={tasks}
-                                dependencies={anchorDependencies}
-                                minDate={minDate}
-                                pixelsPerDay={pixelsPerDay}
-                                holidays={holidays}
-                                calendarSettings={calendarSettings}
-                                getTaskDeltaDays={getCombinedTaskDeltaDays}
-                                offsetY={0}
-                                rowData={fullRowData}
-                                effectiveBarHeight={effectiveBarHeight}
-                                isCompact={isCompact}
-                            />
-                        )}
-
-                        {/* Anchor Points */}
-                        {!isMasterView && rowData.map((row) => {
-                            const task = tasks[row.index];
-                            if (!task || task.type !== 'TASK') return null;
-
-                            return (
-                                <AnchorPoints
-                                    key={`anchor-${row.key}`}
-                                    task={task}
-                                    rowIndex={row.index}
-                                    minDate={minDate}
-                                    pixelsPerDay={pixelsPerDay}
-                                    connectingFrom={connectingFrom}
-                                    dependencies={anchorDependencies}
-                                    onAnchorClick={handleAnchorClick}
-                                    onAnchorHover={handleAnchorHover}
-                                    holidays={holidays}
-                                    calendarSettings={calendarSettings}
-                                    dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
-                                    offsetY={0}
-                                    rowStart={row.start}
-                                    rowHeight={row.size}
-                                    effectiveBarHeight={effectiveBarHeight}
-                                    isCompact={isCompact}
-                                    isHoverActive={false}
-                                />
-                            );
-                        })}
 
                         {/* Task Labels */}
                         {rowData.map((row) => {
                             const task = tasks[row.index];
                             if (!task) return null;
-                            if (!isMasterView && task.type === 'GROUP') return null;
+                            // BLOCK, GROUP은 별도 바로 렌더링되므로 라벨 스킵
+                            if (!isMasterView && (task.type === 'BLOCK' || task.type === 'GROUP')) return null;
 
+                            const isBlock = task.type === 'BLOCK';
                             const isCP = task.type === 'CP';
                             const isGroup = task.type === 'GROUP';
 
                             let labelBarHeight: number;
-                            if (isCP) {
+                            if (isBlock || isCP) {
                                 labelBarHeight = BAR_HEIGHT;
                             } else if (isGroup) {
-                                const isBlock = isBlockTask(task);
-                                labelBarHeight = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                                labelBarHeight = SUMMARY_BAR_HEIGHT;
                             } else {
                                 labelBarHeight = effectiveBarHeight;
                             }
                             const y = row.start + (row.size - labelBarHeight) / 2;
-                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
+                            const useMasterStyle = isMasterView || (isUnifiedView && (isBlock || isCP));
 
                             return (
                                 <TaskBar
@@ -504,8 +456,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
-                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
-                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
                                     barHeight={effectiveBarHeight}
                                 />
@@ -531,54 +481,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             );
                         })}
 
-                        {/* Connection Preview Line */}
-                        {!isMasterView && connectingFrom && hoveredAnchor && connectingFrom.taskId !== hoveredAnchor.taskId && (() => {
-                            const sourceTask = tasks.find(t => t.id === connectingFrom.taskId);
-                            const targetTask = tasks.find(t => t.id === hoveredAnchor.taskId);
-                            const sourceIndex = tasks.findIndex(t => t.id === connectingFrom.taskId);
-                            const targetIndex = tasks.findIndex(t => t.id === hoveredAnchor.taskId);
-
-                            if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
-
-                            const sourceRow = fullRowData.find(r => r.index === sourceIndex);
-                            const targetRow = fullRowData.find(r => r.index === targetIndex);
-
-                            const sourcePos = getAnchorPosition(
-                                sourceTask, connectingFrom.dayIndex, sourceIndex,
-                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
-                                sourceRow?.start, sourceRow?.size, effectiveBarHeight
-                            );
-                            const targetPos = getAnchorPosition(
-                                targetTask, hoveredAnchor.dayIndex, targetIndex,
-                                minDate, pixelsPerDay, holidays, calendarSettings, 0,
-                                targetRow?.start, targetRow?.size, effectiveBarHeight
-                            );
-
-                            return (
-                                <ConnectionPreviewLine
-                                    sourceX={sourcePos.x}
-                                    sourceY={sourcePos.y}
-                                    targetX={targetPos.x}
-                                    targetY={targetPos.y}
-                                    isCompact={isCompact}
-                                />
-                            );
-                        })()}
-
-                        {/* Dependency Drag Indicator */}
-                        {isDependencyDragging && (() => {
-                            const connectedIds = getConnectedTaskIds();
-                            if (connectedIds.length <= 1) return null;
-
-                            return (
-                                <g className="dependency-drag-indicator">
-                                    <rect x={10} y={10} width={180} height={28} rx={6} fill={GANTT_COLORS.success} fillOpacity={0.9} />
-                                    <text x={100} y={28} textAnchor="middle" fill="white" fontSize={12} fontWeight={600}>
-                                        🔗 연결된 {connectedIds.length}개 태스크 이동 중
-                                    </text>
-                                </g>
-                            );
-                        })()}
                     </svg>
 
                     {showCriticalPath && (
@@ -613,8 +515,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             onAddTask={onContextMenuAddTask}
                             onAddMilestone={onContextMenuAddMilestone}
                             onClose={handleContextMenuClose}
-                            selectedDependencyId={selectedDepId}
-                            onDeleteDependency={onAnchorDependencyDelete ? handleDepDelete : undefined}
+                            selectedDependencyId={selectedGroupDepId}
+                            onDeleteDependency={onGroupDependencyDelete}
                         />
                     )}
                 </div>
@@ -689,22 +591,21 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
+                            const isBlock = task.type === 'BLOCK';
                             const isGroup = task.type === 'GROUP';
                             const isCP = task.type === 'CP';
 
                             let barHeightForTask: number;
-                            if (isCP) {
+                            if (isBlock || isCP) {
                                 barHeightForTask = BAR_HEIGHT;
                             } else if (isGroup) {
-                                const isBlock = isBlockTask(task);
-                                barHeightForTask = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                                barHeightForTask = SUMMARY_BAR_HEIGHT;
                             } else {
                                 barHeightForTask = effectiveBarHeight;
                             }
                             const y = row.start + (row.size - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
 
-                            if (!isMasterView && isGroup) {
-                                const isBlock = isBlockTask(task);
+                            if (!isMasterView && (isBlock || isGroup)) {
                                 if (isBlock) {
                                     return (
                                         <BlockBar
@@ -749,6 +650,11 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         isFocused={focusedTaskId === task.id}
                                         parentBarHeight={BAR_HEIGHT}
                                         isCompact={isCompact}
+                                        // Group Connection props (renderMode='all')
+                                        connectingFrom={groupConnectingFrom}
+                                        hasConnection={getGroupConnectionStatus(task.id)}
+                                        onEdgeClick={onGroupDependencyCreate ? handleGroupEdgeClick : undefined}
+                                        onEdgeHover={onGroupDependencyCreate ? handleGroupEdgeHover : undefined}
                                     />
                                 );
                             }
@@ -771,11 +677,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
-                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
-                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     onDragStart={handleBarMouseDown}
-                                    onDependencyDragStart={handleDependencyBarMouseDown}
-                                    hasDependency={taskHasDependency(task.id)}
                                     isFocused={focusedTaskId === task.id}
                                     onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
                                         ? () => onTaskDoubleClick(task)
@@ -787,93 +689,46 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             );
                         })}
 
-                        {/* Dependency Lines */}
-                        {!isMasterView && anchorDependencies.length > 0 && (
-                            <DependencyLines
+                        {/* Group Dependency Lines */}
+                        {!isMasterView && groupDependencies.length > 0 && (
+                            <GroupDependencyLines
                                 tasks={tasks}
-                                dependencies={anchorDependencies}
+                                allTasks={allTasks || tasks}
+                                dependencies={groupDependencies}
                                 minDate={minDate}
                                 pixelsPerDay={pixelsPerDay}
-                                selectedDepId={selectedDepId}
-                                hoveredDepId={hoveredDepId}
-                                onDependencyClick={handleDependencyClick}
-                                onDependencyHover={handleDependencyHover}
-                                holidays={holidays}
-                                calendarSettings={calendarSettings}
-                                getTaskDeltaDays={getCombinedTaskDeltaDays}
+                                selectedDepId={selectedGroupDepId}
+                                hoveredDepId={hoveredGroupDepId}
+                                onDependencyClick={handleGroupDependencyClick}
+                                onDependencyHover={handleGroupDependencyHover}
+                                onDependencyContextMenu={onGroupDependencyDelete ? handleDependencyContextMenu : undefined}
                                 offsetY={MILESTONE_LANE_HEIGHT}
                                 rowData={fullRowData}
-                                effectiveBarHeight={effectiveBarHeight}
                                 isCompact={isCompact}
                             />
                         )}
-
-                        {/* In-Bar Connection Lines */}
-                        {!isMasterView && anchorDependencies.length > 0 && (
-                            <InBarConnectionLines
-                                tasks={tasks}
-                                dependencies={anchorDependencies}
-                                minDate={minDate}
-                                pixelsPerDay={pixelsPerDay}
-                                holidays={holidays}
-                                calendarSettings={calendarSettings}
-                                getTaskDeltaDays={getCombinedTaskDeltaDays}
-                                offsetY={MILESTONE_LANE_HEIGHT}
-                                rowData={fullRowData}
-                                effectiveBarHeight={effectiveBarHeight}
-                                isCompact={isCompact}
-                            />
-                        )}
-
-                        {/* Anchor Points */}
-                        {!isMasterView && rowData.map((row) => {
-                            const task = tasks[row.index];
-                            if (!task || task.type !== 'TASK') return null;
-
-                            return (
-                                <AnchorPoints
-                                    key={`anchor-${row.key}`}
-                                    task={task}
-                                    rowIndex={row.index}
-                                    minDate={minDate}
-                                    pixelsPerDay={pixelsPerDay}
-                                    connectingFrom={connectingFrom}
-                                    dependencies={anchorDependencies}
-                                    onAnchorClick={handleAnchorClick}
-                                    onAnchorHover={handleAnchorHover}
-                                    holidays={holidays}
-                                    calendarSettings={calendarSettings}
-                                    dependencyDragDeltaDays={getCombinedTaskDeltaDays(task.id)}
-                                    offsetY={MILESTONE_LANE_HEIGHT}
-                                    rowStart={row.start}
-                                    rowHeight={row.size}
-                                    effectiveBarHeight={effectiveBarHeight}
-                                    isCompact={isCompact}
-                                    isHoverActive={false}
-                                />
-                            );
-                        })}
 
                         {/* Task Labels */}
                         {rowData.map((row) => {
                             const task = tasks[row.index];
                             if (!task) return null;
-                            if (!isMasterView && task.type === 'GROUP') return null;
+                            // BLOCK, GROUP은 별도 바로 렌더링되므로 라벨 스킵
+                            if (!isMasterView && (task.type === 'BLOCK' || task.type === 'GROUP')) return null;
 
+                            const isBlock = task.type === 'BLOCK';
                             const isCP = task.type === 'CP';
                             const isGroup = task.type === 'GROUP';
 
                             let labelBarHeight: number;
-                            if (isCP) {
+                            if (isBlock || isCP) {
                                 labelBarHeight = BAR_HEIGHT;
                             } else if (isGroup) {
-                                const isBlock = isBlockTask(task);
-                                labelBarHeight = isBlock ? BAR_HEIGHT : SUMMARY_BAR_HEIGHT;
+                                labelBarHeight = SUMMARY_BAR_HEIGHT;
                             } else {
                                 labelBarHeight = effectiveBarHeight;
                             }
                             const y = row.start + (row.size - labelBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
-                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
+                            const useMasterStyle = isMasterView || (isUnifiedView && (isBlock || isCP));
 
                             return (
                                 <TaskBar
@@ -890,8 +745,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                     dragInfo={getDragInfo(task.id)}
                                     groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
                                     groupDragInfo={getTaskDragInfo(task.id)}
-                                    dependencyDragDeltaDays={getDependencyDragDeltaDays(task.id)}
-                                    dependencyDragInfo={getDependencyDragInfo(task.id)}
                                     isFocused={focusedTaskId === task.id}
                                     barHeight={effectiveBarHeight}
                                 />
@@ -917,54 +770,6 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             );
                         })}
 
-                        {/* Connection Preview Line */}
-                        {!isMasterView && connectingFrom && hoveredAnchor && connectingFrom.taskId !== hoveredAnchor.taskId && (() => {
-                            const sourceTask = tasks.find(t => t.id === connectingFrom.taskId);
-                            const targetTask = tasks.find(t => t.id === hoveredAnchor.taskId);
-                            const sourceIndex = tasks.findIndex(t => t.id === connectingFrom.taskId);
-                            const targetIndex = tasks.findIndex(t => t.id === hoveredAnchor.taskId);
-
-                            if (!sourceTask || !targetTask || sourceIndex < 0 || targetIndex < 0) return null;
-
-                            const sourceRow = fullRowData.find(r => r.index === sourceIndex);
-                            const targetRow = fullRowData.find(r => r.index === targetIndex);
-
-                            const sourcePos = getAnchorPosition(
-                                sourceTask, connectingFrom.dayIndex, sourceIndex,
-                                minDate, pixelsPerDay, holidays, calendarSettings, MILESTONE_LANE_HEIGHT,
-                                sourceRow?.start, sourceRow?.size, effectiveBarHeight
-                            );
-                            const targetPos = getAnchorPosition(
-                                targetTask, hoveredAnchor.dayIndex, targetIndex,
-                                minDate, pixelsPerDay, holidays, calendarSettings, MILESTONE_LANE_HEIGHT,
-                                targetRow?.start, targetRow?.size, effectiveBarHeight
-                            );
-
-                            return (
-                                <ConnectionPreviewLine
-                                    sourceX={sourcePos.x}
-                                    sourceY={sourcePos.y}
-                                    targetX={targetPos.x}
-                                    targetY={targetPos.y}
-                                    isCompact={isCompact}
-                                />
-                            );
-                        })()}
-
-                        {/* Dependency Drag Indicator */}
-                        {isDependencyDragging && (() => {
-                            const connectedIds = getConnectedTaskIds();
-                            if (connectedIds.length <= 1) return null;
-
-                            return (
-                                <g className="dependency-drag-indicator">
-                                    <rect x={10} y={10} width={180} height={28} rx={6} fill={GANTT_COLORS.success} fillOpacity={0.9} />
-                                    <text x={100} y={28} textAnchor="middle" fill="white" fontSize={12} fontWeight={600}>
-                                        🔗 연결된 {connectedIds.length}개 태스크 이동 중
-                                    </text>
-                                </g>
-                            );
-                        })()}
                     </svg>
 
                     {showCriticalPath && (
@@ -999,8 +804,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             onAddTask={onContextMenuAddTask}
                             onAddMilestone={onContextMenuAddMilestone}
                             onClose={handleContextMenuClose}
-                            selectedDependencyId={selectedDepId}
-                            onDeleteDependency={onAnchorDependencyDelete ? handleDepDelete : undefined}
+                            selectedDependencyId={selectedGroupDepId}
+                            onDeleteDependency={onGroupDependencyDelete}
                         />
                     )}
                 </div>
