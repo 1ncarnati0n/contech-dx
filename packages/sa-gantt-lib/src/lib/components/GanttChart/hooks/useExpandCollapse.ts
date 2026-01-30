@@ -45,13 +45,10 @@ export const useExpandCollapse = ({
     // ========================================
     const getDepthForTask = useCallback((task: ConstructionTask): number => {
         if (viewMode === 'UNIFIED') {
-            // UNIFIED: Block=0, CP=1, DetailGroup=2+
-            if (task.type === 'GROUP') {
-                const parent = task.parentId ? taskMap.get(task.parentId) : null;
-                if (!parent || parent.type !== 'CP') return 0; // Block
-                return 2; // Detail Group
-            }
+            // UNIFIED: BLOCK=0, CP=1, GROUP/TASK=2+
+            if (task.type === 'BLOCK') return 0;
             if (task.type === 'CP') return 1;
+            if (task.type === 'GROUP') return 2; // Detail Group
             return 2; // Task
         }
 
@@ -69,13 +66,13 @@ export const useExpandCollapse = ({
             return depth;
         }
 
-        // MASTER: 기본 로직
+        // MASTER: 기본 로직 (BLOCK, GROUP 처리)
         let depth = 0;
         let currentId: string | null | undefined = task.parentId;
         while (currentId) {
             const parent = taskMap.get(currentId);
             if (!parent) break;
-            if (parent.type === 'GROUP') depth++;
+            if (parent.type === 'BLOCK' || parent.type === 'GROUP') depth++;
             currentId = parent.parentId;
         }
         return depth;
@@ -87,11 +84,13 @@ export const useExpandCollapse = ({
     const expandableItemsMap = useMemo(() => {
         const filterByView = (task: ConstructionTask) => {
             if (viewMode === 'MASTER') {
-                return task.wbsLevel === 1 && task.type === 'GROUP';
+                // BLOCK도 확장 가능한 항목에 포함
+                return task.wbsLevel === 1 && (task.type === 'BLOCK' || task.type === 'GROUP');
             } else if (viewMode === 'DETAIL') {
                 return task.wbsLevel >= 2 && task.type === 'GROUP';
             } else {
-                return task.type === 'GROUP' || task.type === 'CP';
+                // UNIFIED: BLOCK, GROUP, CP 모두 확장 가능
+                return task.type === 'BLOCK' || task.type === 'GROUP' || task.type === 'CP';
             }
         };
 

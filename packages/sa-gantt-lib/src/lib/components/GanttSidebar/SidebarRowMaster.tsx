@@ -156,7 +156,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                 className="flex shrink-0 items-center overflow-hidden px-2"
                 style={{
                     width: onTaskReorder ? columns[0].width - dragHandleWidth : columns[0].width,
-                    paddingLeft: indent + 8,
+                    paddingLeft: indent,
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >

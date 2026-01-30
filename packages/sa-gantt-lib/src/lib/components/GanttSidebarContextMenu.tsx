@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { ConstructionTask } from '../types';
+import { isCPTask, isGroupTask, isRegularTask } from '../utils/typeGuards';
 
 interface GanttSidebarContextMenuProps {
     x: number;
@@ -12,6 +13,8 @@ interface GanttSidebarContextMenuProps {
     tasks: ConstructionTask[];
     onTaskGroup?: (taskIds: string[]) => void;
     onTaskUngroup?: (groupId: string) => void;
+    /** CP들을 새 BLOCK으로 묶기 (CP 전용) */
+    onTaskBlockify?: (taskIds: string[]) => void;
     onTaskDelete?: (taskId: string) => void;
     onStartRename?: (taskId: string) => void;
     onClose: () => void;
@@ -105,23 +108,51 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
     tasks,
     onTaskGroup,
     onTaskUngroup,
+    onTaskBlockify,
     onTaskDelete,
     onStartRename,
     onClose,
     onDeselect,
 }) => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    
-    // 선택된 태스크 중 GROUP이 있는지 확인
-    const hasGroupSelected = Array.from(selectedTaskIds).some(id => {
-        const task = tasks.find(t => t.id === id);
-        return task?.type === 'GROUP';
-    });
+
+    // 선택된 태스크들의 타입 분석
+    const { hasCPSelected, hasTaskOrGroupSelected, isMixed, hasGroupSelected } = useMemo(() => {
+        const selectedList = Array.from(selectedTaskIds);
+
+        const hasCP = selectedList.some(id => {
+            const task = tasks.find(t => t.id === id);
+            return isCPTask(task);
+        });
+        const hasTaskOrGroup = selectedList.some(id => {
+            const task = tasks.find(t => t.id === id);
+            return isRegularTask(task) || isGroupTask(task);
+        });
+        const hasGroup = selectedList.some(id => {
+            const task = tasks.find(t => t.id === id);
+            return isGroupTask(task);
+        });
+
+        return {
+            hasCPSelected: hasCP,
+            hasTaskOrGroupSelected: hasTaskOrGroup,
+            isMixed: hasCP && hasTaskOrGroup,  // CP와 TASK/GROUP 혼합 선택
+            hasGroupSelected: hasGroup,
+        };
+    }, [selectedTaskIds, tasks]);
     
     const handleGroup = () => {
-        // 1개 이상 선택 && GROUP이 아닌 경우에만 그룹화 가능
-        if (selectedTaskIds.size >= 1 && !hasGroupSelected && onTaskGroup) {
+        // TASK/GROUP만 선택된 경우에만 그룹화 가능 (CP 제외)
+        if (selectedTaskIds.size >= 1 && !hasGroupSelected && !hasCPSelected && onTaskGroup) {
             onTaskGroup(Array.from(selectedTaskIds));
+            onClose();
+        }
+    };
+
+    const handleBlockify = () => {
+        // CP만 선택된 경우에만 블럭화 가능
+        if (selectedTaskIds.size >= 1 && hasCPSelected && !hasTaskOrGroupSelected && onTaskBlockify) {
+            onTaskBlockify(Array.from(selectedTaskIds));
             onClose();
         }
     };
@@ -178,8 +209,8 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
             style={{ left: x, top: y }}
             onClick={(e) => e.stopPropagation()}
         >
-            {/* 그룹화 (1개 이상 선택 시, GROUP이 아닌 경우) */}
-            {selectedTaskIds.size >= 1 && !hasGroupSelected && onTaskGroup && (
+            {/* 그룹화 (TASK/GROUP만 선택, CP 미포함, 혼합 선택 아닐 때) */}
+            {selectedTaskIds.size >= 1 && !isMixed && hasTaskOrGroupSelected && !hasCPSelected && !hasGroupSelected && onTaskGroup && (
                 <button
                     onClick={handleGroup}
                     className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -188,6 +219,19 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                     그룹화 ({selectedTaskIds.size}개 선택됨)
+                </button>
+            )}
+
+            {/* 블럭화 (CP만 선택, 혼합 선택 아닐 때) */}
+            {selectedTaskIds.size >= 1 && !isMixed && hasCPSelected && !hasTaskOrGroupSelected && onTaskBlockify && (
+                <button
+                    onClick={handleBlockify}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                    </svg>
+                    블럭화 ({selectedTaskIds.size}개 CP 선택됨)
                 </button>
             )}
             

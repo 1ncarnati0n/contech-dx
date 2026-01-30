@@ -91,21 +91,20 @@ export const useSidebarData = ({
     // 동적 행 높이 계산 함수
     // ========================================
     const getRowHeight = useCallback((task: ConstructionTask): number => {
+        // BLOCK: 항상 30px
+        if (task.type === 'BLOCK') {
+            return ROW_HEIGHT;
+        }
         // CP: 항상 30px
         if (task.type === 'CP') {
             return ROW_HEIGHT;
         }
-        // Block/Group 판별
+        // GROUP (CP 하위): 컴팩트 모드에서 30% 감소
         if (task.type === 'GROUP') {
-            const parent = task.parentId ? taskMap.get(task.parentId) : null;
-            const isBlock = !parent || parent.type !== 'CP';
-            // Block: 항상 30px
-            if (isBlock) return ROW_HEIGHT;
-            // Group (CP 하위): 컴팩트 모드에서 30% 감소
             return isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT;
         }
         return effectiveRowHeight;
-    }, [effectiveRowHeight, taskMap, isCompact]);
+    }, [effectiveRowHeight, isCompact]);
 
     // ========================================
     // Parent ID → 자식 수 매핑 (canExpand 판단용)

@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Bot,
+  Brain,
   ChevronDown,
+  ChevronRight,
   Send,
   Loader2,
   MessageSquare,
@@ -142,6 +144,7 @@ export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {})
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [showQuickQuestions, setShowQuickQuestions] = useState(true);
+  const [thinkingMode, setThinkingMode] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<ChatbotError | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -225,6 +228,7 @@ export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {})
               completionRate: processPlanContext.completionRate,
             } : undefined,
             history,
+            thinkingMode,
           },
           {
             signal: abortController.signal,
@@ -242,6 +246,7 @@ export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {})
             id: (Date.now() + 1).toString(),
             role: 'model',
             content: response.answer,
+            thoughts: response.thoughts, // 사고 모드일 때 사고 내용 저장
             timestamp: new Date(),
           };
 
@@ -274,7 +279,7 @@ export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {})
         abortControllerRef.current = null;
       }
     },
-    [query, isSearching, messages, pageContext, buildingContext, processPlanContext]
+    [query, isSearching, messages, pageContext, buildingContext, processPlanContext, thinkingMode]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -407,6 +412,19 @@ export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {})
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setThinkingMode(!thinkingMode)}
+            className={`h-8 w-8 ${thinkingMode ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : ''}`}
+            title={thinkingMode ? '사고 모드 OFF' : '사고 모드 ON (더 깊은 추론)'}
+          >
+            <Brain className={`w-4 h-4 transition-all duration-200 ${
+                thinkingMode
+                  ? 'text-purple-500 dark:text-purple-400 scale-110'
+                  : 'text-zinc-500 dark:text-zinc-400'
+              }`} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -550,8 +568,10 @@ function getErrorMessage(error?: ChatbotError): string {
  * 메시지 버블 컴포넌트
  */
 function MessageBubble({ message }: { message: GlobalChatMessage }) {
+  const [isThoughtsExpanded, setIsThoughtsExpanded] = useState(false);
   const isUser = message.role === 'user';
   const hasError = !!message.error;
+  const hasThoughts = !!message.thoughts;
 
   return (
     <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -586,6 +606,29 @@ function MessageBubble({ message }: { message: GlobalChatMessage }) {
           <div className="text-sm whitespace-pre-wrap">{message.content}</div>
         ) : (
           <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+            {/* 사고 과정 접이식 섹션 */}
+            {hasThoughts && (
+              <div className="mb-3">
+                <button
+                  onClick={() => setIsThoughtsExpanded(!isThoughtsExpanded)}
+                  className="flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-md"
+                >
+                  {isThoughtsExpanded ? (
+                    <ChevronDown className="w-3 h-3" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3" />
+                  )}
+                  <Brain className="w-3 h-3" />
+                  <span>{isThoughtsExpanded ? '사고 과정' : '사고 과정 보기'}</span>
+                </button>
+                {isThoughtsExpanded && (
+                  <div className="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-400 dark:border-purple-600 rounded-r-md text-xs text-purple-800 dark:text-purple-200 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {message.thoughts}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* 최종 답변 */}
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{

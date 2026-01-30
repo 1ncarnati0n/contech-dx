@@ -7,15 +7,15 @@
  * 향후 Supabase 전환 시 SupabaseService로 교체 가능
  */
 
-import type { ConstructionTask, Milestone, AnchorDependency } from '../types';
+import type { ConstructionTask, Milestone, GroupDependency } from '../types';
 import type { DataService, GanttData, DataServiceOptions } from './DataService';
 import {
     serializeTasks,
     deserializeTasks,
     serializeMilestones,
     deserializeMilestones,
-    serializeAnchorDependencies,
-    deserializeAnchorDependencies,
+    serializeGroupDependencies,
+    deserializeGroupDependencies,
     serializeGanttDataForExport,
     parseImportedData,
 } from './serializers';
@@ -29,7 +29,7 @@ const DEFAULT_STORAGE_PREFIX = 'sa-gantt';
 const getStorageKeys = (prefix: string) => ({
     TASKS: `${prefix}-tasks`,
     MILESTONES: `${prefix}-milestones`,
-    ANCHOR_DEPENDENCIES: `${prefix}-anchor-dependencies`,
+    GROUP_DEPENDENCIES: `${prefix}-group-dependencies`,
 });
 
 // ============================================
@@ -239,18 +239,18 @@ export class LocalStorageService implements DataService {
     }
 
     // ============================================
-    // Dependencies CRUD
+    // Dependencies CRUD (Group-based FS connections)
     // ============================================
 
-    async loadDependencies(): Promise<AnchorDependency[]> {
+    async loadDependencies(): Promise<GroupDependency[]> {
         try {
-            const stored = localStorage.getItem(this.storageKeys.ANCHOR_DEPENDENCIES);
+            const stored = localStorage.getItem(this.storageKeys.GROUP_DEPENDENCIES);
             if (!stored) {
                 this.log('No dependencies found in storage');
                 return [];
             }
 
-            const dependencies = deserializeAnchorDependencies(stored);
+            const dependencies = deserializeGroupDependencies(stored);
             if (!dependencies) {
                 this.log('Failed to deserialize dependencies');
                 return [];
@@ -264,15 +264,15 @@ export class LocalStorageService implements DataService {
         }
     }
 
-    async saveDependencies(dependencies: AnchorDependency[]): Promise<void> {
+    async saveDependencies(dependencies: GroupDependency[]): Promise<void> {
         this.safeSetItem(
-            this.storageKeys.ANCHOR_DEPENDENCIES,
-            serializeAnchorDependencies(dependencies)
+            this.storageKeys.GROUP_DEPENDENCIES,
+            serializeGroupDependencies(dependencies)
         );
         this.log('Saved', dependencies.length, 'dependencies');
     }
 
-    async createDependency(dependency: AnchorDependency): Promise<AnchorDependency> {
+    async createDependency(dependency: GroupDependency): Promise<GroupDependency> {
         const dependencies = await this.loadDependencies();
         dependencies.push(dependency);
         await this.saveDependencies(dependencies);
@@ -348,7 +348,7 @@ export class LocalStorageService implements DataService {
     async reset(): Promise<void> {
         localStorage.removeItem(this.storageKeys.TASKS);
         localStorage.removeItem(this.storageKeys.MILESTONES);
-        localStorage.removeItem(this.storageKeys.ANCHOR_DEPENDENCIES);
+        localStorage.removeItem(this.storageKeys.GROUP_DEPENDENCIES);
         this.log('Storage reset');
     }
 

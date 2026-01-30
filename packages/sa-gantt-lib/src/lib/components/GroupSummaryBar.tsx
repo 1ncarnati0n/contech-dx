@@ -9,6 +9,12 @@ import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupU
 const { BAR_HEIGHT } = GANTT_LAYOUT;
 const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
 
+/** 연결 포인트 상태 */
+interface GroupConnectingFrom {
+    groupId: string;
+    edge: 'start' | 'end';
+}
+
 interface GroupSummaryBarProps {
     group: ConstructionTask;
     allTasks: ConstructionTask[];
@@ -32,6 +38,15 @@ interface GroupSummaryBarProps {
     isFocused?: boolean;
     /** 컴팩트 모드 여부 */
     isCompact?: boolean;
+    // === 종속선 연결 관련 props ===
+    /** 연결 중인 시작점 정보 */
+    connectingFrom?: GroupConnectingFrom | null;
+    /** 종속성 연결 여부 (시작점/끝점 중 하나라도 연결되어 있으면) */
+    hasConnection?: { start: boolean; end: boolean };
+    /** Group 바 edge 클릭 핸들러 */
+    onEdgeClick?: (groupId: string, edge: 'start' | 'end') => void;
+    /** Group 바 edge 호버 핸들러 */
+    onEdgeHover?: (groupId: string, edge: 'start' | 'end' | null) => void;
 }
 
 export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
@@ -48,6 +63,11 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     onClick,
     isFocused = false,
     isCompact = false,
+    // 종속선 연결 관련
+    connectingFrom,
+    hasConnection = { start: false, end: false },
+    onEdgeClick,
+    onEdgeHover,
 }) => {
     const effectiveParentBarHeight = parentBarHeight ?? BAR_HEIGHT;
     // 그룹의 날짜 범위 계산
@@ -181,6 +201,122 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                 onMouseDown={handleMouseDown}
                 onDoubleClick={handleDoubleClick}
             />
+
+            {/* === 종속선 연결 포인트 === */}
+            {onEdgeClick && (
+                <>
+                    {/* 시작점 (FS Target) - 왼쪽 끝, 바 하단 */}
+                    {(() => {
+                        const isConnectingToThis = connectingFrom && connectingFrom.groupId !== group.id;
+                        const isConnected = hasConnection.start;
+                        const showAnchor = isConnectingToThis || isConnected;
+                        const anchorY = barY + SUMMARY_BAR_HEIGHT;
+
+                        return (
+                            <g className="group-connection-start">
+                                {/* 클릭 영역 */}
+                                <rect
+                                    x={-8}
+                                    y={anchorY - 8}
+                                    width={16}
+                                    height={16}
+                                    fill="transparent"
+                                    style={{ cursor: isConnectingToThis ? 'pointer' : 'default' }}
+                                    onClick={(e) => {
+                                        if (isConnectingToThis) {
+                                            e.stopPropagation();
+                                            onEdgeClick(group.id, 'start');
+                                        }
+                                    }}
+                                    onMouseEnter={() => onEdgeHover?.(group.id, 'start')}
+                                    onMouseLeave={() => onEdgeHover?.(group.id, null)}
+                                />
+                                {/* 앵커 원 */}
+                                <circle
+                                    cx={0}
+                                    cy={anchorY}
+                                    r={showAnchor ? 4 : 3}
+                                    fill={isConnectingToThis
+                                        ? GANTT_COLORS.success
+                                        : isConnected
+                                            ? GANTT_COLORS.textPrimary
+                                            : GANTT_COLORS.summaryBar
+                                    }
+                                    stroke={isConnectingToThis
+                                        ? GANTT_COLORS.success
+                                        : isConnected
+                                            ? GANTT_COLORS.textPrimary
+                                            : 'none'
+                                    }
+                                    strokeWidth={isConnected ? 1 : 0}
+                                    opacity={showAnchor ? 1 : 0}
+                                    style={{
+                                        cursor: isConnectingToThis ? 'pointer' : 'default',
+                                        transition: 'all 0.15s ease',
+                                    }}
+                                    pointerEvents={isConnectingToThis ? 'auto' : 'none'}
+                                />
+                            </g>
+                        );
+                    })()}
+
+                    {/* 끝점 (FS Source) - 오른쪽 끝, 바 하단 */}
+                    {(() => {
+                        const isConnectingFromThis = connectingFrom?.groupId === group.id && connectingFrom.edge === 'end';
+                        const canStartConnection = !connectingFrom;
+                        const isConnected = hasConnection.end;
+                        const showAnchor = isConnectingFromThis || isConnected || canStartConnection;
+                        const anchorY = barY + SUMMARY_BAR_HEIGHT;
+
+                        return (
+                            <g className="group-connection-end">
+                                {/* 클릭 영역 */}
+                                <rect
+                                    x={totalWidth - 8}
+                                    y={anchorY - 8}
+                                    width={16}
+                                    height={16}
+                                    fill="transparent"
+                                    style={{ cursor: canStartConnection || isConnectingFromThis ? 'pointer' : 'default' }}
+                                    onClick={(e) => {
+                                        if (canStartConnection || isConnectingFromThis) {
+                                            e.stopPropagation();
+                                            onEdgeClick(group.id, 'end');
+                                        }
+                                    }}
+                                    onMouseEnter={() => onEdgeHover?.(group.id, 'end')}
+                                    onMouseLeave={() => onEdgeHover?.(group.id, null)}
+                                />
+                                {/* 앵커 원 */}
+                                <circle
+                                    cx={totalWidth}
+                                    cy={anchorY}
+                                    r={isConnectingFromThis ? 5 : (isConnected ? 4 : 3)}
+                                    fill={isConnectingFromThis
+                                        ? GANTT_COLORS.success
+                                        : isConnected
+                                            ? GANTT_COLORS.textPrimary
+                                            : GANTT_COLORS.summaryBar
+                                    }
+                                    stroke={isConnectingFromThis
+                                        ? GANTT_COLORS.success
+                                        : isConnected
+                                            ? GANTT_COLORS.textPrimary
+                                            : GANTT_COLORS.textMuted
+                                    }
+                                    strokeWidth={isConnected || isConnectingFromThis ? 1 : 0.5}
+                                    opacity={showAnchor ? (isConnected || isConnectingFromThis ? 1 : 0.5) : 0}
+                                    style={{
+                                        cursor: canStartConnection ? 'pointer' : 'default',
+                                        transition: 'all 0.15s ease',
+                                    }}
+                                    pointerEvents="auto"
+                                />
+                            </g>
+                        );
+                    })()}
+                </>
+            )}
         </g>
     );
 });

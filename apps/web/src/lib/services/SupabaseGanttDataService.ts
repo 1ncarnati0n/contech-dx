@@ -12,7 +12,7 @@ import type {
   GanttData,
   ConstructionTask,
   Milestone,
-  AnchorDependency,
+  GroupDependency,
   WbsLevel,
   TaskType,
 } from 'sa-gantt-lib';
@@ -57,10 +57,9 @@ interface GanttMilestoneRow {
 interface GanttDependencyRow {
   id: string;
   project_id: string;
-  source_task_id: string;
-  target_task_id: string;
-  source_day_index: number;
-  target_day_index: number;
+  source_group_id: string;
+  target_group_id: string;
+  type: string;
   lag: number;
   created_at: string;
 }
@@ -183,28 +182,26 @@ function milestoneToRow(
   };
 }
 
-function rowToDependency(row: GanttDependencyRow): AnchorDependency {
+function rowToDependency(row: GanttDependencyRow): GroupDependency {
   return {
     id: row.id,
-    sourceTaskId: row.source_task_id,
-    targetTaskId: row.target_task_id,
-    sourceDayIndex: row.source_day_index,
-    targetDayIndex: row.target_day_index,
+    sourceGroupId: row.source_group_id,
+    targetGroupId: row.target_group_id,
+    type: row.type as 'FS',
     lag: row.lag,
   };
 }
 
 function dependencyToRow(
-  dep: AnchorDependency,
+  dep: GroupDependency,
   projectId: string
 ): Omit<GanttDependencyRow, 'created_at'> {
   return {
     id: dep.id,
     project_id: projectId,
-    source_task_id: dep.sourceTaskId,
-    target_task_id: dep.targetTaskId,
-    source_day_index: dep.sourceDayIndex,
-    target_day_index: dep.targetDayIndex,
+    source_group_id: dep.sourceGroupId,
+    target_group_id: dep.targetGroupId,
+    type: dep.type,
     lag: dep.lag || 0,
   };
 }
@@ -620,7 +617,7 @@ export class SupabaseGanttDataService implements DataService {
   // Dependencies CRUD
   // ============================================
 
-  async loadDependencies(): Promise<AnchorDependency[]> {
+  async loadDependencies(): Promise<GroupDependency[]> {
     this.log('loadDependencies');
 
     const { data, error } = await this.supabase
@@ -636,7 +633,7 @@ export class SupabaseGanttDataService implements DataService {
     return (data || []).map(rowToDependency);
   }
 
-  async saveDependencies(dependencies: AnchorDependency[]): Promise<void> {
+  async saveDependencies(dependencies: GroupDependency[]): Promise<void> {
     this.log('saveDependencies', dependencies.length, 'for project:', this.projectId);
 
     const { error: deleteError } = await this.supabase
@@ -683,7 +680,7 @@ export class SupabaseGanttDataService implements DataService {
     this.log('saveDependencies inserted count:', insertedData?.length || 0);
   }
 
-  async createDependency(dependency: AnchorDependency): Promise<AnchorDependency> {
+  async createDependency(dependency: GroupDependency): Promise<GroupDependency> {
     this.log('createDependency', dependency);
 
     // 인증 상태 사전 검증

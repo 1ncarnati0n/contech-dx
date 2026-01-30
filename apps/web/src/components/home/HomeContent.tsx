@@ -1,9 +1,43 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, ShieldCheck, LineChart } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function HomeContent() {
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+
+  // 사용자 ID 가져오기
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserId(user?.id);
+    });
+  }, []);
+
+  // 첫 방문 시 챗봇 자동 열기
+  useEffect(() => {
+    if (!userId || typeof window === 'undefined') return;
+
+    const storageKey = `chatbot-onboarding-seen-${userId}`;
+
+    try {
+      if (!localStorage.getItem(storageKey)) {
+        localStorage.setItem(storageKey, 'true');
+
+        // GlobalChatbot 마운트 후 열기 (500ms 딜레이)
+        const timer = setTimeout(() => {
+          window.dispatchEvent(new Event('chatbot:open'));
+        }, 500);
+
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // localStorage 접근 실패 시 무시 (private browsing 등)
+    }
+  }, [userId]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {

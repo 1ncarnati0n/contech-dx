@@ -9,8 +9,9 @@
  */
 
 import { format } from 'date-fns';
-import type { ConstructionTask, Milestone, AnchorDependency, Dependency, DependencyType, AnchorPoint } from '../types';
+import type { ConstructionTask, Milestone, GroupDependency, Dependency, DependencyType, AnchorPoint } from '../types';
 import type { GanttData } from './DataService';
+import { migrateTaskTypes } from '../utils/migration';
 
 // ============================================
 // 날짜 파싱 유틸리티
@@ -60,7 +61,7 @@ export const isValidTaskData = (data: unknown): data is Record<string, unknown> 
     id: string;
     parentId: string | null;
     wbsLevel: 1 | 2;
-    type: 'GROUP' | 'CP' | 'TASK';
+    type: 'BLOCK' | 'GROUP' | 'CP' | 'TASK';
     name: string;
     startDate: string;
     endDate: string;
@@ -77,8 +78,8 @@ export const isValidTaskData = (data: unknown): data is Record<string, unknown> 
         (obj.parentId === null || typeof obj.parentId === 'string') &&
         // wbsLevel: 1 또는 2
         (obj.wbsLevel === 1 || obj.wbsLevel === 2) &&
-        // type: 'GROUP', 'CP', 'TASK' 중 하나
-        (obj.type === 'GROUP' || obj.type === 'CP' || obj.type === 'TASK')
+        // type: 'BLOCK', 'GROUP', 'CP', 'TASK' 중 하나
+        (obj.type === 'BLOCK' || obj.type === 'GROUP' || obj.type === 'CP' || obj.type === 'TASK')
     );
 };
 
@@ -139,17 +140,16 @@ export const isValidGroupData = (data: unknown): data is { progress?: number } =
 };
 
 /**
- * AnchorDependency 데이터 유효성 검증
+ * GroupDependency 데이터 유효성 검증 (FS: Finish-to-Start)
  */
-export const isValidAnchorDependencyData = (data: unknown): data is AnchorDependency => {
+export const isValidGroupDependencyData = (data: unknown): data is GroupDependency => {
     if (!data || typeof data !== 'object') return false;
     const obj = data as Record<string, unknown>;
     return (
         typeof obj.id === 'string' &&
-        typeof obj.sourceTaskId === 'string' &&
-        typeof obj.targetTaskId === 'string' &&
-        typeof obj.sourceDayIndex === 'number' &&
-        typeof obj.targetDayIndex === 'number' &&
+        typeof obj.sourceGroupId === 'string' &&
+        typeof obj.targetGroupId === 'string' &&
+        (obj.type === 'FS') &&
         (obj.lag === undefined || typeof obj.lag === 'number')
     );
 };
@@ -173,23 +173,27 @@ export const serializeTasks = (tasks: ConstructionTask[]): string => {
 
 /**
  * JSON 문자열에서 Tasks 역직렬화
+ * 자동으로 Legacy GROUP → BLOCK 마이그레이션 적용
  */
 export const deserializeTasks = (json: string): ConstructionTask[] | null => {
     try {
+        console.log('[deserializeTasks] Start parsing');
         const parsed = JSON.parse(json);
         if (!Array.isArray(parsed)) {
             console.error('Invalid tasks data format: expected array');
             return null;
         }
+        console.log('[deserializeTasks] Parsed count:', parsed.length);
 
         const validTasks = parsed.filter(isValidTaskData);
+        console.log('[deserializeTasks] Valid tasks:', validTasks.length);
         if (validTasks.length !== parsed.length) {
             console.warn(
                 `[deserializeTasks] ${parsed.length - validTasks.length}개의 유효하지 않은 Task가 필터링됨`
             );
         }
 
-        return validTasks.map((t): ConstructionTask => {
+        const tasks = validTasks.map((t): ConstructionTask => {
             // 선택적 필드 검증 및 안전한 변환
             const cp = t.cp !== undefined && isValidCPData(t.cp) ? t.cp : undefined;
             const task = t.task !== undefined && isValidTaskDataFields(t.task)
@@ -216,6 +220,13 @@ export const deserializeTasks = (json: string): ConstructionTask[] | null => {
                 dependencies,
             };
         });
+
+        console.log('[deserializeTasks] Before migration, tasks count:', tasks.length);
+        // 자동 마이그레이션 적용 (Legacy GROUP → BLOCK)
+        const migrated = migrateTaskTypes(tasks);
+        console.log('[deserializeTasks] After migration, tasks count:', migrated.length);
+
+        return migrated;
     } catch (error) {
         console.error('Failed to deserialize tasks:', error);
         return null;
@@ -257,27 +268,27 @@ export const deserializeMilestones = (json: string): Milestone[] | null => {
 };
 
 /**
- * AnchorDependencies를 JSON 문자열로 직렬화 (내부 저장용)
+ * GroupDependencies를 JSON 문자열로 직렬화 (내부 저장용)
  * 날짜 필드 없음 - 단순 직렬화
  */
-export const serializeAnchorDependencies = (deps: AnchorDependency[]): string => {
+export const serializeGroupDependencies = (deps: GroupDependency[]): string => {
     return JSON.stringify(deps);
 };
 
 /**
- * JSON 문자열에서 AnchorDependencies 역직렬화
+ * JSON 문자열에서 GroupDependencies 역직렬화
  */
-export const deserializeAnchorDependencies = (json: string): AnchorDependency[] | null => {
+export const deserializeGroupDependencies = (json: string): GroupDependency[] | null => {
     try {
         const parsed = JSON.parse(json);
         if (!Array.isArray(parsed)) {
-            console.error('Invalid anchor dependencies data format: expected array');
+            console.error('Invalid group dependencies data format: expected array');
             return null;
         }
 
-        return parsed.filter(isValidAnchorDependencyData);
+        return parsed.filter(isValidGroupDependencyData);
     } catch (error) {
-        console.error('Failed to deserialize anchor dependencies:', error);
+        console.error('Failed to deserialize group dependencies:', error);
         return null;
     }
 };
@@ -320,15 +331,14 @@ export const serializeMilestonesForExport = (milestones: Milestone[]) => {
 };
 
 /**
- * AnchorDependencies를 외부 내보내기 형식으로 직렬화
+ * GroupDependencies를 외부 내보내기 형식으로 직렬화
  */
-export const serializeAnchorDependenciesForExport = (deps: AnchorDependency[]) => {
+export const serializeGroupDependenciesForExport = (deps: GroupDependency[]) => {
     return deps.map(d => ({
         id: d.id,
-        sourceTaskId: d.sourceTaskId,
-        targetTaskId: d.targetTaskId,
-        sourceDayIndex: d.sourceDayIndex,
-        targetDayIndex: d.targetDayIndex,
+        sourceGroupId: d.sourceGroupId,
+        targetGroupId: d.targetGroupId,
+        type: d.type,
         ...(d.lag !== undefined && d.lag !== 0 ? { lag: d.lag } : {}),
     }));
 };
@@ -340,7 +350,7 @@ export const serializeGanttDataForExport = (data: GanttData): string => {
     const exportData = {
         milestones: serializeMilestonesForExport(data.milestones),
         tasks: serializeTasksForExport(data.tasks),
-        anchorDependencies: serializeAnchorDependenciesForExport(data.dependencies),
+        groupDependencies: serializeGroupDependenciesForExport(data.dependencies),
     };
     return JSON.stringify(exportData, null, 4);
 };
@@ -351,6 +361,7 @@ export const serializeGanttDataForExport = (data: GanttData): string => {
 
 /**
  * 외부 JSON 데이터 파싱 (mock.json 또는 내보내기 파일)
+ * 자동으로 Legacy GROUP → BLOCK 마이그레이션 적용
  */
 export const parseImportedData = (jsonString: string): GanttData | null => {
     try {
@@ -361,12 +372,12 @@ export const parseImportedData = (jsonString: string): GanttData | null => {
             throw new Error('유효하지 않은 파일 형식입니다. tasks 배열이 필요합니다.');
         }
 
-        const tasks: ConstructionTask[] = importedData.tasks
+        const parsedTasks: ConstructionTask[] = importedData.tasks
             .filter(isValidTaskData)
             .map((t: Record<string, unknown>) => ({
                 ...t,
                 wbsLevel: t.wbsLevel as 1 | 2,
-                type: t.type as 'GROUP' | 'CP' | 'TASK',
+                type: t.type as 'BLOCK' | 'GROUP' | 'CP' | 'TASK',
                 startDate: parseLocalDate(t.startDate as string),
                 endDate: parseLocalDate(t.endDate as string),
                 dependencies: (t.dependencies as Array<Record<string, unknown>>)?.map(d => ({
@@ -377,6 +388,9 @@ export const parseImportedData = (jsonString: string): GanttData | null => {
                 })) || [],
             }));
 
+        // 자동 마이그레이션 적용 (Legacy GROUP → BLOCK)
+        const tasks = migrateTaskTypes(parsedTasks);
+
         // Milestones 파싱 (선택적)
         const milestones: Milestone[] = (importedData.milestones || [])
             .filter(isValidMilestoneData)
@@ -385,10 +399,10 @@ export const parseImportedData = (jsonString: string): GanttData | null => {
                 date: parseLocalDate(m.date as string),
             }));
 
-        // AnchorDependencies 파싱 (선택적)
-        const dependencies: AnchorDependency[] =
-            Array.isArray(importedData.anchorDependencies)
-                ? importedData.anchorDependencies.filter(isValidAnchorDependencyData)
+        // GroupDependencies 파싱 (선택적)
+        const dependencies: GroupDependency[] =
+            Array.isArray(importedData.groupDependencies)
+                ? importedData.groupDependencies.filter(isValidGroupDependencyData)
                 : [];
 
         if (tasks.length === 0) {
@@ -405,20 +419,24 @@ export const parseImportedData = (jsonString: string): GanttData | null => {
 /**
  * Mock 데이터 파싱 유틸리티
  * (App에서 사용하는 mock.json 파싱 로직)
+ * 자동으로 Legacy GROUP → BLOCK 마이그레이션 적용
  */
 export const parseMockTasks = (mockTasks: Array<Record<string, unknown>>): ConstructionTask[] => {
-    return mockTasks
+    const tasks = mockTasks
         .filter(isValidTaskData)
         .map(t => ({
             ...t,
             wbsLevel: t.wbsLevel as 1 | 2,
-            type: t.type as 'GROUP' | 'CP' | 'TASK',
+            type: t.type as 'BLOCK' | 'GROUP' | 'CP' | 'TASK',
             startDate: parseLocalDate(t.startDate as string),
             endDate: parseLocalDate(t.endDate as string),
             cp: t.cp ? { ...(t.cp as object) } : undefined,
             task: t.task ? { ...(t.task as object) } : undefined,
             dependencies: (t.dependencies as Dependency[]) || [],
         })) as ConstructionTask[];
+
+    // 자동 마이그레이션 적용 (Legacy GROUP → BLOCK)
+    return migrateTaskTypes(tasks);
 };
 
 export const parseMockMilestones = (mockMilestones: Array<Record<string, unknown>>): Milestone[] => {

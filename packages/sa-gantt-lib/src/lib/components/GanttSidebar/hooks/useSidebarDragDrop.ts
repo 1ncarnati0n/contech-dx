@@ -1,39 +1,59 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { ConstructionTask, DropPosition } from '../../../types';
+import { canMoveTaskTo } from '../../../utils/hierarchyValidation';
 
 interface UseSidebarDragDropOptions {
     tasks: ConstructionTask[];
+    allTasks?: ConstructionTask[];  // 계층 검증용 전체 태스크
     onTaskReorder?: (taskId: string, newIndex: number) => void;
     onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void;
     rowHeight?: number;
+    contentHeight?: number;  // 실제 콘텐츠 높이 (dynamicTotalHeight)
 }
 
 // 특수 ID: 최상단/최하단 드롭 존
 export const DROP_ZONE_FIRST = '__DROP_ZONE_FIRST__';
 export const DROP_ZONE_LAST = '__DROP_ZONE_LAST__';
 
+// 투명 드래그 이미지 (브라우저 기본 아이콘 방지)
+// 브라우저 환경에서만 생성, lazy initialization으로 SSR 호환
+let transparentDragImage: HTMLImageElement | null = null;
+const getTransparentDragImage = (): HTMLImageElement => {
+    if (!transparentDragImage && typeof window !== 'undefined') {
+        transparentDragImage = new Image();
+        // 1x1 투명 GIF (Base64 인코딩)
+        transparentDragImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    }
+    return transparentDragImage!;
+};
+
 export const useSidebarDragDrop = ({
     tasks,
+    allTasks,
     onTaskReorder,
     onTaskMove,
     rowHeight = 36,
+    contentHeight,
 }: UseSidebarDragDropOptions) => {
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
     const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
     const [dragOverPosition, setDragOverPosition] = useState<DropPosition | null>(null);
+
+    // Task ID → Task 맵 (계층 검증용)
+    const taskMap = useMemo(() => {
+        const all = allTasks || tasks;
+        return new Map(all.map(t => [t.id, t]));
+    }, [allTasks, tasks]);
 
     const handleDragStart = useCallback((e: React.DragEvent, taskId: string) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', taskId);
         setDraggedTaskId(taskId);
 
-        // SVG 1x1px 투명 이미지 (모든 브라우저 호환 - Safari/Firefox 포함)
-        // DOM 요소 방식은 화면 외부 요소를 일부 브라우저가 무시함
-        const transparentImg = new Image();
-        transparentImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
-        e.dataTransfer.setDragImage(transparentImg, 0, 0);
+        // 사전 로딩된 투명 이미지 사용 (브라우저 기본 아이콘 방지)
+        e.dataTransfer.setDragImage(getTransparentDragImage(), 0, 0);
     }, []);
 
     const handleDragOver = useCallback((e: React.DragEvent, taskId: string, isTargetGroup: boolean) => {
@@ -87,13 +107,15 @@ export const useSidebarDragDrop = ({
         }
 
         // 마지막 태스크 아래 (최하단 드롭 존)
-        const contentHeight = tasks.length * rowHeight;
-        if (relativeY > contentHeight - dropZoneThreshold) {
+        // contentHeight가 전달되면 사용 (UNIFIED 뷰 등 행 높이가 다른 경우)
+        // 그렇지 않으면 기본값으로 계산
+        const actualHeight = contentHeight || tasks.length * rowHeight;
+        if (relativeY > actualHeight - dropZoneThreshold) {
             setDragOverTaskId(DROP_ZONE_LAST);
             setDragOverPosition('after');
             return;
         }
-    }, [draggedTaskId, tasks.length, rowHeight]);
+    }, [draggedTaskId, tasks.length, rowHeight, contentHeight]);
 
     const handleDrop = useCallback((e: React.DragEvent, targetTaskId: string) => {
         e.preventDefault();
@@ -105,8 +127,21 @@ export const useSidebarDragDrop = ({
             return;
         }
 
+        // 드래그 중인 태스크와 타겟 태스크 조회
+        const movingTask = taskMap.get(draggedTaskId);
+        const targetTask = taskMap.get(targetTaskId);
+        const allTasksArray = allTasks || tasks;
+
         // 특수 드롭 존 처리 (최상단/최하단)
         if (targetTaskId === DROP_ZONE_FIRST || targetTaskId === DROP_ZONE_LAST) {
+            // 최상위 이동은 BLOCK만 가능
+            if (movingTask && movingTask.type !== 'BLOCK') {
+                console.warn('[DragDrop] 최상위 레벨에는 BLOCK만 위치할 수 있습니다.');
+                setDraggedTaskId(null);
+                setDragOverTaskId(null);
+                setDragOverPosition(null);
+                return;
+            }
             if (onTaskReorder) {
                 const newIndex = targetTaskId === DROP_ZONE_FIRST ? 0 : tasks.length;
                 onTaskReorder(draggedTaskId, newIndex);
@@ -115,6 +150,18 @@ export const useSidebarDragDrop = ({
             setDragOverTaskId(null);
             setDragOverPosition(null);
             return;
+        }
+
+        // 계층 구조 검증
+        if (movingTask && targetTask) {
+            const validation = canMoveTaskTo(movingTask, targetTask, dragOverPosition, allTasksArray);
+            if (!validation.valid) {
+                console.warn(`[DragDrop] 이동 불가: ${validation.reason}`);
+                setDraggedTaskId(null);
+                setDragOverTaskId(null);
+                setDragOverPosition(null);
+                return;
+            }
         }
 
         if (onTaskMove) {
@@ -128,7 +175,7 @@ export const useSidebarDragDrop = ({
         setDraggedTaskId(null);
         setDragOverTaskId(null);
         setDragOverPosition(null);
-    }, [draggedTaskId, dragOverPosition, onTaskMove, onTaskReorder, tasks]);
+    }, [draggedTaskId, dragOverPosition, onTaskMove, onTaskReorder, tasks, allTasks, taskMap]);
 
     const handleDragEnd = useCallback(() => {
         setDraggedTaskId(null);

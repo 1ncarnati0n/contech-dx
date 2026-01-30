@@ -56,6 +56,18 @@ export function isTaskWithCP(
 }
 
 /**
+ * BLOCK 타입의 Task인지 확인 (최상위 공구 단위)
+ *
+ * @param task - 확인할 task
+ * @returns task.type이 'BLOCK'이면 true
+ */
+export function isBlockTask(
+    task: ConstructionTask | undefined | null
+): task is ConstructionTask & { type: 'BLOCK' } {
+    return task !== undefined && task !== null && task.type === 'BLOCK';
+}
+
+/**
  * GROUP 타입의 Task인지 확인
  *
  * @param task - 확인할 task

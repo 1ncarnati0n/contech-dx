@@ -185,7 +185,7 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
         <div
             draggable={!!(onTaskReorder || onTaskMove)}
             onDragStart={(e) => onDragStart(e, task.id)}
-            onDragOver={(e) => onDragOver(e, task.id, isGroup || isCP)}
+            onDragOver={(e) => onDragOver(e, task.id, isBlock || isGroup || isCP)}
             onDragLeave={onDragLeave}
             onDrop={(e) => onDrop(e, task.id)}
             onDragEnd={onDragEnd}
@@ -234,7 +234,7 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
                 className="flex shrink-0 items-center overflow-hidden px-2"
                 style={{
                     width: onTaskReorder ? columns[0].width - dragHandleWidth : columns[0].width,
-                    paddingLeft: indent + 8,
+                    paddingLeft: indent,
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >
