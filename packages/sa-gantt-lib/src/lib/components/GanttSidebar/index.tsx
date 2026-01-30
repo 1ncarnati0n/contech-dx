@@ -61,6 +61,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         onTotalWidthChange,
         onTaskGroup,
         onTaskUngroup,
+        onTaskBlockify,
         onTaskDelete,
         onTaskMove,
         isAddingTask = false,
@@ -85,7 +86,6 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
         // Data Hook - O(1) Maps, Row Data, Heights
         // ====================================
         const {
-            taskMap,
             childrenCountMap,
             cpSummaryMap,
             rowData,
@@ -165,7 +165,14 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
             handleDragEnd,
             handleContainerDragOver,
             handleContainerDrop,
-        } = useSidebarDragDrop({ tasks, onTaskReorder, onTaskMove, rowHeight: effectiveRowHeight });
+        } = useSidebarDragDrop({
+            tasks,
+            allTasks,  // 계층 구조 검증용
+            onTaskReorder,
+            onTaskMove,
+            rowHeight: effectiveRowHeight,
+            contentHeight: dynamicTotalHeight,  // UNIFIED 뷰 등 행 높이가 다른 경우 정확한 높이 전달
+        });
 
         // 컨테이너 ref (드래그 이벤트용)
         const containerRef = useRef<HTMLDivElement>(null);
@@ -327,9 +334,10 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                 y={contextMenu.y}
                 taskId={contextMenu.taskId}
                 selectedTaskIds={selectedTaskIds}
-                tasks={tasks}
+                tasks={allTasks || tasks}
                 onTaskGroup={onTaskGroup}
                 onTaskUngroup={onTaskUngroup}
+                onTaskBlockify={onTaskBlockify}
                 onTaskDelete={onTaskDelete}
                 onStartRename={handleStartRename}
                 onClose={() => setContextMenu(null)}
@@ -364,7 +372,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     isFocused={focusedTaskId === task.id}
                                     isExpanded={expandedIds.has(task.id)}
                                     canExpand={canExpand}
-                                    indent={getMasterGroupDepth(task) * 12}
+                                    indent={getMasterGroupDepth(task) * 8}
                                     isGroup={isGroup}
                                     cpSummary={cpSummary}
                                     onTaskClick={onTaskClick}
@@ -394,11 +402,10 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
+                            const isBlock = task.type === 'BLOCK';
                             const isCP = task.type === 'CP';
                             const isGroup = task.type === 'GROUP';
-                            const parentTask = task.parentId ? taskMap.get(task.parentId) : null;
-                            const isBlock = isGroup && (!parentTask || parentTask.type !== 'CP');
-                            const canExpand = (isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
+                            const canExpand = (isBlock || isCP || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
 
                             return (
                                 <SidebarRowUnified
@@ -412,7 +419,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     isFocused={focusedTaskId === task.id}
                                     isExpanded={expandedIds.has(task.id)}
                                     canExpand={canExpand}
-                                    indent={getUnifiedDepth(task) * 16}
+                                    indent={getUnifiedDepth(task) * 8}
                                     isGroup={isGroup && !isBlock}
                                     isCP={isCP}
                                     isBlock={isBlock}
@@ -472,7 +479,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                                 isFocused={focusedTaskId === task.id}
                                 isExpanded={expandedIds.has(task.id)}
                                 canExpand={canExpand}
-                                indent={getGroupDepth(task) * 12}
+                                indent={getGroupDepth(task) * 8}
                                 isGroup={isGroup}
                                 rowHeight={row.size}
                                 editingDays={editingDays}

@@ -31,6 +31,7 @@ export interface GlobalChatMessage {
   id: string;
   role: 'user' | 'model';
   content: string;
+  thoughts?: string; // 사고 모드일 때 AI의 사고 과정
   timestamp: Date;
   error?: ChatbotError;
 }
@@ -69,6 +70,7 @@ export interface GlobalChatRequest {
     role: 'user' | 'model';
     content: string;
   }>;
+  thinkingMode?: boolean;
 }
 
 /**
@@ -77,6 +79,7 @@ export interface GlobalChatRequest {
 export interface GlobalChatResponse {
   success: boolean;
   answer?: string;
+  thoughts?: string; // 사고 모드일 때 AI의 사고 과정
   pageType?: PageType;
   error?: ChatbotError;
 }
@@ -156,6 +159,7 @@ export async function sendGlobalChat(
           pageContext: request.pageContext,
           tabContext: request.tabContext,
           history: request.history || [],
+          thinkingMode: request.thinkingMode,
         }),
         signal: options?.signal,
       });
@@ -167,6 +171,7 @@ export async function sendGlobalChat(
         return {
           success: true,
           answer: data.answer,
+          thoughts: data.thoughts,
           pageType: data.pageType,
         };
       }

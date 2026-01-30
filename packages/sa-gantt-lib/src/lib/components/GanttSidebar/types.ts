@@ -26,6 +26,8 @@ export interface GanttSidebarProps {
     onTotalWidthChange?: (width: number) => void;
     onTaskGroup?: (taskIds: string[]) => void;
     onTaskUngroup?: (groupId: string) => void;
+    /** CP들을 새 BLOCK으로 묶기 (CP 전용 - GROUP과 분리) */
+    onTaskBlockify?: (taskIds: string[]) => void;
     onTaskDelete?: (taskId: string) => void;
     onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void;
     isAddingTask?: boolean;

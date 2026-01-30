@@ -14,7 +14,7 @@ import {
   Link2,
   Undo2,
 } from 'lucide-react';
-import type { ConstructionTask, Milestone, AnchorDependency } from 'sa-gantt-lib';
+import type { ConstructionTask, Milestone, GroupDependency } from 'sa-gantt-lib';
 
 interface GanttChartPageProps {
   projectId: string;
@@ -65,7 +65,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<ConstructionTask[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [dependencies, setDependencies] = useState<AnchorDependency[]>([]);
+  const [dependencies, setDependencies] = useState<GroupDependency[]>([]);
 
   // Supabase DataService 생성 (projectId 기반)
   const dataService = useMemo(

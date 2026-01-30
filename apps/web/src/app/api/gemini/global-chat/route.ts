@@ -54,6 +54,7 @@ interface GlobalChatRequest {
     role: 'user' | 'model';
     content: string;
   }>;
+  thinkingMode?: boolean;
 }
 
 /**
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: GlobalChatRequest = await request.json();
-    const { query, pageType, pageContext, tabContext, history = [] } = body;
+    const { query, pageType, pageContext, tabContext, history = [], thinkingMode = false } = body;
 
     if (!query) {
       return NextResponse.json(
@@ -295,9 +296,12 @@ export async function POST(request: NextRequest) {
       parts: [{ text: query }],
     });
 
+    // 모델 선택: 사고 모드에 따라 다른 모델 사용
+    const model = thinkingMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+
     // Gemini API 호출
     const response = await geminiModelRequest(
-      'gemini-2.0-flash',
+      model,
       'generateContent',
       apiKey,
       {
@@ -307,6 +311,15 @@ export async function POST(request: NextRequest) {
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 2048,
+          // 사고 모드 설정: thinkingConfig는 generationConfig 내부에 위치해야 함
+          // thinkingBudget -1은 모델이 자동으로 사고 양 조절
+          // includeThoughts: true로 사고 내용을 응답에 포함
+          ...(thinkingMode && {
+            thinkingConfig: {
+              thinkingBudget: -1,
+              includeThoughts: true,
+            },
+          }),
         },
       }
     );
@@ -322,11 +335,25 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     const candidate = data.candidates?.[0];
-    const text = candidate?.content?.parts?.[0]?.text || '응답을 받지 못했습니다.';
+    const parts = candidate?.content?.parts || [];
+
+    // 사고 모드일 때 thoughts와 answer를 분리하여 파싱
+    // Gemini API는 thought: true 플래그로 사고 내용을 표시
+    let thoughts = '';
+    let answer = '';
+
+    for (const part of parts) {
+      if (part.thought === true) {
+        thoughts += part.text || '';
+      } else {
+        answer += part.text || '';
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      answer: text,
+      answer: answer || '응답을 받지 못했습니다.',
+      thoughts: thinkingMode && thoughts ? thoughts : undefined,
       pageType,
     });
   } catch (error) {

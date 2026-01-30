@@ -8,7 +8,7 @@
  * 모든 메서드는 Promise 기반으로 설계하여 비동기 저장소와의 호환성 보장
  */
 
-import type { ConstructionTask, Milestone, AnchorDependency } from '../types';
+import type { ConstructionTask, Milestone, GroupDependency } from '../types';
 
 /**
  * 전체 데이터 구조
@@ -16,7 +16,7 @@ import type { ConstructionTask, Milestone, AnchorDependency } from '../types';
 export interface GanttData {
     tasks: ConstructionTask[];
     milestones: Milestone[];
-    dependencies: AnchorDependency[];
+    dependencies: GroupDependency[];
 }
 
 /**
@@ -62,17 +62,17 @@ export interface DataService {
     deleteMilestone(id: string): Promise<boolean>;
 
     // ============================================
-    // Dependencies CRUD
+    // Dependencies CRUD (Group-based FS connections)
     // ============================================
 
     /** 모든 종속성 로드 */
-    loadDependencies(): Promise<AnchorDependency[]>;
+    loadDependencies(): Promise<GroupDependency[]>;
 
     /** 모든 종속성 저장 (전체 교체) */
-    saveDependencies(dependencies: AnchorDependency[]): Promise<void>;
+    saveDependencies(dependencies: GroupDependency[]): Promise<void>;
 
     /** 종속성 생성 */
-    createDependency(dependency: AnchorDependency): Promise<AnchorDependency>;
+    createDependency(dependency: GroupDependency): Promise<GroupDependency>;
 
     /** 종속성 삭제 */
     deleteDependency(id: string): Promise<boolean>;

@@ -8,9 +8,8 @@ import {
   generateId,
   type ConstructionTask,
   type Milestone,
-  type AnchorDependency,
+  type GroupDependency,
   type GroupDragResult,
-  type AnchorDependencyDragResult,
   type ViewMode,
   type CalendarSettings,
   calculateDualCalendarDates,
@@ -35,7 +34,7 @@ interface FullscreenGanttPageProps {
 interface AppState {
   tasks: ConstructionTask[];
   milestones: Milestone[];
-  anchorDependencies: AnchorDependency[];
+  groupDependencies: GroupDependency[];
 }
 
 // 캘린더 설정
@@ -104,9 +103,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     canRedo,
     reset: resetHistory,
     historyLength,
-  } = useHistory<AppState>({ tasks: [], milestones: [], anchorDependencies: [] });
+  } = useHistory<AppState>({ tasks: [], milestones: [], groupDependencies: [] });
 
-  const { tasks, milestones, anchorDependencies } = appState;
+  const { tasks, milestones, groupDependencies } = appState;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +124,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         setAppState({
           tasks: data.tasks,
           milestones: data.milestones,
-          anchorDependencies: data.dependencies,
+          groupDependencies: data.dependencies,
         });
         setTimeout(() => {
           isInitialLoad.current = false;
@@ -168,7 +167,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     if (isInitialLoad.current || isLoading) return;
     setHasUnsavedChanges(true);
     setSaveStatus('idle');
-  }, [tasks, milestones, anchorDependencies, isLoading]);
+  }, [tasks, milestones, groupDependencies, isLoading]);
 
   // CP 재계산 헬퍼
   const recalculateCPData = useCallback((taskList: ConstructionTask[]): ConstructionTask[] => {
@@ -245,13 +244,13 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       console.log('[handleSave] Saving data:', {
         tasks: tasks.length,
         milestones: milestones.length,
-        dependencies: anchorDependencies.length,
+        dependencies: groupDependencies.length,
       });
 
       await dataService.saveAll({
         tasks,
         milestones,
-        dependencies: anchorDependencies,
+        dependencies: groupDependencies,
       });
 
       setTimeout(() => {
@@ -264,7 +263,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       setSaveStatus('idle');
       toast.error('저장 중 오류가 발생했습니다.');
     }
-  }, [tasks, milestones, anchorDependencies, hasUnsavedChanges, dataService]);
+  }, [tasks, milestones, groupDependencies, hasUnsavedChanges, dataService]);
 
   // 초기화 핸들러
   const handleReset = useCallback(async () => {
@@ -275,7 +274,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       resetHistory({
         tasks: data.tasks,
         milestones: data.milestones,
-        anchorDependencies: data.dependencies,
+        groupDependencies: data.dependencies,
       });
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
@@ -292,7 +291,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       const jsonString = serializeGanttDataForExport({
         tasks,
         milestones,
-        dependencies: anchorDependencies,
+        dependencies: groupDependencies,
       });
 
       const defaultFileName = `${projectName}-gantt-${format(new Date(), 'yyyy-MM-dd')}.json`;
@@ -312,7 +311,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       console.error('Failed to export data:', error);
       toast.error('내보내기 중 오류가 발생했습니다.');
     }
-  }, [tasks, milestones, anchorDependencies, projectName]);
+  }, [tasks, milestones, groupDependencies, projectName]);
 
   // Excel 내보내기 핸들러
   const handleExportExcel = useCallback(async () => {
@@ -347,7 +346,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       setAppState({
         tasks: importedTasks,
         milestones: importedMilestones,
-        anchorDependencies: importedDependencies,
+        groupDependencies: importedDependencies,
       });
 
       setLoadedFileName(file.name);
@@ -530,13 +529,13 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
         const allIdsToDelete = [taskId, ...collectChildIds(taskId)];
         let newTasks = prev.tasks.filter(t => !allIdsToDelete.includes(t.id));
-        const newDependencies = prev.anchorDependencies.filter(dep =>
-          !allIdsToDelete.includes(dep.sourceTaskId) &&
-          !allIdsToDelete.includes(dep.targetTaskId)
+        const newDependencies = prev.groupDependencies.filter(dep =>
+          !allIdsToDelete.includes(dep.sourceGroupId) &&
+          !allIdsToDelete.includes(dep.targetGroupId)
         );
 
         newTasks = recalculateCPData(newTasks);
-        return { ...prev, tasks: newTasks, anchorDependencies: newDependencies };
+        return { ...prev, tasks: newTasks, groupDependencies: newDependencies };
       });
 
       toast.success('태스크가 삭제되었습니다.');
@@ -698,48 +697,13 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     }
   }, [dataService, setAppState]);
 
-  // 앵커 종속성 드래그 핸들러
-  const handleAnchorDependencyDrag = useCallback(async (result: AnchorDependencyDragResult) => {
-    const { taskUpdates } = result;
-    if (!taskUpdates || taskUpdates.length === 0) return;
-
-    try {
-      await Promise.all(
-        taskUpdates.map((update) =>
-          dataService.updateTask(update.taskId, {
-            startDate: update.newStartDate,
-            endDate: update.newEndDate,
-          })
-        )
-      );
-
-      setAppState(prev => ({
-        ...prev,
-        tasks: prev.tasks.map(task => {
-          const update = taskUpdates.find(u => u.taskId === task.id);
-          if (update) {
-            return {
-              ...task,
-              startDate: update.newStartDate,
-              endDate: update.newEndDate,
-            };
-          }
-          return task;
-        }),
-      }));
-    } catch (error) {
-      console.error('Failed to apply dependency drag:', error);
-      toast.error('종속성 드래그 실패');
-    }
-  }, [dataService, setAppState]);
-
-  // 앵커 종속성 생성 핸들러
-  const handleAnchorDependencyCreate = useCallback(async (dep: AnchorDependency) => {
+  // 그룹 종속성 생성 핸들러
+  const handleGroupDependencyCreate = useCallback(async (dep: GroupDependency) => {
     try {
       const newDep = await dataService.createDependency(dep);
       setAppState(prev => ({
         ...prev,
-        anchorDependencies: [...prev.anchorDependencies, newDep],
+        groupDependencies: [...prev.groupDependencies, newDep],
       }));
     } catch (error) {
       console.error('Failed to create dependency:', error);
@@ -747,19 +711,25 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     }
   }, [dataService, setAppState]);
 
-  // 앵커 종속성 삭제 핸들러
-  const handleAnchorDependencyDelete = useCallback(async (depId: string) => {
+  // 그룹 종속성 삭제 핸들러
+  const handleGroupDependencyDelete = useCallback(async (depId: string) => {
     try {
       await dataService.deleteDependency(depId);
       setAppState(prev => ({
         ...prev,
-        anchorDependencies: prev.anchorDependencies.filter(d => d.id !== depId),
+        groupDependencies: prev.groupDependencies.filter(d => d.id !== depId),
       }));
     } catch (error) {
       console.error('Failed to delete dependency:', error);
       toast.error('종속성 삭제 실패');
     }
   }, [dataService, setAppState]);
+
+  // 그룹 순환 종속성 감지 핸들러
+  const handleGroupCycleDetected = useCallback((info: { sourceGroupId: string; targetGroupId: string }) => {
+    console.warn('Cycle detected between groups:', info.sourceGroupId, '->', info.targetGroupId);
+    toast.error('순환 종속성이 감지되었습니다. 다른 그룹을 선택해주세요.');
+  }, []);
 
   // 마일스톤 핸들러
   const handleMilestoneCreate = useCallback(async (milestone: Partial<Milestone>) => {
@@ -977,10 +947,10 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
           onMilestoneCreate={handleMilestoneCreate}
           onMilestoneUpdate={handleMilestoneUpdate}
           onMilestoneDelete={handleMilestoneDelete}
-          anchorDependencies={anchorDependencies}
-          onAnchorDependencyCreate={handleAnchorDependencyCreate}
-          onAnchorDependencyDelete={handleAnchorDependencyDelete}
-          onAnchorDependencyDrag={handleAnchorDependencyDrag}
+          groupDependencies={groupDependencies}
+          onGroupDependencyCreate={handleGroupDependencyCreate}
+          onGroupDependencyDelete={handleGroupDependencyDelete}
+          onGroupCycleDetected={handleGroupCycleDetected}
           onSave={handleSave}
           onReset={handleReset}
           hasUnsavedChanges={hasUnsavedChanges}

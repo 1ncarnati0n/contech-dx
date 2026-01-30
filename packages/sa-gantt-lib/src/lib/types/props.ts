@@ -10,8 +10,7 @@ import type {
     ZoomLevel,
     DropPosition,
     GroupDragResult,
-    AnchorDependency,
-    AnchorDependencyDragResult,
+    GroupDependency,
 } from './core';
 import type { CalendarSettings } from './calendar';
 import type { GanttErrorContext } from './ui';
@@ -45,16 +44,17 @@ export interface GanttChartProps {
     onViewChange?: (view: ViewMode, activeCPId?: string) => void;
     onTaskGroup?: (taskIds: string[]) => void | Promise<void>;
     onTaskUngroup?: (groupId: string) => void | Promise<void>;
+    /** CP들을 새 BLOCK으로 묶기 (CP 전용 - GROUP과 분리) */
+    onTaskBlockify?: (taskIds: string[]) => void | Promise<void>;
     onTaskMove?: (taskId: string, targetId: string, position: DropPosition) => void | Promise<void>;
     onGroupDrag?: (result: GroupDragResult) => void | Promise<void>;
 
-    // 앵커 종속성 이벤트 핸들러
-    anchorDependencies?: AnchorDependency[];
-    onAnchorDependencyCreate?: (dependency: AnchorDependency) => void | Promise<void>;
-    onAnchorDependencyDelete?: (depId: string) => void | Promise<void>;
-    onAnchorDependencyDrag?: (result: AnchorDependencyDragResult) => void | Promise<void>;
-    /** 순환 종속성 감지 시 호출되는 콜백 */
-    onCycleDetected?: (info: { sourceTaskId: string; targetTaskId: string }) => void;
+    // Group 종속성 이벤트 핸들러 (FS: Finish-to-Start)
+    groupDependencies?: GroupDependency[];
+    onGroupDependencyCreate?: (dependency: GroupDependency) => void | Promise<void>;
+    onGroupDependencyDelete?: (depId: string) => void | Promise<void>;
+    /** Group 순환 종속성 감지 시 호출되는 콜백 */
+    onGroupCycleDetected?: (info: { sourceGroupId: string; targetGroupId: string }) => void;
 
     // 마일스톤 이벤트 핸들러
     onMilestoneCreate?: (milestone: Partial<Milestone>) => void | Promise<void>;

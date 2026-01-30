@@ -103,7 +103,22 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
     // GROUP 타입은 렌더링하지 않음
     if (task.type === 'GROUP') return null;
 
-    // effectiveDates 계산 (드래그 우선순위 적용)
+    // CP Summary 계산 (effectiveStartDate보다 먼저 계산 - startDate가 cpSummary에서 파생됨)
+    const childTasks = useMemo(() =>
+        collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 }),
+        [task.id, allTasks]
+    );
+
+    const cpSummary = useMemo(() =>
+        calculateCriticalPath(
+            childTasks,
+            holidays,
+            calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
+        ),
+        [childTasks, holidays, calendarSettings]
+    );
+
+    // effectiveDates 계산 (cpSummary.startDate 기반 - 하위 태스크 변경 시 자동 동기화)
     const { effectiveStartDate } = useMemo(() => {
         if (dragInfo) {
             return { effectiveStartDate: dragInfo.startDate };
@@ -112,30 +127,21 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
             return { effectiveStartDate: groupDragInfo.startDate };
         }
         if (groupDragDeltaDays !== 0) {
-            return { effectiveStartDate: addDays(task.startDate, groupDragDeltaDays) };
+            return { effectiveStartDate: addDays(cpSummary.startDate, groupDragDeltaDays) };
         }
-        return { effectiveStartDate: task.startDate };
-    }, [task.startDate, dragInfo, groupDragInfo, groupDragDeltaDays]);
+        // cpSummary.startDate 사용 (하위 태스크 기준 자동 계산된 날짜)
+        return { effectiveStartDate: cpSummary.startDate };
+    }, [cpSummary.startDate, dragInfo, groupDragInfo, groupDragDeltaDays]);
 
     const startX = dateToX(effectiveStartDate, minDate, pixelsPerDay);
 
-    // CP Summary 계산
-    const childTasks = collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 });
-    const cpSummary = calculateCriticalPath(
-        childTasks,
-        holidays,
-        calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
-    );
-
-    const workDays = cpSummary.workDays;
-    const nonWorkDays = cpSummary.nonWorkDays;
     const totalDays = cpSummary.totalDays;
 
     if (totalDays === 0) return null;
 
-    const workWidth = workDays * pixelsPerDay;
-    const nonWorkWidth = nonWorkDays * pixelsPerDay;
-    const totalWidth = workWidth + nonWorkWidth;
+    // 하이라이트 너비: totalDays(정수)를 사용하여 dailyBreakdown 렌더링과 일치시킴
+    // workDays + nonWorkDays는 분수값이라 실제 바 영역과 불일치할 수 있음
+    const totalWidth = totalDays * pixelsPerDay;
 
     // 바 Y 위치 (GanttTimeline에서 이미 중앙 정렬된 y 전달받음)
     const barY = 0;

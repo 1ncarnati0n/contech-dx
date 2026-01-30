@@ -2,7 +2,7 @@
 // Renderer 공통 타입 정의
 // ============================================
 
-import type { ConstructionTask, ZoomLevel, CalendarSettings, AnchorDependency } from '../../../types';
+import type { ConstructionTask, ZoomLevel, CalendarSettings } from '../../../types';
 import type { VirtualRow } from '../../../hooks/useGanttVirtualization';
 import type { DragInfo, DragType, MilestoneWithLayout } from '../types';
 
@@ -37,7 +37,6 @@ export interface TaskAreaRendererProps {
     allTasks: ConstructionTask[];
     rowData: VirtualRow[];
     fullRowData: VirtualRow[];
-    anchorDependencies: AnchorDependency[];
 
     // 계산값
     minDate: Date;
@@ -71,9 +70,6 @@ export interface TaskAreaRendererProps {
     ) => void;
     getTaskGroupDragDeltaDays: (taskId: string) => number;
     getTaskDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
-    getDependencyDragDeltaDays: (taskId: string) => number;
-    getDependencyDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
-    getCombinedTaskDeltaDays: (taskId: string) => number;
 
     // Group/Block Handlers
     getGroupDragDeltaDays: (groupId: string) => number;
@@ -83,26 +79,6 @@ export interface TaskAreaRendererProps {
         taskData: { startDate: Date; endDate: Date }
     ) => void;
     onGroupToggle?: (taskId: string) => void;
-
-    // Dependency Drag
-    handleDependencyBarMouseDown: (
-        e: React.MouseEvent,
-        taskId: string,
-        taskData: { startDate: Date; endDate: Date }
-    ) => boolean | void;
-    taskHasDependency: (taskId: string) => boolean;
-    isDependencyDragging: boolean;
-    getConnectedTaskIds: () => string[];
-
-    // Anchor Connection
-    connectingFrom: { taskId: string; dayIndex: number } | null;
-    hoveredAnchor: { taskId: string; dayIndex: number } | null;
-    selectedDepId: string | null;
-    hoveredDepId: string | null;
-    handleAnchorClick: (taskId: string, dayIndex: number) => void;
-    handleAnchorHover: (taskId: string, dayIndex: number | null) => void;
-    handleDependencyClick: (depId: string) => void;
-    handleDependencyHover: (depId: string | null) => void;
 
     // Selection
     selectTask: (taskId: string, options: { ctrlKey: boolean; shiftKey: boolean; visibleTasks: ConstructionTask[] }) => void;
@@ -125,21 +101,4 @@ export interface MilestoneDashLinesProps {
     milestoneLayouts: MilestoneWithLayout[];
     startY: number;
     endY: number;
-}
-
-/**
- * 연결 프리뷰 렌더러 Props
- */
-export interface ConnectionPreviewRendererProps {
-    tasks: ConstructionTask[];
-    fullRowData: VirtualRow[];
-    connectingFrom: { taskId: string; dayIndex: number } | null;
-    hoveredAnchor: { taskId: string; dayIndex: number } | null;
-    minDate: Date;
-    pixelsPerDay: number;
-    holidays: Date[];
-    calendarSettings: CalendarSettings;
-    effectiveBarHeight: number;
-    isCompact: boolean;
-    offsetY: number;
 }
