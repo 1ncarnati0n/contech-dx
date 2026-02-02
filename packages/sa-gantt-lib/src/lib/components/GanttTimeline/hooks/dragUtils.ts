@@ -460,12 +460,11 @@ export const calculateGroupTasksMoveWithCriticalPath = (
     // deltaWorkingDays가 0이면 원래 날짜 반환
     if (deltaWorkingDays === 0) {
         for (const task of affectedTasks) {
-            if (task.type === 'TASK') {
-                result.set(task.id, {
-                    newStartDate: task.startDate,
-                    newEndDate: task.endDate,
-                });
-            }
+            // 모든 타입(TASK, GROUP, CP, BLOCK) 포함
+            result.set(task.id, {
+                newStartDate: task.startDate,
+                newEndDate: task.endDate,
+            });
         }
         return result;
     }
@@ -482,27 +481,36 @@ export const calculateGroupTasksMoveWithCriticalPath = (
 
     // 2. 각 task의 새 시작일/종료일 계산
     for (const task of affectedTasks) {
-        if (task.type !== 'TASK' || !task.task) continue;
+        if (task.type === 'TASK' && task.task) {
+            // TASK 타입: 작업일 오프셋 및 직간접 구조 반영
+            const workingDaysOffset = workingDaysOffsets.get(task.id) ?? 0;
 
-        const workingDaysOffset = workingDaysOffsets.get(task.id) ?? 0;
+            // 기준 task의 새 시작일로부터 작업일 오프셋만큼 이동
+            // moveByWorkingDays 사용으로 off-by-one 문제 해결
+            const newStartDate = workingDaysOffset === 0
+                ? referenceNewStartDate
+                : moveByWorkingDays(referenceNewStartDate, workingDaysOffset, holidays, calendarSettings);
 
-        // 기준 task의 새 시작일로부터 작업일 오프셋만큼 이동
-        // moveByWorkingDays 사용으로 off-by-one 문제 해결
-        const newStartDate = workingDaysOffset === 0
-            ? referenceNewStartDate
-            : moveByWorkingDays(referenceNewStartDate, workingDaysOffset, holidays, calendarSettings);
+            // 종료일 재계산 (직간접 구조 반영)
+            const newEndDate = calculateEndDateFromStart(
+                newStartDate,
+                task.task.indirectWorkDaysPre,
+                task.task.netWorkDays,
+                task.task.indirectWorkDaysPost,
+                holidays,
+                calendarSettings
+            );
 
-        // 종료일 재계산 (직간접 구조 반영)
-        const newEndDate = calculateEndDateFromStart(
-            newStartDate,
-            task.task.indirectWorkDaysPre,
-            task.task.netWorkDays,
-            task.task.indirectWorkDaysPost,
-            holidays,
-            calendarSettings
-        );
+            result.set(task.id, { newStartDate, newEndDate });
+        } else if (task.type === 'GROUP' || task.type === 'CP' || task.type === 'BLOCK') {
+            // GROUP/CP/BLOCK 타입: 달력일 기준으로 단순 이동
+            // 작업일 오프셋이 없으므로 기준 task와 동일한 작업일 이동량 적용
+            const daysDelta = differenceInDays(referenceNewStartDate, referenceTask.startDate);
+            const newStartDate = addDays(task.startDate, daysDelta);
+            const newEndDate = addDays(task.endDate, daysDelta);
 
-        result.set(task.id, { newStartDate, newEndDate });
+            result.set(task.id, { newStartDate, newEndDate });
+        }
     }
 
     return result;

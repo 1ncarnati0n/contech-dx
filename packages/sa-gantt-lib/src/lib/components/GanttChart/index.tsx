@@ -545,7 +545,7 @@ export function GanttChart({
                 </div>
 
                 {/* Scrollable Content Row */}
-                <div ref={scrollRef} className="relative flex flex-1 overflow-auto scrollbar-hide" onScroll={handleContentScroll}>
+                <div ref={scrollRef} className="relative flex flex-1 overflow-auto" onScroll={handleContentScroll}>
                     <div
                         className="sticky left-0 z-10 flex shrink-0"
                         style={{ width: sidebarWidth + 4, willChange: 'width', alignSelf: 'flex-start' }}

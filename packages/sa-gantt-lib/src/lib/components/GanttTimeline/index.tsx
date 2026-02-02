@@ -410,6 +410,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         pixelsPerDay={pixelsPerDay}
                                         isDraggable={!!onGroupDrag}
                                         currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                        groupDragInfo={getTaskDragInfo(task.id)}
                                         onDragStart={handleGroupBarMouseDown}
                                         onToggle={onGroupToggle}
                                         onClick={(e, groupId) => {
@@ -477,6 +478,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 offsetY={0}
                                 rowData={fullRowData}
                                 isCompact={isCompact}
+                                getTaskDragInfo={getTaskDragInfo}
                             />
                         )}
 
@@ -719,6 +721,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                         pixelsPerDay={pixelsPerDay}
                                         isDraggable={!!onGroupDrag}
                                         currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                        groupDragInfo={getTaskDragInfo(task.id)}
                                         onDragStart={handleGroupBarMouseDown}
                                         onToggle={onGroupToggle}
                                         onClick={(e, groupId) => {
@@ -786,6 +789,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 offsetY={MILESTONE_LANE_HEIGHT}
                                 rowData={fullRowData}
                                 isCompact={isCompact}
+                                getTaskDragInfo={getTaskDragInfo}
                             />
                         )}
 

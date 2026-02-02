@@ -32,6 +32,8 @@ interface GroupDependencyLinesProps {
     rowData?: RowData[];
     /** Compact 모드 여부 */
     isCompact?: boolean;
+    /** 드래그 정보 조회 함수 (실시간 종속선 동기화용) */
+    getTaskDragInfo?: (taskId: string) => { startDate: Date; endDate: Date } | null;
 }
 
 /** 경로 끝점의 화살표 방향 */
@@ -50,6 +52,7 @@ interface DependencyPathInfo {
 
 /**
  * Group 바의 좌표 계산
+ * @param dragInfo - 드래그 중인 경우 스냅된 날짜 정보
  * @returns { startX, endX, centerY } - Group 바의 시작X, 끝X, 중앙Y
  */
 const getGroupBarCoords = (
@@ -59,15 +62,37 @@ const getGroupBarCoords = (
     minDate: Date,
     pixelsPerDay: number,
     offsetY: number = 0,
-    rowData?: RowData[]
+    rowData?: RowData[],
+    dragInfo?: { startDate: Date; endDate: Date } | null
 ): { startX: number; endX: number; centerY: number } | null => {
-    const dateRange = calculateGroupDateRange(group.id, allTasks);
-    if (!dateRange) return null;
+    // 드래그 정보가 있으면 드래그된 날짜 사용, 없으면 원본 계산
+    let startDate: Date;
+    let totalDays: number;
 
-    const { startDate, totalDays } = dateRange;
+    if (dragInfo) {
+        startDate = dragInfo.startDate;
+        totalDays = differenceInDays(dragInfo.endDate, dragInfo.startDate) + 1;
+    } else {
+        const dateRange = calculateGroupDateRange(group.id, allTasks);
+        if (!dateRange) return null;
+        startDate = dateRange.startDate;
+        totalDays = dateRange.totalDays;
+    }
+
     const startOffset = differenceInDays(startDate, minDate);
     const startX = startOffset * pixelsPerDay;
     const endX = (startOffset + totalDays) * pixelsPerDay;
+
+    // 방어 로직: 유효하지 않은 좌표면 null 반환
+    if (isNaN(startX) || isNaN(endX) || totalDays <= 0) {
+        console.warn(`[GroupDependencyLines] Invalid coords for group ${group.id}:`, {
+            startX,
+            endX,
+            totalDays,
+            startDate: startDate?.toISOString(),
+        });
+        return null;
+    }
 
     // Y 좌표 계산 (Group Summary Bar 중앙)
     const rowInfo = rowData?.find(r => r.index === rowIndex);
@@ -137,6 +162,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
     offsetY = 0,
     rowData,
     isCompact = false,
+    getTaskDragInfo,
 }) => {
     // Compact 모드에 따른 스트로크 상수 선택
     const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
@@ -168,7 +194,11 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     return null;
                 }
 
-                // Group 바 좌표 계산
+                // 드래그 정보 조회 (실시간 동기화용)
+                const sourceDragInfo = getTaskDragInfo?.(sourceGroup.id);
+                const targetDragInfo = getTaskDragInfo?.(targetGroup.id);
+
+                // Group 바 좌표 계산 (드래그 정보 전달)
                 const sourceCoords = getGroupBarCoords(
                     sourceGroup,
                     sourceIndex,
@@ -176,7 +206,8 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     minDate,
                     pixelsPerDay,
                     offsetY,
-                    rowData
+                    rowData,
+                    sourceDragInfo
                 );
                 const targetCoords = getGroupBarCoords(
                     targetGroup,
@@ -185,7 +216,8 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     minDate,
                     pixelsPerDay,
                     offsetY,
-                    rowData
+                    rowData,
+                    targetDragInfo
                 );
 
                 if (!sourceCoords || !targetCoords) return null;
@@ -209,7 +241,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                 };
             })
             .filter((p): p is DependencyPathInfo => p !== null);
-    }, [dependencies, tasks, allTasks, taskIndexMap, minDate, pixelsPerDay, offsetY, rowData]);
+    }, [dependencies, tasks, allTasks, taskIndexMap, minDate, pixelsPerDay, offsetY, rowData, getTaskDragInfo]);
 
     return (
         <g className="group-dependency-lines">
