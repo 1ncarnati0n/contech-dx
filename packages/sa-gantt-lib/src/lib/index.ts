@@ -88,6 +88,10 @@ export { useHistory } from './hooks/useHistory';
 
 export { useColumnResizer } from './hooks/useColumnResizer';
 
+// Multi-selection drag hook (alias for consistency with other useGantt* hooks)
+export { useMultiDrag as useGanttMultiDrag } from './components/GanttTimeline/hooks';
+export type { MultiDragResult } from './components/GanttTimeline/hooks';
+
 // ============================================
 // Types
 // ============================================

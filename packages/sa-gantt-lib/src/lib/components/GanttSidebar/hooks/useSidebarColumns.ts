@@ -4,6 +4,16 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { ConstructionTask, ViewMode, CriticalPathSummary, ColumnConfig } from '../../../types';
 import { DEFAULT_MASTER_COLUMNS, DEFAULT_DETAIL_COLUMNS, DEFAULT_UNIFIED_COLUMNS } from '../../../types';
 
+// View mode별 기본 컬럼 설정 맵
+const DEFAULT_COLUMNS_BY_VIEW: Record<ViewMode, readonly ColumnConfig[]> = {
+    MASTER: DEFAULT_MASTER_COLUMNS,
+    DETAIL: DEFAULT_DETAIL_COLUMNS,
+    UNIFIED: DEFAULT_UNIFIED_COLUMNS,
+} as const;
+
+// View mode별 컬럼 너비 상태 타입
+type ColumnWidthsByView = Record<ViewMode, number[]>;
+
 interface UseSidebarColumnsOptions {
     viewMode: ViewMode;
     tasks: ConstructionTask[];
@@ -23,41 +33,29 @@ export const useSidebarColumns = ({
     onTotalWidthChange,
     onTaskReorder,
 }: UseSidebarColumnsOptions) => {
-    const [masterColumnWidths, setMasterColumnWidths] = useState<number[]>(
-        DEFAULT_MASTER_COLUMNS.map(col => col.width)
-    );
-    const [detailColumnWidths, setDetailColumnWidths] = useState<number[]>(
-        DEFAULT_DETAIL_COLUMNS.map(col => col.width)
-    );
-    const [unifiedColumnWidths, setUnifiedColumnWidths] = useState<number[]>(
-        DEFAULT_UNIFIED_COLUMNS.map(col => col.width)
-    );
+    // 3개 별도 useState → 단일 객체로 통합
+    const [columnWidthsByView, setColumnWidthsByView] = useState<ColumnWidthsByView>(() => ({
+        MASTER: DEFAULT_MASTER_COLUMNS.map(col => col.width),
+        DETAIL: DEFAULT_DETAIL_COLUMNS.map(col => col.width),
+        UNIFIED: DEFAULT_UNIFIED_COLUMNS.map(col => col.width),
+    }));
     const [resizingIndex, setResizingIndex] = useState<number | null>(null);
     const isResizingRef = useRef(false);
 
-    // 뷰 모드에 따른 컬럼 선택
-    const baseColumns = useMemo((): ColumnConfig[] => {
-        switch (viewMode) {
-            case 'MASTER': return DEFAULT_MASTER_COLUMNS;
-            case 'DETAIL': return DEFAULT_DETAIL_COLUMNS;
-            case 'UNIFIED': return DEFAULT_UNIFIED_COLUMNS;
-        }
+    // 뷰 모드에 따른 컬럼 선택 (맵 기반으로 단순화)
+    const baseColumns = useMemo((): readonly ColumnConfig[] => {
+        return DEFAULT_COLUMNS_BY_VIEW[viewMode];
     }, [viewMode]);
 
-    const columnWidths = useMemo(() => {
-        switch (viewMode) {
-            case 'MASTER': return masterColumnWidths;
-            case 'DETAIL': return detailColumnWidths;
-            case 'UNIFIED': return unifiedColumnWidths;
-        }
-    }, [viewMode, masterColumnWidths, detailColumnWidths, unifiedColumnWidths]);
+    // 현재 뷰 모드의 컬럼 너비
+    const columnWidths = columnWidthsByView[viewMode];
 
-    const setColumnWidths = useMemo(() => {
-        switch (viewMode) {
-            case 'MASTER': return setMasterColumnWidths;
-            case 'DETAIL': return setDetailColumnWidths;
-            case 'UNIFIED': return setUnifiedColumnWidths;
-        }
+    // 특정 뷰 모드의 컬럼 너비 업데이트 헬퍼
+    const setColumnWidths = useCallback((updater: (prev: number[]) => number[]) => {
+        setColumnWidthsByView(prev => ({
+            ...prev,
+            [viewMode]: updater(prev[viewMode]),
+        }));
     }, [viewMode]);
 
     const columns = useMemo(() =>
@@ -323,20 +321,19 @@ export const useSidebarColumns = ({
         const optimizeColumns = () => {
             const newWidths = baseColumns.map((_, idx) => calculateOptimalWidth(idx));
 
-            switch (viewMode) {
-                case 'MASTER':
-                    setMasterColumnWidths(newWidths);
-                    lastOptimizedKey.current.master = `${allTasks.length}-${tasks.length}-${cpSummaryMap.size}`;
-                    break;
-                case 'DETAIL':
-                    setDetailColumnWidths(newWidths);
-                    lastOptimizedKey.current.detail = `${activeCPId}-${tasks.length}`;
-                    break;
-                case 'UNIFIED':
-                    setUnifiedColumnWidths(newWidths);
-                    lastOptimizedKey.current.unified = `${allTasks.length}-${tasks.length}`;
-                    break;
-            }
+            // 현재 뷰 모드의 컬럼 너비만 업데이트
+            setColumnWidthsByView(prev => ({
+                ...prev,
+                [viewMode]: newWidths,
+            }));
+
+            // 최적화 키 업데이트
+            const keyMap: Record<ViewMode, string> = {
+                MASTER: `${allTasks.length}-${tasks.length}-${cpSummaryMap.size}`,
+                DETAIL: `${activeCPId}-${tasks.length}`,
+                UNIFIED: `${allTasks.length}-${tasks.length}`,
+            };
+            lastOptimizedKey.current[viewMode.toLowerCase() as 'master' | 'detail' | 'unified'] = keyMap[viewMode];
         };
 
         if (viewMode === 'MASTER') {

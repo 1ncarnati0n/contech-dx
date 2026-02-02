@@ -5,6 +5,7 @@
 import type { ConstructionTask, ZoomLevel, CalendarSettings } from '../../../types';
 import type { VirtualRow } from '../../../hooks/useGanttVirtualization';
 import type { DragInfo, DragType, MilestoneWithLayout } from '../types';
+import type { GroupConnectingState } from '../hooks/useGroupConnection';
 
 /**
  * 그리드 라인 렌더러 Props
@@ -90,7 +91,40 @@ export interface TaskAreaRendererProps {
     onGroupDrag?: boolean;
     setHoveredTaskId: (taskId: string | null) => void;
 
+    // Group Connection props
+    /** 연결 중인 상태 (useGroupConnection에서 제공) */
+    groupConnectingFrom?: GroupConnectingState | null;
+    /** 연결 상태 확인 함수 */
+    getGroupConnectionStatus: (groupId: string) => { start: boolean; end: boolean };
+    /** 종속선 생성 가능 여부 */
+    onGroupDependencyCreate?: boolean;
+    /** Group 바 edge 클릭 핸들러 */
+    handleGroupEdgeClick?: (groupId: string, edge: 'start' | 'end') => void;
+    /** Group 바 edge 호버 핸들러 */
+    handleGroupEdgeHover?: (groupId: string, edge: 'start' | 'end' | null) => void;
+
     /** Y축 오프셋 (마일스톤 레인 높이) */
+    offsetY?: number;
+}
+
+/**
+ * 태스크 라벨 렌더러 Props
+ */
+export interface TaskLabelsRendererProps {
+    tasks: ConstructionTask[];
+    rowData: VirtualRow[];
+    allTasks: ConstructionTask[];
+    minDate: Date;
+    pixelsPerDay: number;
+    effectiveBarHeight: number;
+    isMasterView: boolean;
+    isUnifiedView: boolean;
+    holidays: Date[];
+    calendarSettings: CalendarSettings;
+    getDragInfo: (taskId: string) => DragInfo | null;
+    getTaskGroupDragDeltaDays: (taskId: string) => number;
+    getTaskDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
+    focusedTaskId?: string | null;
     offsetY?: number;
 }
 

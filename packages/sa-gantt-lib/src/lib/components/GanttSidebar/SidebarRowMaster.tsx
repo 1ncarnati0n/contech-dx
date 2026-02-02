@@ -2,10 +2,9 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_COLORS } from '../../types';
+import { useSidebarRowStyle, getBadgeStyle, getBadgeText } from './hooks/useSidebarRowStyle';
 import type { SidebarRowMasterProps } from './types';
-
-const { ROW_HEIGHT } = GANTT_LAYOUT;
 
 /** 숫자 포맷팅 - 정수면 그대로, 소수면 1자리까지 표시 */
 const formatNum = (n: number): string => Number.isInteger(n) ? n.toString() : n.toFixed(1);
@@ -48,49 +47,21 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
     onTaskClick,
     isBlock,
 }) => {
-    // 행 스타일 계산 (메모이제이션)
-    const rowStyle = useMemo(() => {
-        let backgroundColor = 'var(--gantt-bg-primary)';
-        let borderColor = 'var(--gantt-border-light)';
-        let boxShadow = 'none';
-
-        if (isDragging) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-        } else if (isDragOver) {
-            if (dragOverPosition === 'into') {
-                backgroundColor = 'var(--gantt-bg-selected)';
-                borderColor = 'var(--gantt-focus)';
-                boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
-            }
-        } else if (isFocused) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-            boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
-        } else if (isSelected) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-            boxShadow = 'inset 0 0 0 2px rgba(59, 130, 246, 0.3)';
-        } else if (isBlock) {
-            // BLOCK 행은 구분되는 배경색 사용
-            backgroundColor = 'var(--gantt-bg-secondary)';
-        } else if (isGroup) {
-            backgroundColor = 'var(--gantt-bg-secondary)';
-        }
-
-        return {
-            height: ROW_HEIGHT,
-            backgroundColor,
-            borderBottom: `1px solid ${borderColor}`,
-            borderTop: isDragOver && dragOverPosition === 'before' ? '2px solid var(--gantt-focus)' : 'none',
-            boxShadow,
-            opacity: isDragging ? 0.5 : 1,
-            ...(isVirtualized ? {
-                position: 'absolute' as const,
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${rowStart}px)`,
-            } : {}),
-        };
-    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isBlock, isGroup, isVirtualized, rowStart]);
+    // 공통 스타일 훅 사용
+    const { style: rowStyle } = useSidebarRowStyle({
+        task,
+        viewMode: 'MASTER',
+        isDragging,
+        isDragOver,
+        dragOverPosition,
+        isFocused,
+        isSelected,
+        isBlock: isBlock ?? false,
+        isCP: task.type === 'CP',
+        isGroup,
+        isVirtualized,
+        rowStart,
+    });
 
     // 토글 핸들러 메모이제이션
     const handleToggle = useCallback((e: React.MouseEvent) => {
@@ -106,23 +77,12 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
         }
     }, [onTaskUpdate, onStartEdit, task]);
 
-    // 배지 스타일 (GANTT_COLORS 상수 사용)
+    // 배지 스타일 (공통 함수 사용)
     const badgeStyle = useMemo(() => {
-        if (isBlock) {
-            // BLOCK 배지 - 최상위 계층
-            return {
-                backgroundColor: GANTT_COLORS.badgeBlock,
-                color: GANTT_COLORS.badgeBlockText,
-                border: `1.5px solid ${GANTT_COLORS.badgeBlockBorder}`,
-            };
-        } else {
-            // CP 배지
-            return {
-                backgroundColor: GANTT_COLORS.vermilion,
-                color: 'white',
-            };
-        }
-    }, [isBlock]);
+        return getBadgeStyle(isBlock ?? false, task.type === 'CP', isGroup);
+    }, [isBlock, task.type, isGroup]);
+
+    const badgeText = getBadgeText(isBlock ?? false, task.type === 'CP', isGroup);
 
     return (
         <div
@@ -176,13 +136,15 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     <div className="w-6 shrink-0" />
                 )}
 
-                {/* Block/CP 뱃지 (GANTT_COLORS 상수 사용) */}
-                <span
-                    className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
-                    style={badgeStyle}
-                >
-                    {isBlock ? 'B' : 'CP'}
-                </span>
+                {/* Block/CP 뱃지 */}
+                {badgeStyle && badgeText && (
+                    <span
+                        className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
+                        style={badgeStyle}
+                    >
+                        {badgeText}
+                    </span>
+                )}
 
                 {editingTaskId === task.id ? (
                     <input
