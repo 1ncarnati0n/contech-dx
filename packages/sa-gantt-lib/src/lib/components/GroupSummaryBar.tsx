@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { addDays } from 'date-fns';
 import { ConstructionTask, GANTT_LAYOUT, GANTT_COLORS, GANTT_SUMMARY } from '../types';
 import { dateToX } from '../utils/dateUtils';
@@ -8,6 +8,15 @@ import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupU
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
 const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
+
+// 앵커 크기 상수 (통일)
+const ANCHOR_SIZE = {
+    DEFAULT: 4,
+    ACTIVE: 5,  // 연결 중인 앵커만 약간 커짐
+};
+
+// 앵커 히트 영역 크기 (24x24px로 확대)
+const ANCHOR_HIT_SIZE = 24;
 
 /** 연결 포인트 상태 */
 interface GroupConnectingFrom {
@@ -70,6 +79,11 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     onEdgeHover,
 }) => {
     const effectiveParentBarHeight = parentBarHeight ?? BAR_HEIGHT;
+
+    // 양 끝점 호버 상태 (각 앵커 영역 호버 시에만 해당 앵커 표시)
+    const [isHoveringStart, setIsHoveringStart] = useState(false);
+    const [isHoveringEnd, setIsHoveringEnd] = useState(false);
+
     // 그룹의 날짜 범위 계산
     const dateRange = useMemo(
         () => calculateGroupDateRange(group.id, allTasks),
@@ -207,19 +221,21 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                 <>
                     {/* 시작점 (FS Target) - 왼쪽 끝, 바 하단 */}
                     {(() => {
+                        const isConnecting = !!connectingFrom;
                         const isConnectingToThis = connectingFrom && connectingFrom.groupId !== group.id;
                         const isConnected = hasConnection.start;
-                        const showAnchor = isConnectingToThis || isConnected;
+                        // 시작점 호버 또는 연결 중이거나 이미 연결된 경우에만 앵커 표시
+                        const showAnchor = isHoveringStart || isConnecting || isConnected;
                         const anchorY = barY + SUMMARY_BAR_HEIGHT;
 
                         return (
                             <g className="group-connection-start">
-                                {/* 클릭 영역 */}
+                                {/* 클릭 영역 (확대: 24x24px) */}
                                 <rect
-                                    x={-8}
-                                    y={anchorY - 8}
-                                    width={16}
-                                    height={16}
+                                    x={-ANCHOR_HIT_SIZE / 2}
+                                    y={anchorY - ANCHOR_HIT_SIZE / 2}
+                                    width={ANCHOR_HIT_SIZE}
+                                    height={ANCHOR_HIT_SIZE}
                                     fill="transparent"
                                     style={{ cursor: isConnectingToThis ? 'pointer' : 'default' }}
                                     onClick={(e) => {
@@ -228,14 +244,20 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                                             onEdgeClick(group.id, 'start');
                                         }
                                     }}
-                                    onMouseEnter={() => onEdgeHover?.(group.id, 'start')}
-                                    onMouseLeave={() => onEdgeHover?.(group.id, null)}
+                                    onMouseEnter={() => {
+                                        setIsHoveringStart(true);
+                                        onEdgeHover?.(group.id, 'start');
+                                    }}
+                                    onMouseLeave={() => {
+                                        setIsHoveringStart(false);
+                                        onEdgeHover?.(group.id, null);
+                                    }}
                                 />
-                                {/* 앵커 원 */}
+                                {/* 앵커 원 - 크기 통일 */}
                                 <circle
                                     cx={0}
                                     cy={anchorY}
-                                    r={showAnchor ? 4 : 3}
+                                    r={isConnectingToThis ? ANCHOR_SIZE.ACTIVE : ANCHOR_SIZE.DEFAULT}
                                     fill={isConnectingToThis
                                         ? GANTT_COLORS.success
                                         : isConnected
@@ -246,10 +268,10 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                                         ? GANTT_COLORS.success
                                         : isConnected
                                             ? GANTT_COLORS.textPrimary
-                                            : 'none'
+                                            : GANTT_COLORS.textMuted
                                     }
-                                    strokeWidth={isConnected ? 1 : 0}
-                                    opacity={showAnchor ? 1 : 0}
+                                    strokeWidth={isConnected || isConnectingToThis ? 1 : 0.5}
+                                    opacity={showAnchor ? (isConnected || isConnectingToThis ? 1 : 0.6) : 0}
                                     style={{
                                         cursor: isConnectingToThis ? 'pointer' : 'default',
                                         transition: 'all 0.15s ease',
@@ -265,17 +287,18 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                         const isConnectingFromThis = connectingFrom?.groupId === group.id && connectingFrom.edge === 'end';
                         const canStartConnection = !connectingFrom;
                         const isConnected = hasConnection.end;
-                        const showAnchor = isConnectingFromThis || isConnected || canStartConnection;
+                        // 끝점 호버 또는 연결 중이거나 이미 연결된 경우에만 앵커 표시
+                        const showAnchor = isHoveringEnd || isConnectingFromThis || isConnected;
                         const anchorY = barY + SUMMARY_BAR_HEIGHT;
 
                         return (
                             <g className="group-connection-end">
-                                {/* 클릭 영역 */}
+                                {/* 클릭 영역 (확대: 24x24px) */}
                                 <rect
-                                    x={totalWidth - 8}
-                                    y={anchorY - 8}
-                                    width={16}
-                                    height={16}
+                                    x={totalWidth - ANCHOR_HIT_SIZE / 2}
+                                    y={anchorY - ANCHOR_HIT_SIZE / 2}
+                                    width={ANCHOR_HIT_SIZE}
+                                    height={ANCHOR_HIT_SIZE}
                                     fill="transparent"
                                     style={{ cursor: canStartConnection || isConnectingFromThis ? 'pointer' : 'default' }}
                                     onClick={(e) => {
@@ -284,14 +307,20 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                                             onEdgeClick(group.id, 'end');
                                         }
                                     }}
-                                    onMouseEnter={() => onEdgeHover?.(group.id, 'end')}
-                                    onMouseLeave={() => onEdgeHover?.(group.id, null)}
+                                    onMouseEnter={() => {
+                                        setIsHoveringEnd(true);
+                                        onEdgeHover?.(group.id, 'end');
+                                    }}
+                                    onMouseLeave={() => {
+                                        setIsHoveringEnd(false);
+                                        onEdgeHover?.(group.id, null);
+                                    }}
                                 />
-                                {/* 앵커 원 */}
+                                {/* 앵커 원 - 크기 통일 */}
                                 <circle
                                     cx={totalWidth}
                                     cy={anchorY}
-                                    r={isConnectingFromThis ? 5 : (isConnected ? 4 : 3)}
+                                    r={isConnectingFromThis ? ANCHOR_SIZE.ACTIVE : ANCHOR_SIZE.DEFAULT}
                                     fill={isConnectingFromThis
                                         ? GANTT_COLORS.success
                                         : isConnected
@@ -305,7 +334,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                                             : GANTT_COLORS.textMuted
                                     }
                                     strokeWidth={isConnected || isConnectingFromThis ? 1 : 0.5}
-                                    opacity={showAnchor ? (isConnected || isConnectingFromThis ? 1 : 0.5) : 0}
+                                    opacity={showAnchor ? (isConnected || isConnectingFromThis ? 1 : 0.6) : 0}
                                     style={{
                                         cursor: canStartConnection ? 'pointer' : 'default',
                                         transition: 'all 0.15s ease',

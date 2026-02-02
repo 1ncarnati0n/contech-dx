@@ -20,7 +20,7 @@ import type { VirtualRow } from '../../../hooks/useGanttVirtualization';
 import { useBarDrag } from './useBarDrag';
 import { useMilestoneDrag } from './useMilestoneDrag';
 import { useGroupDrag } from './useGroupDrag';
-import { useGroupConnection, type GroupConnectingState } from './useGroupConnection';
+import { useGroupConnection, type GroupConnectingState, type MousePosition } from './useGroupConnection';
 import { useGanttSelection } from '../../../store/useGanttStore';
 
 // Types
@@ -128,10 +128,12 @@ export interface TimelineDragHandlers {
     hoveredGroupEdge: { groupId: string; edge: 'start' | 'end' } | null;
     selectedGroupDepId: string | null;
     hoveredGroupDepId: string | null;
+    mousePosition: MousePosition | null;
     handleGroupEdgeClick: (groupId: string, edge: 'start' | 'end') => void;
     handleGroupEdgeHover: (groupId: string, edge: 'start' | 'end' | null) => void;
     handleGroupDependencyClick: (depId: string) => void;
     handleGroupDependencyHover: (depId: string | null) => void;
+    handleMouseMove: (position: MousePosition | null) => void;
     clearGroupSelection: () => void;
     getGroupConnectionStatus: (groupId: string) => { start: boolean; end: boolean };
 }
@@ -343,10 +345,12 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
         hoveredGroupEdge,
         selectedDepId: selectedGroupDepId,
         hoveredDepId: hoveredGroupDepId,
+        mousePosition,
         handleGroupEdgeClick,
         handleGroupEdgeHover,
         handleDependencyClick: handleGroupDependencyClick,
         handleDependencyHover: handleGroupDependencyHover,
+        handleMouseMove,
         clearSelection: clearGroupSelection,
     } = useGroupConnection({
         dependencies: groupDependencies,
@@ -445,10 +449,12 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             hoveredGroupEdge,
             selectedGroupDepId,
             hoveredGroupDepId,
+            mousePosition,
             handleGroupEdgeClick,
             handleGroupEdgeHover,
             handleGroupDependencyClick,
             handleGroupDependencyHover,
+            handleMouseMove,
             clearGroupSelection,
             getGroupConnectionStatus,
         },

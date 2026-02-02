@@ -36,6 +36,9 @@ interface GroupDependencyLinesProps {
     isCompact?: boolean;
 }
 
+/** 경로 끝점의 화살표 방향 */
+type ArrowDirection = 'up' | 'down' | 'right';
+
 interface DependencyPathInfo {
     id: string;
     path: string;
@@ -43,6 +46,8 @@ interface DependencyPathInfo {
     sourceY: number;
     targetX: number;
     targetY: number;
+    /** 경로 끝점의 화살표 방향 */
+    endDirection: ArrowDirection;
 }
 
 /**
@@ -75,34 +80,64 @@ const getGroupBarCoords = (
     return { startX, endX, bottomY };
 };
 
+/** createFSPath 반환 타입 */
+interface FSPathResult {
+    path: string;
+    endDirection: ArrowDirection;
+}
+
 /**
  * FS 종속성 경로 생성 (선행 끝 → 후행 시작)
- * 직각 경로: 수직(아래로) → 수평 → 수직(위로)
- * 바 하단에서 시작하여 아래로 내려갔다가 수평 연결 후 위로 올라가 타겟에 연결
+ * 직각 경로: 수직(아래로) → 수평 → 수직(위로/아래로)
+ * 바 하단에서 시작하여 아래로 내려갔다가 수평 연결 후 타겟에 연결
+ * @returns { path, endDirection } - 경로와 끝점 화살표 방향
  */
 const createFSPath = (
     sourceX: number,
     sourceY: number,
     targetX: number,
     targetY: number
-): string => {
+): FSPathResult => {
     const VERTICAL_GAP = 12; // 바 하단에서 선까지 수직 간격
     const EXTRA_DROP = 15; // 바 아래로 추가로 내려가는 거리
 
     // Y 차이에 따른 경로 결정
     const verticalDiff = targetY - sourceY;
 
+    // 끝점 방향 결정 (마지막 세그먼트가 어느 방향으로 진입하는지)
+    let endDirection: ArrowDirection;
+
     if (Math.abs(verticalDiff) < 5) {
         // 같은 행 - 단순 경로 (아래로 내려갔다가 수평 후 다시 올라옴)
         const midY = sourceY + VERTICAL_GAP + EXTRA_DROP;
-        return `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`;
+        // 마지막 세그먼트가 위로 올라가므로 화살표는 위로 향해야 함
+        endDirection = 'up';
+        return {
+            path: `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`,
+            endDirection
+        };
     }
 
-    // 일반 FS 경로: 아래로 → 수평으로 → 위로 올라감
+    // 일반 FS 경로: 아래로 → 수평으로 → 위로/아래로
     // 두 바 중 더 아래쪽 바의 Y + 간격 위치를 중간 경유점으로 사용
     const midY = Math.max(sourceY, targetY) + VERTICAL_GAP + EXTRA_DROP;
 
-    return `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`;
+    // 마지막 세그먼트 방향 결정
+    if (targetY < midY) {
+        // 타겟이 midY보다 위에 있으면 → 위로 올라감 → 화살표 위로
+        endDirection = 'up';
+    } else if (targetY > midY) {
+        // 타겟이 midY보다 아래에 있으면 → 아래로 내려감 → 화살표 아래로
+        endDirection = 'down';
+    } else {
+        // 같은 높이 → 수평으로 진입 → 기본 우향 화살표
+        endDirection = 'right';
+    }
+
+    return {
+        path: `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`,
+        endDirection
+    };
 };
 
 /**
@@ -176,7 +211,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                 if (!sourceCoords || !targetCoords) return null;
 
                 // FS: 선행 끝점(endX) → 후행 시작점(startX), 바 하단 기준
-                const path = createFSPath(
+                const { path, endDirection } = createFSPath(
                     sourceCoords.endX,
                     sourceCoords.bottomY,
                     targetCoords.startX,
@@ -190,6 +225,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     sourceY: sourceCoords.bottomY,
                     targetX: targetCoords.startX,
                     targetY: targetCoords.bottomY,
+                    endDirection,
                 };
             })
             .filter((p): p is DependencyPathInfo => p !== null);
@@ -202,19 +238,39 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                 const isHovered = hoveredDepId === pathInfo.id;
 
                 // Compact 모드에 따른 마커 접미사
-                const markerSuffix = isCompact ? '-compact' : '';
+                const compactSuffix = isCompact ? '-compact' : '';
+
+                // 방향에 따른 마커 접두사 결정
+                const getDirectionMarker = (state: 'default' | 'selected' | 'hover') => {
+                    const { endDirection } = pathInfo;
+
+                    if (endDirection === 'up') {
+                        if (state === 'selected') return `url(#dependency-arrow-up-selected${compactSuffix})`;
+                        if (state === 'hover') return `url(#dependency-arrow-up-hover${compactSuffix})`;
+                        return `url(#dependency-arrow-up${compactSuffix})`;
+                    } else if (endDirection === 'down') {
+                        if (state === 'selected') return `url(#dependency-arrow-down-selected${compactSuffix})`;
+                        if (state === 'hover') return `url(#dependency-arrow-down-hover${compactSuffix})`;
+                        return `url(#dependency-arrow-down${compactSuffix})`;
+                    } else {
+                        // 기본 우향 (orient="auto" 사용)
+                        if (state === 'selected') return `url(#dependency-arrow-selected${compactSuffix})`;
+                        if (state === 'hover') return `url(#dependency-arrow-hover${compactSuffix})`;
+                        return `url(#dependency-arrow${compactSuffix})`;
+                    }
+                };
 
                 let strokeColor: string = GANTT_COLORS.textPrimary;
-                let markerEnd = `url(#dependency-arrow${markerSuffix})`;
+                let markerEnd = getDirectionMarker('default');
                 let strokeWidth: number = STROKE.DEFAULT;
 
                 if (isSelected) {
                     strokeColor = GANTT_COLORS.focus;
-                    markerEnd = `url(#dependency-arrow-selected${markerSuffix})`;
+                    markerEnd = getDirectionMarker('selected');
                     strokeWidth = STROKE.SELECTED;
                 } else if (isHovered) {
                     strokeColor = GANTT_COLORS.textPrimary;
-                    markerEnd = `url(#dependency-arrow-hover${markerSuffix})`;
+                    markerEnd = getDirectionMarker('hover');
                     strokeWidth = STROKE.HOVER;
                 }
 
