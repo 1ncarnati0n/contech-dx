@@ -4,3 +4,5 @@ export { useMultiSelect } from './useMultiSelect';
 export { useClipboard } from './useClipboard';
 export { useInlineEdit } from './useInlineEdit';
 export { useSidebarData } from './useSidebarData';
+export { useSidebarRowStyle, getBadgeStyle, getBadgeText } from './useSidebarRowStyle';
+export type { RowStyleOptions, RowStyleResult } from './useSidebarRowStyle';

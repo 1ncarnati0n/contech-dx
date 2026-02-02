@@ -206,7 +206,7 @@ export const DEFAULT_UNIFIED_COLUMNS: ColumnConfig[] = [
 // ============================================
 
 export const ZOOM_CONFIG: Record<ZoomLevel, { pixelsPerDay: number; label: string }> = {
-    DAY: { pixelsPerDay: 30, label: '일' },
+    DAY: { pixelsPerDay: 20, label: '일' },
     WEEK: { pixelsPerDay: 10, label: '주' },
     MONTH: { pixelsPerDay: 2, label: '월' },
 };

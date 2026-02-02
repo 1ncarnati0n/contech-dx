@@ -2,11 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
-import { GANTT_COLORS, GANTT_STROKE, GANTT_STROKE_COMPACT, GANTT_SUMMARY } from '../../types';
+import { GANTT_COLORS, GANTT_STROKE, GANTT_STROKE_COMPACT } from '../../types';
 import type { ConstructionTask, GroupDependency } from '../../types';
 import { calculateGroupDateRange } from '../../utils/groupUtils';
-
-const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
 
 /** 행 데이터 타입 (동적 높이 계산용) */
 interface RowData {
@@ -34,7 +32,12 @@ interface GroupDependencyLinesProps {
     rowData?: RowData[];
     /** Compact 모드 여부 */
     isCompact?: boolean;
+    /** 드래그 정보 조회 함수 (실시간 종속선 동기화용) */
+    getTaskDragInfo?: (taskId: string) => { startDate: Date; endDate: Date } | null;
 }
+
+/** 경로 끝점의 화살표 방향 */
+type ArrowDirection = 'up' | 'down' | 'right';
 
 interface DependencyPathInfo {
     id: string;
@@ -43,11 +46,14 @@ interface DependencyPathInfo {
     sourceY: number;
     targetX: number;
     targetY: number;
+    /** 경로 끝점의 화살표 방향 */
+    endDirection: ArrowDirection;
 }
 
 /**
  * Group 바의 좌표 계산
- * @returns { startX, endX, bottomY } - Group 바의 시작X, 끝X, 하단Y
+ * @param dragInfo - 드래그 중인 경우 스냅된 날짜 정보
+ * @returns { startX, endX, centerY } - Group 바의 시작X, 끝X, 중앙Y
  */
 const getGroupBarCoords = (
     group: ConstructionTask,
@@ -56,53 +62,87 @@ const getGroupBarCoords = (
     minDate: Date,
     pixelsPerDay: number,
     offsetY: number = 0,
-    rowData?: RowData[]
-): { startX: number; endX: number; bottomY: number } | null => {
-    const dateRange = calculateGroupDateRange(group.id, allTasks);
-    if (!dateRange) return null;
+    rowData?: RowData[],
+    dragInfo?: { startDate: Date; endDate: Date } | null
+): { startX: number; endX: number; centerY: number } | null => {
+    // 드래그 정보가 있으면 드래그된 날짜 사용, 없으면 원본 계산
+    let startDate: Date;
+    let totalDays: number;
 
-    const { startDate, totalDays } = dateRange;
+    if (dragInfo) {
+        startDate = dragInfo.startDate;
+        totalDays = differenceInDays(dragInfo.endDate, dragInfo.startDate) + 1;
+    } else {
+        const dateRange = calculateGroupDateRange(group.id, allTasks);
+        if (!dateRange) return null;
+        startDate = dateRange.startDate;
+        totalDays = dateRange.totalDays;
+    }
+
     const startOffset = differenceInDays(startDate, minDate);
     const startX = startOffset * pixelsPerDay;
     const endX = (startOffset + totalDays) * pixelsPerDay;
 
-    // Y 좌표 계산 (Group Summary Bar 하단)
+    // 방어 로직: 유효하지 않은 좌표면 null 반환
+    if (isNaN(startX) || isNaN(endX) || totalDays <= 0) {
+        console.warn(`[GroupDependencyLines] Invalid coords for group ${group.id}:`, {
+            startX,
+            endX,
+            totalDays,
+            startDate: startDate?.toISOString(),
+        });
+        return null;
+    }
+
+    // Y 좌표 계산 (Group Summary Bar 중앙)
     const rowInfo = rowData?.find(r => r.index === rowIndex);
     const rowStart = rowInfo?.start ?? 0;
     const rowHeight = rowInfo?.size ?? 30;
-    const bottomY = offsetY + rowStart + (rowHeight - SUMMARY_BAR_HEIGHT) / 2 + SUMMARY_BAR_HEIGHT;
+    const centerY = offsetY + rowStart + rowHeight / 2;
 
-    return { startX, endX, bottomY };
+    return { startX, endX, centerY };
 };
+
+/** createFSPath 반환 타입 */
+interface FSPathResult {
+    path: string;
+    endDirection: ArrowDirection;
+}
 
 /**
  * FS 종속성 경로 생성 (선행 끝 → 후행 시작)
- * 직각 경로: 수직(아래로) → 수평 → 수직(위로)
- * 바 하단에서 시작하여 아래로 내려갔다가 수평 연결 후 위로 올라가 타겟에 연결
+ * L자형 경로: 수평 → 수직 (한 번만 꺾임)
+ * @returns { path, endDirection } - 경로와 끝점 화살표 방향
  */
 const createFSPath = (
     sourceX: number,
     sourceY: number,
     targetX: number,
     targetY: number
-): string => {
-    const VERTICAL_GAP = 12; // 바 하단에서 선까지 수직 간격
-    const EXTRA_DROP = 15; // 바 아래로 추가로 내려가는 거리
+): FSPathResult => {
+    // 끝점 방향 결정 (마지막 세그먼트가 어느 방향으로 진입하는지)
+    let endDirection: ArrowDirection;
 
-    // Y 차이에 따른 경로 결정
-    const verticalDiff = targetY - sourceY;
-
-    if (Math.abs(verticalDiff) < 5) {
-        // 같은 행 - 단순 경로 (아래로 내려갔다가 수평 후 다시 올라옴)
-        const midY = sourceY + VERTICAL_GAP + EXTRA_DROP;
-        return `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`;
+    if (Math.abs(targetY - sourceY) < 5) {
+        // 같은 행 - 수평 직선
+        endDirection = 'right';
+        return {
+            path: `M ${sourceX} ${sourceY} H ${targetX}`,
+            endDirection
+        };
     }
 
-    // 일반 FS 경로: 아래로 → 수평으로 → 위로 올라감
-    // 두 바 중 더 아래쪽 바의 Y + 간격 위치를 중간 경유점으로 사용
-    const midY = Math.max(sourceY, targetY) + VERTICAL_GAP + EXTRA_DROP;
+    // L자형: 수평 → 수직
+    if (targetY < sourceY) {
+        endDirection = 'up';
+    } else {
+        endDirection = 'down';
+    }
 
-    return `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`;
+    return {
+        path: `M ${sourceX} ${sourceY} H ${targetX} V ${targetY}`,
+        endDirection
+    };
 };
 
 /**
@@ -122,6 +162,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
     offsetY = 0,
     rowData,
     isCompact = false,
+    getTaskDragInfo,
 }) => {
     // Compact 모드에 따른 스트로크 상수 선택
     const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
@@ -153,7 +194,11 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     return null;
                 }
 
-                // Group 바 좌표 계산
+                // 드래그 정보 조회 (실시간 동기화용)
+                const sourceDragInfo = getTaskDragInfo?.(sourceGroup.id);
+                const targetDragInfo = getTaskDragInfo?.(targetGroup.id);
+
+                // Group 바 좌표 계산 (드래그 정보 전달)
                 const sourceCoords = getGroupBarCoords(
                     sourceGroup,
                     sourceIndex,
@@ -161,7 +206,8 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     minDate,
                     pixelsPerDay,
                     offsetY,
-                    rowData
+                    rowData,
+                    sourceDragInfo
                 );
                 const targetCoords = getGroupBarCoords(
                     targetGroup,
@@ -170,30 +216,32 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                     minDate,
                     pixelsPerDay,
                     offsetY,
-                    rowData
+                    rowData,
+                    targetDragInfo
                 );
 
                 if (!sourceCoords || !targetCoords) return null;
 
-                // FS: 선행 끝점(endX) → 후행 시작점(startX), 바 하단 기준
-                const path = createFSPath(
+                // FS: 선행 끝점(endX) → 후행 시작점(startX), 바 중앙 기준
+                const { path, endDirection } = createFSPath(
                     sourceCoords.endX,
-                    sourceCoords.bottomY,
+                    sourceCoords.centerY,
                     targetCoords.startX,
-                    targetCoords.bottomY
+                    targetCoords.centerY
                 );
 
                 return {
                     id: dep.id,
                     path,
                     sourceX: sourceCoords.endX,
-                    sourceY: sourceCoords.bottomY,
+                    sourceY: sourceCoords.centerY,
                     targetX: targetCoords.startX,
-                    targetY: targetCoords.bottomY,
+                    targetY: targetCoords.centerY,
+                    endDirection,
                 };
             })
             .filter((p): p is DependencyPathInfo => p !== null);
-    }, [dependencies, tasks, allTasks, taskIndexMap, minDate, pixelsPerDay, offsetY, rowData]);
+    }, [dependencies, tasks, allTasks, taskIndexMap, minDate, pixelsPerDay, offsetY, rowData, getTaskDragInfo]);
 
     return (
         <g className="group-dependency-lines">
@@ -202,19 +250,39 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                 const isHovered = hoveredDepId === pathInfo.id;
 
                 // Compact 모드에 따른 마커 접미사
-                const markerSuffix = isCompact ? '-compact' : '';
+                const compactSuffix = isCompact ? '-compact' : '';
+
+                // 방향에 따른 마커 접두사 결정
+                const getDirectionMarker = (state: 'default' | 'selected' | 'hover') => {
+                    const { endDirection } = pathInfo;
+
+                    if (endDirection === 'up') {
+                        if (state === 'selected') return `url(#dependency-arrow-up-selected${compactSuffix})`;
+                        if (state === 'hover') return `url(#dependency-arrow-up-hover${compactSuffix})`;
+                        return `url(#dependency-arrow-up${compactSuffix})`;
+                    } else if (endDirection === 'down') {
+                        if (state === 'selected') return `url(#dependency-arrow-down-selected${compactSuffix})`;
+                        if (state === 'hover') return `url(#dependency-arrow-down-hover${compactSuffix})`;
+                        return `url(#dependency-arrow-down${compactSuffix})`;
+                    } else {
+                        // 기본 우향 (orient="auto" 사용)
+                        if (state === 'selected') return `url(#dependency-arrow-selected${compactSuffix})`;
+                        if (state === 'hover') return `url(#dependency-arrow-hover${compactSuffix})`;
+                        return `url(#dependency-arrow${compactSuffix})`;
+                    }
+                };
 
                 let strokeColor: string = GANTT_COLORS.textPrimary;
-                let markerEnd = `url(#dependency-arrow${markerSuffix})`;
+                let markerEnd = getDirectionMarker('default');
                 let strokeWidth: number = STROKE.DEFAULT;
 
                 if (isSelected) {
                     strokeColor = GANTT_COLORS.focus;
-                    markerEnd = `url(#dependency-arrow-selected${markerSuffix})`;
+                    markerEnd = getDirectionMarker('selected');
                     strokeWidth = STROKE.SELECTED;
                 } else if (isHovered) {
                     strokeColor = GANTT_COLORS.textPrimary;
-                    markerEnd = `url(#dependency-arrow-hover${markerSuffix})`;
+                    markerEnd = getDirectionMarker('hover');
                     strokeWidth = STROKE.HOVER;
                 }
 
@@ -245,8 +313,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                             markerEnd={markerEnd}
                             style={{
                                 cursor: 'pointer',
-                                transition: 'stroke 0.15s, stroke-width 0.15s',
-                            }}
+                                                            }}
                             onClick={() => onDependencyClick?.(pathInfo.id)}
                             onMouseEnter={() => onDependencyHover?.(pathInfo.id)}
                             onMouseLeave={() => onDependencyHover?.(null)}
@@ -284,12 +351,13 @@ export const GroupConnectionPreviewLine: React.FC<GroupConnectionPreviewLineProp
     const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
     const markerSuffix = isCompact ? '-compact' : '';
 
+    // 실제 종속성 선과 동일한 직각 경로 사용
+    const { path } = createFSPath(sourceX, sourceY, targetX, targetY);
+
     return (
-        <line
-            x1={sourceX}
-            y1={sourceY}
-            x2={targetX}
-            y2={targetY}
+        <path
+            d={path}
+            fill="none"
             stroke={GANTT_COLORS.success}
             strokeWidth={STROKE.HOVER}
             strokeDasharray={isCompact ? '3,2' : '5,3'}

@@ -123,11 +123,12 @@ export function useKeyboardNavigation({
                     const task = visibleTasks.find(t => t.id === focusedTaskId);
                     if (task) {
                         // 마스터 뷰에서 CP(Level 1) 선택 시 → 디테일 뷰로 전환
-                        if (viewMode === 'MASTER' && task.wbsLevel === 1) {
+                        // BLOCK은 Detail 뷰로 전환하면 안 됨 (CP만 가능)
+                        if (viewMode === 'MASTER' && task.type === 'CP') {
                             onViewChange('DETAIL', task.id);
                         }
-                        // 그 외에는 편집 모달 열기
-                        else if (onTaskEdit) {
+                        // 그 외에는 편집 모달 열기 (BLOCK이나 GROUP이 아닌 경우)
+                        else if (onTaskEdit && task.type !== 'BLOCK' && task.type !== 'GROUP') {
                             onTaskEdit(task);
                         }
                     }

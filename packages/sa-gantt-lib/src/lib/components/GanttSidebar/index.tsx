@@ -356,8 +356,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             const task = tasks[row.index];
                             if (!task) return null;
 
+                            const isBlock = task.type === 'BLOCK';
                             const isGroup = task.type === 'GROUP';
-                            const canExpand = isGroup && (childrenCountMap.get(task.id) || 0) > 0;
+                            const canExpand = (isBlock || isGroup) && (childrenCountMap.get(task.id) || 0) > 0;
                             const cpSummary = task.type === 'CP' ? cpSummaryMap.get(task.id) || null : null;
 
                             return (
@@ -374,6 +375,7 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                                     canExpand={canExpand}
                                     indent={getMasterGroupDepth(task) * 8}
                                     isGroup={isGroup}
+                                    isBlock={isBlock}
                                     cpSummary={cpSummary}
                                     onTaskClick={onTaskClick}
                                     {...sharedRowProps}

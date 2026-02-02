@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useRef, useEffect } from 'react';
-import { collectDescendantTasks } from '../../../utils/groupUtils';
+import { collectDescendantTasks, calculateGroupDateRange } from '../../../utils/groupUtils';
+import {
+    buildGroupDependencyGraph,
+    collectConnectedGroupCluster,
+} from '../../../utils/dependencyGraph';
 import {
     calculateDeltaDays,
     calculateDeltaWorkingDays,
@@ -9,7 +13,7 @@ import {
     calculateGroupTasksMoveWithCriticalPath,
 } from './dragUtils';
 import { useDragState } from './useDragState';
-import type { ConstructionTask, GroupDragResult, CalendarSettings } from '../../../types';
+import type { ConstructionTask, GroupDragResult, CalendarSettings, GroupDependency } from '../../../types';
 
 // ============================================
 // Hook Options
@@ -21,6 +25,7 @@ interface UseGroupDragOptions {
     holidays: Date[];
     calendarSettings: CalendarSettings;
     onGroupDrag?: (result: GroupDragResult) => void;
+    groupDependencies?: GroupDependency[];  // 그룹 간 종속선 정보
 }
 
 // ============================================
@@ -71,6 +76,7 @@ export const useGroupDrag = ({
     holidays,
     calendarSettings,
     onGroupDrag,
+    groupDependencies = [],
 }: UseGroupDragOptions) => {
     // ========================================
     // 마지막 계산된 값 캐시 (불필요한 Map 재생성 방지)
@@ -140,6 +146,52 @@ export const useGroupDrag = ({
                             currentStartDate: moveResult.newStartDate,
                             currentEndDate: moveResult.newEndDate,
                         });
+                    }
+                }
+            }
+
+            // GROUP/CP/BLOCK 날짜 업데이트: 하위 TASK들의 min/max로 재계산
+            for (const task of state.affectedTasks) {
+                if (task.type === 'GROUP' || task.type === 'CP' || task.type === 'BLOCK') {
+                    const originalInfo = state.taskDragInfoMap.get(task.id);
+                    if (originalInfo) {
+                        // 이 그룹의 직접 하위 TASK들 찾기
+                        const childTasks = state.affectedTasks.filter(
+                            t => t.type === 'TASK' && t.parentId === task.id
+                        );
+
+                        if (childTasks.length > 0) {
+                            let minStart = new Date(8640000000000000); // Max Date
+                            let maxEnd = new Date(-8640000000000000); // Min Date
+
+                            for (const child of childTasks) {
+                                const childInfo = updatedTaskDragInfoMap.get(child.id);
+                                if (childInfo) {
+                                    if (childInfo.currentStartDate < minStart) {
+                                        minStart = childInfo.currentStartDate;
+                                    }
+                                    if (childInfo.currentEndDate > maxEnd) {
+                                        maxEnd = childInfo.currentEndDate;
+                                    }
+                                }
+                            }
+
+                            // 유효한 날짜 범위가 있으면 업데이트
+                            if (minStart.getTime() !== 8640000000000000 &&
+                                maxEnd.getTime() !== -8640000000000000) {
+                                const currentGroupInfo = updatedTaskDragInfoMap.get(task.id);
+                                if (currentGroupInfo &&
+                                    (currentGroupInfo.currentStartDate.getTime() !== minStart.getTime() ||
+                                     currentGroupInfo.currentEndDate.getTime() !== maxEnd.getTime())) {
+                                    hasChanges = true;
+                                    updatedTaskDragInfoMap.set(task.id, {
+                                        ...currentGroupInfo,
+                                        currentStartDate: minStart,
+                                        currentEndDate: maxEnd,
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -236,7 +288,38 @@ export const useGroupDrag = ({
         lastDeltaWorkingDaysRef.current = 0;
         lastTaskDragInfoMapRef.current = null;
 
-        const affectedTasks = collectDescendantTasks(groupId, allTasks);
+        // ========================================
+        // 클러스터 수집: 연결된 그룹들 + 각 그룹의 하위 태스크
+        // ========================================
+        let connectedGroupIds: string[] = [groupId];
+
+        // 그룹 종속선이 있으면 연결된 클러스터 전체 수집
+        if (groupDependencies.length > 0) {
+            const graph = buildGroupDependencyGraph(allTasks, groupDependencies);
+            connectedGroupIds = collectConnectedGroupCluster(groupId, graph);
+        }
+
+        // 클러스터 내 모든 그룹의 하위 태스크 수집
+        const affectedTasksSet = new Set<string>();
+        const affectedTasks: ConstructionTask[] = [];
+
+        for (const gId of connectedGroupIds) {
+            // 그룹 자체도 포함 (그룹 바 이동을 위해)
+            const groupTask = allTasks.find(t => t.id === gId);
+            if (groupTask && !affectedTasksSet.has(gId)) {
+                affectedTasksSet.add(gId);
+                affectedTasks.push(groupTask);
+            }
+
+            // 그룹의 하위 태스크 수집
+            const descendants = collectDescendantTasks(gId, allTasks);
+            for (const task of descendants) {
+                if (!affectedTasksSet.has(task.id)) {
+                    affectedTasksSet.add(task.id);
+                    affectedTasks.push(task);
+                }
+            }
+        }
 
         // 기준 task 및 작업일 오프셋 계산 (한 번만)
         const { referenceTask, workingDaysOffsets } = calculateWorkingDaysOffsets(
@@ -245,10 +328,11 @@ export const useGroupDrag = ({
             calendarSettings
         );
 
-        // 각 task의 초기 정보를 Map으로 구성
+        // 각 task의 초기 정보를 Map으로 구성 (모든 타입 포함)
         const taskDragInfoMap = new Map<string, TaskDragInfo>();
         for (const task of affectedTasks) {
             if (task.type === 'TASK' && task.task) {
+                // TASK 타입: 간접작업일 정보 포함
                 taskDragInfoMap.set(task.id, {
                     originalStartDate: task.startDate,
                     originalEndDate: task.endDate,
@@ -258,6 +342,21 @@ export const useGroupDrag = ({
                     currentStartDate: task.startDate,
                     currentEndDate: task.endDate,
                 });
+            } else if (task.type === 'GROUP' || task.type === 'CP' || task.type === 'BLOCK') {
+                // GROUP/CP/BLOCK 타입: 실제 하위 태스크 범위로 계산
+                // task.startDate/endDate 대신 calculateGroupDateRange()로 정확한 범위 사용
+                const dateRange = calculateGroupDateRange(task.id, allTasks);
+                if (dateRange) {
+                    taskDragInfoMap.set(task.id, {
+                        originalStartDate: dateRange.startDate,
+                        originalEndDate: dateRange.endDate,
+                        indirectWorkDaysPre: 0,
+                        netWorkDays: 0,
+                        indirectWorkDaysPost: 0,
+                        currentStartDate: dateRange.startDate,
+                        currentEndDate: dateRange.endDate,
+                    });
+                }
             }
         }
 
@@ -273,7 +372,7 @@ export const useGroupDrag = ({
             workingDaysOffsets,
             currentDeltaWorkingDays: 0,
         });
-    }, [onGroupDrag, allTasks, holidays, calendarSettings, start]);
+    }, [onGroupDrag, allTasks, holidays, calendarSettings, start, groupDependencies]);
 
     // ========================================
     // 그룹 드래그 정보 조회 (하위 호환성)
