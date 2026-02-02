@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useCallback } from 'react';
+import { differenceInDays } from 'date-fns';
 import {
     ConstructionTask,
     Milestone,
@@ -13,6 +14,7 @@ import {
     GroupDragResult,
     GroupDependency,
 } from '../../types';
+import { calculateGroupDateRange } from '../../utils/groupUtils';
 import type { VirtualRow } from '../../hooks/useGanttVirtualization';
 
 // Sub-components
@@ -22,7 +24,7 @@ import { MilestoneMarker } from './MilestoneMarker';
 import { SvgDefs } from './SvgDefs';
 import { TaskBar } from './TaskBar';
 import { TimelineContextMenu } from './TimelineContextMenu';
-import { GroupDependencyLines } from './GroupDependencyLines';
+import { GroupDependencyLines, GroupConnectionPreviewLine } from './GroupDependencyLines';
 
 // Core Hook
 import { useTimelineCore } from './hooks/useTimelineCore';
@@ -171,10 +173,12 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             hoveredGroupEdge: _hoveredGroupEdge,
             selectedGroupDepId,
             hoveredGroupDepId,
+            mousePosition,
             handleGroupEdgeClick,
             handleGroupEdgeHover,
             handleGroupDependencyClick,
             handleGroupDependencyHover,
+            handleMouseMove,
             getGroupConnectionStatus,
         } = dragHandlers;
 
@@ -196,6 +200,56 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             // 컨텍스트 메뉴 열기 (타입 단언으로 SVG 이벤트로 변환)
             handleContextMenu(event as React.MouseEvent<SVGSVGElement>);
         }, [handleGroupDependencyClick, handleContextMenu]);
+
+        // ====================================
+        // 프리뷰 라인을 위한 Source 앵커 좌표 계산
+        // ====================================
+        const getSourceAnchorCoords = useCallback((offsetY: number = 0) => {
+            if (!groupConnectingFrom) return null;
+
+            const sourceGroup = tasks.find(t => t.id === groupConnectingFrom.groupId);
+            if (!sourceGroup) return null;
+
+            const sourceIndex = tasks.findIndex(t => t.id === groupConnectingFrom.groupId);
+            if (sourceIndex === -1) return null;
+
+            // Group 바의 날짜 범위 계산 (상단에서 import한 함수 사용)
+            const dateRange = calculateGroupDateRange(sourceGroup.id, allTasks || tasks);
+            if (!dateRange) return null;
+
+            const { startDate, totalDays } = dateRange;
+            const startOffset = differenceInDays(startDate, minDate);
+            const endX = (startOffset + totalDays) * pixelsPerDay;
+
+            // Y 좌표 계산 (fullRowData 사용)
+            const rowInfo = fullRowData.find(r => r.index === sourceIndex);
+            const rowStart = rowInfo?.start ?? 0;
+            const rowHeight = rowInfo?.size ?? 30;
+            const bottomY = offsetY + rowStart + (rowHeight - SUMMARY_BAR_HEIGHT) / 2 + SUMMARY_BAR_HEIGHT;
+
+            return { x: endX, y: bottomY };
+        }, [groupConnectingFrom, tasks, allTasks, minDate, pixelsPerDay, fullRowData]);
+
+        // SVG 마우스 이동 핸들러 (프리뷰 라인용)
+        const handleSvgMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>, offsetY: number = 0) => {
+            if (!groupConnectingFrom) {
+                if (mousePosition) handleMouseMove(null);
+                return;
+            }
+
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top - offsetY;
+
+            handleMouseMove({ x, y: y + offsetY });
+        }, [groupConnectingFrom, mousePosition, handleMouseMove]);
+
+        // SVG 마우스 리브 핸들러
+        const handleSvgMouseLeave = useCallback(() => {
+            if (groupConnectingFrom) {
+                handleMouseMove(null);
+            }
+        }, [groupConnectingFrom, handleMouseMove]);
 
         // ====================================
         // Header Only 모드 (TimelineHeader + Milestone Lane)
@@ -267,6 +321,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         // Content Only 모드 (Task Area만)
         // ====================================
         if (renderMode === 'content') {
+            const sourceAnchorContent = getSourceAnchorCoords(0);
+
             return (
                 <div ref={ref} className="relative flex-1" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
                     <svg
@@ -275,6 +331,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         className="block"
                         onContextMenu={handleContextMenu}
                         onClick={handleSvgClick}
+                        onMouseMove={(e) => handleSvgMouseMove(e, 0)}
+                        onMouseLeave={handleSvgMouseLeave}
                     >
                         <SvgDefs />
                         <TimelineGrid
@@ -316,29 +374,32 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             }
                             const y = row.start + (row.size - barHeightForTask) / 2;
 
-                            if (!isMasterView && (isBlock || isGroup)) {
-                                if (isBlock) {
-                                    return (
-                                        <BlockBar
-                                            key={`block-${row.key}`}
-                                            block={task}
-                                            allTasks={allTasks || tasks}
-                                            y={y}
-                                            minDate={minDate}
-                                            pixelsPerDay={pixelsPerDay}
-                                            currentDeltaDays={getGroupDragDeltaDays(task.id)}
-                                            onToggle={onGroupToggle}
-                                            onClick={(e, blockId) => {
-                                                selectTask(blockId, {
-                                                    ctrlKey: e.ctrlKey || e.metaKey,
-                                                    shiftKey: e.shiftKey,
-                                                    visibleTasks: tasks,
-                                                });
-                                            }}
-                                            isFocused={focusedTaskId === task.id}
-                                        />
-                                    );
-                                }
+                            // BLOCK은 모든 뷰에서 BlockBar로 렌더링
+                            if (isBlock) {
+                                return (
+                                    <BlockBar
+                                        key={`block-${row.key}`}
+                                        block={task}
+                                        allTasks={allTasks || tasks}
+                                        y={y}
+                                        minDate={minDate}
+                                        pixelsPerDay={pixelsPerDay}
+                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                        onToggle={onGroupToggle}
+                                        onClick={(e, blockId) => {
+                                            selectTask(blockId, {
+                                                ctrlKey: e.ctrlKey || e.metaKey,
+                                                shiftKey: e.shiftKey,
+                                                visibleTasks: tasks,
+                                            });
+                                        }}
+                                        isFocused={focusedTaskId === task.id}
+                                    />
+                                );
+                            }
+
+                            // GROUP은 MASTER 뷰가 아닐 때만 GroupSummaryBar로 렌더링
+                            if (!isMasterView && isGroup) {
                                 return (
                                     <GroupSummaryBar
                                         key={`group-${row.key}`}
@@ -419,19 +480,32 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             />
                         )}
 
+                        {/* Group Connection Preview Line - content mode */}
+                        {!isMasterView && groupConnectingFrom && mousePosition && sourceAnchorContent && (
+                            <GroupConnectionPreviewLine
+                                sourceX={sourceAnchorContent.x}
+                                sourceY={sourceAnchorContent.y}
+                                targetX={mousePosition.x}
+                                targetY={mousePosition.y}
+                                isCompact={isCompact}
+                            />
+                        )}
+
                         {/* Task Labels */}
                         {rowData.map((row) => {
                             const task = tasks[row.index];
                             if (!task) return null;
-                            // BLOCK, GROUP은 별도 바로 렌더링되므로 라벨 스킵
-                            if (!isMasterView && (task.type === 'BLOCK' || task.type === 'GROUP')) return null;
+                            // BLOCK은 모든 뷰에서 별도 바로 렌더링되므로 라벨 스킵
+                            if (task.type === 'BLOCK') return null;
+                            // GROUP은 MASTER 뷰가 아닐 때만 별도 바로 렌더링되므로 라벨 스킵
+                            if (!isMasterView && task.type === 'GROUP') return null;
 
-                            const isBlock = task.type === 'BLOCK';
+                            // BLOCK은 위에서 이미 return되므로 여기서는 CP/GROUP/TASK만 존재
                             const isCP = task.type === 'CP';
                             const isGroup = task.type === 'GROUP';
 
                             let labelBarHeight: number;
-                            if (isBlock || isCP) {
+                            if (isCP) {
                                 labelBarHeight = BAR_HEIGHT;
                             } else if (isGroup) {
                                 labelBarHeight = SUMMARY_BAR_HEIGHT;
@@ -439,7 +513,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 labelBarHeight = effectiveBarHeight;
                             }
                             const y = row.start + (row.size - labelBarHeight) / 2;
-                            const useMasterStyle = isMasterView || (isUnifiedView && (isBlock || isCP));
+                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
 
                             return (
                                 <TaskBar
@@ -526,6 +600,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
         // ====================================
         // All 모드 (기존 전체 렌더링)
         // ====================================
+        const sourceAnchorAll = getSourceAnchorCoords(MILESTONE_LANE_HEIGHT);
+
         return (
             <div className="flex h-full w-full flex-col overflow-hidden" style={{ backgroundColor: 'var(--gantt-bg-primary)' }}>
                 <div ref={ref} className="relative flex-1">
@@ -545,6 +621,8 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         style={{ backgroundColor: 'var(--gantt-bg-primary)' }}
                         onContextMenu={handleContextMenu}
                         onClick={handleSvgClick}
+                        onMouseMove={(e) => handleSvgMouseMove(e, MILESTONE_LANE_HEIGHT)}
+                        onMouseLeave={handleSvgMouseLeave}
                     >
                         <SvgDefs />
                         <TimelineGrid
@@ -605,29 +683,32 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             }
                             const y = row.start + (row.size - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
 
-                            if (!isMasterView && (isBlock || isGroup)) {
-                                if (isBlock) {
-                                    return (
-                                        <BlockBar
-                                            key={`block-${row.key}`}
-                                            block={task}
-                                            allTasks={allTasks || tasks}
-                                            y={y}
-                                            minDate={minDate}
-                                            pixelsPerDay={pixelsPerDay}
-                                            currentDeltaDays={getGroupDragDeltaDays(task.id)}
-                                            onToggle={onGroupToggle}
-                                            onClick={(e, blockId) => {
-                                                selectTask(blockId, {
-                                                    ctrlKey: e.ctrlKey || e.metaKey,
-                                                    shiftKey: e.shiftKey,
-                                                    visibleTasks: tasks,
-                                                });
-                                            }}
-                                            isFocused={focusedTaskId === task.id}
-                                        />
-                                    );
-                                }
+                            // BLOCK은 모든 뷰에서 BlockBar로 렌더링
+                            if (isBlock) {
+                                return (
+                                    <BlockBar
+                                        key={`block-${row.key}`}
+                                        block={task}
+                                        allTasks={allTasks || tasks}
+                                        y={y}
+                                        minDate={minDate}
+                                        pixelsPerDay={pixelsPerDay}
+                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                                        onToggle={onGroupToggle}
+                                        onClick={(e, blockId) => {
+                                            selectTask(blockId, {
+                                                ctrlKey: e.ctrlKey || e.metaKey,
+                                                shiftKey: e.shiftKey,
+                                                visibleTasks: tasks,
+                                            });
+                                        }}
+                                        isFocused={focusedTaskId === task.id}
+                                    />
+                                );
+                            }
+
+                            // GROUP은 MASTER 뷰가 아닐 때만 GroupSummaryBar로 렌더링
+                            if (!isMasterView && isGroup) {
                                 return (
                                     <GroupSummaryBar
                                         key={`group-${row.key}`}
@@ -708,19 +789,32 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             />
                         )}
 
+                        {/* Group Connection Preview Line - all mode */}
+                        {!isMasterView && groupConnectingFrom && mousePosition && sourceAnchorAll && (
+                            <GroupConnectionPreviewLine
+                                sourceX={sourceAnchorAll.x}
+                                sourceY={sourceAnchorAll.y}
+                                targetX={mousePosition.x}
+                                targetY={mousePosition.y}
+                                isCompact={isCompact}
+                            />
+                        )}
+
                         {/* Task Labels */}
                         {rowData.map((row) => {
                             const task = tasks[row.index];
                             if (!task) return null;
-                            // BLOCK, GROUP은 별도 바로 렌더링되므로 라벨 스킵
-                            if (!isMasterView && (task.type === 'BLOCK' || task.type === 'GROUP')) return null;
+                            // BLOCK은 모든 뷰에서 별도 바로 렌더링되므로 라벨 스킵
+                            if (task.type === 'BLOCK') return null;
+                            // GROUP은 MASTER 뷰가 아닐 때만 별도 바로 렌더링되므로 라벨 스킵
+                            if (!isMasterView && task.type === 'GROUP') return null;
 
-                            const isBlock = task.type === 'BLOCK';
+                            // BLOCK은 위에서 이미 return되므로 여기서는 CP/GROUP/TASK만 존재
                             const isCP = task.type === 'CP';
                             const isGroup = task.type === 'GROUP';
 
                             let labelBarHeight: number;
-                            if (isBlock || isCP) {
+                            if (isCP) {
                                 labelBarHeight = BAR_HEIGHT;
                             } else if (isGroup) {
                                 labelBarHeight = SUMMARY_BAR_HEIGHT;
@@ -728,7 +822,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 labelBarHeight = effectiveBarHeight;
                             }
                             const y = row.start + (row.size - labelBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
-                            const useMasterStyle = isMasterView || (isUnifiedView && (isBlock || isCP));
+                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
 
                             return (
                                 <TaskBar

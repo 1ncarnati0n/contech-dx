@@ -615,6 +615,86 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     }
   }, [tasks, dataService, setAppState]);
 
+  // CP 블럭화 핸들러 (선택된 CP들을 새 BLOCK으로 묶기)
+  const handleTaskBlockify = useCallback(async (taskIds: string[]) => {
+    try {
+      // 현재 상태에서 선택된 CP들 찾기
+      const selectedCPs = tasks.filter(t => taskIds.includes(t.id) && t.type === 'CP');
+      if (selectedCPs.length < 1) {
+        toast.error('블럭화할 CP를 선택하세요.');
+        return;
+      }
+
+      // 날짜 범위 계산
+      const minStart = selectedCPs.reduce((min, t) => t.startDate < min ? t.startDate : min, selectedCPs[0].startDate);
+      const maxEnd = selectedCPs.reduce((max, t) => t.endDate > max ? t.endDate : max, selectedCPs[0].endDate);
+
+      // 새 BLOCK 생성 (UUID는 DB에서 생성)
+      const newBlock: Partial<ConstructionTask> = {
+        parentId: null,  // BLOCK은 최상위 레벨
+        wbsLevel: 1,  // DB에서 NOT NULL이므로 1로 설정
+        type: 'BLOCK',
+        name: '새 블럭',
+        startDate: minStart,
+        endDate: maxEnd,
+        dependencies: [],
+        isExpanded: true,  // 기본값 추가
+      };
+
+      console.log('[handleTaskBlockify] Creating block with data:', {
+        ...newBlock,
+        startDate: newBlock.startDate?.toString(),
+        endDate: newBlock.endDate?.toString(),
+      });
+
+      // DB에 블럭 생성
+      const createdBlock = await dataService.createTask(newBlock as ConstructionTask);
+      const newBlockId = createdBlock.id;
+
+      console.log('[handleTaskBlockify] Created block with ID:', newBlockId);
+
+      // 선택된 CP들의 parentId를 새 블럭으로 업데이트 (DB)
+      await Promise.all(
+        taskIds.map(taskId =>
+          dataService.updateTask(taskId, { parentId: newBlockId })
+        )
+      );
+
+      // 로컬 상태 업데이트
+      setAppState(prev => {
+        // 선택된 CP들의 parentId를 새 블럭으로 변경
+        let newTasks = prev.tasks.map(t => {
+          if (taskIds.includes(t.id)) {
+            return { ...t, parentId: newBlockId };
+          }
+          return t;
+        });
+
+        // 첫 번째 선택된 CP 위치에 BLOCK 삽입
+        const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
+        const blockTask: ConstructionTask = {
+          ...newBlock as ConstructionTask,
+          id: newBlockId,
+        };
+        newTasks.splice(firstSelectedIndex, 0, blockTask);
+
+        return { ...prev, tasks: newTasks };
+      });
+
+      toast.success('블럭이 생성되었습니다.');
+    } catch (error) {
+      console.error('Failed to blockify CPs:', error);
+      // 에러 상세 로깅
+      if (error instanceof Error) {
+        console.error('[handleTaskBlockify] Error message:', error.message);
+        console.error('[handleTaskBlockify] Error stack:', error.stack);
+      } else {
+        console.error('[handleTaskBlockify] Non-Error thrown:', JSON.stringify(error, null, 2));
+      }
+      toast.error('블럭화 실패');
+    }
+  }, [tasks, dataService, setAppState]);
+
   // 그룹 해제 핸들러 (GROUP을 해체하고 자식들을 상위로 이동)
   const handleTaskUngroup = useCallback(async (groupId: string) => {
     try {
@@ -942,6 +1022,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
           onTaskMove={handleTaskMove}
           onTaskGroup={handleTaskGroup}
           onTaskUngroup={handleTaskUngroup}
+          onTaskBlockify={handleTaskBlockify}
           onViewChange={handleViewChange}
           onGroupDrag={handleGroupDrag}
           onMilestoneCreate={handleMilestoneCreate}

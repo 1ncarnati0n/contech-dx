@@ -30,6 +30,12 @@ interface UseGroupConnectionOptions {
     onCycleDetected?: (info: GroupCycleDetectedInfo) => void;
 }
 
+/** 마우스 위치 */
+export interface MousePosition {
+    x: number;
+    y: number;
+}
+
 /** 훅 반환 타입 */
 interface UseGroupConnectionReturn {
     connectingFrom: GroupConnectingState | null;
@@ -37,10 +43,12 @@ interface UseGroupConnectionReturn {
     selectedDepId: string | null;
     hoveredDepId: string | null;
     isConnecting: boolean;
+    mousePosition: MousePosition | null;
     handleGroupEdgeClick: (groupId: string, edge: 'start' | 'end') => void;
     handleGroupEdgeHover: (groupId: string, edge: 'start' | 'end' | null) => void;
     handleDependencyClick: (depId: string) => void;
     handleDependencyHover: (depId: string | null) => void;
+    handleMouseMove: (position: MousePosition | null) => void;
     cancelConnection: () => void;
     deleteSelectedDependency: () => void;
     clearSelection: () => void;
@@ -109,6 +117,7 @@ export const useGroupConnection = ({
     } | null>(null);
     const [selectedDepId, setSelectedDepId] = useState<string | null>(null);
     const [hoveredDepId, setHoveredDepId] = useState<string | null>(null);
+    const [mousePosition, setMousePosition] = useState<MousePosition | null>(null);
 
     // Group 바 edge 클릭 핸들러
     const handleGroupEdgeClick = useCallback(
@@ -192,15 +201,22 @@ export const useGroupConnection = ({
         setHoveredDepId(depId);
     }, []);
 
+    // 마우스 위치 업데이트 핸들러 (프리뷰 라인용)
+    const handleMouseMove = useCallback((position: MousePosition | null) => {
+        setMousePosition(position);
+    }, []);
+
     // 연결 취소
     const cancelConnection = useCallback(() => {
         setConnectingFrom(null);
+        setMousePosition(null);
     }, []);
 
     // 선택 해제 (빈 공간 클릭 시)
     const clearSelection = useCallback(() => {
         setSelectedDepId(null);
         setConnectingFrom(null);
+        setMousePosition(null);
     }, []);
 
     // 선택된 종속성 삭제
@@ -217,10 +233,12 @@ export const useGroupConnection = ({
         selectedDepId,
         hoveredDepId,
         isConnecting: connectingFrom !== null,
+        mousePosition,
         handleGroupEdgeClick,
         handleGroupEdgeHover,
         handleDependencyClick,
         handleDependencyHover,
+        handleMouseMove,
         cancelConnection,
         deleteSelectedDependency,
         clearSelection,
