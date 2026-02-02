@@ -390,6 +390,26 @@ Supabase PostgreSQL 기반 데이터베이스
 
 ## Changelog
 
+### 2025-02-02
+#### Fixed
+- **프로젝트 멤버 권한 체크 버그 수정**: 프로젝트 번호(숫자)와 UUID 형식 불일치로 인한 접근 거부 문제 해결
+  - `lib/auth/requireProjectMember.ts`: 프로젝트 번호 → UUID 변환 로직 추가
+  - `isUUID()`: UUID v4 형식 검증 함수 추가
+  - `isProjectNumber()`: 순수 숫자 문자열 검증 함수 추가
+  - URL `/projects/1` (프로젝트 번호) 접근 시 `projects` 테이블에서 UUID 조회 후 멤버십 체크
+
+#### Added
+- **그룹 종속선 클러스터 동시 이동**: 그룹 간 종속선(FS)이 연결되면 어느 한 그룹을 드래그해도 연결된 모든 그룹과 하위 태스크가 함께 이동
+  - `useGroupDrag.ts`: `groupDependencies` 옵션 추가, 드래그 시작 시 `collectConnectedGroupCluster()`로 연결된 그룹 클러스터 전체 수집
+  - `useTimelineCore.ts`: `useGroupDrag` 훅에 `groupDependencies` 전달
+  - 기존 `dependencyGraph.ts`의 `buildGroupDependencyGraph()`, `collectConnectedGroupCluster()` 함수 활용
+- **관리자 권한 예외 처리**: `requireProjectMember()`에 관리자(admin) 예외 로직 추가
+  - `lib/auth/requireProjectMember.ts`: `isSystemAdmin()` 체크로 admin 역할 사용자는 모든 프로젝트 접근 가능
+  - Early Return 패턴으로 관리자 접근 시 불필요한 DB 쿼리 방지
+- **비멤버 접근 시 안내 메시지**: 프로젝트 멤버가 아닌 사용자 접근 시 toast 알림 표시
+  - `ProjectList.tsx`: URL 파라미터(`?access=denied`) 감지 후 경고 메시지 표시
+  - "프로젝트 접근 권한이 없습니다. 관리자에게 멤버 등록을 요청해주세요." 안내
+
 ### 2025-01-28
 #### Changed
 - **pnpm → npm 마이그레이션**: Vercel 배포 호환성을 위해 패키지 매니저를 npm workspaces로 전환

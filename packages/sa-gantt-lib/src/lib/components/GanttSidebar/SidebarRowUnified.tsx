@@ -3,10 +3,9 @@
 import React, { useCallback, useMemo } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_COLORS } from '../../types';
+import { useSidebarRowStyle, getBadgeStyle, getBadgeText } from './hooks/useSidebarRowStyle';
 import type { SidebarRowUnifiedProps } from './types';
-
-const { ROW_HEIGHT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 /**
  * Unified View 전용 사이드바 행 컴포넌트
@@ -57,13 +56,23 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
     rowHeight,
     onTaskDoubleClick,
 }) => {
-    // Block, CP는 고정 높이 30px, Group은 컴팩트 시 21px, Task는 rowHeight 적용
-    const isCompact = (rowHeight ?? ROW_HEIGHT) < ROW_HEIGHT;
-    const effectiveRowHeight = (isBlock || isCP)
-        ? ROW_HEIGHT
-        : isGroup
-            ? (isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT)
-            : (rowHeight ?? ROW_HEIGHT);
+    // 공통 스타일 훅 사용
+    const { style: rowStyle } = useSidebarRowStyle({
+        task,
+        viewMode: 'UNIFIED',
+        isDragging,
+        isDragOver,
+        dragOverPosition,
+        isFocused,
+        isSelected,
+        isBlock,
+        isCP,
+        isGroup,
+        isVirtualized,
+        rowStart,
+        rowHeight,
+    });
+
     // 기간 계산
     const duration = useMemo(() => {
         return differenceInDays(task.endDate, task.startDate) + 1;
@@ -75,71 +84,13 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
 
         switch (dragOverPosition) {
             case 'before':
-                return {
-                    type: 'line' as const,
-                    position: 'top' as const,
-                };
+                return { position: 'top' as const };
             case 'after':
-                return {
-                    type: 'line' as const,
-                    position: 'bottom' as const,
-                };
-            case 'into':
-                return {
-                    type: 'box' as const,
-                };
+                return { position: 'bottom' as const };
             default:
                 return null;
         }
     }, [isDragOver, dragOverPosition]);
-
-    // 행 스타일 계산 (메모이제이션)
-    const rowStyle = useMemo(() => {
-        let backgroundColor = 'var(--gantt-bg-primary)';
-        let borderColor = 'var(--gantt-border-light)';
-        let boxShadow = 'none';
-
-        if (isDragging) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-        } else if (isDragOver) {
-            if (dragOverPosition === 'into') {
-                // 'into' 인디케이터: 전체 테두리 + 배경 하이라이트
-                backgroundColor = 'rgba(59, 130, 246, 0.1)';
-                boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
-            }
-            // 'before'/'after'는 별도 인디케이터로 처리
-        } else if (isFocused) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-            boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
-        } else if (isSelected) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-            boxShadow = 'inset 0 0 0 2px rgba(59, 130, 246, 0.3)';
-        } else if (isBlock) {
-            // 블록 행 강조 (최상위 계층)
-            backgroundColor = 'var(--gantt-bg-tertiary)';
-        } else if (isCP) {
-            // CP 행 강조
-            backgroundColor = 'var(--gantt-bg-secondary)';
-        } else if (isGroup) {
-            backgroundColor = 'var(--gantt-bg-secondary)';
-        }
-
-        return {
-            height: effectiveRowHeight,
-            backgroundColor,
-            borderBottom: `1px solid ${borderColor}`,
-            boxShadow,
-            opacity: isDragging ? 0.5 : 1,
-            position: 'relative' as const,
-            ...(isVirtualized ? {
-                position: 'absolute' as const,
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${rowStart}px)`,
-            } : {}),
-        };
-    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isBlock, isCP, isGroup, isVirtualized, rowStart, effectiveRowHeight]);
 
     // 토글 핸들러 메모이제이션
     const handleToggle = useCallback((e: React.MouseEvent) => {
@@ -155,31 +106,12 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
         }
     }, [onTaskUpdate, onStartEdit, task]);
 
-    // 타입 배지 색상 (GANTT_COLORS 상수 사용)
+    // 배지 스타일 (공통 함수 사용)
     const badgeStyle = useMemo(() => {
-        if (isBlock) {
-            return {
-                backgroundColor: GANTT_COLORS.badgeBlock,
-                color: GANTT_COLORS.badgeBlockText,
-                border: `1.5px solid ${GANTT_COLORS.badgeBlockBorder}`,
-            };
-        } else if (isCP) {
-            return {
-                backgroundColor: GANTT_COLORS.vermilion,
-                color: 'white',
-            };
-        } else if (isGroup) {
-            return {
-                backgroundColor: GANTT_COLORS.badgeGroup,
-                color: 'white',
-            };
-        } else {
-            return {
-                backgroundColor: GANTT_COLORS.red,
-                color: 'white',
-            };
-        }
+        return getBadgeStyle(isBlock, isCP, isGroup);
     }, [isBlock, isCP, isGroup]);
+
+    const badgeText = getBadgeText(isBlock, isCP, isGroup);
 
     return (
         <div
@@ -205,7 +137,7 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
             title={canExpand ? '더블클릭하여 접기/펼치기' : undefined}
         >
             {/* Drop Indicator: before/after 위치에 2px 라인 표시 */}
-            {dropIndicatorStyle?.type === 'line' && (
+            {dropIndicatorStyle && (
                 <div
                     className="pointer-events-none absolute left-0 right-0 z-10"
                     style={{
@@ -219,6 +151,7 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
                     }}
                 />
             )}
+
             {/* Drag Handle */}
             {onTaskReorder && (
                 <div
@@ -254,12 +187,12 @@ export const SidebarRowUnified: React.FC<SidebarRowUnifiedProps> = React.memo(({
                 )}
 
                 {/* Block/CP/GROUP/Task 구분 배지 */}
-                {(isBlock || isCP || isGroup) ? (
+                {(isBlock || isCP || isGroup) && badgeStyle && badgeText ? (
                     <span
                         className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
                         style={badgeStyle}
                     >
-                        {isBlock ? 'B' : isCP ? 'CP' : 'G'}
+                        {badgeText}
                     </span>
                 ) : (
                     /* Task는 작은 점으로 표시 */

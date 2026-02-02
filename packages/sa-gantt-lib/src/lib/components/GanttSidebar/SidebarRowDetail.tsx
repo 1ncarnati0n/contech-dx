@@ -3,11 +3,10 @@
 import React, { useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
-import { GANTT_LAYOUT, GANTT_COLORS } from '../../types';
+import { GANTT_COLORS } from '../../types';
 import { DaysInputCell } from './DaysInputCell';
+import { useSidebarRowStyle, getBadgeStyle, getBadgeText } from './hooks/useSidebarRowStyle';
 import type { SidebarRowDetailProps } from './types';
-
-const { ROW_HEIGHT, GROUP_ROW_HEIGHT_COMPACT } = GANTT_LAYOUT;
 
 export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     task,
@@ -49,52 +48,22 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
     onDurationChange,
     rowHeight,
 }) => {
-    // Group은 컴팩트 모드에서 21px, Task는 rowHeight 적용 (통합뷰와 동일한 로직)
-    const isCompact = (rowHeight ?? ROW_HEIGHT) < ROW_HEIGHT;
-    const effectiveRowHeight = isGroup
-        ? (isCompact ? GROUP_ROW_HEIGHT_COMPACT : ROW_HEIGHT)
-        : (rowHeight ?? ROW_HEIGHT);
-
-    // 행 스타일 계산 (메모이제이션)
-    const rowStyle = useMemo(() => {
-        let backgroundColor = 'var(--gantt-bg-primary)';
-        let borderColor = 'var(--gantt-border-light)';
-        let boxShadow = 'none';
-
-        if (isDragging) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-        } else if (isDragOver) {
-            if (dragOverPosition === 'into') {
-                backgroundColor = 'var(--gantt-bg-selected)';
-                borderColor = 'var(--gantt-focus)';
-                boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
-            }
-        } else if (isFocused) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-            boxShadow = 'inset 0 0 0 2px var(--gantt-focus)';
-        } else if (isSelected) {
-            backgroundColor = 'var(--gantt-bg-selected)';
-            boxShadow = 'inset 0 0 0 2px rgba(59, 130, 246, 0.3)';
-        } else if (isGroup) {
-            backgroundColor = 'var(--gantt-bg-secondary)';
-        }
-
-        return {
-            height: effectiveRowHeight,
-            backgroundColor,
-            borderBottom: `1px solid ${borderColor}`,
-            borderTop: isDragOver && dragOverPosition === 'before' ? '2px solid var(--gantt-focus)' : 'none',
-            boxShadow,
-            opacity: isDragging ? 0.5 : 1,
-            ...(isVirtualized ? {
-                position: 'absolute' as const,
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${rowStart}px)`,
-            } : {}),
-        };
-    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isGroup, isVirtualized, rowStart, effectiveRowHeight]);
+    // 공통 스타일 훅 사용
+    const { style: rowStyle } = useSidebarRowStyle({
+        task,
+        viewMode: 'DETAIL',
+        isDragging,
+        isDragOver,
+        dragOverPosition,
+        isFocused,
+        isSelected,
+        isBlock: false,
+        isCP: false,
+        isGroup,
+        isVirtualized,
+        rowStart,
+        rowHeight,
+    });
 
     // 토글 핸들러 메모이제이션
     const handleToggle = useCallback((e: React.MouseEvent) => {
@@ -110,16 +79,12 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
         }
     }, [onTaskUpdate, onStartEdit, task]);
 
-    // 배지 스타일 (GANTT_COLORS 상수 사용)
+    // 배지 스타일 (공통 함수 사용)
     const badgeStyle = useMemo(() => {
-        if (isGroup) {
-            return {
-                backgroundColor: GANTT_COLORS.badgeGroup,
-                color: 'white',
-            };
-        }
-        return null;
+        return getBadgeStyle(false, false, isGroup);
     }, [isGroup]);
+
+    const badgeText = getBadgeText(false, false, isGroup);
 
     return (
         <div
@@ -175,13 +140,13 @@ export const SidebarRowDetail: React.FC<SidebarRowDetailProps> = React.memo(({
                     <div className="w-6 shrink-0" />
                 )}
 
-                {/* Group/Task 뱃지 (GANTT_COLORS 상수 사용) */}
-                {isGroup && badgeStyle ? (
+                {/* Group/Task 뱃지 */}
+                {isGroup && badgeStyle && badgeText ? (
                     <span
                         className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
                         style={badgeStyle}
                     >
-                        G
+                        {badgeText}
                     </span>
                 ) : (
                     <span

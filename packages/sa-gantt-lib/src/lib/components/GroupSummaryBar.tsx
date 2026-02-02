@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays } from 'date-fns';
+import { addDays, differenceInDays } from 'date-fns';
 import { ConstructionTask, GANTT_LAYOUT, GANTT_COLORS, GANTT_SUMMARY } from '../types';
 import { dateToX } from '../utils/dateUtils';
 import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupUtils';
@@ -33,6 +33,8 @@ interface GroupSummaryBarProps {
     parentBarHeight?: number;
     isDraggable?: boolean;
     currentDeltaDays?: number;
+    /** 그룹 드래그 정보 (스냅된 정밀한 날짜) - getTaskDragInfo에서 전달 */
+    groupDragInfo?: { startDate: Date; endDate: Date } | null;
     onDragStart?: (
         e: React.MouseEvent,
         groupId: string,
@@ -67,6 +69,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     parentBarHeight,
     isDraggable = false,
     currentDeltaDays = 0,
+    groupDragInfo,
     onDragStart,
     onToggle,
     onClick,
@@ -101,13 +104,18 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
     const { startDate, endDate, totalDays } = dateRange;
     const progress = group.group?.progress ?? 0;
 
-    // 드래그 중이면 deltaDays 적용
-    const adjustedStartDate = currentDeltaDays !== 0
-        ? addDays(startDate, currentDeltaDays)
-        : startDate;
+    // 드래그 중이면 groupDragInfo 우선 사용 (정밀한 스냅된 날짜)
+    // groupDragInfo가 없으면 currentDeltaDays로 fallback
+    const adjustedStartDate = groupDragInfo?.startDate
+        ?? (currentDeltaDays !== 0 ? addDays(startDate, currentDeltaDays) : startDate);
+
+    // 드래그 정보가 있으면 너비도 드래그된 날짜 범위로 계산
+    const adjustedTotalDays = groupDragInfo
+        ? differenceInDays(groupDragInfo.endDate, groupDragInfo.startDate) + 1
+        : totalDays;
 
     const startX = dateToX(adjustedStartDate, minDate, pixelsPerDay);
-    const totalWidth = totalDays * pixelsPerDay;
+    const totalWidth = adjustedTotalDays * pixelsPerDay;
     const progressWidth = totalWidth * (progress / 100);
 
     // 바 Y 위치 (GanttTimeline에서 이미 중앙 정렬된 y 전달받음)

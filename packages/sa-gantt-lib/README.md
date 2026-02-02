@@ -418,6 +418,7 @@ export { useKeyboardNavigation };   // 키보드 네비게이션
 export { useTaskFocus };            // 태스크 포커스
 export { useHistory };              // Undo/Redo
 export { useColumnResizer };        // 컬럼 리사이즈
+export { useGanttMultiDrag };       // 다중 선택 드래그
 
 // ═══════════════════════════════════════════════════════════════════
 // Context
@@ -722,17 +723,33 @@ sa-gantt-lib/
 │   │   │   │   ├── index.tsx, SidebarHeader.tsx
 │   │   │   │   ├── SidebarRow[Master|Detail|Unified].tsx
 │   │   │   │   ├── GanttSidebarContextMenu.tsx
-│   │   │   │   └── hooks/            # useSidebarDragDrop, useMultiSelect 등
+│   │   │   │   ├── forms/            # 통합 폼 컴포넌트
+│   │   │   │   │   ├── BaseTaskForm.tsx
+│   │   │   │   │   ├── formConfigs.ts
+│   │   │   │   │   └── types.ts
+│   │   │   │   └── hooks/
+│   │   │   │       ├── useSidebarDragDrop, useMultiSelect
+│   │   │   │       └── useSidebarRowStyle  # 공통 스타일 훅
 │   │   │   │
 │   │   │   ├── GanttTimeline/        # 타임라인
 │   │   │   │   ├── index.tsx, TimelineHeader.tsx, TimelineGrid.tsx
 │   │   │   │   ├── [Master|Detail]TaskBar.tsx
 │   │   │   │   ├── GroupSummaryBar.tsx, MilestoneMarker.tsx
 │   │   │   │   ├── GroupDependencyLines.tsx
-│   │   │   │   ├── renderers/        # GridLinesRenderer 등
+│   │   │   │   ├── renderers/        # 통합 렌더러 모듈
+│   │   │   │   │   ├── TaskBarsRenderer.tsx
+│   │   │   │   │   ├── TaskLabelsRenderer.tsx
+│   │   │   │   │   ├── MilestoneDashLinesRenderer.tsx
+│   │   │   │   │   └── GridLinesRenderer.tsx
 │   │   │   │   └── hooks/
 │   │   │   │       ├── useBarDrag, useGroupDrag, useMilestoneDrag
-│   │   │   │       └── dragStrategies/  # move, resize 전략 패턴
+│   │   │   │       └── dragStrategies/
+│   │   │   │           ├── utils/       # 모듈화된 드래그 유틸
+│   │   │   │           │   ├── dragCalculations.ts
+│   │   │   │           │   ├── holidaySnap.ts
+│   │   │   │           │   ├── groupDragUtils.ts
+│   │   │   │           │   └── criticalPathUtils.ts
+│   │   │   │           └── [move, resize 전략 패턴]
 │   │   │   │
 │   │   │   └── [기타 컴포넌트]        # Modal, ErrorBoundary, ThemeToggle
 │   │   │
@@ -816,23 +833,27 @@ npm run test:coverage
 tsc --noEmit
 ```
 
-### 테스트 구조
+### 테스트 구조 (9개 파일, 186개 테스트)
 
 ```
 src/lib/
 ├── utils/__tests__/
-│   ├── dateUtils.test.ts          # 날짜 유틸리티
-│   ├── criticalPathUtils.test.ts  # CP 계산
-│   ├── dependencyGraph.test.ts    # 의존성 그래프
-│   ├── typeGuards.test.ts         # 타입 가드
-│   ├── validation.test.ts         # 검증 로직
-│   └── comparisonUtils.test.ts    # 비교 유틸
+│   ├── dateUtils.test.ts          # 날짜 유틸리티 (15 tests)
+│   ├── criticalPathUtils.test.ts  # CP 계산 (7 tests)
+│   ├── dependencyGraph.test.ts    # 의존성 그래프 (10 tests)
+│   ├── groupUtils.test.ts         # 그룹 유틸 (7 tests)
+│   ├── typeGuards.test.ts         # 타입 가드 (35 tests)
+│   ├── validation.test.ts         # 검증 로직 (16 tests)
+│   └── comparisonUtils.test.ts    # 비교 유틸 (35 tests)
 │
 ├── components/GanttTimeline/hooks/__tests__/
-│   └── dragUtils.test.ts          # 드래그 유틸리티
+│   └── dragUtils.test.ts          # 드래그 유틸리티 (29 tests)
+│                                  # - calculateDragDirection, calculateDeltaDays
+│                                  # - getDragCursor, calculateHolidaySnap
+│                                  # - calculateWorkingDaysOffsets, calculateTaskMoveResult
 │
 └── store/__tests__/
-    └── useGanttStore.test.ts      # Zustand 스토어
+    └── useGanttStore.test.ts      # Zustand 스토어 (32 tests)
 ```
 
 ---
@@ -866,9 +887,13 @@ src/lib/
 - [x] 타입 가드 강화
 
 #### 코드 품질
-- [x] 대규모 리팩토링 완료
+- [x] 대규모 리팩토링 완료 (2026.02)
+  - Form 컴포넌트 통합: 984줄 → ~400줄 (60% 감소)
+  - GanttTimeline 렌더러 통합: 915줄 → 703줄 + 통합 렌더러
+  - dragUtils 모듈화: 517줄 → 4개 포커스된 모듈
+  - SidebarRow 스타일 훅 추출 (useSidebarRowStyle)
 - [x] 상수 모듈화 (매직 넘버 제거)
-- [x] 6개 테스트 파일 유지
+- [x] 9개 테스트 파일, 186개 테스트 케이스
 
 ### v0.2.0 (진행 중)
 - [x] Supabase 연동 준비

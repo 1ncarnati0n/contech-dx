@@ -22,7 +22,6 @@ import { TimelineHeader } from './TimelineHeader';
 import { TimelineGrid } from './TimelineGrid';
 import { MilestoneMarker } from './MilestoneMarker';
 import { SvgDefs } from './SvgDefs';
-import { TaskBar } from './TaskBar';
 import { TimelineContextMenu } from './TimelineContextMenu';
 import { GroupDependencyLines, GroupConnectionPreviewLine } from './GroupDependencyLines';
 
@@ -30,18 +29,23 @@ import { GroupDependencyLines, GroupConnectionPreviewLine } from './GroupDepende
 import { useTimelineCore } from './hooks/useTimelineCore';
 
 // Renderers
-import { VerticalGridLines, HorizontalGridLines, GroupRowBackground } from './renderers/GridLinesRenderer';
+import {
+    VerticalGridLines,
+    HorizontalGridLines,
+    GroupRowBackground,
+    TaskBarsRenderer,
+    TaskLabelsRenderer,
+    MilestoneDashLinesRenderer,
+} from './renderers';
 
 // External components
 import { CriticalPathBar } from '../CriticalPathBar';
 import { WorkDaysRatioBar } from '../WorkDaysRatioBar';
-import { GroupSummaryBar } from '../GroupSummaryBar';
-import { BlockBar } from '../BlockBar';
 
 // Types
 import type { BarDragResult } from './types';
 
-const { MILESTONE_LANE_HEIGHT, BAR_HEIGHT } = GANTT_LAYOUT;
+const { MILESTONE_LANE_HEIGHT } = GANTT_LAYOUT;
 const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
 
 export type { BarDragResult };
@@ -356,110 +360,41 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         <HorizontalGridLines rowData={rowData} chartWidth={chartWidth} />
 
                         {/* Task Bars */}
-                        {rowData.map((row) => {
-                            const task = tasks[row.index];
-                            if (!task) return null;
-
-                            const isBlock = task.type === 'BLOCK';
-                            const isGroup = task.type === 'GROUP';
-                            const isCP = task.type === 'CP';
-
-                            let barHeightForTask: number;
-                            if (isBlock || isCP) {
-                                barHeightForTask = BAR_HEIGHT;
-                            } else if (isGroup) {
-                                barHeightForTask = SUMMARY_BAR_HEIGHT;
-                            } else {
-                                barHeightForTask = effectiveBarHeight;
-                            }
-                            const y = row.start + (row.size - barHeightForTask) / 2;
-
-                            // BLOCK은 모든 뷰에서 BlockBar로 렌더링
-                            if (isBlock) {
-                                return (
-                                    <BlockBar
-                                        key={`block-${row.key}`}
-                                        block={task}
-                                        allTasks={allTasks || tasks}
-                                        y={y}
-                                        minDate={minDate}
-                                        pixelsPerDay={pixelsPerDay}
-                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
-                                        onToggle={onGroupToggle}
-                                        onClick={(e, blockId) => {
-                                            selectTask(blockId, {
-                                                ctrlKey: e.ctrlKey || e.metaKey,
-                                                shiftKey: e.shiftKey,
-                                                visibleTasks: tasks,
-                                            });
-                                        }}
-                                        isFocused={focusedTaskId === task.id}
-                                    />
-                                );
-                            }
-
-                            // GROUP은 MASTER 뷰가 아닐 때만 GroupSummaryBar로 렌더링
-                            if (!isMasterView && isGroup) {
-                                return (
-                                    <GroupSummaryBar
-                                        key={`group-${row.key}`}
-                                        group={task}
-                                        allTasks={allTasks || tasks}
-                                        y={y}
-                                        minDate={minDate}
-                                        pixelsPerDay={pixelsPerDay}
-                                        isDraggable={!!onGroupDrag}
-                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
-                                        onDragStart={handleGroupBarMouseDown}
-                                        onToggle={onGroupToggle}
-                                        onClick={(e, groupId) => {
-                                            selectTask(groupId, {
-                                                ctrlKey: e.ctrlKey || e.metaKey,
-                                                shiftKey: e.shiftKey,
-                                                visibleTasks: tasks,
-                                            });
-                                        }}
-                                        isFocused={focusedTaskId === task.id}
-                                        parentBarHeight={BAR_HEIGHT}
-                                        isCompact={isCompact}
-                                        // Group Connection props (renderMode='content')
-                                        connectingFrom={groupConnectingFrom}
-                                        hasConnection={getGroupConnectionStatus(task.id)}
-                                        onEdgeClick={onGroupDependencyCreate ? handleGroupEdgeClick : undefined}
-                                        onEdgeHover={onGroupDependencyCreate ? handleGroupEdgeHover : undefined}
-                                    />
-                                );
-                            }
-
-                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
-
-                            return (
-                                <TaskBar
-                                    key={row.key}
-                                    task={task}
-                                    y={y}
-                                    minDate={minDate}
-                                    pixelsPerDay={pixelsPerDay}
-                                    isMasterView={useMasterStyle}
-                                    renderMode="bar"
-                                    allTasks={allTasks || tasks}
-                                    holidays={holidays}
-                                    calendarSettings={calendarSettings}
-                                    isDraggable={!isMasterView && !useMasterStyle && !!onBarDrag}
-                                    dragInfo={getDragInfo(task.id)}
-                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
-                                    groupDragInfo={getTaskDragInfo(task.id)}
-                                    onDragStart={handleBarMouseDown}
-                                    isFocused={focusedTaskId === task.id}
-                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
-                                        ? () => onTaskDoubleClick(task)
-                                        : undefined}
-                                    onMouseEnter={() => setHoveredTaskId(task.id)}
-                                    onMouseLeave={() => setHoveredTaskId(null)}
-                                    barHeight={effectiveBarHeight}
-                                />
-                            );
-                        })}
+                        <TaskBarsRenderer
+                            tasks={tasks}
+                            allTasks={allTasks || tasks}
+                            rowData={rowData}
+                            fullRowData={fullRowData}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            chartWidth={chartWidth}
+                            effectiveBarHeight={effectiveBarHeight}
+                            isCompact={isCompact}
+                            isMasterView={isMasterView}
+                            isUnifiedView={isUnifiedView}
+                            isBlockTask={(task) => task.type === 'BLOCK'}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            getDragInfo={getDragInfo}
+                            handleBarMouseDown={handleBarMouseDown}
+                            getTaskGroupDragDeltaDays={getTaskGroupDragDeltaDays}
+                            getTaskDragInfo={getTaskDragInfo}
+                            getGroupDragDeltaDays={getGroupDragDeltaDays}
+                            handleGroupBarMouseDown={handleGroupBarMouseDown}
+                            onGroupToggle={onGroupToggle}
+                            selectTask={selectTask}
+                            focusedTaskId={focusedTaskId}
+                            onTaskDoubleClick={onTaskDoubleClick}
+                            onBarDrag={!!onBarDrag}
+                            onGroupDrag={!!onGroupDrag}
+                            setHoveredTaskId={setHoveredTaskId}
+                            groupConnectingFrom={groupConnectingFrom}
+                            getGroupConnectionStatus={getGroupConnectionStatus}
+                            onGroupDependencyCreate={!!onGroupDependencyCreate}
+                            handleGroupEdgeClick={handleGroupEdgeClick}
+                            handleGroupEdgeHover={handleGroupEdgeHover}
+                            offsetY={0}
+                        />
 
                         {/* Group Dependency Lines - content mode */}
                         {!isMasterView && groupDependencies.length > 0 && (
@@ -477,6 +412,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 offsetY={0}
                                 rowData={fullRowData}
                                 isCompact={isCompact}
+                                getTaskDragInfo={getTaskDragInfo}
                             />
                         )}
 
@@ -492,68 +428,30 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         )}
 
                         {/* Task Labels */}
-                        {rowData.map((row) => {
-                            const task = tasks[row.index];
-                            if (!task) return null;
-                            // BLOCK은 모든 뷰에서 별도 바로 렌더링되므로 라벨 스킵
-                            if (task.type === 'BLOCK') return null;
-                            // GROUP은 MASTER 뷰가 아닐 때만 별도 바로 렌더링되므로 라벨 스킵
-                            if (!isMasterView && task.type === 'GROUP') return null;
-
-                            // BLOCK은 위에서 이미 return되므로 여기서는 CP/GROUP/TASK만 존재
-                            const isCP = task.type === 'CP';
-                            const isGroup = task.type === 'GROUP';
-
-                            let labelBarHeight: number;
-                            if (isCP) {
-                                labelBarHeight = BAR_HEIGHT;
-                            } else if (isGroup) {
-                                labelBarHeight = SUMMARY_BAR_HEIGHT;
-                            } else {
-                                labelBarHeight = effectiveBarHeight;
-                            }
-                            const y = row.start + (row.size - labelBarHeight) / 2;
-                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
-
-                            return (
-                                <TaskBar
-                                    key={`label-${row.key}`}
-                                    task={task}
-                                    y={y}
-                                    minDate={minDate}
-                                    pixelsPerDay={pixelsPerDay}
-                                    isMasterView={useMasterStyle}
-                                    renderMode="label"
-                                    allTasks={allTasks || tasks}
-                                    holidays={holidays}
-                                    calendarSettings={calendarSettings}
-                                    dragInfo={getDragInfo(task.id)}
-                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
-                                    groupDragInfo={getTaskDragInfo(task.id)}
-                                    isFocused={focusedTaskId === task.id}
-                                    barHeight={effectiveBarHeight}
-                                />
-                            );
-                        })}
+                        <TaskLabelsRenderer
+                            tasks={tasks}
+                            rowData={rowData}
+                            allTasks={allTasks || tasks}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            effectiveBarHeight={effectiveBarHeight}
+                            isMasterView={isMasterView}
+                            isUnifiedView={isUnifiedView}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            getDragInfo={getDragInfo}
+                            getTaskGroupDragDeltaDays={getTaskGroupDragDeltaDays}
+                            getTaskDragInfo={getTaskDragInfo}
+                            focusedTaskId={focusedTaskId}
+                            offsetY={0}
+                        />
 
                         {/* Milestone Dashed Lines */}
-                        {milestoneLayouts.map((layout) => {
-                            const isDetail = layout.milestone.milestoneType === 'DETAIL';
-                            const lineColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
-                            return (
-                                <line
-                                    key={`ms-line-${layout.milestone.id}`}
-                                    x1={layout.x}
-                                    y1={0}
-                                    x2={layout.x}
-                                    y2={taskAreaHeight}
-                                    stroke={lineColor}
-                                    strokeWidth={1.2}
-                                    strokeDasharray="4, 5"
-                                    className="opacity-90 pointer-events-none"
-                                />
-                            );
-                        })}
+                        <MilestoneDashLinesRenderer
+                            milestoneLayouts={milestoneLayouts}
+                            startY={0}
+                            endY={taskAreaHeight}
+                        />
 
                     </svg>
 
@@ -665,110 +563,41 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         <line x1={0} y1={MILESTONE_LANE_HEIGHT} x2={chartWidth} y2={MILESTONE_LANE_HEIGHT} stroke={GANTT_COLORS.grid} strokeWidth={1} />
 
                         {/* Task Bars */}
-                        {rowData.map((row) => {
-                            const task = tasks[row.index];
-                            if (!task) return null;
-
-                            const isBlock = task.type === 'BLOCK';
-                            const isGroup = task.type === 'GROUP';
-                            const isCP = task.type === 'CP';
-
-                            let barHeightForTask: number;
-                            if (isBlock || isCP) {
-                                barHeightForTask = BAR_HEIGHT;
-                            } else if (isGroup) {
-                                barHeightForTask = SUMMARY_BAR_HEIGHT;
-                            } else {
-                                barHeightForTask = effectiveBarHeight;
-                            }
-                            const y = row.start + (row.size - barHeightForTask) / 2 + MILESTONE_LANE_HEIGHT;
-
-                            // BLOCK은 모든 뷰에서 BlockBar로 렌더링
-                            if (isBlock) {
-                                return (
-                                    <BlockBar
-                                        key={`block-${row.key}`}
-                                        block={task}
-                                        allTasks={allTasks || tasks}
-                                        y={y}
-                                        minDate={minDate}
-                                        pixelsPerDay={pixelsPerDay}
-                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
-                                        onToggle={onGroupToggle}
-                                        onClick={(e, blockId) => {
-                                            selectTask(blockId, {
-                                                ctrlKey: e.ctrlKey || e.metaKey,
-                                                shiftKey: e.shiftKey,
-                                                visibleTasks: tasks,
-                                            });
-                                        }}
-                                        isFocused={focusedTaskId === task.id}
-                                    />
-                                );
-                            }
-
-                            // GROUP은 MASTER 뷰가 아닐 때만 GroupSummaryBar로 렌더링
-                            if (!isMasterView && isGroup) {
-                                return (
-                                    <GroupSummaryBar
-                                        key={`group-${row.key}`}
-                                        group={task}
-                                        allTasks={allTasks || tasks}
-                                        y={y}
-                                        minDate={minDate}
-                                        pixelsPerDay={pixelsPerDay}
-                                        isDraggable={!!onGroupDrag}
-                                        currentDeltaDays={getGroupDragDeltaDays(task.id)}
-                                        onDragStart={handleGroupBarMouseDown}
-                                        onToggle={onGroupToggle}
-                                        onClick={(e, groupId) => {
-                                            selectTask(groupId, {
-                                                ctrlKey: e.ctrlKey || e.metaKey,
-                                                shiftKey: e.shiftKey,
-                                                visibleTasks: tasks,
-                                            });
-                                        }}
-                                        isFocused={focusedTaskId === task.id}
-                                        parentBarHeight={BAR_HEIGHT}
-                                        isCompact={isCompact}
-                                        // Group Connection props (renderMode='all')
-                                        connectingFrom={groupConnectingFrom}
-                                        hasConnection={getGroupConnectionStatus(task.id)}
-                                        onEdgeClick={onGroupDependencyCreate ? handleGroupEdgeClick : undefined}
-                                        onEdgeHover={onGroupDependencyCreate ? handleGroupEdgeHover : undefined}
-                                    />
-                                );
-                            }
-
-                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
-
-                            return (
-                                <TaskBar
-                                    key={row.key}
-                                    task={task}
-                                    y={y}
-                                    minDate={minDate}
-                                    pixelsPerDay={pixelsPerDay}
-                                    isMasterView={useMasterStyle}
-                                    renderMode="bar"
-                                    allTasks={allTasks || tasks}
-                                    holidays={holidays}
-                                    calendarSettings={calendarSettings}
-                                    isDraggable={!isMasterView && !useMasterStyle && !!onBarDrag}
-                                    dragInfo={getDragInfo(task.id)}
-                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
-                                    groupDragInfo={getTaskDragInfo(task.id)}
-                                    onDragStart={handleBarMouseDown}
-                                    isFocused={focusedTaskId === task.id}
-                                    onDoubleClick={!isMasterView && task.type === 'TASK' && onTaskDoubleClick
-                                        ? () => onTaskDoubleClick(task)
-                                        : undefined}
-                                    onMouseEnter={() => setHoveredTaskId(task.id)}
-                                    onMouseLeave={() => setHoveredTaskId(null)}
-                                    barHeight={effectiveBarHeight}
-                                />
-                            );
-                        })}
+                        <TaskBarsRenderer
+                            tasks={tasks}
+                            allTasks={allTasks || tasks}
+                            rowData={rowData}
+                            fullRowData={fullRowData}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            chartWidth={chartWidth}
+                            effectiveBarHeight={effectiveBarHeight}
+                            isCompact={isCompact}
+                            isMasterView={isMasterView}
+                            isUnifiedView={isUnifiedView}
+                            isBlockTask={(task) => task.type === 'BLOCK'}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            getDragInfo={getDragInfo}
+                            handleBarMouseDown={handleBarMouseDown}
+                            getTaskGroupDragDeltaDays={getTaskGroupDragDeltaDays}
+                            getTaskDragInfo={getTaskDragInfo}
+                            getGroupDragDeltaDays={getGroupDragDeltaDays}
+                            handleGroupBarMouseDown={handleGroupBarMouseDown}
+                            onGroupToggle={onGroupToggle}
+                            selectTask={selectTask}
+                            focusedTaskId={focusedTaskId}
+                            onTaskDoubleClick={onTaskDoubleClick}
+                            onBarDrag={!!onBarDrag}
+                            onGroupDrag={!!onGroupDrag}
+                            setHoveredTaskId={setHoveredTaskId}
+                            groupConnectingFrom={groupConnectingFrom}
+                            getGroupConnectionStatus={getGroupConnectionStatus}
+                            onGroupDependencyCreate={!!onGroupDependencyCreate}
+                            handleGroupEdgeClick={handleGroupEdgeClick}
+                            handleGroupEdgeHover={handleGroupEdgeHover}
+                            offsetY={MILESTONE_LANE_HEIGHT}
+                        />
 
                         {/* Group Dependency Lines */}
                         {!isMasterView && groupDependencies.length > 0 && (
@@ -786,6 +615,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                                 offsetY={MILESTONE_LANE_HEIGHT}
                                 rowData={fullRowData}
                                 isCompact={isCompact}
+                                getTaskDragInfo={getTaskDragInfo}
                             />
                         )}
 
@@ -801,68 +631,30 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                         )}
 
                         {/* Task Labels */}
-                        {rowData.map((row) => {
-                            const task = tasks[row.index];
-                            if (!task) return null;
-                            // BLOCK은 모든 뷰에서 별도 바로 렌더링되므로 라벨 스킵
-                            if (task.type === 'BLOCK') return null;
-                            // GROUP은 MASTER 뷰가 아닐 때만 별도 바로 렌더링되므로 라벨 스킵
-                            if (!isMasterView && task.type === 'GROUP') return null;
-
-                            // BLOCK은 위에서 이미 return되므로 여기서는 CP/GROUP/TASK만 존재
-                            const isCP = task.type === 'CP';
-                            const isGroup = task.type === 'GROUP';
-
-                            let labelBarHeight: number;
-                            if (isCP) {
-                                labelBarHeight = BAR_HEIGHT;
-                            } else if (isGroup) {
-                                labelBarHeight = SUMMARY_BAR_HEIGHT;
-                            } else {
-                                labelBarHeight = effectiveBarHeight;
-                            }
-                            const y = row.start + (row.size - labelBarHeight) / 2 + MILESTONE_LANE_HEIGHT;
-                            const useMasterStyle = isMasterView || (isUnifiedView && isCP);
-
-                            return (
-                                <TaskBar
-                                    key={`label-${row.key}`}
-                                    task={task}
-                                    y={y}
-                                    minDate={minDate}
-                                    pixelsPerDay={pixelsPerDay}
-                                    isMasterView={useMasterStyle}
-                                    renderMode="label"
-                                    allTasks={allTasks || tasks}
-                                    holidays={holidays}
-                                    calendarSettings={calendarSettings}
-                                    dragInfo={getDragInfo(task.id)}
-                                    groupDragDeltaDays={getTaskGroupDragDeltaDays(task.id)}
-                                    groupDragInfo={getTaskDragInfo(task.id)}
-                                    isFocused={focusedTaskId === task.id}
-                                    barHeight={effectiveBarHeight}
-                                />
-                            );
-                        })}
+                        <TaskLabelsRenderer
+                            tasks={tasks}
+                            rowData={rowData}
+                            allTasks={allTasks || tasks}
+                            minDate={minDate}
+                            pixelsPerDay={pixelsPerDay}
+                            effectiveBarHeight={effectiveBarHeight}
+                            isMasterView={isMasterView}
+                            isUnifiedView={isUnifiedView}
+                            holidays={holidays}
+                            calendarSettings={calendarSettings}
+                            getDragInfo={getDragInfo}
+                            getTaskGroupDragDeltaDays={getTaskGroupDragDeltaDays}
+                            getTaskDragInfo={getTaskDragInfo}
+                            focusedTaskId={focusedTaskId}
+                            offsetY={MILESTONE_LANE_HEIGHT}
+                        />
 
                         {/* Milestone Dashed Lines */}
-                        {milestoneLayouts.map((layout) => {
-                            const isDetail = layout.milestone.milestoneType === 'DETAIL';
-                            const lineColor = isDetail ? GANTT_COLORS.milestoneDetail : GANTT_COLORS.milestone;
-                            return (
-                                <line
-                                    key={`ms-line-${layout.milestone.id}`}
-                                    x1={layout.x}
-                                    y1={MILESTONE_LANE_HEIGHT}
-                                    x2={layout.x}
-                                    y2={chartHeight}
-                                    stroke={lineColor}
-                                    strokeWidth={1.2}
-                                    strokeDasharray="4, 5"
-                                    className="opacity-90 pointer-events-none"
-                                />
-                            );
-                        })}
+                        <MilestoneDashLinesRenderer
+                            milestoneLayouts={milestoneLayouts}
+                            startY={MILESTONE_LANE_HEIGHT}
+                            endY={chartHeight}
+                        />
 
                     </svg>
 

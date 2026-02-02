@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, Search, Filter, FolderKanban } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button, Card } from '@/components/ui';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ProjectCard } from './ProjectCard';
@@ -16,12 +18,31 @@ interface ProjectListProps {
 }
 
 export function ProjectList({ isAdmin = false }: ProjectListProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   // useAsyncList 훅으로 데이터 fetching 단순화
   const { data: projects, loading, refetch: loadProjects } = useAsyncList<Project>(getProjects);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // 접근 거부 toast 중복 실행 방지 (React Strict Mode 대응)
+  const hasShownAccessDenied = useRef(false);
+
+  // 접근 거부 메시지 처리
+  useEffect(() => {
+    if (searchParams.get('access') === 'denied' && !hasShownAccessDenied.current) {
+      hasShownAccessDenied.current = true;
+      toast.warning('프로젝트 접근 권한이 없습니다', {
+        description: '프로젝트 멤버로 등록되어 있지 않습니다. 관리자에게 멤버 등록을 요청해주세요.',
+        duration: 5000,
+      });
+      // URL에서 쿼리 파라미터 제거
+      router.replace('/projects', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // 필터링된 프로젝트 (useMemo로 최적화)
   const filteredProjects = useMemo(() => {

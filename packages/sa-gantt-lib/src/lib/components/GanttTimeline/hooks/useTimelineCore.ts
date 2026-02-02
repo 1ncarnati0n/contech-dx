@@ -337,6 +337,7 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
         holidays,
         calendarSettings,
         onGroupDrag,
+        groupDependencies,  // 클러스터 동시 이동을 위해 전달
     });
 
     // Group Connection Hook
