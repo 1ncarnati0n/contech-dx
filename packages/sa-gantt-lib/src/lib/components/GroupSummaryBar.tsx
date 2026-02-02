@@ -11,12 +11,12 @@ const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
 
 // 앵커 크기 상수 (통일)
 const ANCHOR_SIZE = {
-    DEFAULT: 4,
-    ACTIVE: 5,  // 연결 중인 앵커만 약간 커짐
+    DEFAULT: 2,
+    ACTIVE: 3,  // 연결 중인 앵커만 약간 커짐
 };
 
-// 앵커 히트 영역 크기 (24x24px로 확대)
-const ANCHOR_HIT_SIZE = 24;
+// 앵커 히트 영역 크기 (20x20px로 확대 - 클릭 편의성 개선)
+const ANCHOR_HIT_SIZE = 20;
 
 /** 연결 포인트 상태 */
 interface GroupConnectingFrom {
@@ -219,14 +219,14 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
             {/* === 종속선 연결 포인트 === */}
             {onEdgeClick && (
                 <>
-                    {/* 시작점 (FS Target) - 왼쪽 끝, 바 하단 */}
+                    {/* 시작점 (FS Target) - 왼쪽 끝, 바 중앙 */}
                     {(() => {
                         const isConnecting = !!connectingFrom;
                         const isConnectingToThis = connectingFrom && connectingFrom.groupId !== group.id;
                         const isConnected = hasConnection.start;
                         // 시작점 호버 또는 연결 중이거나 이미 연결된 경우에만 앵커 표시
                         const showAnchor = isHoveringStart || isConnecting || isConnected;
-                        const anchorY = barY + SUMMARY_BAR_HEIGHT;
+                        const anchorY = barY + SUMMARY_BAR_HEIGHT / 2;  // 바 중앙
 
                         return (
                             <g className="group-connection-start">
@@ -274,22 +274,21 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                                     opacity={showAnchor ? (isConnected || isConnectingToThis ? 1 : 0.6) : 0}
                                     style={{
                                         cursor: isConnectingToThis ? 'pointer' : 'default',
-                                        transition: 'all 0.15s ease',
-                                    }}
+                                                                            }}
                                     pointerEvents={isConnectingToThis ? 'auto' : 'none'}
                                 />
                             </g>
                         );
                     })()}
 
-                    {/* 끝점 (FS Source) - 오른쪽 끝, 바 하단 */}
+                    {/* 끝점 (FS Source) - 오른쪽 끝, 바 중앙 */}
                     {(() => {
                         const isConnectingFromThis = connectingFrom?.groupId === group.id && connectingFrom.edge === 'end';
                         const canStartConnection = !connectingFrom;
                         const isConnected = hasConnection.end;
                         // 끝점 호버 또는 연결 중이거나 이미 연결된 경우에만 앵커 표시
                         const showAnchor = isHoveringEnd || isConnectingFromThis || isConnected;
-                        const anchorY = barY + SUMMARY_BAR_HEIGHT;
+                        const anchorY = barY + SUMMARY_BAR_HEIGHT / 2;  // 바 중앙
 
                         return (
                             <g className="group-connection-end">
@@ -337,8 +336,7 @@ export const GroupSummaryBar: React.FC<GroupSummaryBarProps> = React.memo(({
                                     opacity={showAnchor ? (isConnected || isConnectingFromThis ? 1 : 0.6) : 0}
                                     style={{
                                         cursor: canStartConnection ? 'pointer' : 'default',
-                                        transition: 'all 0.15s ease',
-                                    }}
+                                                                            }}
                                     pointerEvents="auto"
                                 />
                             </g>

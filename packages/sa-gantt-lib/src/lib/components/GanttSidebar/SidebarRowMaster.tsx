@@ -46,6 +46,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
     onTaskUpdate,
     cpSummary,
     onTaskClick,
+    isBlock,
 }) => {
     // 행 스타일 계산 (메모이제이션)
     const rowStyle = useMemo(() => {
@@ -67,6 +68,9 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
         } else if (isSelected) {
             backgroundColor = 'var(--gantt-bg-selected)';
             boxShadow = 'inset 0 0 0 2px rgba(59, 130, 246, 0.3)';
+        } else if (isBlock) {
+            // BLOCK 행은 구분되는 배경색 사용
+            backgroundColor = 'var(--gantt-bg-secondary)';
         } else if (isGroup) {
             backgroundColor = 'var(--gantt-bg-secondary)';
         }
@@ -86,7 +90,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                 transform: `translateY(${rowStart}px)`,
             } : {}),
         };
-    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isGroup, isVirtualized, rowStart]);
+    }, [isDragging, isDragOver, dragOverPosition, isFocused, isSelected, isBlock, isGroup, isVirtualized, rowStart]);
 
     // 토글 핸들러 메모이제이션
     const handleToggle = useCallback((e: React.MouseEvent) => {
@@ -104,8 +108,8 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
 
     // 배지 스타일 (GANTT_COLORS 상수 사용)
     const badgeStyle = useMemo(() => {
-        if (isGroup) {
-            // Block 배지
+        if (isBlock) {
+            // BLOCK 배지 - 최상위 계층
             return {
                 backgroundColor: GANTT_COLORS.badgeBlock,
                 color: GANTT_COLORS.badgeBlockText,
@@ -118,7 +122,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                 color: 'white',
             };
         }
-    }, [isGroup]);
+    }, [isBlock]);
 
     return (
         <div
@@ -133,13 +137,13 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
             className="box-border flex items-center transition-all duration-150"
             style={rowStyle}
             onDoubleClick={() => {
-                if (isGroup && canExpand) {
+                if ((isBlock || isGroup) && canExpand) {
                     onToggle(task.id);
-                } else if (!isGroup) {
+                } else if (!isBlock && !isGroup) {
                     onTaskClick(task);
                 }
             }}
-            title={isGroup && canExpand ? '더블클릭하여 접기/펼치기' : !isGroup ? '더블클릭하여 상세 공정표 보기' : undefined}
+            title={(isBlock || isGroup) && canExpand ? '더블클릭하여 접기/펼치기' : (!isBlock && !isGroup) ? '더블클릭하여 상세 공정표 보기' : undefined}
         >
             {/* Drag Handle */}
             {onTaskReorder && (
@@ -177,7 +181,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     className="mr-1.5 shrink-0 rounded px-1 text-[10px] font-medium"
                     style={badgeStyle}
                 >
-                    {isGroup ? 'B' : 'CP'}
+                    {isBlock ? 'B' : 'CP'}
                 </span>
 
                 {editingTaskId === task.id ? (
@@ -202,7 +206,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                         style={{
                             fontWeight: 500,
                             color: 'var(--gantt-text-primary)',
-                            cursor: isGroup ? 'text' : 'default',
+                            cursor: (isBlock || isGroup) ? 'text' : 'default',
                         }}
                         onDoubleClick={handleStartEdit}
                         title={onTaskUpdate ? '더블클릭하여 이름 편집' : undefined}
@@ -221,7 +225,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >
-                {isGroup ? '-' : cpSummary ? `${cpSummary.totalDays}일` : '-'}
+                {(isBlock || isGroup) ? '-' : cpSummary ? `${cpSummary.totalDays}일` : '-'}
             </div>
 
             {/* Work Days */}
@@ -233,7 +237,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                     borderRight: '1px solid var(--gantt-border-light)',
                 }}
             >
-                {isGroup ? '-' : cpSummary ? `${formatNum(cpSummary.workDays)}일` : '-'}
+                {(isBlock || isGroup) ? '-' : cpSummary ? `${formatNum(cpSummary.workDays)}일` : '-'}
             </div>
 
             {/* Non-Work Days */}
@@ -241,7 +245,7 @@ export const SidebarRowMaster: React.FC<SidebarRowMasterProps> = React.memo(({
                 className="flex shrink-0 items-center justify-center text-xs"
                 style={{ width: columns[3].width, color: GANTT_COLORS.teal }}
             >
-                {isGroup ? '-' : cpSummary ? `${formatNum(cpSummary.nonWorkDays)}일` : '-'}
+                {(isBlock || isGroup) ? '-' : cpSummary ? `${formatNum(cpSummary.nonWorkDays)}일` : '-'}
             </div>
         </div>
     );

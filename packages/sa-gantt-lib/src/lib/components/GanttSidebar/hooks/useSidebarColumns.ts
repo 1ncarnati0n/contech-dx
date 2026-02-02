@@ -102,6 +102,7 @@ export const useSidebarColumns = ({
     }, [activeCPId, allTasks]);
 
     // 그룹 깊이 계산 (Master View용)
+    // BLOCK과 GROUP 모두 계층 구조에 포함하여 indent 계산
     const getMasterGroupDepth = useCallback((task: ConstructionTask): number => {
         if (!task.parentId) return 0;
 
@@ -110,7 +111,8 @@ export const useSidebarColumns = ({
 
         while (currentParentId) {
             const parent = allTasks.find(t => t.id === currentParentId);
-            if (parent?.type === 'GROUP') depth++;
+            // BLOCK과 GROUP 모두 depth에 포함
+            if (parent?.type === 'BLOCK' || parent?.type === 'GROUP') depth++;
             currentParentId = parent?.parentId;
         }
         return depth;

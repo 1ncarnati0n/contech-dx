@@ -115,6 +115,8 @@ export interface SidebarRowProps {
 export interface SidebarRowMasterProps extends SidebarRowProps {
     cpSummary: CriticalPathSummary | null;
     onTaskClick: (task: ConstructionTask) => void;
+    /** BLOCK 타입 여부 (최상위 계층) */
+    isBlock?: boolean;
 }
 
 export interface SidebarRowDetailProps extends SidebarRowProps {

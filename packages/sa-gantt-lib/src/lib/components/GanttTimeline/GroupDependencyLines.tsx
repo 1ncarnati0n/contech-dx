@@ -2,11 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
-import { GANTT_COLORS, GANTT_STROKE, GANTT_STROKE_COMPACT, GANTT_SUMMARY } from '../../types';
+import { GANTT_COLORS, GANTT_STROKE, GANTT_STROKE_COMPACT } from '../../types';
 import type { ConstructionTask, GroupDependency } from '../../types';
 import { calculateGroupDateRange } from '../../utils/groupUtils';
-
-const { BAR_HEIGHT: SUMMARY_BAR_HEIGHT } = GANTT_SUMMARY;
 
 /** 행 데이터 타입 (동적 높이 계산용) */
 interface RowData {
@@ -52,7 +50,7 @@ interface DependencyPathInfo {
 
 /**
  * Group 바의 좌표 계산
- * @returns { startX, endX, bottomY } - Group 바의 시작X, 끝X, 하단Y
+ * @returns { startX, endX, centerY } - Group 바의 시작X, 끝X, 중앙Y
  */
 const getGroupBarCoords = (
     group: ConstructionTask,
@@ -62,7 +60,7 @@ const getGroupBarCoords = (
     pixelsPerDay: number,
     offsetY: number = 0,
     rowData?: RowData[]
-): { startX: number; endX: number; bottomY: number } | null => {
+): { startX: number; endX: number; centerY: number } | null => {
     const dateRange = calculateGroupDateRange(group.id, allTasks);
     if (!dateRange) return null;
 
@@ -71,13 +69,13 @@ const getGroupBarCoords = (
     const startX = startOffset * pixelsPerDay;
     const endX = (startOffset + totalDays) * pixelsPerDay;
 
-    // Y 좌표 계산 (Group Summary Bar 하단)
+    // Y 좌표 계산 (Group Summary Bar 중앙)
     const rowInfo = rowData?.find(r => r.index === rowIndex);
     const rowStart = rowInfo?.start ?? 0;
     const rowHeight = rowInfo?.size ?? 30;
-    const bottomY = offsetY + rowStart + (rowHeight - SUMMARY_BAR_HEIGHT) / 2 + SUMMARY_BAR_HEIGHT;
+    const centerY = offsetY + rowStart + rowHeight / 2;
 
-    return { startX, endX, bottomY };
+    return { startX, endX, centerY };
 };
 
 /** createFSPath 반환 타입 */
@@ -88,8 +86,7 @@ interface FSPathResult {
 
 /**
  * FS 종속성 경로 생성 (선행 끝 → 후행 시작)
- * 직각 경로: 수직(아래로) → 수평 → 수직(위로/아래로)
- * 바 하단에서 시작하여 아래로 내려갔다가 수평 연결 후 타겟에 연결
+ * L자형 경로: 수평 → 수직 (한 번만 꺾임)
  * @returns { path, endDirection } - 경로와 끝점 화살표 방향
  */
 const createFSPath = (
@@ -98,44 +95,27 @@ const createFSPath = (
     targetX: number,
     targetY: number
 ): FSPathResult => {
-    const VERTICAL_GAP = 12; // 바 하단에서 선까지 수직 간격
-    const EXTRA_DROP = 15; // 바 아래로 추가로 내려가는 거리
-
-    // Y 차이에 따른 경로 결정
-    const verticalDiff = targetY - sourceY;
-
     // 끝점 방향 결정 (마지막 세그먼트가 어느 방향으로 진입하는지)
     let endDirection: ArrowDirection;
 
-    if (Math.abs(verticalDiff) < 5) {
-        // 같은 행 - 단순 경로 (아래로 내려갔다가 수평 후 다시 올라옴)
-        const midY = sourceY + VERTICAL_GAP + EXTRA_DROP;
-        // 마지막 세그먼트가 위로 올라가므로 화살표는 위로 향해야 함
-        endDirection = 'up';
+    if (Math.abs(targetY - sourceY) < 5) {
+        // 같은 행 - 수평 직선
+        endDirection = 'right';
         return {
-            path: `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`,
+            path: `M ${sourceX} ${sourceY} H ${targetX}`,
             endDirection
         };
     }
 
-    // 일반 FS 경로: 아래로 → 수평으로 → 위로/아래로
-    // 두 바 중 더 아래쪽 바의 Y + 간격 위치를 중간 경유점으로 사용
-    const midY = Math.max(sourceY, targetY) + VERTICAL_GAP + EXTRA_DROP;
-
-    // 마지막 세그먼트 방향 결정
-    if (targetY < midY) {
-        // 타겟이 midY보다 위에 있으면 → 위로 올라감 → 화살표 위로
+    // L자형: 수평 → 수직
+    if (targetY < sourceY) {
         endDirection = 'up';
-    } else if (targetY > midY) {
-        // 타겟이 midY보다 아래에 있으면 → 아래로 내려감 → 화살표 아래로
-        endDirection = 'down';
     } else {
-        // 같은 높이 → 수평으로 진입 → 기본 우향 화살표
-        endDirection = 'right';
+        endDirection = 'down';
     }
 
     return {
-        path: `M ${sourceX} ${sourceY} V ${midY} H ${targetX} V ${targetY}`,
+        path: `M ${sourceX} ${sourceY} H ${targetX} V ${targetY}`,
         endDirection
     };
 };
@@ -210,21 +190,21 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
 
                 if (!sourceCoords || !targetCoords) return null;
 
-                // FS: 선행 끝점(endX) → 후행 시작점(startX), 바 하단 기준
+                // FS: 선행 끝점(endX) → 후행 시작점(startX), 바 중앙 기준
                 const { path, endDirection } = createFSPath(
                     sourceCoords.endX,
-                    sourceCoords.bottomY,
+                    sourceCoords.centerY,
                     targetCoords.startX,
-                    targetCoords.bottomY
+                    targetCoords.centerY
                 );
 
                 return {
                     id: dep.id,
                     path,
                     sourceX: sourceCoords.endX,
-                    sourceY: sourceCoords.bottomY,
+                    sourceY: sourceCoords.centerY,
                     targetX: targetCoords.startX,
-                    targetY: targetCoords.bottomY,
+                    targetY: targetCoords.centerY,
                     endDirection,
                 };
             })
@@ -301,8 +281,7 @@ export const GroupDependencyLines: React.FC<GroupDependencyLinesProps> = ({
                             markerEnd={markerEnd}
                             style={{
                                 cursor: 'pointer',
-                                transition: 'stroke 0.15s, stroke-width 0.15s',
-                            }}
+                                                            }}
                             onClick={() => onDependencyClick?.(pathInfo.id)}
                             onMouseEnter={() => onDependencyHover?.(pathInfo.id)}
                             onMouseLeave={() => onDependencyHover?.(null)}
@@ -340,12 +319,13 @@ export const GroupConnectionPreviewLine: React.FC<GroupConnectionPreviewLineProp
     const STROKE = isCompact ? GANTT_STROKE_COMPACT : GANTT_STROKE;
     const markerSuffix = isCompact ? '-compact' : '';
 
+    // 실제 종속성 선과 동일한 직각 경로 사용
+    const { path } = createFSPath(sourceX, sourceY, targetX, targetY);
+
     return (
-        <line
-            x1={sourceX}
-            y1={sourceY}
-            x2={targetX}
-            y2={targetY}
+        <path
+            d={path}
+            fill="none"
             stroke={GANTT_COLORS.success}
             strokeWidth={STROKE.HOVER}
             strokeDasharray={isCompact ? '3,2' : '5,3'}

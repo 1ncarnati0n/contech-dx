@@ -230,10 +230,20 @@ export function GanttChart({
             const collectVisible = (parentId: string | null) => {
                 const children = childrenMap.get(parentId) || [];
                 children.forEach(task => {
+                    // BLOCK은 wbsLevel 관계없이 표시 (최상위 레벨)
+                    if (task.type === 'BLOCK') {
+                        if (parentId === null || expandedTaskIds.has(parentId)) {
+                            visible.push(task);
+                            if (expandedTaskIds.has(task.id)) {
+                                collectVisible(task.id);  // BLOCK 하위 탐색
+                            }
+                        }
+                        return;
+                    }
                     if (task.wbsLevel !== 1) return;
                     if (parentId === null || expandedTaskIds.has(parentId)) {
                         visible.push(task);
-                        if (task.type === 'GROUP') {
+                        if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
                             collectVisible(task.id);
                         }
                     }
