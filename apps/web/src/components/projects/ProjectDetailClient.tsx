@@ -107,8 +107,8 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [project, setProject] = useState<Project>(initialProject);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
+  const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
 
   // 프로필 로드

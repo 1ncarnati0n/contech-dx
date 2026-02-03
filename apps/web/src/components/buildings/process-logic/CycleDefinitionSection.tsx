@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Fragment } from 'react';
-import { ChevronDown, ChevronRight, Timer, Check, Minus } from 'lucide-react';
+import { Timer, Check, Minus } from 'lucide-react';
 import { Card } from '@/components/ui';
 
 interface CycleDefinition {
@@ -96,7 +96,6 @@ interface CycleDefinitionSectionProps {
 export function CycleDefinitionSection({
   isEditing = false,
 }: CycleDefinitionSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [selectedCycle, setSelectedCycle] = useState<string | null>('6일');
 
   const getCategoryColor = (category: string) => {
@@ -121,10 +120,7 @@ export function CycleDefinitionSection({
   return (
     <Card className="p-0 overflow-hidden">
       {/* 섹션 헤더 */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-      >
+      <div className="w-full flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
             <Timer className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -138,16 +134,10 @@ export function CycleDefinitionSection({
             </p>
           </div>
         </div>
-        {isExpanded ? (
-          <ChevronDown className="w-5 h-5 text-zinc-400" />
-        ) : (
-          <ChevronRight className="w-5 h-5 text-zinc-400" />
-        )}
-      </button>
+      </div>
 
       {/* 섹션 콘텐츠 */}
-      {isExpanded && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700">
+      <div className="border-t border-zinc-200 dark:border-zinc-700">
           {/* 사이클 비교 테이블 */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -307,7 +297,6 @@ export function CycleDefinitionSection({
             </ul>
           </div>
         </div>
-      )}
     </Card>
   );
 }

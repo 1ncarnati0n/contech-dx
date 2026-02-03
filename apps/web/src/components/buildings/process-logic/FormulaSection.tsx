@@ -72,7 +72,6 @@ interface FormulaSectionProps {
 }
 
 export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
 
   const toggleFormula = (id: string) => {
@@ -82,10 +81,7 @@ export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
   return (
     <Card className="p-0 overflow-hidden">
       {/* 섹션 헤더 */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-      >
+      <div className="w-full flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -99,16 +95,10 @@ export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
             </p>
           </div>
         </div>
-        {isExpanded ? (
-          <ChevronDown className="w-5 h-5 text-zinc-400" />
-        ) : (
-          <ChevronRight className="w-5 h-5 text-zinc-400" />
-        )}
-      </button>
+      </div>
 
       {/* 섹션 콘텐츠 */}
-      {isExpanded && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700">
+      <div className="border-t border-zinc-200 dark:border-zinc-700">
           <div className="p-4 space-y-3">
             {FORMULAS.map((formula) => (
               <div
@@ -206,7 +196,6 @@ export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
             </div>
           </div>
         </div>
-      )}
     </Card>
   );
 }

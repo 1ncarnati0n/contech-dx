@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, CollapsibleSection } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
 import type { Building, CoreType, SlabType, UnitTypePattern } from '@/lib/types';
 import { updateBuilding, getBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { Save, Building2, Layers, Ruler } from 'lucide-react';
+import { Save, Building2 } from 'lucide-react';
 import { logger } from '@/lib/utils/logger';
 
 // 섹션 컴포넌트 import
@@ -669,16 +669,11 @@ export function BuildingBasicInfoRefactored({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 섹션 1: 구조 정보 */}
-        <CollapsibleSection
-          title="구조 정보"
-          badge={
-            coreCount > 0 ? (
-              <Badge variant="info">{coreCount}개 코어</Badge>
-            ) : null
-          }
-          defaultOpen={true}
-          headerClassName="bg-blue-50/50 dark:bg-blue-900/10"
-        >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">구조 정보</h3>
+            {coreCount > 0 && <Badge variant="info">{coreCount}개 코어</Badge>}
+          </div>
           <StructureInfoSection
             coreCount={coreCount}
             coreType={coreType}
@@ -686,24 +681,14 @@ export function BuildingBasicInfoRefactored({
             onCoreTypeChange={setCoreType}
             onSlabTypeChange={setSlabType}
           />
-        </CollapsibleSection>
+        </div>
 
         {/* 섹션 2: 단위세대 구성 */}
-        <CollapsibleSection
-          title="단위세대 구성"
-          badge={
-            totalUnitCount > 0 ? (
-              <Badge variant="info">{totalUnitCount} 세대</Badge>
-            ) : null
-          }
-          defaultOpen={true}
-          headerClassName="bg-green-50/50 dark:bg-green-900/10"
-          headerActions={
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-slate-400" />
-            </div>
-          }
-        >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">단위세대 구성</h3>
+            {totalUnitCount > 0 && <Badge variant="info">{totalUnitCount} 세대</Badge>}
+          </div>
           <UnitTypePatternSection
             unitTypePattern={unitTypePattern}
             basementCount={basementCount}
@@ -731,25 +716,17 @@ export function BuildingBasicInfoRefactored({
             onSave={handleSaveUnitTypePattern}
             isSaving={isSaving}
           />
-        </CollapsibleSection>
+        </div>
 
         {/* 섹션 3: 층고 설정 */}
-        <CollapsibleSection
-          title="기준 층고 설정"
-          defaultOpen={false}
-          headerClassName="bg-amber-50/50 dark:bg-amber-900/10"
-          headerActions={
-            <div className="flex items-center gap-2">
-              <Ruler className="w-4 h-4 text-slate-400" />
-            </div>
-          }
-        >
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">기준 층고 설정</h3>
           <FloorHeightSection
             heights={heights}
             phCount={phCount}
             onHeightsChange={setHeights}
           />
-        </CollapsibleSection>
+        </div>
 
         {/* 저장 버튼 */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">

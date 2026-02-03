@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Edit, Save, X, Lock } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { Lock } from 'lucide-react';
+import { Card } from '@/components/ui';
 import {
   FormulaSection,
   ProcessModuleSection,
@@ -102,62 +102,19 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* 액션 버튼 영역 */}
-      <div className="flex items-center justify-end gap-2">
-        {isEditing ? (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              className="gap-2"
-            >
-              <X className="w-4 h-4" />
-              취소
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSave}
-              disabled={!hasChanges}
-              className="gap-2"
-            >
-              <Save className="w-4 h-4" />
-              저장
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleEditing}
-            className="gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            편집
-          </Button>
-        )}
-      </div>
-
-      {/* 변경 사항 알림 배너 */}
-      {hasChanges && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-          <span className="text-sm text-amber-700 dark:text-amber-300">
-            저장되지 않은 변경 사항이 있습니다.
-          </span>
-        </div>
-      )}
-
       {/* 계산 공식 섹션 */}
       <FormulaSection isEditing={isEditing} />
 
-      {/* 공정 모듈 섹션 */}
+      {/* 공정 모듈 섹션 - 편집 버튼이 이 섹션 헤더에 있음 */}
       <ProcessModuleSection
         isEditing={isEditing}
         modules={modules}
+        hasChanges={hasChanges}
         onModuleChange={updateModules}
         onResetToDefault={handleResetToDefault}
+        onToggleEditing={toggleEditing}
+        onSave={handleSave}
+        onCancel={handleCancel}
       />
 
       {/* 사이클 정의 섹션 */}

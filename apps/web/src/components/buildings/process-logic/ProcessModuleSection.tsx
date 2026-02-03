@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Layers, Edit2, RotateCcw } from 'lucide-react';
+import { Layers, Edit2, RotateCcw, Edit, Save, X } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { PROCESS_MODULES, type ProcessModule, type ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory } from '@/lib/types';
@@ -9,8 +9,12 @@ import type { ProcessCategory } from '@/lib/types';
 interface ProcessModuleSectionProps {
   isEditing: boolean;
   modules: ProcessModule[];
+  hasChanges?: boolean;
   onModuleChange?: (modules: ProcessModule[]) => void;
   onResetToDefault?: () => void;
+  onToggleEditing?: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
 }
 
 // 카테고리 탭 정의
@@ -26,10 +30,13 @@ const CATEGORY_TABS: { id: ProcessCategory; label: string }[] = [
 export function ProcessModuleSection({
   isEditing,
   modules,
+  hasChanges,
   onModuleChange,
   onResetToDefault,
+  onToggleEditing,
+  onSave,
+  onCancel,
 }: ProcessModuleSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [activeCategory, setActiveCategory] = useState<ProcessCategory>('버림');
 
   // 현재 카테고리의 모듈들 필터링
@@ -71,10 +78,7 @@ export function ProcessModuleSection({
   return (
     <Card className="p-0 overflow-hidden">
       {/* 섹션 헤더 */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-      >
+      <div className="w-full flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <Layers className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -89,31 +93,72 @@ export function ProcessModuleSection({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isEditing && onResetToDefault && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onResetToDefault();
-              }}
-              className="gap-1"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              기본값
-            </Button>
-          )}
-          {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-zinc-400" />
+          {/* 편집/저장/취소 버튼 */}
+          {isEditing ? (
+            <>
+              {onResetToDefault && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onResetToDefault}
+                  className="gap-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  기본값
+                </Button>
+              )}
+              {onCancel && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCancel}
+                  className="gap-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  취소
+                </Button>
+              )}
+              {onSave && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onSave}
+                  disabled={!hasChanges}
+                  className="gap-1"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  저장
+                </Button>
+              )}
+            </>
           ) : (
-            <ChevronRight className="w-5 h-5 text-zinc-400" />
+            onToggleEditing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleEditing}
+                className="gap-1"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                편집
+              </Button>
+            )
           )}
         </div>
-      </button>
+      </div>
+
+      {/* 변경 사항 알림 배너 */}
+      {hasChanges && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800">
+          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+          <span className="text-sm text-amber-700 dark:text-amber-300">
+            저장되지 않은 변경 사항이 있습니다.
+          </span>
+        </div>
+      )}
 
       {/* 섹션 콘텐츠 */}
-      {isExpanded && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700">
+      <div className="border-t border-zinc-200 dark:border-zinc-700">
           {/* 카테고리 탭 */}
           <div className="flex items-center gap-1 p-2 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto">
             {CATEGORY_TABS.map((tab) => (
@@ -277,7 +322,6 @@ export function ProcessModuleSection({
             </div>
           )}
         </div>
-      )}
     </Card>
   );
 }
