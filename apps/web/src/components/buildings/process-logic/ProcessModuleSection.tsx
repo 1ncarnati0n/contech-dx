@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Layers, Edit2, RotateCcw, Edit, Save, X } from 'lucide-react';
+import { Layers, RotateCcw, Edit, Save, X } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { PROCESS_MODULES, type ProcessModule, type ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory } from '@/lib/types';
@@ -66,7 +66,14 @@ export function ProcessModuleSection({
 
           return {
             ...item,
-            [field]: typeof value === 'string' ? (isNaN(Number(value)) ? value : Number(value)) : value,
+            [field]:
+              typeof value === 'string'
+                ? value === ''
+                  ? null
+                  : isNaN(Number(value))
+                    ? value
+                    : Number(value)
+                : value,
           };
         }),
       };
@@ -315,7 +322,7 @@ export function ProcessModuleSection({
           {/* 편집 힌트 */}
           {isEditing && (
             <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border-t border-zinc-200 dark:border-zinc-700">
-              <Edit2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+              <Edit className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
               <span className="text-sm text-yellow-700 dark:text-yellow-300">
                 테이블의 숫자를 직접 클릭하여 수정할 수 있습니다.
               </span>

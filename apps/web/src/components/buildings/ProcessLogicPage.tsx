@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
 import { Card } from '@/components/ui';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
   FormulaSection,
   ProcessModuleSection,
@@ -21,6 +22,12 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
   // 프로필 상태 관리
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  // 확인 다이얼로그 상태
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'cancel' | 'reset' | null;
+  }>({ open: false, type: null });
 
   // 프로필 로드
   useEffect(() => {
@@ -58,20 +65,25 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
   const handleCancel = () => {
     if (hasChanges) {
-      if (window.confirm('변경 사항을 취소하시겠습니까?')) {
-        cancelChanges();
-        toast.info('변경 사항이 취소되었습니다.');
-      }
+      setConfirmDialog({ open: true, type: 'cancel' });
     } else {
       toggleEditing();
     }
   };
 
   const handleResetToDefault = () => {
-    if (window.confirm('모든 설정을 기본값으로 초기화하시겠습니까?')) {
+    setConfirmDialog({ open: true, type: 'reset' });
+  };
+
+  const handleConfirmDialogAction = () => {
+    if (confirmDialog.type === 'cancel') {
+      cancelChanges();
+      toast.info('변경 사항이 취소되었습니다.');
+    } else if (confirmDialog.type === 'reset') {
       resetToDefault();
       toast.info('기본값으로 초기화되었습니다. 저장 버튼을 클릭하여 적용하세요.');
     }
+    setConfirmDialog({ open: false, type: null });
   };
 
   // 프로필 로딩 중
@@ -103,7 +115,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
   return (
     <div className="space-y-6">
       {/* 계산 공식 섹션 */}
-      <FormulaSection isEditing={isEditing} />
+      <FormulaSection />
 
       {/* 공정 모듈 섹션 - 편집 버튼이 이 섹션 헤더에 있음 */}
       <ProcessModuleSection
@@ -118,7 +130,23 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
       />
 
       {/* 사이클 정의 섹션 */}
-      <CycleDefinitionSection isEditing={isEditing} />
+      <CycleDefinitionSection />
+
+      {/* 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog({ open, type: open ? confirmDialog.type : null })}
+        title={confirmDialog.type === 'cancel' ? '변경 취소' : '기본값 초기화'}
+        description={
+          confirmDialog.type === 'cancel'
+            ? '저장하지 않은 변경 사항이 모두 사라집니다. 정말 취소하시겠습니까?'
+            : '모든 설정이 기본값으로 초기화됩니다. 계속하시겠습니까?'
+        }
+        confirmText={confirmDialog.type === 'cancel' ? '취소하기' : '초기화'}
+        cancelText="돌아가기"
+        variant="warning"
+        onConfirm={handleConfirmDialogAction}
+      />
     </div>
   );
 }

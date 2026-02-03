@@ -89,13 +89,7 @@ const CYCLE_DETAILS: Record<
   ],
 };
 
-interface CycleDefinitionSectionProps {
-  isEditing?: boolean;
-}
-
-export function CycleDefinitionSection({
-  isEditing = false,
-}: CycleDefinitionSectionProps) {
+export function CycleDefinitionSection() {
   const [selectedCycle, setSelectedCycle] = useState<string | null>('6일');
 
   const getCategoryColor = (category: string) => {

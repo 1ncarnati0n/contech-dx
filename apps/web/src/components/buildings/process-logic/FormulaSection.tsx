@@ -67,11 +67,7 @@ const FORMULAS: Formula[] = [
   },
 ];
 
-interface FormulaSectionProps {
-  isEditing?: boolean;
-}
-
-export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
+export function FormulaSection() {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
 
   const toggleFormula = (id: string) => {
