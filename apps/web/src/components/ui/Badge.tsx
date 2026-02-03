@@ -32,6 +32,9 @@ const badgeVariants = cva(
           "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
         user:
           "border-gray-300 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+        // 정보 표시용 Badge variant
+        info:
+          "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
       },
     },
     defaultVariants: {

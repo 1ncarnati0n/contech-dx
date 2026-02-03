@@ -6,8 +6,9 @@ import { BuildingTabs } from './BuildingTabs';
 import { BuildingBasicInfo } from './BuildingBasicInfo';
 import { FloorSettingsTable } from './FloorSettingsTable';
 import { FloorTradeTable, type FloorTradeTableHandle } from './FloorTradeTable';
-import type { Building, BuildingMeta, Floor } from '@/lib/types';
+import type { Building, BuildingMeta, Floor, FloorTrade } from '@/lib/types';
 import { createBuilding, getBuildings, deleteBuilding, updateBuilding, reorderBuildings, updateBuildingFloorsAndTrades } from '@/lib/services/buildings';
+import { isSpecialFloorId, parseSpecialFloorId, createSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import { toast } from 'sonner';
 import { Spinner, Button } from '@/components/ui';
 import { logger } from '@/lib/utils/logger';
@@ -147,7 +148,7 @@ export function DataInputPage({ projectId }: Props) {
 
       for (let i = 0; i < additionalCount; i++) {
         const buildingName = `${nextNumber + i}동`;
-        
+
         // 103동이 있으면 층 설정도 복사
         if (referenceBuilding && referenceFloors.length > 0) {
           const building = await createBuilding({
@@ -156,25 +157,39 @@ export function DataInputPage({ projectId }: Props) {
             buildingNumber: buildings.length + i + 1,
             meta: { ...defaultMeta },
           });
-          
+
           // 층 설정을 복사하되 buildingId는 새로운 동의 ID로 변경
           const copiedFloors = referenceFloors.map((floor, floorIndex) => ({
             ...floor,
             id: `floor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}-${floorIndex}`,
             buildingId: building.id,
           }));
-          
-          // 층 설정 저장
+
+          // 특별 floorId (버림/기초) 데이터도 복사
+          const copiedFloorTrades: FloorTrade[] = (referenceBuilding.floorTrades || [])
+            .filter(trade => isSpecialFloorId(trade.floorId))
+            .map(trade => {
+              const parsed = parseSpecialFloorId(trade.floorId);
+              return {
+                ...trade,
+                id: `trade-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+                buildingId: building.id,
+                floorId: parsed ? createSpecialFloorId(building.id, parsed.tradeGroup) : trade.floorId,
+                trades: JSON.parse(JSON.stringify(trade.trades)),
+              };
+            });
+
+          // 층 설정 저장 (특별 floorId 데이터 포함)
           await updateBuildingFloorsAndTrades(
             building.id,
             projectId,
             copiedFloors,
-            []
+            copiedFloorTrades
           );
-          
+
           // building 객체의 floors도 업데이트
           building.floors = copiedFloors;
-          
+
           newBuildings.push(building);
         } else {
           const building = await createBuilding({

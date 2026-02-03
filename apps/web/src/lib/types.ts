@@ -411,12 +411,16 @@ export type FloorClass = '지하층' | '일반층' | '셋팅층' | '기준층' |
 
 /**
  * 단위세대 타입 패턴
+ *
+ * unitCount: 한층당 세대수 (신규 방식)
+ * from/to: 시작/끝 호수 (기존 호환성 유지, optional)
  */
 export interface UnitTypePattern {
-  from: number;
-  to: number;
-  type: string; // "59A", "84A" 등
-  coreNumber?: number; // 코어 번호 (1, 2, 3, 4... 높은층 순서)
+  unitCount: number;      // 한층당 세대수 (신규)
+  from?: number;          // 기존 호환성 (optional)
+  to?: number;            // 기존 호환성 (optional)
+  type: string;           // "59A", "84A" 등
+  coreNumber?: number;    // 코어 번호 (1, 2, 3, 4... 높은층 순서)
 }
 
 /**

@@ -36,6 +36,7 @@ interface ProjectSidebarProps {
     onTabChange: (tab: string) => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
+    isAdmin?: boolean;
 }
 
 export function ProjectSidebar({
@@ -47,12 +48,13 @@ export function ProjectSidebar({
     onTabChange,
     onMouseEnter,
     onMouseLeave,
+    isAdmin = false,
 }: ProjectSidebarProps) {
     const [isDataInputExpanded, setIsDataInputExpanded] = useState(
         activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data'
     );
     const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(
-        activeTab === 'basement_process_plan' || activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
+        activeTab === 'process_logic' || activeTab === 'basement_process_plan' || activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
     );
 
     const menuItems = [
@@ -72,13 +74,14 @@ export function ProjectSidebar({
     ];
 
     const processPlanSubItems = [
-        { id: 'building_process_plan', label: '동별 공정계획', icon: Building },
-        { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building },
-        { id: 'gantt_chart', label: '간트차트', icon: BarChart3 },
+        { id: 'process_logic', label: '공정로직', icon: Calculator, adminOnly: true },
+        { id: 'building_process_plan', label: '동별 공정계획', icon: Building, adminOnly: false },
+        { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building, adminOnly: false },
+        { id: 'gantt_chart', label: '간트차트', icon: BarChart3, adminOnly: false },
     ];
 
     const isDataInputActive = activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data';
-    const isProcessPlanActive = activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
+    const isProcessPlanActive = activeTab === 'process_logic' || activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
     const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
 
     // activeTab이 변경될 때 확장 상태 업데이트
@@ -237,9 +240,12 @@ export function ProjectSidebar({
                     {/* 서브메뉴 - 접힌/펼친 상태 모두 아래로 펼쳐짐 */}
                     {isProcessPlanExpanded && (
                         <div className={`space-y-1 ${isCollapsed ? 'pl-1' : 'ml-4 border-l border-zinc-200 dark:border-zinc-700 pl-2'}`}>
-                            {processPlanSubItems.map((item) => {
+                            {processPlanSubItems
+                                .filter(item => !item.adminOnly || isAdmin)
+                                .map((item) => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id;
+                                const isAdminItem = item.adminOnly;
                                 return (
                                     <button
                                         key={item.id}
@@ -247,11 +253,23 @@ export function ProjectSidebar({
                                         title={isCollapsed ? item.label : undefined}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                             isActive
-                                                ? 'bg-[#ffff1d]/70 text-zinc-900 dark:bg-[#ffff1d]/80 dark:text-zinc-900'
-                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+                                                ? isAdminItem
+                                                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                                                    : 'bg-[#ffff1d]/70 text-zinc-900 dark:bg-[#ffff1d]/80 dark:text-zinc-900'
+                                                : isAdminItem
+                                                    ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-700 dark:hover:text-orange-300'
+                                                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                                         } ${isCollapsed ? 'justify-center' : ''}`}
                                     >
-                                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-zinc-900 dark:text-zinc-900' : 'text-zinc-400'}`} />
+                                        <Icon className={`w-4 h-4 shrink-0 ${
+                                            isActive
+                                                ? isAdminItem
+                                                    ? 'text-orange-600 dark:text-orange-300'
+                                                    : 'text-zinc-900 dark:text-zinc-900'
+                                                : isAdminItem
+                                                    ? 'text-orange-500 dark:text-orange-400'
+                                                    : 'text-zinc-400'
+                                        }`} />
                                         {!isCollapsed && item.label}
                                     </button>
                                 );
