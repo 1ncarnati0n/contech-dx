@@ -19,6 +19,7 @@ import {
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
+import { ProcessDetailPanel } from './process-plan';
 
 interface Props {
   projectId: string;
@@ -1281,7 +1282,263 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     
     return rows;
   }, [activeBuilding]);
-  
+
+  // 세부공정 순작업일 변경 핸들러
+  const handleItemDirectWorkDaysChange = useCallback((
+    building: Building,
+    itemKey: string,
+    value: number | null
+  ) => {
+    const plan = processPlans.get(building.id);
+    if (!plan) return;
+
+    // 기존 오버라이드 맵 복사
+    const updatedOverrides = { ...plan.itemDirectWorkDaysOverrides };
+
+    // null이면 삭제, 아니면 업데이트
+    if (value === null) {
+      delete updatedOverrides[itemKey];
+    } else {
+      updatedOverrides[itemKey] = value;
+    }
+
+    // itemKey에서 category와 floorLabel 추출
+    const [category, floorLabel] = itemKey.split('-');
+    const categoryKey = category as ProcessCategory;
+
+    // 현재 동의 확장된 모듈 가져오기
+    const isDetailExpanded = expandedModules.get(building.id) || new Set<string>();
+
+    // 확장된 행 찾기
+    const expandedRow = processRows.find((col) => {
+      const expandKey = col.floorLabel
+        ? `${col.category}-${col.floorLabel}`
+        : col.category === '기준층'
+          ? '기준층-세부공정'
+          : col.category;
+      return isDetailExpanded.has(expandKey);
+    });
+
+    // 일반층인 경우 옥탑층 공정을 사용
+    const isExpandedNormalFloor = expandedRow?.floorClass === '일반층';
+    const expandedEffectiveCategory = isExpandedNormalFloor ? '옥탑층' : (expandedRow?.category || categoryKey);
+
+    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
+      ? (isExpandedNormalFloor
+          ? getProcessTypeForFloor(plan, '옥탑층', expandedRow.floorLabel)
+          : getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel))
+      : plan?.processes[expandedRow?.category || categoryKey]?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || categoryKey];
+    const colModule = getProcessModule(expandedEffectiveCategory, colProcessType);
+
+    // 순작업일 합계 재계산
+    let sumDirectDays = 0;
+    if (expandedRow?.category === '버림' || expandedRow?.category === '기초') {
+      colModule?.items.forEach(moduleItem => {
+        const moduleItemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${moduleItem.id}`;
+        const overriddenDays = updatedOverrides[moduleItemKey];
+
+        if (overriddenDays !== undefined) {
+          sumDirectDays += overriddenDays;
+          return;
+        }
+
+        let directWorkDays = 0;
+        let quantity = 0;
+
+        if (moduleItem.quantityReference) {
+          quantity = getQuantityByReference(building, moduleItem.quantityReference);
+        }
+
+        if (moduleItem.directWorkDays !== undefined) {
+          directWorkDays = moduleItem.directWorkDays;
+          sumDirectDays += directWorkDays;
+        } else if (moduleItem.equipmentCalculationBase !== undefined && moduleItem.equipmentWorkersPerUnit !== undefined && moduleItem.quantityReference) {
+          if (quantity > 0 && moduleItem.dailyProductivity > 0) {
+            const maxPumpCarCount = building.meta?.pumpCarCount || 2;
+            const calculatedEquipmentCount = calculateEquipmentCount(quantity, moduleItem.equipmentCalculationBase, maxPumpCarCount);
+            const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, moduleItem.equipmentWorkersPerUnit);
+            if (dailyInputWorkers > 0) {
+              directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
+              sumDirectDays += directWorkDays;
+            }
+          }
+        } else if (moduleItem.quantityReference && moduleItem.dailyProductivity > 0) {
+          if (quantity > 0) {
+            const totalWorkers = calculateTotalWorkers(quantity, moduleItem.dailyProductivity);
+            const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, moduleItem.equipmentCount);
+            directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
+            sumDirectDays += directWorkDays;
+          }
+        }
+      });
+    } else if (expandedRow?.floorLabel) {
+      const targetFloorLabel = expandedRow.category === '기준층'
+        ? (processRows.find(r => r.category === '기준층' && r.floorLabel)?.floorLabel || expandedRow.floorLabel)
+        : expandedRow.floorLabel;
+      const calculationFloorLabel = expandedRow.category === '기준층' && processRows.find(r => r.category === '기준층' && r.floorLabel)
+        ? processRows.find(r => r.category === '기준층' && r.floorLabel)!.floorLabel
+        : expandedRow.floorLabel;
+
+      const floorItems = colModule?.items.filter(moduleItem => {
+        if (expandedRow.category === '지하층') {
+          return moduleItem.floorLabel === expandedRow.floorLabel;
+        }
+        if (expandedRow.category === 'PH층') {
+          return !moduleItem.floorLabel || moduleItem.floorLabel === expandedRow.floorLabel;
+        }
+        if (isExpandedNormalFloor) {
+          return moduleItem.floorLabel === expandedRow.floorLabel || !moduleItem.floorLabel;
+        }
+        if (expandedRow.category === '셋팅층') {
+          return moduleItem.floorLabel === expandedRow.floorLabel || !moduleItem.floorLabel;
+        }
+        if (expandedRow.category === '기준층') {
+          return moduleItem.floorLabel === targetFloorLabel || !moduleItem.floorLabel;
+        }
+        if (expandedRow.category === '옥탑층') {
+          if (!moduleItem.floorLabel) return true;
+          if (!expandedRow.floorLabel) return true;
+          const itemMatch = moduleItem.floorLabel.match(/옥탑(\d+)/);
+          const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
+          if (itemMatch && rowMatch) {
+            return itemMatch[1] === rowMatch[1];
+          }
+          return moduleItem.floorLabel === expandedRow.floorLabel;
+        }
+        return true;
+      }) || [];
+
+      floorItems.forEach(moduleItem => {
+        let moduleItemKey: string;
+        let overriddenDays: number | undefined;
+
+        if (expandedRow.category === '기준층') {
+          const currentFloorKey = `기준층-${expandedRow.floorLabel}-${moduleItem.id}`;
+          overriddenDays = updatedOverrides[currentFloorKey];
+          if (overriddenDays === undefined) {
+            const firstStandardFloorLabel = processRows.find(r => r.category === '기준층' && r.floorLabel)?.floorLabel;
+            if (firstStandardFloorLabel) {
+              const firstStandardFloorKey = `기준층-${firstStandardFloorLabel}-${moduleItem.id}`;
+              overriddenDays = updatedOverrides[firstStandardFloorKey];
+            }
+          }
+          moduleItemKey = currentFloorKey;
+        } else {
+          moduleItemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${moduleItem.id}`;
+          overriddenDays = updatedOverrides[moduleItemKey];
+        }
+
+        if (overriddenDays !== undefined) {
+          sumDirectDays += overriddenDays;
+          return;
+        }
+
+        let directWorkDays = 0;
+        let quantity = 0;
+
+        if (moduleItem.quantityReference) {
+          const refMatch = moduleItem.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
+          if (refMatch && expandedRow.floorLabel) {
+            const [, col] = refMatch;
+            const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
+
+            if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
+              quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
+                col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
+                col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3') * ratio;
+            } else if ((expandedRow.category === '옥탑층' || isExpandedNormalFloor) && expandedRow.floorLabel) {
+              const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete' as const;
+              const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
+              quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField) * ratio;
+            } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
+              const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
+              if (floorMatch) {
+                const floorNum = parseInt(floorMatch[1], 10);
+                const targetRowNum = floorNum + 10;
+                const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
+                quantity = getQuantityByReference(building, newReference);
+              }
+            } else if (expandedRow.category === '기준층' && calculationFloorLabel) {
+              const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete' as const;
+              const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
+              const rangeFloorId = expandedRow.floor?.floorLabel?.includes('~') ? expandedRow.floor.id : undefined;
+              quantity = getQuantityFromFloor(building, calculationFloorLabel, field, subField, rangeFloorId) * ratio;
+            } else {
+              quantity = getQuantityByReference(building, moduleItem.quantityReference);
+            }
+          } else {
+            quantity = getQuantityByReference(building, moduleItem.quantityReference);
+          }
+        }
+
+        if (moduleItem.directWorkDays !== undefined) {
+          directWorkDays = moduleItem.directWorkDays;
+          sumDirectDays += directWorkDays;
+        } else if (moduleItem.equipmentCalculationBase !== undefined && moduleItem.equipmentWorkersPerUnit !== undefined) {
+          if (quantity > 0 && moduleItem.dailyProductivity > 0) {
+            const maxPumpCarCount = building.meta?.pumpCarCount || 2;
+            const calculatedEquipmentCount = calculateEquipmentCount(quantity, moduleItem.equipmentCalculationBase, maxPumpCarCount);
+            const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, moduleItem.equipmentWorkersPerUnit);
+            if (dailyInputWorkers > 0) {
+              directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
+              sumDirectDays += directWorkDays;
+            }
+          }
+        } else if (moduleItem.quantityReference && moduleItem.dailyProductivity > 0) {
+          if (quantity > 0) {
+            const totalWorkers = calculateTotalWorkers(quantity, moduleItem.dailyProductivity);
+            const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, moduleItem.equipmentCount);
+            directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
+            sumDirectDays += directWorkDays;
+          }
+        }
+      });
+    }
+
+    // 기준층인 경우 순작업일 합계에 따라 공정타입 자동 변경
+    const targetCategory = expandedRow?.category || categoryKey;
+    const previousProcessType = plan.processes[targetCategory]?.processType || DEFAULT_PROCESS_TYPES[targetCategory];
+    let newProcessType = previousProcessType;
+
+    if (targetCategory === '기준층') {
+      if (sumDirectDays === 5) newProcessType = '5일 사이클';
+      else if (sumDirectDays === 6) newProcessType = '6일 사이클';
+      else if (sumDirectDays === 7) newProcessType = '7일 사이클';
+      else if (sumDirectDays === 8) newProcessType = '8일 사이클';
+      else newProcessType = DEFAULT_PROCESS_TYPES[targetCategory];
+    }
+
+    // processPlans의 해당 구분의 days 업데이트
+    const updatedPlan = {
+      ...plan,
+      itemDirectWorkDaysOverrides: updatedOverrides,
+      processes: {
+        ...plan.processes,
+        [targetCategory]: {
+          ...plan.processes[targetCategory],
+          days: sumDirectDays,
+          processType: newProcessType,
+        },
+      },
+    };
+
+    // totalDays 재계산
+    updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
+
+    setProcessPlans(new Map(processPlans.set(building.id, updatedPlan)));
+
+    // localStorage에 저장
+    try {
+      if (typeof window !== 'undefined') {
+        const storageKey = `contech_process_plan_${building.id}`;
+        localStorage.setItem(storageKey, JSON.stringify(updatedPlan));
+      }
+    } catch (error) {
+      console.error('Failed to save direct work days:', error);
+      toast.error('순작업일 저장에 실패했습니다.');
+    }
+  }, [processPlans, processRows, expandedModules, getProcessTypeForFloor, calculateTotalDays]);
+
   // 공정 열 목록 생성 (첫 번째 공정 열만 사용)
   const processColumns = useMemo(() => {
     if (!activeBuilding) return [];
@@ -1924,912 +2181,44 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   {/* 아홉 번째 열: 세부공정 상세 (첫 번째 행에서만 rowSpan으로 표시) */}
                                   {rowIdx === 0 && (
                                     <td rowSpan={totalRows} className="px-4 py-2 align-top border-l-2 border-slate-200 dark:border-slate-800" style={{ width: '100%' }}>
-                                      <div className="space-y-4 text-xs max-h-[600px] overflow-y-auto min-h-[200px]">
-                                        {/* 현재 확장된 행의 세부공정만 표시 */}
+                                      <div className="space-y-4 text-xs overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)', minHeight: '300px' }}>
+                                        {/* ProcessDetailPanel 컴포넌트 사용 */}
                                         {(() => {
                                           // 확장된 행 찾기 (한 번에 하나만)
                                           const expandedRow = processRows.find((col) => {
-                                            const expandKey = col.floorLabel 
+                                            const expandKey = col.floorLabel
                                               ? `${col.category}-${col.floorLabel}`
                                               : col.category === '기준층'
                                                 ? '기준층-세부공정'
                                                 : col.category;
                                             return isDetailExpanded.has(expandKey);
                                           });
-                                          
-                                          if (!expandedRow) {
-                                            // 확장된 행이 없을 때도 공간 유지
-                                            return (
-                                              <div className="text-slate-400 dark:text-slate-500 text-center py-8">
-                                                세부공정 버튼을 클릭하여 상세 정보를 확인하세요
-                                              </div>
-                                            );
-                                          }
-                                          
-                                          const expandKey = expandedRow.floorLabel 
-                                            ? `${expandedRow.category}-${expandedRow.floorLabel}`
-                                            : expandedRow.category === '기준층'
-                                              ? '기준층-세부공정'
-                                              : expandedRow.category;
-                                          
+
                                           // 일반층인 경우 옥탑층 공정을 사용
-                                          const isExpandedNormalFloor = expandedRow.floorClass === '일반층';
-                                          const expandedEffectiveCategory = isExpandedNormalFloor ? '옥탑층' : expandedRow.category;
-                                          
-                                          const colProcessType = expandedRow.floorLabel && (expandedRow.category === '지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
+                                          const isExpandedNormalFloor = expandedRow?.floorClass === '일반층';
+                                          const expandedEffectiveCategory = isExpandedNormalFloor ? '옥탑층' : expandedRow?.category;
+
+                                          const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
                                             ? (isExpandedNormalFloor
                                                 ? getProcessTypeForFloor(plan, '옥탑층', expandedRow.floorLabel)
                                                 : getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel))
-                                            : plan?.processes[expandedRow.category]?.processType || DEFAULT_PROCESS_TYPES[expandedRow.category];
-                                          const colModule = getProcessModule(expandedEffectiveCategory, colProcessType);
-                                          
-                                          if (!colModule || !colModule.items.length) return null;
-                                          
-                                          // 순작업일 합계 계산 (오버라이드된 값 고려)
-                                          const calculateDirectWorkDaysSum = () => {
-                                            // 버림, 기초는 floorLabel 없이 계산
-                                            if (expandedRow.category === '버림' || expandedRow.category === '기초') {
-                                              let sumDirectDays = 0;
-                                              
-                                              colModule.items.forEach(item => {
-                                                // 오버라이드된 순작업일 확인
-                                                const itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
-                                                const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
-                                                
-                                                if (overriddenDays !== undefined) {
-                                                  // 오버라이드된 값 사용
-                                                  sumDirectDays += overriddenDays;
-                                                  return;
-                                                }
-                                                
-                                                let directWorkDays = 0;
-                                                let quantity = 0;
-                                                
-                                                if (item.quantityReference) {
-                                                  quantity = getQuantityByReference(building, item.quantityReference);
-                                                }
-                                                
-                                                if (item.directWorkDays !== undefined) {
-                                                  directWorkDays = item.directWorkDays;
-                                                  sumDirectDays += directWorkDays;
-                                                } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
-                                                  if (quantity > 0 && item.dailyProductivity > 0) {
-                                                    // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                    const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                    const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
-                                                    const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-                                                    if (dailyInputWorkers > 0) {
-                                                      directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                      sumDirectDays += directWorkDays;
-                                                    }
-                                                  }
-                                                } else if (item.quantityReference && item.dailyProductivity > 0) {
-                                                  if (quantity > 0) {
-                                                    const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                    const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-                                                    directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                    sumDirectDays += directWorkDays;
-                                                  }
-                                                }
-                                              });
-                                              
-                                              return Math.floor(sumDirectDays);
-                                            }
-                                            
-                                            // 셋팅층, 일반층, 지하층, PH층, 옥탑층, 기준층 - 각 층별로 해당 층의 항목만 계산
-                                            if (!expandedRow.floorLabel || 
-                                                (expandedRow.category !== '셋팅층' && expandedRow.category !== '지하층' && expandedRow.category !== 'PH층' && expandedRow.category !== '기준층' && expandedRow.category !== '옥탑층' && !isExpandedNormalFloor)) {
-                                              return 0;
-                                            }
-                                            
-                                            let sumDirectDays = 0;
-                                            
-                                            // 해당 층의 항목만 필터링
-                                            const floorItems = colModule.items.filter(item => {
-                                              // 지하층의 경우 item.floorLabel과 expandedRow.floorLabel이 일치해야 함
-                                              if (expandedRow.category === '지하층') {
-                                                return item.floorLabel === expandedRow.floorLabel;
-                                              }
-                                              // PH층의 경우 floorLabel이 없으면 모든 항목 포함 (일반층처럼 처리)
-                                              if (expandedRow.category === 'PH층') {
-                                                return !item.floorLabel || item.floorLabel === expandedRow.floorLabel;
-                                              }
-                                              // 옥탑층의 경우 옥탑1, 옥탑2 형식 처리
-                                              if (expandedRow.category === '옥탑층') {
-                                                if (!item.floorLabel) return true;
-                                                if (!expandedRow.floorLabel) return true;
-                                                const itemMatch = item.floorLabel.match(/옥탑(\d+)/);
-                                                const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
-                                                if (itemMatch && rowMatch) {
-                                                  return itemMatch[1] === rowMatch[1];
-                                                }
-                                                return item.floorLabel === expandedRow.floorLabel;
-                                              }
-                                              // 일반층은 PH층 로직 사용
-                                              if (isExpandedNormalFloor) {
-                                                // 일반층의 경우 floorLabel이 "1F", "2F" 형식이므로 PH층 항목 중에서 매칭
-                                                // PH층 항목의 floorLabel 형식 확인 필요
-                                                return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-                                              }
-                                              // 셋팅층의 경우 floorLabel이 "1F", "2F" 형식이므로 항목의 floorLabel과 일치하거나 없으면 포함
-                                              if (expandedRow.category === '셋팅층') {
-                                                return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-                                              }
-                                              // 기준층의 경우 floorLabel이 "2F", "3F" 형식이므로 항목의 floorLabel과 일치하거나 없으면 포함
-                                              if (expandedRow.category === '기준층') {
-                                                return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-                                              }
-                                              return true;
-                                            });
-                                            
-                                            floorItems.forEach(item => {
-                                              // 오버라이드된 순작업일 확인
-                                              // 기준층인 경우 모든 기준층 행에 공통 적용되므로, 첫 번째 기준층 행의 floorLabel 사용
-                                              let itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
-                                              let firstStandardFloorLabel: string | undefined;
-                                              if (expandedRow.category === '기준층') {
-                                                // 기준층인 경우 모든 기준층 행에 공통 적용된 오버라이드 사용
-                                                const found = processRows.find(r => r.category === '기준층' && r.floorLabel);
-                                                firstStandardFloorLabel = found?.floorLabel;
-                                                if (firstStandardFloorLabel) {
-                                                  itemKey = `기준층-${firstStandardFloorLabel}-${item.id}`;
-                                                }
-                                              }
-                                              
-                                              // 기준층인 경우: 현재 층의 오버라이드 값을 먼저 확인하고, 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                              let overriddenDays: number | undefined;
-                                              if (expandedRow.category === '기준층') {
-                                                // 먼저 현재 층의 오버라이드 값 확인
-                                                const currentFloorKey = `기준층-${expandedRow.floorLabel}-${item.id}`;
-                                                overriddenDays = plan?.itemDirectWorkDaysOverrides?.[currentFloorKey];
-                                                
-                                                // 현재 층에 오버라이드가 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                                if (overriddenDays === undefined && firstStandardFloorLabel) {
-                                                  const firstStandardFloorKey = `기준층-${firstStandardFloorLabel}-${item.id}`;
-                                                  overriddenDays = plan?.itemDirectWorkDaysOverrides?.[firstStandardFloorKey];
-                                                }
-                                              } else {
-                                                overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
-                                              }
-                                              
-                                              if (overriddenDays !== undefined) {
-                                                // 오버라이드된 값 사용
-                                                sumDirectDays += overriddenDays;
-                                                return;
-                                              }
-                                              
-                                              let directWorkDays = 0;
-                                              let quantity = 0;
-                                              
-                                              // 수량 참조를 층별로 조정
-                                              if (item.quantityReference) {
-                                                const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                if (refMatch && expandedRow.floorLabel) {
-                                                  const [, col, baseRow] = refMatch;
-                                                  const baseRowNum = parseInt(baseRow, 10);
+                                            : plan?.processes[expandedRow?.category || '버림']?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || '버림'];
+                                          const colModule = expandedEffectiveCategory ? getProcessModule(expandedEffectiveCategory, colProcessType) : null;
 
-                                                  if (expandedRow.category === '지하층') {
-                                                    // 지하층은 floorLabel 그대로 사용 (B1, B2 등)
-                                                    quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
-                                                      col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
-                                                      col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
-                                                  } else if (expandedRow.category === '옥탑층') {
-                                                    // 옥탑층은 물량입력 데이터에서 직접 가져오기
-                                                    const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                    let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
-                                                    let subField = '';
-                                                    switch (col) {
-                                                      case 'B': field = 'gangForm'; subField = 'areaM2'; break;
-                                                      case 'C': field = 'alForm'; subField = 'areaM2'; break;
-                                                      case 'D': field = 'formwork'; subField = 'areaM2'; break;
-                                                      case 'E': field = 'stripClean'; subField = 'areaM2'; break;
-                                                      case 'F': field = 'rebar'; subField = 'ton'; break;
-                                                      case 'G': field = 'concrete'; subField = 'volumeM3'; break;
-                                                    }
-                                                    if (field && expandedRow.floorLabel) {
-                                                      quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField) * ratio;
-                                                    }
-                                                  } else if (isExpandedNormalFloor && expandedRow.floorLabel) {
-                                                    // 일반층의 경우 1F, 2F 형식이므로 행 번호 조정
-                                                    const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-                                                    if (floorMatch) {
-                                                      const floorNum = parseInt(floorMatch[1], 10);
-                                                      const targetRowNum = floorNum + 10;
-                                                      const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                      quantity = getQuantityByReference(building, newReference);
-                                                    } else {
-                                                      quantity = getQuantityByReference(building, item.quantityReference);
-                                                    }
-                                                  } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
-                                                    // 셋팅층은 행 번호 조정 (1층 = 행 11, 2층 = 행 12, ...)
-                                                    const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-                                                    if (floorMatch) {
-                                                      const floorNum = parseInt(floorMatch[1], 10);
-                                                      const targetRowNum = floorNum + 10;
-                                                      const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                      quantity = getQuantityByReference(building, newReference);
-                                                    } else {
-                                                      quantity = getQuantityByReference(building, item.quantityReference);
-                                                    }
-                                                  } else if (expandedRow.category === '기준층') {
-                                                    // 기준층은 첫 번째 기준층의 수량을 사용하여 합계 계산 (모든 기준층 행에 공통 적용)
-                                                    const firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
-                                                    const calculationFloorLabel = firstStandardFloor?.floorLabel || expandedRow.floorLabel;
-                                                    if (calculationFloorLabel) {
-                                                      const floorMatch = calculationFloorLabel.match(/(\d+)F/);
-                                                      if (floorMatch) {
-                                                        const floorNum = parseInt(floorMatch[1], 10);
-                                                        const targetRowNum = floorNum + 10;
-                                                        const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                        quantity = getQuantityByReference(building, newReference);
-                                                      } else {
-                                                        quantity = getQuantityByReference(building, item.quantityReference);
-                                                      }
-                                                    } else {
-                                                      quantity = getQuantityByReference(building, item.quantityReference);
-                                                    }
-                                                  } else {
-                                                    quantity = getQuantityByReference(building, item.quantityReference);
-                                                  }
-                                                } else {
-                                                  quantity = getQuantityByReference(building, item.quantityReference);
-                                                }
-                                              }
-                                              
-                                              // directWorkDays 계산
-                                              if (item.directWorkDays !== undefined) {
-                                                directWorkDays = item.directWorkDays;
-                                                sumDirectDays += directWorkDays;
-                                              } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
-                                                if (quantity > 0 && item.dailyProductivity > 0) {
-                                                  // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                  const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                  const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
-                                                  const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-                                                  if (dailyInputWorkers > 0) {
-                                                    directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                    sumDirectDays += directWorkDays;
-                                                  }
-                                                }
-                                              } else if (item.quantityReference && item.dailyProductivity > 0) {
-                                                if (quantity > 0) {
-                                                  const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                  const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-                                                  directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                  sumDirectDays += directWorkDays;
-                                                }
-                                              }
-                                            });
-                                            
-                                            return Math.floor(sumDirectDays);
-                                          };
-                                          
-                                          const directWorkDaysSum = calculateDirectWorkDaysSum();
-                                          
                                           return (
-                                            <div key={`detail-${expandedRow.category}-${expandedRow.floorLabel || ''}`} className="border-b border-slate-300 dark:border-slate-700 pb-3 last:border-b-0">
-                                              <div className="font-semibold text-sm text-slate-900 dark:text-white mb-2">
-                                                {expandedRow.category === '버림' || expandedRow.category === '기초' 
-                                                  ? `${expandedRow.category}${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`
-                                                  : expandedRow.category === '지하층'
-                                                    ? `지하층 ${expandedRow.floorLabel}층${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`
-                                                    : (expandedRow.category === '옥탑층' || expandedRow.category === 'PH층')
-                                                      ? (() => {
-                                                          // PH 형식을 옥탑 형식으로 변환
-                                                          let displayLabel = expandedRow.floorLabel || '';
-                                                          if (displayLabel.match(/^PH\d+$/i)) {
-                                                            const phMatch = displayLabel.match(/PH(\d+)/i);
-                                                            if (phMatch) {
-                                                              displayLabel = `옥탑${phMatch[1]}`;
-                                                            }
-                                                          }
-                                                          return `옥탑층 ${displayLabel}층${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`;
-                                                        })()
-                                                    : expandedRow.category === '셋팅층'
-                                                      ? isExpandedNormalFloor
-                                                        ? `일반층 ${expandedRow.floorLabel}${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`
-                                                        : `셋팅층 ${expandedRow.floorLabel}${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`
-                                                      : expandedRow.category === '기준층'
-                                                        ? `기준층 ${expandedRow.floorLabel}${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`
-                                                        : `옥탑층 ${expandedRow.floorLabel}층${directWorkDaysSum > 0 ? ` (순작업일 합계 ${directWorkDaysSum}일)` : ''}`}
-                                              </div>
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {/* 모든 공정은 일반적으로 표시 */}
-                                                {colModule.items
-                                                    .filter((item) => {
-                                                      // 기준층의 경우 floorLabel이 일치하거나 없으면 포함
-                                                      if (expandedRow.category === '기준층') {
-                                                        return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-                                                      }
-                                                      // 지하층의 경우 floorLabel이 일치해야 함
-                                                      if (expandedRow.category === '지하층') {
-                                                        return item.floorLabel === expandedRow.floorLabel;
-                                                      }
-                                                      // PH층의 경우 floorLabel이 없으면 모든 항목 포함
-                                                      if (expandedRow.category === 'PH층') {
-                                                        return !item.floorLabel || item.floorLabel === expandedRow.floorLabel;
-                                                      }
-                                                      // 옥탑층의 경우 옥탑1, 옥탑2 형식 처리
-                                                      if (expandedRow.category === '옥탑층') {
-                                                        if (!item.floorLabel) return true;
-                                                        if (!expandedRow.floorLabel) return true;
-                                                        const itemMatch = item.floorLabel.match(/옥탑(\d+)/);
-                                                        const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
-                                                        if (itemMatch && rowMatch) {
-                                                          return itemMatch[1] === rowMatch[1];
-                                                        }
-                                                        return item.floorLabel === expandedRow.floorLabel;
-                                                      }
-                                                      // 일반층은 PH층 로직 사용
-                                                      if (isExpandedNormalFloor) {
-                                                        return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-                                                      }
-                                                      // 셋팅층의 경우 floorLabel이 "1F", "2F" 형식이므로 항목의 floorLabel과 일치하거나 없으면 포함
-                                                      if (expandedRow.category === '셋팅층') {
-                                                        return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-                                                      }
-                                                      // 버림, 기초는 floorLabel 없이 모든 항목 포함
-                                                      if (expandedRow.floorLabel && item.floorLabel) {
-                                                        return item.floorLabel === expandedRow.floorLabel;
-                                                      }
-                                                      const hasDirectDays = item.directWorkDays !== undefined && item.directWorkDays > 0;
-                                                      const hasIndirectDays = item.indirectDays > 0;
-                                                      return hasDirectDays || hasIndirectDays;
-                                                    })
-                                                    .map((item) => {
-                                                      // 수량 가져오기 - 물량입력 데이터(building.floorTrades)에서 가져옴
-                                                      let quantity = 0;
-                                                      if (item.quantityReference) {
-                                                        if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
-                                                          // 일반층인 경우 - 물량입력 데이터에서 직접 가져오기
-                                                          if (isExpandedNormalFloor) {
-                                                            // 일반층은 지상층이므로 행 번호 매핑: 행 11 = 1층, 행 12 = 2층
-                                                            const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                            if (refMatch) {
-                                                              const [, colLetter] = refMatch;
-                                                              const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                              const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-                                                              if (floorMatch) {
-                                                                const floorNum = parseInt(floorMatch[1], 10);
-                                                                // 일반층은 지상층 행 번호 매핑 사용 (행 11 = 1층, 행 12 = 2층 등)
-                                                                const targetRowNum = floorNum + 10;
-                                                                const newReference = `${colLetter}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                                quantity = getQuantityByReference(building, newReference);
-                                                              }
-                                                            }
-                                                          } else {
-                                                            // 셋팅층인 경우 - 물량입력 데이터에서 가져오기
-                                                            const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                            if (refMatch) {
-                                                              const [, colLetter] = refMatch;
-                                                              const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-                                                              if (floorMatch) {
-                                                                const floorNum = parseInt(floorMatch[1], 10);
-                                                                // 행 11 = 1층, 행 12 = 2층 등
-                                                                const targetRowNum = floorNum + 10;
-                                                                const newReference = `${colLetter}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                                quantity = getQuantityByReference(building, newReference);
-                                                              }
-                                                            }
-                                                          }
-                                                        } else if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
-                                                          // 지하층 - 물량입력 데이터에서 가져오기
-                                                          const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                          if (refMatch) {
-                                                            const [, colLetter] = refMatch;
-                                                            const floorMatch = expandedRow.floorLabel.match(/B(\d+)/);
-                                                            if (floorMatch) {
-                                                              const basementNum = parseInt(floorMatch[1], 10);
-                                                              // 행 8 = B2, 행 9 = B1
-                                                              const targetRowNum = 10 - basementNum;
-                                                              const newReference = `${colLetter}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                              quantity = getQuantityByReference(building, newReference);
-                                                            }
-                                                          }
-                                                        } else if ((expandedRow.category === 'PH층' || expandedRow.category === '옥탑층') && expandedRow.floorLabel) {
-                                                          // PH층/옥탑층 - 물량입력 데이터에서 직접 가져오기
-                                                          const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                          if (refMatch) {
-                                                            const [, colLetter] = refMatch;
-                                                            const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                            // 옥탑층은 getQuantityFromFloor를 사용하여 직접 가져오기
-                                                            let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
-                                                            let subField = '';
-                                                            switch (colLetter) {
-                                                              case 'B': field = 'gangForm'; subField = 'areaM2'; break;
-                                                              case 'C': field = 'alForm'; subField = 'areaM2'; break;
-                                                              case 'D': field = 'formwork'; subField = 'areaM2'; break;
-                                                              case 'E': field = 'stripClean'; subField = 'areaM2'; break;
-                                                              case 'F': field = 'rebar'; subField = 'ton'; break;
-                                                              case 'G': field = 'concrete'; subField = 'volumeM3'; break;
-                                                            }
-                                                            if (field) {
-                                                              quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField) * ratio;
-                                                            }
-                                                          }
-                                                        } else if (expandedRow.category === '기준층' && expandedRow.floorLabel) {
-                                                          // 기준층 - 물량입력 데이터에서 직접 가져오기
-                                                          const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                          if (refMatch) {
-                                                            const [, colLetter] = refMatch;
-                                                            const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                            // 기준층은 getQuantityFromFloor를 사용하여 직접 가져오기
-                                                            const rangeFloorId = expandedRow.floor?.floorLabel?.includes('~') 
-                                                              ? expandedRow.floor.id 
-                                                              : undefined;
-                                                            let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
-                                                            let subField = '';
-                                                            switch (colLetter) {
-                                                              case 'B': field = 'gangForm'; subField = 'areaM2'; break;
-                                                              case 'C': field = 'alForm'; subField = 'areaM2'; break;
-                                                              case 'D': field = 'formwork'; subField = 'areaM2'; break;
-                                                              case 'E': field = 'stripClean'; subField = 'areaM2'; break;
-                                                              case 'F': field = 'rebar'; subField = 'ton'; break;
-                                                              case 'G': field = 'concrete'; subField = 'volumeM3'; break;
-                                                            }
-                                                            if (field) {
-                                                              quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField, rangeFloorId) * ratio;
-                                                            }
-                                                          }
-                                                        } else if (expandedRow.category === '옥탑층' && expandedRow.floorLabel) {
-                                                          // 옥탑층 - 물량입력 데이터에서 직접 가져오기
-                                                          const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                          if (refMatch) {
-                                                            const [, colLetter] = refMatch;
-                                                            const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                            // 옥탑층은 getQuantityFromFloor를 사용하여 직접 가져오기
-                                                            let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
-                                                            let subField = '';
-                                                            switch (colLetter) {
-                                                              case 'B': field = 'gangForm'; subField = 'areaM2'; break;
-                                                              case 'C': field = 'alForm'; subField = 'areaM2'; break;
-                                                              case 'D': field = 'formwork'; subField = 'areaM2'; break;
-                                                              case 'E': field = 'stripClean'; subField = 'areaM2'; break;
-                                                              case 'F': field = 'rebar'; subField = 'ton'; break;
-                                                              case 'G': field = 'concrete'; subField = 'volumeM3'; break;
-                                                            }
-                                                            if (field) {
-                                                              quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField) * ratio;
-                                                            }
-                                                          }
-                                                        } else {
-                                                          // 버림, 기초 등 - 물량입력 데이터에서 가져오기
-                                                          quantity = getQuantityByReference(building, item.quantityReference);
-                                                        }
-                                                      }
-                                                      
-                                                      let directWorkDays = 0;
-                                                      let totalWorkers = 0;
-                                                      let dailyInputWorkers = 0;
-                                                      
-                                                      // 순작업일 오버라이드 가져오기 (먼저 확인)
-                                                      const plan = processPlans.get(activeBuilding?.id || '');
-                                                      const itemDirectWorkDaysKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
-                                                      const itemDirectWorkDaysOverrides = plan?.itemDirectWorkDaysOverrides || {};
-                                                      const overriddenDirectWorkDays = itemDirectWorkDaysOverrides[itemDirectWorkDaysKey];
-                                                      
-                                                      if (item.directWorkDays !== undefined) {
-                                                        directWorkDays = item.directWorkDays;
-                                                        if (item.dailyProductivity > 0 && quantity > 0) {
-                                                          totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                          dailyInputWorkers = calculateDailyInputWorkersByWorkDays(totalWorkers, directWorkDays);
-                                                        }
-                                                      } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined) {
-                                                        // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                        const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                        const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
-                                                        dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-                                                        if (item.dailyProductivity > 0 && dailyInputWorkers > 0 && quantity > 0) {
-                                                          directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                        }
-                                                        // 타설의 경우 총투입인원 = 1일투입인원 * 순작업일
-                                                        if (directWorkDays > 0 && dailyInputWorkers > 0) {
-                                                          totalWorkers = dailyInputWorkers * directWorkDays;
-                                                        }
-                                                      } else if (item.dailyProductivity > 0 && quantity > 0) {
-                                                        totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                        dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-                                                        directWorkDays = dailyInputWorkers > 0
-                                                          ? calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers)
-                                                          : 0;
-                                                      }
-                                                      
-                                                      // 오버라이드된 순작업일 사용
-                                                      const displayDirectWorkDays = overriddenDirectWorkDays !== undefined ? overriddenDirectWorkDays : directWorkDays;
-                                                      
-                                                      // 순작업일이 오버라이드된 경우, 나머지 항목들을 재계산
-                                                      if (overriddenDirectWorkDays !== undefined && overriddenDirectWorkDays > 0) {
-                                                        // 장비기반 계산인 경우 (타설 등)
-                                                        if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined) {
-                                                          // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                          const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                          const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
-                                                          dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-                                                          // 총투입인원 = 1일투입인원 * 순작업일
-                                                          if (dailyInputWorkers > 0) {
-                                                            totalWorkers = dailyInputWorkers * displayDirectWorkDays;
-                                                          }
-                                                        }
-                                                        // 일반 계산인 경우
-                                                        else if (item.dailyProductivity > 0 && quantity > 0) {
-                                                          // 총투입인원은 기존 계산식 유지
-                                                          if (totalWorkers === 0) {
-                                                            totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                          }
-                                                          // 1일 투입인원 = 총투입인원 / 순작업일
-                                                          if (totalWorkers > 0 && displayDirectWorkDays > 0) {
-                                                            dailyInputWorkers = Math.ceil(totalWorkers / displayDirectWorkDays);
-                                                          }
-                                                        }
-                                                        // directWorkDays가 고정값인 경우
-                                                        else if (item.directWorkDays !== undefined && item.dailyProductivity > 0 && quantity > 0) {
-                                                          totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                          dailyInputWorkers = calculateDailyInputWorkersByWorkDays(totalWorkers, displayDirectWorkDays);
-                                                        }
-                                                      }
-                                                      
-                                                      const totalWorkDays = calculateTotalWorkDays(displayDirectWorkDays, item.indirectDays);
-                                                      
-                                                      // 먹매김이 아닌 항목인지 확인
-                                                      const isNotMarking = !item.workItem.includes('먹매김');
-                                                      // 타설 항목인지 확인 (장비대수 계산이 있는 경우)
-                                                      const isConcreteItem = item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined;
-                                                      
-                                                      // 순작업일 업데이트 핸들러
-                                                      const handleDirectWorkDaysChange = async (newValue: number | null) => {
-                                                        if (!activeBuilding) return;
-                                                        
-                                                        const currentPlan = processPlans.get(activeBuilding.id);
-                                                        if (!currentPlan) return;
-                                                        
-                                                        const updatedOverrides = {
-                                                          ...(currentPlan.itemDirectWorkDaysOverrides || {}),
-                                                        };
-                                                        
-                                                        // 기준층인 경우 모든 기준층 행에 공통 적용
-                                                        if (expandedRow.category === '기준층') {
-                                                          // processRows에서 모든 기준층 행 찾기
-                                                          processRows.forEach(row => {
-                                                            if (row.category === '기준층' && row.floorLabel) {
-                                                              const standardFloorKey = `기준층-${row.floorLabel}-${item.id}`;
-                                                              if (newValue !== null && newValue > 0) {
-                                                                updatedOverrides[standardFloorKey] = newValue;
-                                                              } else {
-                                                                delete updatedOverrides[standardFloorKey];
-                                                              }
-                                                            }
-                                                          });
-                                                        } else {
-                                                          // 기준층이 아닌 경우 기존 로직
-                                                          if (newValue !== null && newValue > 0) {
-                                                            updatedOverrides[itemDirectWorkDaysKey] = newValue;
-                                                          } else {
-                                                            delete updatedOverrides[itemDirectWorkDaysKey];
-                                                          }
-                                                        }
-                                                        
-                                                        // undefined 값 제거
-                                                        Object.keys(updatedOverrides).forEach(key => {
-                                                          if (updatedOverrides[key] === undefined) {
-                                                            delete updatedOverrides[key];
-                                                          }
-                                                        });
-                                                        
-                                                        // 순작업일 합계 재계산
-                                                        let sumDirectDays = 0;
-                                                        
-                                                        // 버림, 기초는 floorLabel 없이 계산
-                                                        if (expandedRow.category === '버림' || expandedRow.category === '기초') {
-                                                          colModule.items.forEach(moduleItem => {
-                                                            const moduleItemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${moduleItem.id}`;
-                                                            const overriddenDays = updatedOverrides[moduleItemKey];
-                                                            
-                                                            if (overriddenDays !== undefined) {
-                                                              sumDirectDays += overriddenDays;
-                                                              return;
-                                                            }
-                                                            
-                                                            let directWorkDays = 0;
-                                                            let quantity = 0;
-                                                            
-                                                            if (moduleItem.quantityReference) {
-                                                              quantity = getQuantityByReference(building, moduleItem.quantityReference);
-                                                            }
-                                                            
-                                                            if (moduleItem.directWorkDays !== undefined) {
-                                                              directWorkDays = moduleItem.directWorkDays;
-                                                              sumDirectDays += directWorkDays;
-                                                            } else if (moduleItem.equipmentCalculationBase !== undefined && moduleItem.equipmentWorkersPerUnit !== undefined && moduleItem.quantityReference) {
-                                                              if (quantity > 0 && moduleItem.dailyProductivity > 0) {
-                                                                // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                                const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                                const calculatedEquipmentCount = calculateEquipmentCount(quantity, moduleItem.equipmentCalculationBase, maxPumpCarCount);
-                                                                const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, moduleItem.equipmentWorkersPerUnit);
-                                                                if (dailyInputWorkers > 0) {
-                                                                  directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
-                                                                  sumDirectDays += directWorkDays;
-                                                                }
-                                                              }
-                                                            } else if (moduleItem.quantityReference && moduleItem.dailyProductivity > 0) {
-                                                              if (quantity > 0) {
-                                                                const totalWorkers = calculateTotalWorkers(quantity, moduleItem.dailyProductivity);
-                                                                const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, moduleItem.equipmentCount);
-                                                                directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
-                                                                sumDirectDays += directWorkDays;
-                                                              }
-                                                            }
-                                                          });
-                                                        } else if (expandedRow.floorLabel) {
-                                                          // 층별 계산
-                                                          // 기준층인 경우 모든 기준층 행에 공통 적용되므로, 첫 번째 기준층 행의 floorLabel 사용하여 수량 계산
-                                                          const firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
-                                                          const targetFloorLabel = expandedRow.category === '기준층' 
-                                                            ? (firstStandardFloor?.floorLabel || expandedRow.floorLabel)
-                                                            : expandedRow.floorLabel;
-                                                          
-                                                          // 기준층인 경우 합계 계산 시 첫 번째 기준층의 수량을 사용
-                                                          const calculationFloorLabel = expandedRow.category === '기준층' && firstStandardFloor
-                                                            ? firstStandardFloor.floorLabel
-                                                            : expandedRow.floorLabel;
-                                                          
-                                                          const floorItems = colModule.items.filter(moduleItem => {
-                                                            if (expandedRow.category === '지하층') {
-                                                              return moduleItem.floorLabel === expandedRow.floorLabel;
-                                                            }
-                                                            if (expandedRow.category === 'PH층') {
-                                                              return !moduleItem.floorLabel || moduleItem.floorLabel === expandedRow.floorLabel;
-                                                            }
-                                                            if (isExpandedNormalFloor) {
-                                                              return moduleItem.floorLabel === expandedRow.floorLabel || !moduleItem.floorLabel;
-                                                            }
-                                                            if (expandedRow.category === '셋팅층') {
-                                                              return moduleItem.floorLabel === expandedRow.floorLabel || !moduleItem.floorLabel;
-                                                            }
-                                                            if (expandedRow.category === '기준층') {
-                                                              // 기준층은 모든 기준층 행에 공통 적용되므로 floorLabel 조건 없이 모든 항목 포함
-                                                              return !moduleItem.floorLabel || true;
-                                                            }
-                                                            if (expandedRow.category === '옥탑층') {
-                                                              if (!moduleItem.floorLabel) return true;
-                                                              if (!expandedRow.floorLabel) return true;
-                                                              const itemMatch = moduleItem.floorLabel.match(/옥탑(\d+)/);
-                                                              const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
-                                                              if (itemMatch && rowMatch) {
-                                                                return itemMatch[1] === rowMatch[1];
-                                                              }
-                                                              return moduleItem.floorLabel === expandedRow.floorLabel;
-                                                            }
-                                                            return true;
-                                                          });
-                                                          
-                                                          floorItems.forEach(moduleItem => {
-                                                            // 기준층인 경우: 현재 층의 오버라이드 값을 먼저 확인하고, 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                                            let overriddenDays: number | undefined;
-                                                            if (expandedRow.category === '기준층') {
-                                                              // 먼저 현재 층의 오버라이드 값 확인
-                                                              const currentFloorKey = `기준층-${expandedRow.floorLabel}-${moduleItem.id}`;
-                                                              overriddenDays = updatedOverrides[currentFloorKey];
-                                                              
-                                                              // 현재 층에 오버라이드가 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                                              if (overriddenDays === undefined) {
-                                                                const firstStandardFloorKey = `기준층-${targetFloorLabel}-${moduleItem.id}`;
-                                                                overriddenDays = updatedOverrides[firstStandardFloorKey];
-                                                              }
-                                                            } else {
-                                                              const moduleItemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${moduleItem.id}`;
-                                                              overriddenDays = updatedOverrides[moduleItemKey];
-                                                            }
-                                                            
-                                                            if (overriddenDays !== undefined) {
-                                                              sumDirectDays += overriddenDays;
-                                                              return;
-                                                            }
-                                                            
-                                                            let directWorkDays = 0;
-                                                            let quantity = 0;
-                                                            
-                                                            // 수량 계산 (기존 로직과 동일)
-                                                            if (moduleItem.quantityReference) {
-                                                              const refMatch = moduleItem.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                                              if (refMatch) {
-                                                                const [, col] = refMatch;
-                                                                
-                                                                if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
-                                                                  quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
-                                                                    col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
-                                                                    col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
-                                                                } else if ((expandedRow.category === '옥탑층' || isExpandedNormalFloor) && expandedRow.floorLabel) {
-                                                                  const phMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
-                                                                  if (phMatch) {
-                                                                    const phNum = parseInt(phMatch[1], 10);
-                                                                    const targetRowNum = 25 + phNum;
-                                                                    const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                                    quantity = getQuantityByReference(building, newReference);
-                                                                  } else {
-                                                                    const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-                                                                    if (floorMatch) {
-                                                                      const floorNum = parseInt(floorMatch[1], 10);
-                                                                      const targetRowNum = floorNum + 10;
-                                                                      const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                                      quantity = getQuantityByReference(building, newReference);
-                                                                    } else {
-                                                                      quantity = getQuantityByReference(building, moduleItem.quantityReference);
-                                                                    }
-                                                                  }
-                                                                } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
-                                                                  const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-                                                                  if (floorMatch) {
-                                                                    const floorNum = parseInt(floorMatch[1], 10);
-                                                                    const targetRowNum = floorNum + 10;
-                                                                    const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                                    quantity = getQuantityByReference(building, newReference);
-                                                                  } else {
-                                                                    quantity = getQuantityByReference(building, moduleItem.quantityReference);
-                                                                  }
-                                                                } else if (expandedRow.category === '기준층' && calculationFloorLabel) {
-                                                                  // 기준층인 경우 첫 번째 기준층의 수량을 사용하여 합계 계산
-                                                                  const floorMatch = calculationFloorLabel.match(/(\d+)F/);
-                                                                  if (floorMatch) {
-                                                                    const floorNum = parseInt(floorMatch[1], 10);
-                                                                    const targetRowNum = floorNum + 10;
-                                                                    const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                                    quantity = getQuantityByReference(building, newReference);
-                                                                  } else {
-                                                                    quantity = getQuantityByReference(building, moduleItem.quantityReference);
-                                                                  }
-                                                                } else {
-                                                                  quantity = getQuantityByReference(building, moduleItem.quantityReference);
-                                                                }
-                                                              } else {
-                                                                quantity = getQuantityByReference(building, moduleItem.quantityReference);
-                                                              }
-                                                            }
-                                                            
-                                                            // directWorkDays 계산
-                                                            if (moduleItem.directWorkDays !== undefined) {
-                                                              directWorkDays = moduleItem.directWorkDays;
-                                                              sumDirectDays += directWorkDays;
-                                                            } else if (moduleItem.equipmentCalculationBase !== undefined && moduleItem.equipmentWorkersPerUnit !== undefined && moduleItem.quantityReference) {
-                                                              if (quantity > 0 && moduleItem.dailyProductivity > 0) {
-                                                                // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                                const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                                const calculatedEquipmentCount = calculateEquipmentCount(quantity, moduleItem.equipmentCalculationBase, maxPumpCarCount);
-                                                                const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, moduleItem.equipmentWorkersPerUnit);
-                                                                if (dailyInputWorkers > 0) {
-                                                                  directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
-                                                                  sumDirectDays += directWorkDays;
-                                                                }
-                                                              }
-                                                            } else if (moduleItem.quantityReference && moduleItem.dailyProductivity > 0) {
-                                                              if (quantity > 0) {
-                                                                const totalWorkers = calculateTotalWorkers(quantity, moduleItem.dailyProductivity);
-                                                                const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, moduleItem.equipmentCount);
-                                                                directWorkDays = calculateWorkDaysWithRounding(quantity, moduleItem.dailyProductivity, dailyInputWorkers);
-                                                                sumDirectDays += directWorkDays;
-                                                              }
-                                                            }
-                                                          });
-                                                        }
-                                                        
-                                                        // 기준층인 경우 순작업일 합계에 따라 공정타입 자동 변경
-                                                        const previousProcessType = currentPlan.processes[expandedRow.category]?.processType || DEFAULT_PROCESS_TYPES[expandedRow.category];
-                                                        const previousDays = currentPlan.processes[expandedRow.category]?.days || 0;
-                                                        let newProcessType = previousProcessType;
-                                                        if (expandedRow.category === '기준층') {
-                                                          if (sumDirectDays === 5) {
-                                                            newProcessType = '5일 사이클';
-                                                          } else if (sumDirectDays === 6) {
-                                                            newProcessType = '6일 사이클';
-                                                          } else if (sumDirectDays === 7) {
-                                                            newProcessType = '7일 사이클';
-                                                          } else if (sumDirectDays === 8) {
-                                                            newProcessType = '8일 사이클';
-                                                          } else {
-                                                            // 5, 6, 7, 8일이 아닌 경우 기본값으로 리셋
-                                                            newProcessType = DEFAULT_PROCESS_TYPES[expandedRow.category];
-                                                          }
-                                                        }
-                                                        
-                                                        // processPlans의 해당 구분의 days 업데이트
-                                                        const updatedPlan = {
-                                                          ...currentPlan,
-                                                          itemDirectWorkDaysOverrides: updatedOverrides,
-                                                          processes: {
-                                                            ...currentPlan.processes,
-                                                            [expandedRow.category]: {
-                                                              ...currentPlan.processes[expandedRow.category],
-                                                              days: sumDirectDays,
-                                                              processType: newProcessType,
-                                                            },
-                                                          },
-                                                        };
-                                                        
-                                                        // totalDays 재계산
-                                                        updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-                                                        
-                                                        setProcessPlans(new Map(processPlans.set(activeBuilding.id, updatedPlan)));
-                                                        
-                                                        // localStorage에 저장
-                                                        try {
-                                                          if (typeof window !== 'undefined') {
-                                                            const storageKey = `contech_process_plan_${activeBuilding.id}`;
-                                                            localStorage.setItem(storageKey, JSON.stringify(updatedPlan));
-                                                          }
-                                                        } catch (error) {
-                                                          console.error('Failed to save direct work days:', error);
-                                                          toast.error('순작업일 저장에 실패했습니다.');
-                                                        }
-                                                      };
-                                                      
-                                                      // 오버라이드된 순작업일로 총작업일수 재계산
-                                                      const recalculatedTotalWorkDays = calculateTotalWorkDays(displayDirectWorkDays, item.indirectDays);
-                                                      
-                                                      return (
-                                                        <div
-                                                          key={item.id}
-                                                          className="p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 h-full"
-                                                        >
-                                                          <div className="font-bold text-slate-900 dark:text-white mb-1">
-                                                            {item.workItem.replace(/^\d+\.\s*/, '').replace(/\s*\(1일\)/, '')}
-                                                          </div>
-                                                          {/* 순작업일을 세부공정명 바로 아래에 위치 */}
-                                                          <div className="mb-2">
-                                                            <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">순작업일</div>
-                                                            <Input
-                                                              type="number"
-                                                              min="0"
-                                                              step="1"
-                                                              value={displayDirectWorkDays > 0 ? Math.round(displayDirectWorkDays) : ''}
-                                                              onChange={(e) => {
-                                                                const value = e.target.value === '' ? null : Math.round(parseFloat(e.target.value) || 0);
-                                                                handleDirectWorkDaysChange(value);
-                                                              }}
-                                                              onBlur={(e) => {
-                                                                // blur 시 정수로 반올림
-                                                                const value = e.target.value === '' ? null : Math.round(parseFloat(e.target.value) || 0);
-                                                                if (value !== null && value !== displayDirectWorkDays) {
-                                                                  handleDirectWorkDaysChange(value);
-                                                                }
-                                                              }}
-                                                              className="font-bold text-slate-900 dark:text-white w-20 h-8 text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-                                                              placeholder="0"
-                                                            />
-                                                          </div>
-                                                          <div className="text-slate-600 dark:text-slate-400 space-y-0.5 text-xs">
-                                                            {item.unit && <div>단위: {item.unit}</div>}
-                                                            {item.quantityReference && <div>수량: {quantity.toFixed(2)}</div>}
-                                                            {/* 타설 항목인 경우 장비투입대수 표시 */}
-                                                            {isConcreteItem && (
-                                                              <>
-                                                                {(() => {
-                                                                  // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                                                  const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-                                                                  const equipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase!, maxPumpCarCount);
-                                                                  return equipmentCount > 0 && <div>장비투입대수: {equipmentCount}</div>;
-                                                                })()}
-                                                              </>
-                                                            )}
-                                                            {/* 먹매김이 아닌 경우 인당 생산성과 인원 정보 표시 */}
-                                                            {isNotMarking && item.dailyProductivity > 0 && (
-                                                              <>
-                                                                {/* 타설 항목이 아닌 경우에만 인당 생산성 표시 */}
-                                                                {!isConcreteItem && <div>인당 생산성: {item.dailyProductivity}</div>}
-                                                                {isNotMarking && totalWorkers > 0 && <div>총투입인원: {totalWorkers}</div>}
-                                                                {dailyInputWorkers > 0 && <div>1일 투입인원: {dailyInputWorkers}</div>}
-                                                              </>
-                                                            )}
-                                                            {item.indirectDays > 0 && <div>간접작업일: {item.indirectDays}</div>}
-                                                            {item.indirectWorkItem && item.indirectDays > 0 && <div>간접작업항목: {item.indirectWorkItem}</div>}
-                                                            <div className="text-slate-900 dark:text-white">
-                                                              총작업일수: {recalculatedTotalWorkDays}
-                                                            </div>
-                                                          </div>
-                                                        </div>
-                                                      );
-                                                    })
-                                                }
-                                              </div>
-                                            </div>
+                                            <ProcessDetailPanel
+                                              building={building}
+                                              expandedRow={expandedRow ? {
+                                                category: expandedRow.category,
+                                                floorLabel: expandedRow.floorLabel,
+                                                floor: expandedRow.floor,
+                                                floorClass: expandedRow.floorClass,
+                                              } : null}
+                                              module={colModule || null}
+                                              plan={plan}
+                                              processRows={processRows}
+                                              onDirectWorkDaysChange={(itemKey, value) => handleItemDirectWorkDaysChange(building, itemKey, value)}
+                                            />
                                           );
                                         })()}
                                       </div>

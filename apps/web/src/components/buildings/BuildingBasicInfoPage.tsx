@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BuildingForm } from './BuildingForm';
 import { BuildingTabs } from './BuildingTabs';
-import { BuildingBasicInfo } from './BuildingBasicInfo';
+import { BuildingBasicInfoRefactored as BuildingBasicInfo } from './BuildingBasicInfoRefactored';
 import { FloorSettingsTable } from './FloorSettingsTable';
 import type { Building, BuildingMeta, Floor, FloorTrade } from '@/lib/types';
 import { createBuilding, getBuildings, deleteBuilding, updateBuildingFloorsAndTrades, updateBuilding, reorderBuildings } from '@/lib/services/buildings';

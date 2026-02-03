@@ -12,6 +12,11 @@ export { PouringSectionReviewPage } from './PouringSectionReviewPage';
 export { BuildingForm } from './BuildingForm';
 export { BuildingTabs } from './BuildingTabs';
 export { BuildingBasicInfo } from './BuildingBasicInfo';
+export { BuildingBasicInfoRefactored } from './BuildingBasicInfoRefactored';
 export { FloorSettingsTable } from './FloorSettingsTable';
+
+// 섹션 컴포넌트 및 훅
+export * from './sections';
+export * from './hooks';
 export { FloorTradeTable } from './FloorTradeTable';
 

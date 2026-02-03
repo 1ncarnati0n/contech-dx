@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Calendar,
   DollarSign,
@@ -72,6 +72,13 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   settings: '프로젝트 설정을 관리합니다.',
 };
 
+// 유효한 탭 목록
+const VALID_TABS = Object.keys(TAB_TITLES);
+
+function isValidTab(tab: string | null): tab is string {
+  return tab !== null && VALID_TABS.includes(tab);
+}
+
 // 탭별 아이콘 매핑
 const TAB_ICONS: Record<string, LucideIcon> = {
   overview: LayoutDashboard,
@@ -92,16 +99,44 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 
 export function ProjectDetailClient({ project: initialProject }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [project, setProject] = useState<Project>(initialProject);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarPinned, setSidebarPinned] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+
+  // URL에서 탭 초기값 읽기
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const handleTabChange = useCallback((tab: string) => {
+    if (!isValidTab(tab)) return;
+
     setActiveTab(tab);
-  }, []);
+
+    // URL 쿼리 파라미터 업데이트
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'overview') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [searchParams, router]);
+
+  // 브라우저 뒤로가기/앞으로가기 시 탭 상태 동기화
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const validTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
+
+    if (validTab !== activeTab) {
+      setActiveTab(validTab);
+    }
+  }, [searchParams, activeTab]);
 
   // 프로젝트 데이터 동기화 (서버에서 업데이트된 데이터 반영)
   useEffect(() => {

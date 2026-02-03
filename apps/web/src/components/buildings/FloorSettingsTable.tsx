@@ -16,8 +16,6 @@ const FLOOR_CLASSES: FloorClass[] = ['지하층', '일반층', '셋팅층', '기
 
 export function FloorSettingsTable({ building, onUpdate }: Props) {
   const [floors, setFloors] = useState<Floor[]>(building.floors);
-  const [pendingHeights, setPendingHeights] = useState<Record<string, number | null>>({});
-  const [savedFloorIds, setSavedFloorIds] = useState<Set<string>>(new Set());
   const processedSettingFloorRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -690,46 +688,14 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
         }
       }
       
-      // 층고 업데이트인 경우에만 토스트 표시 (showToast가 true이고 아직 저장되지 않은 경우)
-      if (updates.height !== undefined && showToast && !savedFloorIds.has(floorId)) {
-        toast.success('층고가 저장되었습니다.');
-        setSavedFloorIds(prev => new Set(prev).add(floorId));
-      } else if (updates.floorClass !== undefined && showToast) {
+      // 층분류 업데이트 시 토스트 표시
+      if (updates.floorClass !== undefined && showToast) {
         toast.success('층 정보가 업데이트되었습니다.');
       }
-      
-      // pendingHeights에서 제거
-      if (updates.height !== undefined) {
-        setPendingHeights(prev => {
-          const next = { ...prev };
-          delete next[floorId];
-          return next;
-        });
-      }
-      
+
       onUpdate();
     } catch (error) {
       toast.error('업데이트에 실패했습니다.');
-    }
-  };
-
-  // 층고 입력 변경 시 로컬 상태만 업데이트
-  const handleHeightChange = (floorId: string, value: number | null) => {
-    setPendingHeights(prev => ({ ...prev, [floorId]: value }));
-    setFloors(floors.map(f => f.id === floorId ? { ...f, height: value } : f));
-    // 저장 상태 초기화 (새로운 값이 입력되면 다시 저장 가능하도록)
-    setSavedFloorIds(prev => {
-      const next = new Set(prev);
-      next.delete(floorId);
-      return next;
-    });
-  };
-
-  // 입력창 blur 시 저장
-  const handleHeightBlur = (floorId: string) => {
-    if (pendingHeights[floorId] !== undefined) {
-      const height = pendingHeights[floorId];
-      handleFloorUpdate(floorId, { height }, true);
     }
   };
 
@@ -870,32 +836,10 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         step="1"
                         min="0"
                         value={floor.height ?? ''}
-                        disabled={floor.id.startsWith('dummy-') && actualFloors.length === 0 && !actualFloor}
-                        onChange={async (e) => {
-                          const value = e.target.value ? Number(e.target.value) : null;
-                          // 범위 형식의 층인 경우 모든 개별 층 업데이트
-                          if (floor.id.startsWith('dummy-range-') && actualFloors.length > 0) {
-                            for (const f of actualFloors) {
-                              await handleFloorUpdate(f.id, { height: value }, false);
-                            }
-                          } else {
-                            const targetFloor = actualFloor || floor;
-                            if (targetFloor && !targetFloor.id.startsWith('dummy-')) {
-                              handleHeightChange(targetFloor.id, value);
-                            }
-                          }
-                        }}
-                        onBlur={async () => {
-                          // 범위 형식의 층인 경우 이미 onChange에서 처리됨
-                          if (!floor.id.startsWith('dummy-range-')) {
-                            const targetFloor = actualFloor || floor;
-                            if (targetFloor && !targetFloor.id.startsWith('dummy-')) {
-                              handleHeightBlur(targetFloor.id);
-                            }
-                          }
-                        }}
-                        className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder="층고 입력 (mm)"
+                        disabled={true}
+                        readOnly
+                        className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white cursor-not-allowed"
+                        placeholder="기준층고에서 설정"
                       />
                     </td>
                   </tr>
@@ -903,6 +847,15 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
               })}
             </tbody>
           </table>
+        </div>
+        {/* 층분류 자동 설정 안내 노트 */}
+        <div className="mt-3 mx-4 mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+          <p className="font-medium mb-1">※ 층분류 자동 설정 안내</p>
+          <ul className="space-y-0.5 ml-3">
+            <li>• <strong>셋팅층 설정 시:</strong> 셋팅층 위쪽 → 기준층, 아래쪽 → 일반층으로 자동 변경</li>
+            <li>• <strong>기준층 층고 기준:</strong> 기준층 층고와 같은 연속 구간의 마지막 층 = 셋팅층</li>
+            <li>• <strong>예시:</strong> 2F를 셋팅층 설정 → 3~5F는 기준층, 1F는 일반층으로 자동 분류</li>
+          </ul>
         </div>
       </CardContent>
     </Card>

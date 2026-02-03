@@ -102,18 +102,24 @@ src/
 │   └── page.tsx                  # 랜딩 페이지
 │
 ├── components/
-│   ├── ui/                       # 디자인 시스템 (15개)
+│   ├── ui/                       # 디자인 시스템 (16개)
 │   │   ├── Button, Card, Dialog, Form, Input
 │   │   ├── Badge, Skeleton, Spinner, Tooltip
+│   │   ├── CollapsibleSection (NEW)
 │   │   └── LoadingBar, Toaster...
 │   ├── auth/                     # 인증 (LoginForm, SignupForm, LogoutButton)
-│   ├── buildings/                # 동/층 관리 (24개 컴포넌트)
+│   ├── buildings/                # 동/층 관리 (29개 컴포넌트)
 │   │   ├── BuildingBasicInfoPage.tsx    # 동 기본정보 입력
 │   │   ├── QuantityInputPage.tsx        # 물량 입력
-│   │   ├── BuildingProcessPlanPage.tsx  # 공정계획 수립
+│   │   ├── BuildingProcessPlanPage.tsx  # 공정계획 수립 (2,275줄)
 │   │   ├── BasementProcessPlanPage.tsx  # 지하층 공정계획
 │   │   ├── ProcessPlanChatbotSidebar.tsx # AI 공정계획 챗봇
 │   │   ├── DetailedFloorTradeTable.tsx  # 상세 물량 테이블
+│   │   ├── process-plan/                # 세부공정 컴포넌트 (NEW)
+│   │   │   ├── ProcessDetailPanel.tsx   # 세부공정 상세 패널
+│   │   │   ├── ProcessItemCard.tsx      # 개별 세부공종 카드
+│   │   │   ├── FormulaDisplay.tsx       # 산식 표시 컴포넌트
+│   │   │   └── hooks/useProcessCalculation.ts # 계산 훅
 │   │   └── ...
 │   ├── castplan/                 # 콘크리트 타설 계획
 │   │   ├── CastPlanCanvas.tsx    # Konva 캔버스
@@ -389,6 +395,51 @@ Supabase PostgreSQL 기반 데이터베이스
 | `src/components/dashboard/DailyWorkerInputDashboard.tsx` | 계산 로직 활성화 | 2025-01-27 |
 
 ## Changelog
+
+### 2025-02-03
+#### Refactored
+- **동별 공정계획탭 UI 개선** (`BuildingProcessPlanPage.tsx`)
+  - 2,886줄 → 2,275줄로 611줄 감소 (약 21% 코드 축소)
+  - 인라인 세부공정 렌더링 코드를 `ProcessDetailPanel` 컴포넌트로 분리
+  - `handleItemDirectWorkDaysChange` 핸들러 함수 추출로 순작업일 변경 로직 재사용 가능
+  - **세부공정 컴포넌트 구조**:
+    ```
+    components/buildings/process-plan/
+    ├── ProcessDetailPanel.tsx       # 세부공정 상세 패널 컨테이너
+    ├── ProcessItemCard.tsx          # 개별 세부공종 카드 (번호 + 산식)
+    ├── FormulaDisplay.tsx           # 재사용 가능한 산식 표시 컴포넌트
+    ├── hooks/
+    │   └── useProcessCalculation.ts # 계산 로직 + 산식 메타데이터
+    └── index.ts                     # 배럴 export
+    ```
+  - **UI 개선 사항**:
+    - 세부공정 항목에 #1, #2, #3... 순번 배지 표시
+    - 각 항목에 "계산 과정" 토글 버튼 (기본 접힘)
+    - 물량 데이터 출처 표시 (`← 물량입력표 D6 (형틀)` 형태)
+    - 단계별 산식 시각화 (수량 참조 → 계산 → 결과)
+
+- **빌딩 기본정보 UI 전면 개선** (`BuildingBasicInfoRefactored.tsx`)
+  - 1,328줄 컴포넌트를 Compound Component 패턴으로 리팩토링
+  - `CollapsibleSection` UI 컴포넌트 신규 생성 (접이식 섹션, 애니메이션 지원)
+  - 3개 섹션 컴포넌트 분리:
+    - `StructureInfoSection`: 구조 정보 (코어 수, 코어 타입, 슬래브 타입)
+    - `UnitTypePatternSection`: 단위세대 구성 (패턴 추가/삭제, 층수 설정, 필로티 설정)
+    - `FloorHeightSection`: 층고 설정 (지하/지상/옥탑층 층고)
+  - `useBuildingAutoCalculations` 커스텀 훅 추출 (코어 개수, 총 세대수 자동계산 로직)
+  - `Badge` 컴포넌트에 `info` variant 추가 (하늘색 계열)
+  - Zod 스키마 강화 (`unitTypePatternSchema`, `floorHeightsSchema`, `buildingBasicInfoSchema`)
+
+#### Added
+- **컴포넌트 구조**:
+  ```
+  components/buildings/
+  ├── hooks/
+  │   └── useBuildingAutoCalculations.ts  # 자동계산 훅
+  └── sections/
+      ├── StructureInfoSection.tsx
+      ├── UnitTypePatternSection.tsx
+      └── FloorHeightSection.tsx
+  ```
 
 ### 2025-02-02
 #### Fixed
