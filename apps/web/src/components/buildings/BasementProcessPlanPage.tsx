@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { ProcessDetailPanel } from './process-plan/ProcessDetailPanel';
 import { getProcessModule } from '@/lib/data/process-modules';
@@ -660,11 +660,12 @@ export function BasementProcessPlanPage({ projectId }: Props) {
       ? meta.floorCount.coreGroundFloors.reduce((sum, count) => sum + (count || 0), 0)
       : meta.floorCount.ground || 0;
     
-    // 단위세대 구성 문자열 생성
+    // 단위세대 구성 문자열 생성 (신규 방식: unitCount 사용)
     const unitComposition = meta.unitTypePattern
       .map(pattern => {
         const coreNum = pattern.coreNumber || 1;
-        return `코어${coreNum} ${pattern.from}~${pattern.to}호 ${pattern.type}`;
+        const unitCount = pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : 0);
+        return `코어${coreNum} ${unitCount}호 ${pattern.type}`;
       })
       .join(', ');
 
@@ -1922,7 +1923,24 @@ export function BasementProcessPlanPage({ projectId }: Props) {
             </Card>
           )}
         </BuildingTabs>
-      ) : null}
+      ) : (
+        <Card className="p-8">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                등록된 동이 없습니다
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+                지하층 공정계획을 입력하려면 먼저 <br />
+                <span className="font-medium text-primary-600 dark:text-primary-400">"동 기본정보"</span> 탭에서 동을 생성해주세요.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

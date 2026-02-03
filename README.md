@@ -199,6 +199,7 @@ src/
 - **FloorTrade 보존**: 층 재생성 시 기존 물량 데이터 유지
 
 ### 2. 공정계획 시스템 ✅
+- **공정로직 관리**: 계산 공식, 공정 모듈, 사이클 정의 대시보드
 - **공정계획 수립**: 일수고정/물량기반/장비기반 계산 방식
 - **지상층/지하층 공정**: 개별 공정 계획 수립
 - **AI 챗봇 어시스턴트**: Gemini API 기반 공정계획 질의응답
@@ -397,6 +398,50 @@ Supabase PostgreSQL 기반 데이터베이스
 ## Changelog
 
 ### 2025-02-03
+#### Added
+- **공정로직 탭** (`ProcessLogicPage.tsx`): 공정계획 메뉴의 첫 번째 탭으로 추가
+  - **계산 공식 섹션** (`FormulaSection.tsx`): 공정 일수 산출 공식 표시
+    - 총작업인원, 장비대수, 1일투입인원, 순작업일수, 총작업일수 공식
+    - 변수 설명 및 예제 표시
+    - 부위별 대당 타설량 기준표 (버림/기초/지하층/셋팅층/기준층/PH층)
+  - **공정 모듈 섹션** (`ProcessModuleSection.tsx`): 구분별 세부공정 항목 편집
+    - 카테고리별 탭 (버림/기초/지하층/셋팅층/기준층/옥탑층)
+    - 인라인 테이블 편집 (인당생산성, 순작업일, 간접일 등)
+    - 기본값 초기화 기능
+  - **사이클 정의 섹션** (`CycleDefinitionSection.tsx`): 5일/6일/7일/8일 사이클 비교
+    - 사이클별 적용 가능 층 표시 (셋팅층/기준층/PH층)
+    - 선택 사이클 상세 일정 표시
+    - 사이클 선택 가이드
+  - **상태 관리 훅** (`useProcessLogicState.ts`): 편집/저장/리셋 기능
+    - localStorage 기반 프로젝트별 설정 저장
+    - 변경사항 추적 및 취소 기능
+  - **컴포넌트 구조**:
+    ```
+    components/buildings/
+    ├── ProcessLogicPage.tsx              # 메인 페이지
+    └── process-logic/
+        ├── FormulaSection.tsx            # 계산 공식 섹션
+        ├── ProcessModuleSection.tsx      # 공정 모듈 섹션
+        ├── CycleDefinitionSection.tsx    # 사이클 정의 섹션
+        ├── hooks/
+        │   └── useProcessLogicState.ts   # 상태 관리 훅
+        └── index.ts                      # 배럴 export
+    ```
+
+#### Changed
+- **단위세대 호수 입력 방식 개선** (`UnitTypePattern` 인터페이스)
+  - 기존: "시작 호수 ~ 끝 호수" 형식 (예: 1~2호)
+  - 변경: "호수" 단일 입력 방식 (예: 2호 → 한층당 2세대)
+  - **타입 변경** (`types.ts`):
+    - `unitCount: number` 필드 추가 (한층당 세대수)
+    - `from`/`to` 필드를 optional로 변경 (기존 데이터 호환성)
+  - **UI 변경** (`UnitTypePatternSection.tsx`, `BuildingBasicInfo.tsx`):
+    - 2개 입력 필드 → 1개 입력 필드로 단순화
+  - **계산 로직** (`useBuildingAutoCalculations.ts`):
+    - `unitCount` 우선 사용, 없으면 `to - from + 1`로 fallback
+  - **표시 문자열** (`BuildingProcessPlanPage.tsx`, `BasementProcessPlanPage.tsx`):
+    - `코어1 1~2호 59A` → `코어1 2호 59A` 형태로 변경
+
 #### Refactored
 - **동별 공정계획탭 UI 개선** (`BuildingProcessPlanPage.tsx`)
   - 2,886줄 → 2,275줄로 611줄 감소 (약 21% 코드 축소)

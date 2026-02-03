@@ -16,6 +16,7 @@ import type {
   UpdateFloorTradeDTO,
 } from '@/lib/types';
 import { logger } from '@/lib/utils/logger';
+import { isSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import * as SupabaseBuildingService from './SupabaseBuildingDataService';
 
 // ============================================
@@ -187,24 +188,38 @@ function detectHeightChanges(
 
 /**
  * 기존 FloorTrade를 새로운 Floor에 매칭하여 보존
+ *
+ * 주의: 특별 floorId (group-% 형식, 버림/기초)는 Floor 객체 없이 직접 저장되므로
+ * 별도로 보존합니다. 일반 층은 floorLabel + floorClass 기준으로 매칭합니다.
  */
 function preserveFloorTrades(
   oldFloors: Floor[],
   newFloors: Floor[],
   existingFloorTrades: FloorTrade[]
 ): FloorTrade[] {
-  // 기존 floorTrades를 floorLabel과 floorClass 기준으로 매핑
+  const preservedFloorTrades: FloorTrade[] = [];
+
+  // 1. 특별 floorId (버림/기초) 데이터 먼저 보존
+  // 이 데이터는 Floor 객체와 연결되지 않고 독립적으로 존재하므로 그대로 유지
+  existingFloorTrades.forEach(trade => {
+    if (isSpecialFloorId(trade.floorId)) {
+      preservedFloorTrades.push(trade);
+    }
+  });
+
+  // 2. 일반 층 데이터: floorLabel + floorClass 기준으로 매핑
   const existingFloorTradesMap = new Map<string, FloorTrade[]>();
   oldFloors.forEach(oldFloor => {
     const key = `${oldFloor.floorLabel}_${oldFloor.floorClass}`;
-    const trades = existingFloorTrades.filter(t => t.floorId === oldFloor.id);
+    const trades = existingFloorTrades.filter(
+      t => t.floorId === oldFloor.id && !isSpecialFloorId(t.floorId)
+    );
     if (trades.length > 0) {
       existingFloorTradesMap.set(key, trades);
     }
   });
 
   // 새로운 floors에 매칭하여 보존
-  const preservedFloorTrades: FloorTrade[] = [];
   newFloors.forEach(newFloor => {
     const key = `${newFloor.floorLabel}_${newFloor.floorClass}`;
     const existingTrades = existingFloorTradesMap.get(key);
@@ -302,9 +317,22 @@ function generateFloors(
       const settingFloors = determineSettingFloors(coreFloorCount, heights);
       const highestSettingFloor = settingFloors.length > 0 ? Math.max(...settingFloors) : null;
 
-      // 1~5층 개별 처리
+      // 기준층 시작점을 먼저 계산 (중복 방지)
+      let actualStandardStart = highestSettingFloor ? highestSettingFloor + 1 : (coreFloorCount >= 2 ? 2 : 1);
+
+      // 5층이 셋팅층이고 6층 이상이면, 6층은 개별 생성하고 기준층은 7층부터
+      if (settingFloors.includes(5) && coreFloorCount >= 6) {
+        actualStandardStart = 7;
+      }
+
+      // 1~5층 개별 처리 (기준층 범위에 포함되는 층은 제외)
       for (let floorNum = 5; floorNum >= 1; floorNum--) {
         if (coreFloorCount < floorNum) continue;
+
+        // 기준층 범위에 포함되는 층은 개별 생성하지 않음
+        if (floorNum >= actualStandardStart && floorNum <= coreFloorCount - 1) {
+          continue;
+        }
 
         const isSettingFloor = settingFloors.includes(floorNum);
 
@@ -319,9 +347,7 @@ function generateFloors(
         });
       }
 
-      // 기준층 범위 생성
-      let actualStandardStart = highestSettingFloor ? highestSettingFloor + 1 : (coreFloorCount >= 2 ? 2 : 1);
-
+      // 5층이 셋팅층이고 6층이 있는 경우, 6층 개별 생성
       if (settingFloors.includes(5) && coreFloorCount >= 6) {
         floors.push({
           id: `floor-core${coreNumber}-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -332,7 +358,6 @@ function generateFloors(
           floorClass: '기준층',
           height: null,
         });
-        actualStandardStart = 7;
       }
 
       if (actualStandardStart <= coreFloorCount - 1) {
@@ -379,9 +404,22 @@ function generateFloors(
       const settingFloors = determineSettingFloors(groundFloorCount, heights);
       const highestSettingFloor = settingFloors.length > 0 ? Math.max(...settingFloors) : null;
 
-      // 1~5층 개별 처리
+      // 기준층 시작점을 먼저 계산 (중복 방지)
+      let actualStandardStart = highestSettingFloor ? highestSettingFloor + 1 : (groundFloorCount >= 2 ? 2 : 1);
+
+      // 5층이 셋팅층이고 6층 이상이면, 6층은 개별 생성하고 기준층은 7층부터
+      if (settingFloors.includes(5) && groundFloorCount >= 6) {
+        actualStandardStart = 7;
+      }
+
+      // 1~5층 개별 처리 (기준층 범위에 포함되는 층은 제외)
       for (let floorNum = 5; floorNum >= 1; floorNum--) {
         if (groundFloorCount < floorNum) continue;
+
+        // 기준층 범위에 포함되는 층은 개별 생성하지 않음
+        if (floorNum >= actualStandardStart && floorNum <= groundFloorCount - 1) {
+          continue;
+        }
 
         const isSettingFloor = settingFloors.includes(floorNum);
 
@@ -396,9 +434,9 @@ function generateFloors(
         });
       }
 
-      // 기준층 범위
-      let actualStandardStart = highestSettingFloor ? highestSettingFloor + 1 : (groundFloorCount >= 2 ? 2 : 1);
+      // 기준층 범위 (actualStandardStart는 이미 계산됨)
 
+      // 5층이 셋팅층이고 6층이 있는 경우, 6층 개별 생성
       if (settingFloors.includes(5) && groundFloorCount >= 6) {
         floors.push({
           id: `floor-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -409,7 +447,6 @@ function generateFloors(
           floorClass: '기준층',
           height: null,
         });
-        actualStandardStart = 7;
       }
 
       if (actualStandardStart <= groundFloorCount - 1) {

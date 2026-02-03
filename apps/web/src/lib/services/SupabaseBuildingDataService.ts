@@ -635,6 +635,9 @@ export async function saveFloorTrade(
 
 /**
  * 여러 층별 공종 데이터 일괄 저장
+ *
+ * 주의: 특별 floorId (group-% 형식, 버림/기초)는 삭제하지 않고 보존됩니다.
+ * 이 함수는 일반 층 데이터만 교체하며, 특별 층 데이터는 별도로 관리됩니다.
  */
 export async function saveFloorTrades(
   buildingId: string,
@@ -643,20 +646,23 @@ export async function saveFloorTrades(
 ): Promise<void> {
   const supabase = await getSupabaseClient();
 
-  // 기존 데이터 삭제
+  // 기존 데이터 삭제 (특별 floorId 제외)
+  // group-% 형식의 floorId는 버림/기초 데이터이므로 보존
   const { error: deleteError } = await supabase
     .from('floor_trades')
     .delete()
-    .eq('building_id', buildingId);
+    .eq('building_id', buildingId)
+    .not('floor_id', 'like', 'group-%');
 
   if (deleteError) {
     logger.error('Failed to delete existing floor trades:', deleteError);
     throw new Error(`Failed to delete existing floor trades: ${deleteError.message}`);
   }
 
-  // 새 데이터 삽입
-  if (trades.length > 0) {
-    const insertData = trades.map(floorTradeToInsert);
+  // 새 데이터 삽입 (특별 floorId가 아닌 것만)
+  const regularTrades = trades.filter(t => !t.floorId.startsWith('group-'));
+  if (regularTrades.length > 0) {
+    const insertData = regularTrades.map(floorTradeToInsert);
     const { error: insertError } = await supabase
       .from('floor_trades')
       .insert(insertData);

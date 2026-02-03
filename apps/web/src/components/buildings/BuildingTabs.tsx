@@ -154,7 +154,7 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
                   >
                     {building.buildingName}
                   </button>
-                  {onDelete && buildings.length > 1 && (
+                  {onDelete && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

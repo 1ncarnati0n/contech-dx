@@ -9,6 +9,7 @@ export { PlannedUnitRatePage } from './PlannedUnitRatePage';
 export { BuildingProcessPlanPage } from './BuildingProcessPlanPage';
 export { BasementProcessPlanPage } from './BasementProcessPlanPage';
 export { PouringSectionReviewPage } from './PouringSectionReviewPage';
+export { ProcessLogicPage } from './ProcessLogicPage';
 export { BuildingForm } from './BuildingForm';
 export { BuildingTabs } from './BuildingTabs';
 export { BuildingBasicInfo } from './BuildingBasicInfo';

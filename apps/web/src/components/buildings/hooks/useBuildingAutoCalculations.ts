@@ -40,7 +40,8 @@ interface UseBuildingAutoCalculationsResult {
  * - 동일 코어 번호가 반복되면 (코어1, 코어1-1, 코어1-2 등) 하나의 코어로 계산
  *
  * ## 세대수 계산 로직
- * 1. 각 패턴별: (끝호수 - 시작호수 + 1) × 해당 코어의 지상층 수
+ * 1. 각 패턴별: unitCount × 해당 코어의 지상층 수 (신규 방식)
+ *    - 기존 데이터 호환: unitCount가 없으면 (끝호수 - 시작호수 + 1)로 계산
  * 2. 필로티 제외: 코어별 (필로티 부대시설 제외 세대수 × 필로티 층수)
  * 3. 최종 세대수 = 합계 - 필로티 제외 세대수
  */
@@ -104,7 +105,8 @@ export function useBuildingAutoCalculations({
     // 각 패턴 순회하면서 계산
     unitTypePattern.forEach((pattern, index) => {
       const coreNum = pattern.coreNumber || 1;
-      const unitCount = pattern.to - pattern.from + 1;
+      // 신규 방식: unitCount 사용, 기존 데이터 호환: from/to 사용
+      const unitCount = pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : 0);
 
       // 코어별 층수 가져오기
       let floorCount = groundCount;

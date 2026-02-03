@@ -31,15 +31,15 @@ interface HeightField {
 }
 
 const HEIGHT_FIELDS: HeightField[] = [
-  { key: 'top', label: '최상층', defaultValue: 3050 },
-  { key: 'standard', label: '기준층', defaultValue: 2850 },
-  { key: 'floor5', label: '5층', defaultValue: 2850 },
-  { key: 'floor4', label: '4층', defaultValue: 2850 },
-  { key: 'floor3', label: '3층', defaultValue: 2850 },
-  { key: 'floor2', label: '2층', defaultValue: 2850 },
-  { key: 'floor1', label: '1층', defaultValue: 3050 },
-  { key: 'basement1', label: 'B1층', defaultValue: 5400 },
   { key: 'basement2', label: 'B2층', defaultValue: 3500 },
+  { key: 'basement1', label: 'B1층', defaultValue: 5400 },
+  { key: 'floor1', label: '1층', defaultValue: 3050 },
+  { key: 'floor2', label: '2층', defaultValue: 2850 },
+  { key: 'floor3', label: '3층', defaultValue: 2850 },
+  { key: 'floor4', label: '4층', defaultValue: 2850 },
+  { key: 'floor5', label: '5층', defaultValue: 2850 },
+  { key: 'standard', label: '기준층', defaultValue: 2850 },
+  { key: 'top', label: '최상층', defaultValue: 3050 },
 ];
 
 /**
@@ -80,7 +80,24 @@ export function FloorHeightSection({
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {/* 옥탑층 층고 - 맨 앞에 배치 */}
+      {/* 기본 층고 필드들 (B2 → B1 → 1층 → ... → 기준층 → 최상층 순서) */}
+      {HEIGHT_FIELDS.map((field) => (
+        <div key={field.key} className="flex-shrink-0">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            {field.label}
+          </label>
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            className="w-20"
+            value={(heights[field.key] as number) || field.defaultValue}
+            onChange={(e) => handleFieldChange(field.key, Number(e.target.value))}
+          />
+        </div>
+      ))}
+
+      {/* 옥탑층 층고 - 맨 뒤에 배치 */}
       {phCount > 0 && (
         phCount === 1 ? (
           <div className="flex-shrink-0">
@@ -118,23 +135,6 @@ export function FloorHeightSection({
           ))
         )
       )}
-
-      {/* 기본 층고 필드들 (최상층 → 지하2층 순서) */}
-      {HEIGHT_FIELDS.map((field) => (
-        <div key={field.key} className="flex-shrink-0">
-          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-            {field.label}
-          </label>
-          <Input
-            type="number"
-            step="1"
-            min="0"
-            className="w-20"
-            value={(heights[field.key] as number) || field.defaultValue}
-            onChange={(e) => handleFieldChange(field.key, Number(e.target.value))}
-          />
-        </div>
-      ))}
     </div>
   );
 }

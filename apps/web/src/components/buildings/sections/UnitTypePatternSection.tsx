@@ -98,10 +98,9 @@ export function UnitTypePatternSection({
    * 새 단위세대 패턴 추가
    */
   const handleAddPattern = () => {
-    const defaultFrom = 1;
     onUnitTypePatternChange([
       ...unitTypePattern,
-      { from: defaultFrom, to: defaultFrom, type: '', coreNumber: 1 },
+      { unitCount: 1, type: '', coreNumber: 1 },
     ]);
   };
 
@@ -122,12 +121,6 @@ export function UnitTypePatternSection({
   ) => {
     const updated = [...unitTypePattern];
     updated[index] = { ...updated[index], [field]: value };
-
-    // 시작 호수가 변경되면 끝 호수를 자동으로 시작 호수와 같은 값으로 설정
-    if (field === 'from' && typeof value === 'number') {
-      updated[index].to = value;
-    }
-
     onUnitTypePatternChange(updated);
   };
 
@@ -211,9 +204,10 @@ export function UnitTypePatternSection({
 
                   <Input
                     type="number"
-                    placeholder="호"
-                    value={pattern.from || ''}
-                    onChange={(e) => handleUpdatePattern(index, 'from', Number(e.target.value))}
+                    placeholder="호수"
+                    min="1"
+                    value={(pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : '')) || ''}
+                    onChange={(e) => handleUpdatePattern(index, 'unitCount', Number(e.target.value))}
                     className="w-[60px]"
                     style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />
