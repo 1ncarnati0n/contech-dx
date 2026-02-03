@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
-import { Calculator, Map, LayoutGrid } from 'lucide-react';
+import { Calculator, Map, LayoutGrid, Construction } from 'lucide-react';
 import { calculatePouringSectionDetailed } from '@/lib/utils/pouring-section-calculation';
 import type { PouringSectionCalculationResult } from '@/lib/types';
 import { toast } from 'sonner';
@@ -87,6 +87,11 @@ export function PouringSectionReviewPage({ projectId }: Props) {
             <CardHeader>
               <CardTitle>입력 정보</CardTitle>
             </CardHeader>
+            {/* 준비중 안내 */}
+            <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-b border-amber-100 dark:border-amber-800">
+              <Construction className="w-4 h-4 flex-shrink-0" />
+              <span className="text-sm font-medium">🚧 이 기능은 현재 준비 중입니다. 곧 업데이트될 예정입니다.</span>
+            </div>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

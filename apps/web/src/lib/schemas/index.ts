@@ -148,6 +148,96 @@ export const buildingBasicSchema = z.object({
 export type BuildingBasicFormValues = z.infer<typeof buildingBasicSchema>;
 
 // ============================================
+// 빌딩 기본정보 상세 스키마 (BuildingBasicInfo 컴포넌트용)
+// ============================================
+
+/**
+ * 단위세대 패턴 스키마
+ */
+export const unitTypePatternSchema = z.object({
+  from: z.number().min(1, '시작 호수는 1 이상이어야 합니다'),
+  to: z.number().min(1, '끝 호수는 1 이상이어야 합니다'),
+  type: z.string().min(1, '세대 타입을 입력해주세요'),
+  coreNumber: z.number().min(1).max(10).optional(),
+}).refine(
+  (data) => data.to >= data.from,
+  { message: '끝 호수는 시작 호수 이상이어야 합니다', path: ['to'] }
+);
+
+export type UnitTypePatternFormValues = z.infer<typeof unitTypePatternSchema>;
+
+/**
+ * 층고 설정 스키마 (mm 단위)
+ */
+export const floorHeightsSchema = z.object({
+  basement2: z.number()
+    .min(2500, '지하2층 층고는 2500mm 이상이어야 합니다')
+    .max(10000, '층고는 10000mm 이하여야 합니다'),
+  basement1: z.number()
+    .min(2500, '지하1층 층고는 2500mm 이상이어야 합니다')
+    .max(10000),
+  floor1: z.number()
+    .min(2500, '1층 층고는 2500mm 이상이어야 합니다')
+    .max(10000),
+  floor2: z.number().min(2000).max(10000),
+  floor3: z.number().min(2000).max(10000),
+  floor4: z.number().min(2000).max(10000).optional(),
+  floor5: z.number().min(2000).max(10000).optional(),
+  standard: z.number()
+    .min(2000, '기준층 층고는 2000mm 이상이어야 합니다')
+    .max(5000, '기준층 층고는 5000mm 이하여야 합니다'),
+  top: z.number()
+    .min(2500, '최상층 층고는 2500mm 이상이어야 합니다')
+    .max(10000),
+  ph: z.union([
+    z.number().min(2000).max(10000),
+    z.array(z.number().min(2000).max(10000)),
+  ]),
+});
+
+export type FloorHeightsFormValues = z.infer<typeof floorHeightsSchema>;
+
+/**
+ * 층수 설정 스키마
+ */
+export const floorCountSchema = z.object({
+  basement: z.number()
+    .min(0, '지하층 수는 0 이상이어야 합니다')
+    .max(10, '지하층 수는 10 이하여야 합니다'),
+  ground: z.number()
+    .min(1, '지상층 수는 1 이상이어야 합니다')
+    .max(100, '지상층 수는 100 이하여야 합니다'),
+  ph: z.number()
+    .min(0, '옥탑층 수는 0 이상이어야 합니다')
+    .max(5, '옥탑층 수는 5 이하여야 합니다'),
+  coreGroundFloors: z.array(z.number().min(0).max(100)).optional(),
+  coreBasementFloors: z.array(z.number().min(0).max(10)).optional(),
+  corePhFloors: z.array(z.number().min(0).max(5)).optional(),
+  pilotisCount: z.number().min(0).max(50).optional(),
+  corePilotisCounts: z.array(z.number().min(0).max(50)).optional(),
+  corePilotisHeights: z.array(z.number().min(0).max(10)).optional(),
+  hasHighCeilingEquipmentRoom: z.boolean().optional(),
+});
+
+export type FloorCountFormValues = z.infer<typeof floorCountSchema>;
+
+/**
+ * 빌딩 기본정보 전체 스키마 (BuildingBasicInfo 폼 검증용)
+ */
+export const buildingBasicInfoSchema = z.object({
+  buildingName: z.string().min(1, '동 이름을 입력해주세요'),
+  coreType: z.enum(['중복도(판상형)', '타워형', '편복도']),
+  slabType: z.enum(['벽식구조', 'RC구조', '벽식구조(내부기둥)']),
+  unitTypePattern: z.array(unitTypePatternSchema)
+    .min(1, '단위세대 구성을 1개 이상 추가해주세요'),
+  floorCount: floorCountSchema,
+  heights: floorHeightsSchema,
+  standardFloorCycle: z.number().min(0).max(30).optional(),
+});
+
+export type BuildingBasicInfoFormValues = z.infer<typeof buildingBasicInfoSchema>;
+
+// ============================================
 // API 요청 검증 스키마
 // ============================================
 

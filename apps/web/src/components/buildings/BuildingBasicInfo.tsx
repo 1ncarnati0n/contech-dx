@@ -183,7 +183,8 @@ export function BuildingBasicInfo({
     // 각 패턴을 순회하면서 계산 (인덱스 기반으로 코어1-1, 코어1-2 구분)
     unitTypePattern.forEach((pattern, index) => {
       const coreNum = pattern.coreNumber || 1;
-      const unitCount = pattern.to - pattern.from + 1; // 호수 범위
+      // 신규 방식: unitCount 사용, 기존 데이터 호환: from/to 사용
+      const unitCount = pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : 0);
       
       // 코어별 층수 가져오기
       let floorCount = groundCount; // 기본값
@@ -686,9 +687,8 @@ export function BuildingBasicInfo({
 
   // 단위세대 패턴 추가/삭제 함수
   const addUnitTypePattern = () => {
-    // 기본값: 시작 호수와 끝 호수를 같은 값으로 설정
-    const defaultFrom = 1;
-    setUnitTypePattern([...unitTypePattern, { from: defaultFrom, to: defaultFrom, type: '', coreNumber: 1 }]);
+    // 신규 방식: unitCount 사용 (한층당 세대수)
+    setUnitTypePattern([...unitTypePattern, { unitCount: 1, type: '', coreNumber: 1 }]);
   };
 
   const removeUnitTypePattern = (index: number) => {
@@ -698,12 +698,6 @@ export function BuildingBasicInfo({
   const updateUnitTypePattern = (index: number, field: keyof UnitTypePattern, value: number | string) => {
     const updated = [...unitTypePattern];
     updated[index] = { ...updated[index], [field]: value };
-    
-    // 시작 호수가 변경되면 끝 호수를 자동으로 시작 호수와 같은 값으로 설정
-    if (field === 'from' && typeof value === 'number') {
-      updated[index].to = value;
-    }
-    
     setUnitTypePattern(updated);
   };
 
@@ -858,20 +852,11 @@ export function BuildingBasicInfo({
                   </select>
                   <Input
                     type="number"
-                    placeholder="시작 호수"
-                    value={pattern.from || ''}
-                    onChange={(e) => updateUnitTypePattern(index, 'from', Number(e.target.value))}
-                    
-                    className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
-                  />
-                  <span className="text-slate-500">~</span>
-                  <Input
-                    type="number"
-                    placeholder="끝 호수"
-                    value={pattern.to || ''}
-                    onChange={(e) => updateUnitTypePattern(index, 'to', Number(e.target.value))}
-                    
+                    placeholder="호수"
+                    min="1"
+                    value={(pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : '')) || ''}
+                    onChange={(e) => updateUnitTypePattern(index, 'unitCount', Number(e.target.value))}
+
                     className="w-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
                   />

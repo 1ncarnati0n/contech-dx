@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BuildingForm } from './BuildingForm';
 import { BuildingTabs } from './BuildingTabs';
-import { BuildingBasicInfo } from './BuildingBasicInfo';
+import { BuildingBasicInfoRefactored as BuildingBasicInfo } from './BuildingBasicInfoRefactored';
 import { FloorSettingsTable } from './FloorSettingsTable';
 import type { Building, BuildingMeta, Floor, FloorTrade } from '@/lib/types';
 import { createBuilding, getBuildings, deleteBuilding, updateBuildingFloorsAndTrades, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
+import { isSpecialFloorId, parseSpecialFloorId, createSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import { toast } from 'sonner';
 import { Spinner, Button, Card } from '@/components/ui';
-import { Copy } from 'lucide-react';
+import { Copy, Building2 } from 'lucide-react';
 
 interface Props {
   projectId: string;
@@ -133,7 +134,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       
       for (let i = 0; i < additionalCount; i++) {
         const buildingName = `${nextNumber + i}동`;
-        
+
         // 103동이 있으면 층 설정도 복사
         if (referenceBuilding && referenceFloors.length > 0) {
           const building = await createBuilding({
@@ -142,25 +143,39 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
             buildingNumber: buildings.length + i + 1,
             meta: { ...defaultMeta },
           });
-          
+
           // 층 설정을 복사하되 buildingId는 새로운 동의 ID로 변경
           const copiedFloors = referenceFloors.map((floor, floorIndex) => ({
             ...floor,
             id: `floor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}-${floorIndex}`,
             buildingId: building.id,
           }));
-          
-          // 층 설정 저장
+
+          // 특별 floorId (버림/기초) 데이터도 복사
+          const copiedFloorTrades: FloorTrade[] = (referenceBuilding.floorTrades || [])
+            .filter(trade => isSpecialFloorId(trade.floorId))
+            .map(trade => {
+              const parsed = parseSpecialFloorId(trade.floorId);
+              return {
+                ...trade,
+                id: `trade-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+                buildingId: building.id,
+                floorId: parsed ? createSpecialFloorId(building.id, parsed.tradeGroup) : trade.floorId,
+                trades: JSON.parse(JSON.stringify(trade.trades)),
+              };
+            });
+
+          // 층 설정 저장 (특별 floorId 데이터 포함)
           await updateBuildingFloorsAndTrades(
             building.id,
             projectId,
             copiedFloors,
-            []
+            copiedFloorTrades
           );
-          
+
           // building 객체의 floors도 업데이트
           building.floors = copiedFloors;
-          
+
           newBuildings.push(building);
         } else {
           const building = await createBuilding({
@@ -241,14 +256,14 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
           buildingNumber: buildings.length + i + 1,
           meta: sourceMeta,
         });
-        
+
         // floors 복사 (buildingId 업데이트, 고유 ID 생성)
         const copiedFloors = sourceBuilding.floors.map(floor => ({
           ...floor,
           id: `floor-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: newBuilding.id,
         }));
-        
+
         // floorTrades 복사 (buildingId와 floorId 업데이트)
         const floorIdMap = new Map<string, string>(); // 원본 floorId -> 새 floorId 매핑
         sourceBuilding.floors.forEach((originalFloor, idx) => {
@@ -256,8 +271,20 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
             floorIdMap.set(originalFloor.id, copiedFloors[idx].id);
           }
         });
-        
+
         const copiedFloorTrades = sourceBuilding.floorTrades.map(trade => {
+          // 특별 floorId (버림/기초)는 새 buildingId로 변환
+          if (isSpecialFloorId(trade.floorId)) {
+            const parsed = parseSpecialFloorId(trade.floorId);
+            return {
+              ...trade,
+              id: `trade-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+              buildingId: newBuilding.id,
+              floorId: parsed ? createSpecialFloorId(newBuilding.id, parsed.tradeGroup) : trade.floorId,
+              trades: JSON.parse(JSON.stringify(trade.trades)),
+            };
+          }
+          // 일반 층은 floorIdMap으로 매핑
           const newFloorId = floorIdMap.get(trade.floorId) || trade.floorId;
           return {
             ...trade,
@@ -267,7 +294,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
             trades: JSON.parse(JSON.stringify(trade.trades)), // 깊은 복사
           };
         });
-        
+
         // floors와 floorTrades 업데이트 (파라미터 순서: buildingId, projectId, floors, floorTrades)
         await updateBuildingFloorsAndTrades(
           newBuilding.id,
@@ -275,7 +302,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
           copiedFloors,
           copiedFloorTrades
         );
-        
+
         newBuildings.push(newBuilding);
       }
 
@@ -497,9 +524,22 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
           )}
         </BuildingTabs>
       ) : (
-        <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <p>동 수를 입력하고 "동 탭 생성" 버튼을 클릭하여 시작하세요.</p>
-        </div>
+        <Card className="p-8">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                등록된 동이 없습니다
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+                위의 동 수 입력란에 생성할 동의 개수를 입력하고 <br />
+                <span className="font-medium text-primary-600 dark:text-primary-400">"동 탭 생성"</span> 버튼을 클릭하여 시작하세요.
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   );

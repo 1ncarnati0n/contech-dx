@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Calendar,
   DollarSign,
@@ -22,12 +22,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card } from '@/components/ui';
-import type { Project } from '@/lib/types';
+import type { Project, Profile } from '@/lib/types';
 import { deleteProject, getProject } from '@/lib/services/projects';
+import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage, PouringSectionReviewPage } from '@/components/buildings';
+import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage, PouringSectionReviewPage, ProcessLogicPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
 import { GanttChartPage } from './GanttChartPage';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
@@ -46,6 +47,7 @@ const TAB_TITLES: Record<string, string> = {
   geological_data: '지질 데이터 입력',
   planned_unit_rate: '단가 입력',
   executed_unit_rate: '실행 단가',
+  process_logic: '공정로직',
   building_process_plan: '동별 공정계획',
   basement_process_plan: '지하층 공정계획',
   gantt_chart: '간트차트',
@@ -64,6 +66,7 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   geological_data: '지질 조사 데이터를 입력합니다.',
   planned_unit_rate: '계획 단가를 입력합니다.',
   executed_unit_rate: '실행 단가를 입력합니다.',
+  process_logic: '공정 계산 공식, 모듈, 사이클 정의를 관리합니다.',
   building_process_plan: '동별 공정계획을 수립하고 일수를 계산합니다.',
   basement_process_plan: '지하층 공정계획을 수립하고 일수를 계산합니다.',
   gantt_chart: '프로젝트 공정 현황을 한눈에 확인하세요.',
@@ -71,6 +74,13 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   documents: '프로젝트 문서를 관리합니다.',
   settings: '프로젝트 설정을 관리합니다.',
 };
+
+// 유효한 탭 목록
+const VALID_TABS = Object.keys(TAB_TITLES);
+
+function isValidTab(tab: string | null): tab is string {
+  return tab !== null && VALID_TABS.includes(tab);
+}
 
 // 탭별 아이콘 매핑
 const TAB_ICONS: Record<string, LucideIcon> = {
@@ -82,6 +92,7 @@ const TAB_ICONS: Record<string, LucideIcon> = {
   geological_data: Layers,
   planned_unit_rate: DollarSign,
   executed_unit_rate: DollarSign,
+  process_logic: Calculator,
   building_process_plan: Calendar,
   basement_process_plan: Calendar,
   gantt_chart: BarChart3,
@@ -92,16 +103,60 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 
 export function ProjectDetailClient({ project: initialProject }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [project, setProject] = useState<Project>(initialProject);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarPinned, setSidebarPinned] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  // 프로필 로드
+  useEffect(() => {
+    getCurrentUserProfile().then(setProfile);
+  }, []);
+
+  // 관리자 권한 체크
+  const isAdmin = isSystemAdmin(profile);
+
+  // URL에서 탭 초기값 읽기
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const handleTabChange = useCallback((tab: string) => {
+    if (!isValidTab(tab)) return;
+
     setActiveTab(tab);
-  }, []);
+
+    // URL 쿼리 파라미터 업데이트
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'overview') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [searchParams, router]);
+
+  // 브라우저 뒤로가기/앞으로가기 시 탭 상태 동기화
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const validTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
+
+    if (validTab !== activeTab) {
+      setActiveTab(validTab);
+    }
+  }, [searchParams, activeTab]);
+
+  // 비관리자가 process_logic 탭에 직접 접근 시 overview로 리다이렉트
+  useEffect(() => {
+    if (activeTab === 'process_logic' && profile && !isAdmin) {
+      handleTabChange('overview');
+    }
+  }, [activeTab, profile, isAdmin, handleTabChange]);
 
   // 프로젝트 데이터 동기화 (서버에서 업데이트된 데이터 반영)
   useEffect(() => {
@@ -206,6 +261,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         onTabChange={handleTabChange}
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
+        isAdmin={isAdmin}
       />
 
       <div className="flex-1 flex flex-col h-full ml-16" onClick={handleBodyClick}>
@@ -371,6 +427,10 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
               </div>
             )}
 
+            {activeTab === 'process_logic' && (
+              <ProcessLogicPage projectId={project.id} />
+            )}
+
             {activeTab === 'building_process_plan' && (
               <BuildingProcessPlanPage projectId={project.id} />
             )}
@@ -387,7 +447,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
               <ProjectTeamPage projectId={project.id} projectCreatedBy={project.created_by} />
             )}
 
-            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
+            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
                 <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
                   <Settings className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
