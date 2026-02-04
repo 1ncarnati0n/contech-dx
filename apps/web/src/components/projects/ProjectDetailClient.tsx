@@ -169,10 +169,23 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const handleTabChange = useCallback((tab: string) => {
     if (!isValidTab(tab)) return;
 
-    // 🚀 Stage 1 Performance measurement: Track all tab switching times
+    // 🚀 Performance measurement: Track tab switching times
     const tabSwitchStart = performance.now();
 
     setActiveTab(tab);
+
+    // ✅ Client-side URL update (no server request)
+    // Uses History API instead of router.replace() to avoid 350-800ms server delay
+    const params = new URLSearchParams(window.location.search);
+    if (tab === 'overview') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
 
     // Measure tab switch performance after next render
     requestAnimationFrame(() => {
@@ -192,33 +205,25 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
       } else {
         console.log(`❌ Slow performance (> ${threshold * 3}ms) - optimization needed`);
       }
-
-      // Stage 1 target: building_process_plan < 2000ms (from 3000ms)
-      // Stage 2 target: building_process_plan < 800ms
-      // Stage 3 target: building_process_plan < 100ms
     });
-
-    // URL 쿼리 파라미터 업데이트
-    const params = new URLSearchParams(searchParams.toString());
-    if (tab === 'overview') {
-      params.delete('tab');
-    } else {
-      params.set('tab', tab);
-    }
-
-    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-    router.replace(newUrl, { scroll: false });
-  }, [searchParams, router]);
+  }, []); // ✅ No dependencies - pure client-side operation
 
   // 브라우저 뒤로가기/앞으로가기 시 탭 상태 동기화
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-    const validTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabFromUrl = params.get('tab');
+      const validTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
 
-    if (validTab !== activeTab) {
-      setActiveTab(validTab);
-    }
-  }, [searchParams, activeTab]);
+      if (validTab !== activeTab) {
+        setActiveTab(validTab);
+      }
+    };
+
+    // Listen to browser navigation events
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab]);
 
   // 비관리자가 process_logic 탭에 직접 접근 시 overview로 리다이렉트
   useEffect(() => {
