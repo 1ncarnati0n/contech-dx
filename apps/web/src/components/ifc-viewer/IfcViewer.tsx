@@ -97,8 +97,12 @@ export function IfcViewer({ className }: IfcViewerProps) {
         worldRef.current = world;
 
         // Setup scene, renderer, camera in correct order
+        if (!containerRef.current) {
+          throw new Error('Container element not found');
+        }
+
         world.scene = new OBC.SimpleScene(components);
-        world.renderer = new OBF.PostproductionRenderer(components, containerRef.current!);
+        world.renderer = new OBF.PostproductionRenderer(components, containerRef.current);
         world.camera = new OBC.OrthoPerspectiveCamera(components);
 
         // Initialize components
