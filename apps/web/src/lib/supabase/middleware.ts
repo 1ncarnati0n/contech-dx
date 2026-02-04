@@ -76,9 +76,6 @@ export async function updateSession(request: NextRequest) {
   // Route protection logic
   const path = request.nextUrl.pathname;
 
-  // 디버깅 로그
-  console.log('[Middleware] path:', path, 'user:', user?.email ?? 'null');
-
   // 인증된 사용자가 로그인/회원가입/루트 페이지 접근 시 /home으로 리다이렉트
   if (user && (path === '/login' || path === '/signup' || path === '/')) {
     return NextResponse.redirect(new URL('/home', request.url));
