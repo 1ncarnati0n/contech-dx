@@ -74,6 +74,11 @@ const ProcessLogicPage = dynamic(
   { loading: () => <TabLoadingSkeleton title="공정로직 로딩 중..." /> }
 );
 
+const ProjectSettingsPage = dynamic(
+  () => import('./ProjectSettingsPage').then(m => ({ default: m.ProjectSettingsPage })),
+  { loading: () => <TabLoadingSkeleton title="설정 로딩 중..." /> }
+);
+
 interface Props {
   project: Project;
 }
@@ -551,7 +556,11 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
               <ProjectTeamPage projectId={project.id} projectCreatedBy={project.created_by} />
             )}
 
-            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
+            {activeTab === 'settings' && (
+              <ProjectSettingsPage project={project} onUpdate={handleProjectUpdate} />
+            )}
+
+            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && activeTab !== 'settings' && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
                 <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
                   <Settings className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
