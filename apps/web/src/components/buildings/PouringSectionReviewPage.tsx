@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
-import { Calculator, Map, LayoutGrid, Construction } from 'lucide-react';
+import { Calculator, Construction } from 'lucide-react';
 import { calculatePouringSectionDetailed } from '@/lib/utils/pouring-section-calculation';
 import type { PouringSectionCalculationResult } from '@/lib/types';
 import { toast } from 'sonner';
@@ -16,13 +16,15 @@ const IfcViewer = dynamic(
 
 interface Props {
   projectId: string;
+  viewMode?: 'simple' | 'visual';
+  onViewModeChange?: (mode: 'simple' | 'visual') => void;
 }
 
-type ViewMode = 'simple' | 'visual';
-
-export function PouringSectionReviewPage({ projectId }: Props) {
-  // 모드 상태
-  const [viewMode, setViewMode] = useState<ViewMode>('simple');
+export function PouringSectionReviewPage({
+  projectId,
+  viewMode = 'visual',
+  onViewModeChange
+}: Props) {
 
   // ============================================
   // Simple 모드 상태
@@ -51,34 +53,6 @@ export function PouringSectionReviewPage({ projectId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* 모드 전환 버튼 */}
-      <div className="flex justify-end">
-        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
-          <button
-            onClick={() => setViewMode('simple')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'simple'
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            Simple
-          </button>
-          <button
-            onClick={() => setViewMode('visual')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'visual'
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <Map className="w-4 h-4" />
-            Visual
-          </button>
-        </div>
-      </div>
-
       {/* Simple 모드 */}
       {viewMode === 'simple' && (
         <>

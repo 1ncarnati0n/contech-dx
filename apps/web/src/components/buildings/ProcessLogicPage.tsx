@@ -12,7 +12,7 @@ import {
   useProcessLogicState,
 } from './process-logic';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
-import type { Profile } from '@/lib/types';
+import type { Profile, ProcessCategory } from '@/lib/types';
 
 interface ProcessLogicPageProps {
   projectId: string;
@@ -86,6 +86,29 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     setConfirmDialog({ open: false, type: null });
   };
 
+  /**
+   * 부위별 대당 타설량 변경 핸들러
+   * 해당 카테고리의 모든 ProcessItem.equipmentCalculationBase를 업데이트
+   */
+  const handleEquipmentBaseChange = (category: ProcessCategory, value: number) => {
+    const updatedModules = modules.map((module) => {
+      // 카테고리가 일치하지 않으면 그대로 반환
+      if (module.category !== category) return module;
+
+      return {
+        ...module,
+        items: module.items.map((item) =>
+          // equipmentCalculationBase가 있는 항목만 업데이트 (콘크리트 타설 항목)
+          item.equipmentCalculationBase !== undefined
+            ? { ...item, equipmentCalculationBase: value }
+            : item
+        ),
+      };
+    });
+
+    updateModules(updatedModules);
+  };
+
   // 프로필 로딩 중
   if (isLoadingProfile || isLoading) {
     return (
@@ -114,8 +137,12 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* 계산 공식 섹션 */}
-      <FormulaSection />
+      {/* 계산 공식 섹션 - 독립적인 편집 모드 */}
+      <FormulaSection
+        modules={modules}
+        onEquipmentBaseChange={handleEquipmentBaseChange}
+        onSave={handleSave}
+      />
 
       {/* 공정 모듈 섹션 - 편집 버튼이 이 섹션 헤더에 있음 */}
       <ProcessModuleSection

@@ -1,58 +1,40 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import * as React from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useTheme } from 'next-themes';
 import {
   Upload,
   Loader2,
   Box,
   RotateCcw,
-  ArrowUp,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  Eye,
-  Grid3X3,
-  MousePointer2,
-  X,
   Maximize2,
   Minimize2,
+  MousePointer2,
+  PanelLeft,
+  PanelRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import type {
-  LoadingState,
-  ViewerStats,
-  SelectedElement,
-  ViewOrientation,
-  ProjectionMode,
-  FragmentItemData,
-} from './types';
 
-interface IfcViewerProps {
-  className?: string;
-}
+// Context & Hooks
+import { IfcViewerProvider, useIfcViewerContext } from './context/IfcViewerContext';
+import { useIfcViewer } from './hooks/useIfcViewer';
+import { useIfcLoader } from './hooks/useIfcLoader';
+import { useIfcViewerStore } from './stores/useIfcViewerStore';
 
-export function IfcViewer({ className }: IfcViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  // 외부 라이브러리(@thatopen/components)의 타입이 복잡하여 any 사용
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const componentsRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const worldRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ifcLoaderRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fragmentsRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const highlighterRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const boundingBoxerRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const threeRef = useRef<any>(null);
-  const isInitializedRef = useRef(false);
+// Components
+import { ViewControls } from './components/toolbar/ViewControls';
+import { RenderingControls } from './components/toolbar/RenderingControls';
+import { ClippingControls } from './components/toolbar/ClippingControls';
+import { MeasurementToolbar } from './components/toolbar/MeasurementToolbar';
+import { LeftPanel } from './components/panels/LeftPanel';
+import { RightPanel } from './components/panels/RightPanel';
 
-  // Theme synchronization
+// ============================================
+// 내부 컴포넌트
+// ============================================
+
+function IfcViewerContent() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -60,383 +42,71 @@ export function IfcViewer({ className }: IfcViewerProps) {
     setMounted(true);
   }, []);
 
-  const isDarkMode = mounted ? resolvedTheme === 'dark' : true;
+  const isDarkMode = mounted ? resolvedTheme === 'dark' : false;
 
-  const [loadingState, setLoadingState] = useState<LoadingState>({
-    phase: 'idle',
-    progress: 0,
-    message: '',
+  // Context
+  const {
+    containerRef,
+    fileInputRef,
+    resetCamera,
+    fitToModel,
+  } = useIfcViewerContext();
+
+  // Zustand store
+  const {
+    loadingState,
+    setLoadingState,
+    stats,
+    isReady,
+    isDragging,
+    setIsDragging,
+    showLeftPanel,
+    toggleLeftPanel,
+    showRightPanel,
+    toggleRightPanel,
+    selectedElements,
+    setIsDarkMode,
+  } = useIfcViewerStore();
+
+  // 테마 동기화
+  useEffect(() => {
+    if (mounted) {
+      setIsDarkMode(isDarkMode);
+    }
+  }, [isDarkMode, mounted, setIsDarkMode]);
+
+  // 뷰어 초기화
+  useIfcViewer({ isDarkMode });
+
+  // 파일 로딩
+  const { loadIfcFromFile } = useIfcLoader({
+    autoLoadUrl: '/APT_2x3.ifc',
+    autoLoadFileName: 'APT_2x3',
   });
-  const [stats, setStats] = useState<ViewerStats | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [projectionMode, setProjectionMode] = useState<ProjectionMode>('Perspective');
-  const [selectedElements, setSelectedElements] = useState<SelectedElement[]>([]);
-  const [showPropertiesPanel, setShowPropertiesPanel] = useState(true);
 
-  // Initialize viewer
-  useEffect(() => {
-    if (!containerRef.current || isInitializedRef.current) return;
-    isInitializedRef.current = true;
-
-    const init = async () => {
-      try {
-        setLoadingState({ phase: 'initializing', progress: 10, message: '뷰어 초기화 중...' });
-
-        // Dynamic imports
-        const OBC = await import('@thatopen/components');
-        const OBF = await import('@thatopen/components-front');
-        const THREE = await import('three');
-        threeRef.current = THREE;
-
-        // Create components
-        const components = new OBC.Components();
-        componentsRef.current = components;
-
-        // Create world with OrthoPerspectiveCamera for view presets
-        const worlds = components.get(OBC.Worlds);
-        const world = worlds.create<
-          typeof OBC.SimpleScene.prototype,
-          typeof OBC.OrthoPerspectiveCamera.prototype,
-          typeof OBF.PostproductionRenderer.prototype
-        >();
-        worldRef.current = world;
-
-        // Setup scene, renderer, camera in correct order
-        world.scene = new OBC.SimpleScene(components);
-        world.renderer = new OBF.PostproductionRenderer(components, containerRef.current!);
-        world.camera = new OBC.OrthoPerspectiveCamera(components);
-
-        // Initialize components
-        components.init();
-
-        // Setup scene after init
-        world.scene.setup();
-        world.scene.three.background = new THREE.Color(0x1e293b);
-
-        // Setup grids
-        const grids = components.get(OBC.Grids);
-        grids.create(world);
-
-        // Enable postproduction
-        world.renderer.postproduction.enabled = true;
-
-        setLoadingState({ phase: 'initializing', progress: 30, message: 'IFC 로더 설정 중...' });
-
-        // Setup fragments manager FIRST (required before IFC loader)
-        const fragments = components.get(OBC.FragmentsManager);
-        fragmentsRef.current = fragments;
-
-        // Initialize fragments with local worker URL (to avoid CORS issues)
-        const workerUrl = '/wasm/worker.mjs';
-        fragments.init(workerUrl);
-
-        // Handle camera rest event to update fragments
-        world.camera.controls.addEventListener('rest', () => {
-          fragments.core.update(true);
-        });
-
-        // Handle new fragments loaded
-        fragments.list.onItemSet.add(async ({ value: model }) => {
-          model.useCamera(world.camera.three);
-          world.scene.three.add(model.object);
-          await fragments.core.update(true);
-
-          // Setup BoundingBoxer after model loads
-          const boxer = components.get(OBC.BoundingBoxer);
-          boxer.addFromModels();
-          boundingBoxerRef.current = boxer;
-        });
-
-        // Setup IFC loader AFTER fragments with explicit WASM configuration
-        const ifcLoader = components.get(OBC.IfcLoader);
-        await ifcLoader.setup({
-          autoSetWasm: false,
-          wasm: {
-            path: 'https://unpkg.com/web-ifc@0.0.74/',
-            absolute: true,
-          },
-        });
-        ifcLoaderRef.current = ifcLoader;
-
-        setLoadingState({ phase: 'initializing', progress: 60, message: '선택 기능 설정 중...' });
-
-        // Setup Raycasters for selection
-        components.get(OBC.Raycasters).get(world);
-
-        // Setup Highlighter for object selection
-        const highlighter = components.get(OBF.Highlighter);
-        highlighter.setup({
-          world,
-          selectMaterialDefinition: {
-            color: new THREE.Color('#f59e0b'),
-            opacity: 0.8,
-            transparent: true,
-            renderedFaces: 0,
-          },
-        });
-        highlighter.multiple = 'ctrlKey'; // Enable multi-select with Ctrl key
-        highlighterRef.current = highlighter;
-
-        // Handle selection events
-        highlighter.events.select.onHighlight.add(async (modelIdMap: Record<string, Set<number>>) => {
-          const promises: Promise<FragmentItemData[]>[] = [];
-          for (const [modelId, localIds] of Object.entries(modelIdMap)) {
-            const model = fragments.list.get(modelId);
-            if (!model) continue;
-            promises.push(model.getItemsData([...localIds]));
-          }
-          const allData = (await Promise.all(promises)).flat();
-
-          const elements: SelectedElement[] = allData.map((item: FragmentItemData, index: number) => ({
-            id: item.localId ?? index,
-            type: item.type ?? 'Unknown',
-            name: item.name ?? `Element ${index + 1}`,
-            properties: item.attributes ?? {},
-          }));
-
-          setSelectedElements(elements);
-        });
-
-        highlighter.events.select.onClear.add(() => {
-          setSelectedElements([]);
-        });
-
-        // Setup resize observer
-        const resizeObserver = new ResizeObserver(() => {
-          if (world.renderer) {
-            world.renderer.resize();
-          }
-        });
-        resizeObserver.observe(containerRef.current!);
-
-        setIsReady(true);
-        setLoadingState({ phase: 'idle', progress: 0, message: '' });
-
-      } catch (error) {
-        console.error('Viewer initialization failed:', error);
-        setLoadingState({
-          phase: 'error',
-          progress: 0,
-          message: error instanceof Error ? error.message : '뷰어 초기화 실패',
-        });
-      }
-    };
-
-    init();
-
-    return () => {
-      if (componentsRef.current) {
-        componentsRef.current.dispose();
-      }
-    };
-  }, []);
-
-  // Sync Three.js scene background with theme
-  useEffect(() => {
-    if (!worldRef.current?.scene?.three || !threeRef.current || !mounted) return;
-
-    const bgColor = isDarkMode ? 0x1e293b : 0xf4f4f5; // slate-800 : zinc-100
-    worldRef.current.scene.three.background = new threeRef.current.Color(bgColor);
-  }, [isDarkMode, mounted]);
-
-  // Load IFC from URL (for auto-loading)
-  const loadIfcFromUrl = useCallback(async (url: string, fileName: string) => {
-    if (!ifcLoaderRef.current || !worldRef.current || !fragmentsRef.current || !isReady) {
-      return;
-    }
-
-    const startTime = performance.now();
-
-    try {
-      setLoadingState({ phase: 'loading', progress: 10, message: '기본 모델 불러오는 중...' });
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-
-      const buffer = await response.arrayBuffer();
-      const data = new Uint8Array(buffer);
-      const fileSizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(2);
-
-      setLoadingState({ phase: 'processing', progress: 30, message: 'IFC 처리 중...' });
-
-      await ifcLoaderRef.current.load(data, true, fileName);
-
-      setLoadingState({ phase: 'processing', progress: 80, message: '렌더링 중...' });
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await fragmentsRef.current.core.update(true);
-
-      if (worldRef.current?.camera) {
-        await worldRef.current.camera.fitToItems();
-      }
-
-      const loadTime = Math.round(performance.now() - startTime);
-
-      setStats({
-        meshCount: fragmentsRef.current.list.size || 0,
-        fileSize: `${fileSizeMB} MB`,
-        loadTime,
-      });
-
-      setLoadingState({ phase: 'complete', progress: 100, message: '로딩 완료' });
-
-    } catch (error) {
-      console.warn('Auto-load failed:', error);
-      // Silently fail and show upload prompt
-      setLoadingState({ phase: 'idle', progress: 0, message: '' });
-    }
-  }, [isReady]);
-
-  // Auto-load default IFC file when ready
-  useEffect(() => {
-    if (!isReady || stats) return;
-
-    loadIfcFromUrl('/APT_2x3.ifc', 'APT_2x3');
-  }, [isReady, stats, loadIfcFromUrl]);
-
-  // Load IFC file
-  const loadIfcFile = useCallback(async (file: File) => {
-    if (!ifcLoaderRef.current || !worldRef.current || !fragmentsRef.current || !isReady) {
-      setLoadingState({
-        phase: 'error',
-        progress: 0,
-        message: '뷰어가 아직 초기화되지 않았습니다.',
-      });
-      return;
-    }
-
-    const startTime = performance.now();
-
-    try {
-      setLoadingState({ phase: 'loading', progress: 10, message: '파일 읽는 중...' });
-
-      const buffer = await file.arrayBuffer();
-      const data = new Uint8Array(buffer);
-      const fileSizeMB = (buffer.byteLength / (1024 * 1024)).toFixed(2);
-      const fileName = file.name.replace('.ifc', '');
-
-      setLoadingState({ phase: 'processing', progress: 30, message: 'IFC 처리 중...' });
-
-      // Load IFC with parameters: (data, coordinate to origin, model name)
-      await ifcLoaderRef.current.load(data, true, fileName);
-
-      setLoadingState({ phase: 'processing', progress: 80, message: '렌더링 중...' });
-
-      // Wait for model to be added to scene via fragments.list.onItemSet handler
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Update fragments
-      await fragmentsRef.current.core.update(true);
-
-      // Fit camera to model
-      if (worldRef.current?.camera) {
-        await worldRef.current.camera.fitToItems();
-      }
-
-      const loadTime = Math.round(performance.now() - startTime);
-
-      setStats({
-        meshCount: fragmentsRef.current.list.size || 0,
-        fileSize: `${fileSizeMB} MB`,
-        loadTime,
-      });
-
-      setLoadingState({ phase: 'complete', progress: 100, message: '로딩 완료' });
-
-    } catch (error) {
-      console.error('IFC 로드 실패:', error);
-      setLoadingState({
-        phase: 'error',
-        progress: 0,
-        message: error instanceof Error ? error.message : 'IFC 로드 실패',
-      });
-    }
-  }, [isReady]);
-
-  // View orientation handler
-  const handleViewOrientation = useCallback(async (orientation: ViewOrientation) => {
-    if (!worldRef.current?.camera || !boundingBoxerRef.current) return;
-
-    try {
-      const camera = worldRef.current.camera;
-      if (!camera.hasCameraControls()) return;
-
-      const { position, target } = await boundingBoxerRef.current.getCameraOrientation(orientation);
-      await camera.controls.setLookAt(
-        position.x,
-        position.y,
-        position.z,
-        target.x,
-        target.y,
-        target.z,
-        true
-      );
-    } catch (error) {
-      console.warn('View orientation failed:', error);
-    }
-  }, []);
-
-  // Projection mode toggle
-  const handleProjectionToggle = useCallback(async () => {
-    if (!worldRef.current?.camera) return;
-
-    try {
-      const camera = worldRef.current.camera;
-      const newMode: ProjectionMode = projectionMode === 'Perspective' ? 'Orthographic' : 'Perspective';
-      await camera.projection.set(newMode);
-      setProjectionMode(newMode);
-    } catch (error) {
-      console.warn('Projection toggle failed:', error);
-    }
-  }, [projectionMode]);
-
-  // File drop handler
+  // 파일 드롭 핸들러
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
     if (file && file.name.toLowerCase().endsWith('.ifc')) {
-      loadIfcFile(file);
+      loadIfcFromFile(file);
     }
-  }, [loadIfcFile]);
+  }, [loadIfcFromFile, setIsDragging]);
 
-  // File select handler
+  // 파일 선택 핸들러
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      loadIfcFile(file);
+      loadIfcFromFile(file);
     }
-  }, [loadIfcFile]);
-
-  // Camera controls
-  const handleReset = useCallback(() => {
-    if (worldRef.current?.camera?.controls) {
-      worldRef.current.camera.controls.reset(true);
-    }
-  }, []);
-
-  const handleFitToModel = useCallback(async () => {
-    if (worldRef.current?.camera) {
-      await worldRef.current.camera.fitToItems();
-    }
-  }, []);
-
-  // Clear selection
-  const handleClearSelection = useCallback(() => {
-    if (highlighterRef.current) {
-      highlighterRef.current.clear('select');
-    }
-    setSelectedElements([]);
-  }, []);
+  }, [loadIfcFromFile]);
 
   return (
-    <div className={`relative flex h-full ${className}`}>
+    <div className="relative flex flex-col h-full gap-2">
       {/* 3D Container */}
-      <div className="relative flex-1 flex flex-col">
+      <div className="relative flex-1 flex flex-col min-h-0">
         <div
           ref={containerRef}
           className={`relative flex-1 bg-zinc-100 dark:bg-slate-900 rounded-lg overflow-hidden border-2 transition-colors ${
@@ -446,7 +116,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
-          {/* Upload prompt (shown when idle and no model loaded) */}
+          {/* 업로드 프롬프트 */}
           {loadingState.phase === 'idle' && !stats && isReady && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 z-10">
               <div
@@ -487,7 +157,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
             </div>
           )}
 
-          {/* Loading/Initializing state */}
+          {/* 로딩 상태 */}
           {(loadingState.phase === 'initializing' || loadingState.phase === 'loading' || loadingState.phase === 'processing') && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-20">
               <div className="flex flex-col items-center gap-4 text-center">
@@ -505,7 +175,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
             </div>
           )}
 
-          {/* Error state */}
+          {/* 에러 상태 */}
           {loadingState.phase === 'error' && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 z-20">
               <div className="flex flex-col items-center gap-4 text-center p-8 max-w-md">
@@ -525,103 +195,39 @@ export function IfcViewer({ className }: IfcViewerProps) {
             </div>
           )}
 
-          {/* View Controls - Top Left */}
+          {/* 좌측 컨트롤 */}
           {loadingState.phase === 'complete' && (
             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-              {/* View Presets */}
-              <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg p-1 flex flex-col gap-1 border border-zinc-300 dark:border-slate-600">
-                <div className="text-xs text-zinc-600 dark:text-slate-400 px-2 py-1 font-medium">뷰</div>
-                <div className="grid grid-cols-3 gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
-                    onClick={() => handleViewOrientation('top')}
-                    title="위에서 보기"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
-                    onClick={() => handleViewOrientation('front')}
-                    title="앞에서 보기"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
-                    onClick={() => handleViewOrientation('right')}
-                    title="오른쪽에서 보기"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
-                    onClick={() => handleViewOrientation('bottom')}
-                    title="아래에서 보기"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
-                    onClick={() => handleViewOrientation('back')}
-                    title="뒤에서 보기"
-                  >
-                    <ArrowDown className="h-4 w-4 rotate-180" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-600 dark:text-slate-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-slate-700"
-                    onClick={() => handleViewOrientation('left')}
-                    title="왼쪽에서 보기"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Projection Toggle */}
-              <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg p-1 border border-zinc-300 dark:border-slate-600">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`w-full justify-start gap-2 text-xs ${
-                    projectionMode === 'Orthographic' ? 'text-primary' : 'text-zinc-600 dark:text-slate-300'
-                  }`}
-                  onClick={handleProjectionToggle}
-                  title="투영 모드 전환"
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                  {projectionMode === 'Perspective' ? '원근' : '정사영'}
-                </Button>
-              </div>
+              <ViewControls />
+              <RenderingControls />
+              <ClippingControls />
+              <MeasurementToolbar />
             </div>
           )}
 
-          {/* Bottom Controls */}
+          {/* 하단 컨트롤 */}
           {loadingState.phase === 'complete' && (
             <div className="absolute bottom-4 left-4 flex gap-2 z-10">
-              <Button variant="secondary" size="icon" onClick={handleReset} title="뷰 리셋">
+              <Button variant="secondary" size="icon" onClick={resetCamera} title="뷰 리셋">
                 <RotateCcw className="h-4 w-4" />
               </Button>
-              <Button variant="secondary" size="icon" onClick={handleFitToModel} title="전체 보기">
+              <Button variant="secondary" size="icon" onClick={fitToModel} title="전체 보기">
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          {/* Load new file button */}
+          {/* 상단 우측 컨트롤 */}
           {loadingState.phase === 'complete' && (
             <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={toggleLeftPanel}
+                title={showLeftPanel ? '트리 패널 숨기기' : '트리 패널 보이기'}
+              >
+                <PanelLeft className={`h-4 w-4 ${showLeftPanel ? 'text-primary' : ''}`} />
+              </Button>
               <Button
                 variant="secondary"
                 size="sm"
@@ -634,15 +240,15 @@ export function IfcViewer({ className }: IfcViewerProps) {
               <Button
                 variant="secondary"
                 size="icon"
-                onClick={() => setShowPropertiesPanel(!showPropertiesPanel)}
-                title={showPropertiesPanel ? '패널 숨기기' : '패널 보이기'}
+                onClick={toggleRightPanel}
+                title={showRightPanel ? '속성 패널 숨기기' : '속성 패널 보이기'}
               >
-                {showPropertiesPanel ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                <PanelRight className={`h-4 w-4 ${showRightPanel ? 'text-primary' : ''}`} />
               </Button>
             </div>
           )}
 
-          {/* Selection hint */}
+          {/* 선택 힌트 */}
           {loadingState.phase === 'complete' && selectedElements.length === 0 && (
             <div className="absolute bottom-4 right-4 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-zinc-600 dark:text-slate-400 border border-zinc-300 dark:border-slate-600">
               <MousePointer2 className="h-3 w-3 inline-block mr-1" />
@@ -651,7 +257,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
           )}
         </div>
 
-        {/* Stats info */}
+        {/* 통계 정보 */}
         {stats && loadingState.phase === 'complete' && (
           <div className="mt-2 px-2 py-1.5 bg-muted/50 rounded text-xs text-muted-foreground flex gap-4">
             <span>모델: {stats.meshCount.toLocaleString()}개</span>
@@ -664,69 +270,15 @@ export function IfcViewer({ className }: IfcViewerProps) {
         )}
       </div>
 
-      {/* Properties Panel */}
-      {loadingState.phase === 'complete' && showPropertiesPanel && (
-        <div className="w-80 ml-4 bg-white/50 dark:bg-slate-800/50 rounded-lg overflow-hidden flex flex-col border border-zinc-300 dark:border-slate-600">
-          <div className="px-4 py-3 bg-zinc-100 dark:bg-slate-800 flex items-center justify-between border-b border-zinc-300 dark:border-slate-600">
-            <h3 className="font-medium text-zinc-900 dark:text-white text-sm">속성 정보</h3>
-            {selectedElements.length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white"
-                onClick={handleClearSelection}
-                title="선택 해제"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-auto p-4">
-            {selectedElements.length === 0 ? (
-              <div className="text-center text-zinc-500 dark:text-slate-500 py-8">
-                <MousePointer2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">요소를 선택하면<br />속성이 표시됩니다</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {selectedElements.map((element, index) => (
-                  <div key={element.id || index} className="bg-zinc-100 dark:bg-slate-700/50 rounded-lg p-3 border border-zinc-300 dark:border-slate-600">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Box className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-zinc-900 dark:text-white text-sm truncate">
-                        {element.name}
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-600 dark:text-slate-400 mb-2">
-                      타입: {element.type}
-                    </div>
-                    {Object.keys(element.properties).length > 0 && (
-                      <div className="space-y-1 border-t border-zinc-300 dark:border-slate-600 pt-2 mt-2">
-                        {Object.entries(element.properties).slice(0, 10).map(([key, value]) => (
-                          <div key={key} className="flex justify-between text-xs">
-                            <span className="text-zinc-600 dark:text-slate-400 truncate max-w-[120px]">{key}</span>
-                            <span className="text-zinc-800 dark:text-slate-300 truncate max-w-[120px]">
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                            </span>
-                          </div>
-                        ))}
-                        {Object.keys(element.properties).length > 10 && (
-                          <div className="text-xs text-zinc-500 dark:text-slate-500 text-center pt-1">
-                            +{Object.keys(element.properties).length - 10}개 더 보기
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* 하단 패널 컨테이너 */}
+      {loadingState.phase === 'complete' && (showLeftPanel || showRightPanel) && (
+        <div className="flex gap-2 h-64 min-h-48 max-h-80">
+          {showLeftPanel && <LeftPanel className="flex-1" />}
+          {showRightPanel && <RightPanel className="flex-1" />}
         </div>
       )}
 
-      {/* Hidden file input */}
+      {/* 숨겨진 파일 입력 */}
       <input
         ref={fileInputRef}
         type="file"
@@ -735,5 +287,23 @@ export function IfcViewer({ className }: IfcViewerProps) {
         className="hidden"
       />
     </div>
+  );
+}
+
+// ============================================
+// 메인 컴포넌트 (Provider 포함)
+// ============================================
+
+interface IfcViewerProps {
+  className?: string;
+}
+
+export function IfcViewer({ className }: IfcViewerProps) {
+  return (
+    <IfcViewerProvider>
+      <div className={className}>
+        <IfcViewerContent />
+      </div>
+    </IfcViewerProvider>
   );
 }

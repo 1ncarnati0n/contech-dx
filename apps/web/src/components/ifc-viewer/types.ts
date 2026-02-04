@@ -61,12 +61,23 @@ export interface OBCScene {
 }
 
 /**
+ * Postproduction 설정 인터페이스
+ */
+export interface PostproductionSettings {
+  enabled: boolean;
+  outlinesEnabled?: boolean;
+  outlines?: {
+    enabled: boolean;
+    color?: THREE.Color;
+    threshold?: number;
+  };
+}
+
+/**
  * 렌더러 인터페이스
  */
 export interface OBCRenderer {
-  postproduction: {
-    enabled: boolean;
-  };
+  postproduction: PostproductionSettings;
   resize(): void;
 }
 
@@ -187,6 +198,149 @@ export interface OBCBoundingBoxer {
 }
 
 // ============================================
+// Clipper 관련 타입
+// ============================================
+
+/**
+ * 클리핑 플레인 인터페이스
+ */
+export interface ClippingPlane {
+  enabled: boolean;
+  visible: boolean;
+  plane: THREE.Plane;
+}
+
+/**
+ * Clipper 인터페이스
+ */
+export interface OBCClipper {
+  enabled: boolean;
+  visible: boolean;
+  create(world: OBCWorld): ClippingPlane;
+  createFromNormalAndCoplanarPoint(
+    world: OBCWorld,
+    normal: THREE.Vector3,
+    point: THREE.Vector3
+  ): ClippingPlane;
+  delete(plane: ClippingPlane): void;
+  deleteAll(): void;
+}
+
+// ============================================
+// 측정 관련 타입
+// ============================================
+
+/**
+ * 측정 타입
+ */
+export type MeasurementType = 'distance' | 'area' | 'angle';
+
+/**
+ * 측정 결과 인터페이스
+ */
+export interface MeasurementResult {
+  id: string;
+  type: MeasurementType;
+  value: number;
+  unit: string;
+  points: THREE.Vector3[];
+  label?: string;
+  timestamp: number;
+}
+
+/**
+ * LengthMeasurement 인터페이스
+ */
+export interface OBCLengthMeasurement {
+  enabled: boolean;
+  snapEnabled: boolean;
+  create(points?: THREE.Vector3[]): void;
+  delete(): void;
+  deleteAll(): void;
+  cancelCreation(): void;
+}
+
+/**
+ * AreaMeasurement 인터페이스
+ */
+export interface OBCAreaMeasurement {
+  enabled: boolean;
+  create(): void;
+  delete(): void;
+  deleteAll(): void;
+  cancelCreation(): void;
+}
+
+// ============================================
+// 주석 관련 타입
+// ============================================
+
+/**
+ * 주석 데이터
+ */
+export interface Annotation {
+  id: string;
+  position: { x: number; y: number; z: number };
+  text: string;
+  title?: string;
+  author?: string;
+  createdAt: number;
+  updatedAt?: number;
+  color?: string;
+  modelId?: string;
+}
+
+// ============================================
+// 모델 트리 관련 타입
+// ============================================
+
+/**
+ * IFC 요소 타입 (간단화)
+ */
+export type IfcElementCategory =
+  | 'IfcProject'
+  | 'IfcSite'
+  | 'IfcBuilding'
+  | 'IfcBuildingStorey'
+  | 'IfcSpace'
+  | 'IfcWall'
+  | 'IfcSlab'
+  | 'IfcColumn'
+  | 'IfcBeam'
+  | 'IfcDoor'
+  | 'IfcWindow'
+  | 'IfcStair'
+  | 'IfcRoof'
+  | 'IfcCurtainWall'
+  | 'IfcRailing'
+  | 'IfcFurniture'
+  | 'IfcFlowTerminal'
+  | 'IfcFlowSegment'
+  | 'IfcDistributionElement'
+  | 'Unknown';
+
+/**
+ * 공간 구조 트리 노드
+ */
+export interface SpatialTreeNode {
+  id: number;
+  expressId: number;
+  name: string;
+  type: IfcElementCategory | string;
+  children: SpatialTreeNode[];
+  modelId: string;
+  isVisible?: boolean;
+  isExpanded?: boolean;
+}
+
+/**
+ * 카테고리 필터 상태
+ */
+export interface CategoryFilterState {
+  [key: string]: boolean;
+}
+
+// ============================================
 // Viewer Refs 타입
 // ============================================
 
@@ -200,6 +354,9 @@ export interface IfcViewerRefs {
   fragments: OBCFragmentsManager | null;
   highlighter: OBCHighlighter | null;
   boundingBoxer: OBCBoundingBoxer | null;
+  clipper: OBCClipper | null;
+  lengthMeasurement: OBCLengthMeasurement | null;
+  areaMeasurement: OBCAreaMeasurement | null;
   three: typeof THREE | null;
 }
 
@@ -244,3 +401,49 @@ export interface SelectedElement {
   name: string;
   properties: Record<string, unknown>;
 }
+
+// ============================================
+// 클리핑 플레인 UI 타입
+// ============================================
+
+/**
+ * 클리핑 축
+ */
+export type ClippingAxis = 'x' | 'y' | 'z';
+
+/**
+ * 클리핑 플레인 상태
+ */
+export interface ClippingPlaneState {
+  axis: ClippingAxis;
+  enabled: boolean;
+  value: number; // -100 to 100 (percentage)
+  flipped: boolean;
+}
+
+// ============================================
+// 패널 상태 타입
+// ============================================
+
+/**
+ * 좌측 패널 탭
+ */
+export type LeftPanelTab = 'tree' | 'search';
+
+/**
+ * 우측 패널 탭
+ */
+export type RightPanelTab = 'properties' | 'annotations';
+
+/**
+ * 활성 도구
+ */
+export type ActiveTool =
+  | 'select'
+  | 'measure-distance'
+  | 'measure-area'
+  | 'annotate'
+  | 'clip-x'
+  | 'clip-y'
+  | 'clip-z'
+  | null;

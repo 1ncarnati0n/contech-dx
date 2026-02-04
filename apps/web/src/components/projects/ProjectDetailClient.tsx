@@ -18,6 +18,8 @@ import {
   BarChart3,
   Users,
   FileText,
+  LayoutGrid,
+  Map,
   type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -110,6 +112,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
   const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [pouringSectionViewMode, setPouringSectionViewMode] = useState<'simple' | 'visual'>('visual');
 
   // 프로필 로드
   useEffect(() => {
@@ -320,6 +323,32 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                   </Button>
                 </div>
               )}
+              {activeTab === 'pouring_section_review' && (
+                <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setPouringSectionViewMode('simple')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pouringSectionViewMode === 'simple'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                    Simple
+                  </button>
+                  <button
+                    onClick={() => setPouringSectionViewMode('visual')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pouringSectionViewMode === 'visual'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Map className="w-4 h-4" />
+                    Visual
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 탭별 콘텐츠 */}
@@ -390,7 +419,11 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
 
 
             {activeTab === 'pouring_section_review' && (
-              <PouringSectionReviewPage projectId={project.id} />
+              <PouringSectionReviewPage
+                projectId={project.id}
+                viewMode={pouringSectionViewMode}
+                onViewModeChange={setPouringSectionViewMode}
+              />
             )}
 
             {activeTab === 'data_input' && (
