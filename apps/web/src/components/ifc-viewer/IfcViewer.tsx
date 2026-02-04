@@ -413,13 +413,13 @@ export function IfcViewer({ className }: IfcViewerProps) {
       setLoadingState({ phase: 'loading', progress: 10, message: '샘플 파일 다운로드 중...' });
 
       // Fetch sample IFC file from public folder
-      const response = await fetch('/sample.ifc');
+      const response = await fetch('/APT_2x3.ifc');
       if (!response.ok) {
         throw new Error('샘플 파일을 찾을 수 없습니다');
       }
 
       const blob = await response.blob();
-      const file = new File([blob], 'sample.ifc', { type: 'application/x-step' });
+      const file = new File([blob], 'APT_2x3.ifc', { type: 'application/x-step' });
 
       await loadIfcFile(file);
     } catch (error) {
