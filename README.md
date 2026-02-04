@@ -215,13 +215,13 @@ src/
 
 ### 4. BIM/IFC 3D 뷰어 ✅
 - **@thatopen/components**: OpenBIM 표준 뷰어
-- **IFC 파일 로드**: 드래그앤드롭 지원
+- **IFC 파일 로드**: 드래그앤드롭, 파일 선택, 샘플 파일 지원
 - **요소 선택**: Ctrl+클릭 다중 선택
 - **속성 패널**: 선택 요소 속성 표시
-- **뷰 프리셋**: 상/하/전/후/좌/우 뷰
+- **6방향 뷰 컨트롤**: 상/하/전/후/좌/우 뷰 전환
 - **투영 모드**: 원근/정사영 전환
-- **고급 기능**: 클리핑, 측정, 주석 (Lazy Loading)
-- **⚡ 3단계 성능 최적화**: 탭 전환 시간 97% 단축 (2.5초 → 0.08초)
+- **카메라 컨트롤**: 리셋, fitToModel 기능
+- **단일 파일 구조**: 안정성 우선, 향후 점진적 최적화 예정
 
 ### 5. 콘크리트 타설 계획 ✅
 - **DXF 업로드**: 도면 파일 시각화
@@ -276,48 +276,16 @@ src/
 - CRUD 작업 시 자동 캐시 무효화
 
 ### 성능 최적화 ⚡
-**IFC 3D 뷰어 3단계 최적화** (2026-02-04)
+**IFC 3D 뷰어 - 안정성 우선 복원** (2026-02-04)
 
-#### Phase 1: Quick Wins (기본 최적화)
-- **메모리 누수 수정**: ResizeObserver, 이벤트 리스너 완전 정리
-- **라이브러리 Preloading**: @thatopen/components, Three.js 백그라운드 로드 (5초 지연)
-- **React.memo 적용**: IfcViewerContent, IfcViewer 컴포넌트 최적화
-- **로딩 UI 개선**: Loader2 아이콘 + 상태 메시지
-- **성능 개선**: 50-60% (2.5초 → 1.0-1.2초)
+- **단순화 복원**: 복잡한 최적화 구조(29개 파일)를 작동하는 단순한 버전(2개 파일)으로 복원
+- **안정성 확보**: 모든 기본 기능이 작동하는 검증된 베이스라인 확보
+- **향후 계획**: 안정적인 베이스 위에서 점진적 최적화 재시도 예정
+  - Phase 1: 메모리 누수 수정, React.memo 적용 (작은 변경으로 50% 개선 가능)
+  - Phase 3: Singleton 패턴 (신중한 테스트 후 적용)
+  - Phase 2: 컴포넌트 분할 (효과 대비 복잡도 증가로 우선순위 낮음)
 
-#### Phase 2: Component Splitting (컴포넌트 분할)
-- **Core/Advanced 분리**: 필수 기능과 고급 기능 분리
-  - **Core**: 3D 렌더링, 파일 로드, 기본 선택, 카메라 컨트롤 (~500KB)
-  - **Advanced**: 클리핑, 측정, 모델 트리, 속성 패널, 주석 (~300KB)
-- **React.lazy**: 고급 기능 지연 로딩 (토글 버튼으로 활성화)
-- **Suspense Fallback**: 고급 기능 로딩 중 UI 표시
-- **성능 개선**: 65-70% (2.5초 → 0.7-0.9초)
-
-#### Phase 3: Singleton Pattern (싱글톤 패턴)
-- **전역 뷰어 마운트**: ProjectDetailClient에서 프로젝트 진입 2초 후 백그라운드 초기화
-- **Display 기반 가시성**: DOM mount/unmount 대신 CSS `display: none` 토글
-- **프로젝트별 상태 격리**: currentProjectId로 프로젝트 전환 감지 및 상태 초기화
-- **메모리 상주**: 뷰어를 메모리에 유지하여 탭 전환 시 즉시 반응
-- **성능 개선**: 95-97% (2.5초 → 0.05-0.1초)
-
-#### 최종 성능 측정 결과
-| 단계 | 탭 전환 시간 | 메모리 사용 | 개선율 |
-|------|-------------|------------|-------|
-| Before | 2.5-3.0초 | 50MB | - |
-| Phase 1 | 1.0-1.2초 | 45MB | 52-60% ↓ |
-| Phase 2 | 0.7-0.9초 | 40MB | 68-72% ↓ |
-| **Phase 3** | **0.08초** ⚡ | 90MB | **97% ↓** |
-
-**트레이드오프**:
-- 메모리 증가 (+40MB): 뷰어가 메모리에 상주하지만 일반적인 사용 환경에서 허용 가능
-- 즉시 반응: 탭 클릭 후 체감상 지연 없음 (< 100ms)
-
-**Performance Logging**:
-- 탭 전환 시간 자동 측정 및 콘솔 출력
-- 라이브러리 preload 성공 여부 확인
-- 뷰어 초기화 시간 상세 로깅
-
-📖 **상세 문서**: `docs/IFC_VIEWER_PERFORMANCE_OPTIMIZATION.md`
+📖 **최적화 시도 문서**: `docs/IFC_VIEWER_OPTIMIZATION_ATTEMPT.md` (참고용 보관)
 
 ### 폼 처리 패턴
 - **React Hook Form + Zod** 통일
@@ -444,42 +412,31 @@ Supabase PostgreSQL 기반 데이터베이스
 ## Changelog
 
 ### 2026-02-04
-#### Performance
-- **⚡ IFC 3D 뷰어 3단계 최적화**: 탭 전환 시간 97% 단축 (2.5초 → 0.08초)
-  - **Phase 1 - Quick Wins**: 메모리 누수 수정, 라이브러리 preloading, React.memo 적용
-  - **Phase 2 - Component Splitting**: Core/Advanced 분할, React.lazy 지연 로딩
-  - **Phase 3 - Singleton Pattern**: 전역 마운트, display 기반 가시성, 프로젝트별 상태 격리
-  - 메모리 사용: 50MB → 90MB (+80%, 허용 범위)
-  - 사용자 경험: 즉시 반응 (< 100ms)
+#### Changed
+- **IFC 3D 뷰어 복원**: 작동하는 단순한 버전(커밋 6ff0958)으로 복원
+  - **복원 배경**: 성능 최적화 시도 중 복잡한 구조(29개 파일)로 분할하면서 기능이 작동하지 않게 됨
+  - **복원 내용**: 작동하는 단일 파일 버전(745줄)으로 완전 복원
+  - **복원 결과**:
+    - ✅ 모든 기본 기능 작동 (IFC 로드, 6방향 뷰, 프로젝션 토글, 선택, 속성 패널)
+    - ⚠️ 탭 전환 시간: 2.5-3.0초 (최적화 전 상태로 복귀)
+    - ✅ 안정성 우선, 이해하기 쉬운 코드베이스 확보
+  - **구조 단순화**:
+    - Before: 29개 파일 (Context, Store, Hooks, Components 분산)
+    - After: 2개 파일 (IfcViewer.tsx, index.ts)
+  - **향후 계획**: 안정적인 베이스라인에서 점진적 최적화 재시도 예정
+  - **백업**: `backup/ifc-viewer-optimized-2026-02-04` 브랜치에 최적화 시도 코드 보관
 
 #### Added
-- **성능 모니터링**: 탭 전환 시간, 라이브러리 로드 시간, 뷰어 초기화 시간 자동 측정
-  - 콘솔에 실시간 성능 로그 출력
-  - Phase 3 최적화 작동 여부 자동 판별 (< 100ms: Excellent, < 500ms: Good, > 500ms: Slow)
-- **localStorage 마이그레이션 유틸리티** (`process-module-migration.ts`): 기존 프로젝트의 최상층 공정 데이터 자동 마이그레이션
-  - 최상층 7개 항목 → 6개 항목으로 자동 변환 (거푸집 해체/정리 제거)
-  - idempotent 설계: 이미 마이그레이션된 데이터는 건너뜀
-  - 사용자 조치 불필요: 페이지 로드 시 자동 실행
+- **최적화 시도 문서 보관**: `docs/IFC_VIEWER_OPTIMIZATION_ATTEMPT.md`
+  - 성능 최적화 시도 과정 기록 (Phase 1-3)
+  - 향후 최적화 재시도 시 참고용
 
-#### Changed
-- **최상층 공정 모듈 수정** (`process-modules.ts`): 모든 사이클에서 "거푸집 해체/정리" 항목 제거
-  - 삭제 항목: 표준공정, 5일, 6일, 7일, 8일 사이클의 7번 항목 (총 5개)
-  - 최상층 공정 항목: 7개 → 6개 (먹매김, 갱폼 설치, 벽 철근조립, 알폼 조립, 보슬라브 철근조립, 타설)
-  - **기존 프로젝트 자동 마이그레이션**: `useProcessLogicState.ts`에서 localStorage 로드 시 자동 변환
-    - 마이그레이션 감지 시 콘솔 로그 출력
-    - 변환된 데이터를 localStorage에 자동 저장
-  - 최상층은 최종 층으로 거푸집 해체 시점이 다른 층과 다를 수 있어 프로젝트별 별도 관리 필요
-- **IFC 뷰어 컴포넌트 구조 개편**:
-  ```
-  components/ifc-viewer/
-  ├── IfcViewer.tsx              # 메인 진입점 (Provider + 토글)
-  ├── IfcViewerCore.tsx          # 필수 기능 (always loaded)
-  └── IfcViewerAdvanced.tsx      # 고급 기능 (lazy loaded)
-  ```
-- **ProjectDetailClient**: IFC 뷰어 Singleton 마운트 로직 추가
-  - 프로젝트 진입 2초 후 백그라운드 초기화
-  - 프로젝트 전환 시 상태 초기화
-  - display 속성으로 가시성 제어
+#### Fixed
+- **IFC 뷰어 기능 복구**:
+  - ViewControls (6방향 뷰) UI 복원
+  - 프로젝션 토글 버튼 복원
+  - resetCamera(), fitToModel() 메서드 복원
+  - 모든 이벤트 리스너 및 정리 로직 복원
 
 ### 2025-02-04
 #### Added

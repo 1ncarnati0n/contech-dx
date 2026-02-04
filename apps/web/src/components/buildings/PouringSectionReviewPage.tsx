@@ -230,13 +230,9 @@ export function PouringSectionReviewPage({
       )}
 
       {/* Visual 모드 - IFC 3D 뷰어 */}
-      {/* 🎯 Phase 3: IFC 뷰어가 ProjectDetailClient로 이동됨 (Singleton 패턴) */}
       {viewMode === 'visual' && (
-        <div className="h-[calc(100vh-250px)] min-h-[600px] flex items-center justify-center bg-slate-900 rounded-lg">
-          <div className="text-center text-white">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-            <p className="text-sm">3D 뷰어는 상단에서 렌더링됩니다</p>
-          </div>
+        <div className="h-[calc(100vh-250px)] min-h-[600px]">
+          <IfcViewer className="h-full" />
         </div>
       )}
     </div>
