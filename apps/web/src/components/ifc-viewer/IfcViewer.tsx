@@ -437,57 +437,19 @@ export function IfcViewer({ className }: IfcViewerProps) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
-          {/* Upload prompt (shown when idle and no model loaded) */}
+          {/* Simple loading button (shown when idle and no model loaded) */}
           {loadingState.phase === 'idle' && !stats && isReady && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 z-10">
-              <div
-                className={`flex flex-col items-center gap-6 text-center p-12 rounded-2xl border-2 border-dashed transition-all cursor-pointer max-w-md mx-4 ${
-                  isDragging
-                    ? 'border-primary bg-primary/10 scale-105'
-                    : 'border-zinc-300 dark:border-slate-600 hover:border-zinc-400 dark:hover:border-slate-500 hover:bg-zinc-200/50 dark:hover:bg-slate-800/50'
-                }`}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className={`p-6 rounded-full transition-colors ${
-                  isDragging ? 'bg-primary/20' : 'bg-zinc-200 dark:bg-slate-800'
-                }`}>
-                  <Box className={`h-12 w-12 ${isDragging ? 'text-primary' : 'text-zinc-500 dark:text-slate-400'}`} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">IFC 모델 뷰어</h3>
-                  <p className="text-zinc-600 dark:text-slate-400 mb-6">
-                    IFC 파일을 드래그하여 놓거나<br />
-                    아래 버튼을 클릭하여 파일을 선택하세요
-                  </p>
-                  <div className="flex gap-3">
-                    <Button
-                      size="lg"
-                      className="gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fileInputRef.current?.click();
-                      }}
-                    >
-                      <Upload className="h-5 w-5" />
-                      파일 열기
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLoadSample();
-                      }}
-                    >
-                      <Box className="h-5 w-5" />
-                      로딩
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-slate-500">
-                  <span className="px-2 py-1 rounded bg-zinc-200 dark:bg-slate-800">.ifc</span>
-                </div>
+              <div className="flex flex-col items-center gap-4">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">IFC 모델 뷰어</h3>
+                <Button
+                  size="lg"
+                  className="gap-2"
+                  onClick={handleLoadSample}
+                >
+                  <Box className="h-5 w-5" />
+                  로딩
+                </Button>
               </div>
             </div>
           )}
