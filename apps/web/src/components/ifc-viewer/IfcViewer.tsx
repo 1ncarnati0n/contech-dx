@@ -13,10 +13,7 @@ import {
   ArrowRight,
   Eye,
   Grid3X3,
-  MousePointer2,
-  X,
   Maximize2,
-  Minimize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -34,13 +31,6 @@ interface ViewerStats {
   meshCount: number;
   fileSize: string;
   loadTime: number;
-}
-
-interface SelectedElement {
-  id: number;
-  type: string;
-  name: string;
-  properties: Record<string, any>;
 }
 
 type ViewOrientation = 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
@@ -77,8 +67,6 @@ export function IfcViewer({ className }: IfcViewerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [projectionMode, setProjectionMode] = useState<ProjectionMode>('Perspective');
-  const [selectedElements, setSelectedElements] = useState<SelectedElement[]>([]);
-  const [showPropertiesPanel, setShowPropertiesPanel] = useState(true);
 
   // Initialize viewer
   useEffect(() => {
@@ -184,29 +172,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         highlighter.multiple = 'ctrlKey'; // Enable multi-select with Ctrl key
         highlighterRef.current = highlighter;
 
-        // Handle selection events
-        highlighter.events.select.onHighlight.add(async (modelIdMap: Record<string, Set<number>>) => {
-          const promises: Promise<any>[] = [];
-          for (const [modelId, localIds] of Object.entries(modelIdMap)) {
-            const model = fragments.list.get(modelId);
-            if (!model) continue;
-            promises.push(model.getItemsData([...localIds]));
-          }
-          const allData = (await Promise.all(promises)).flat();
-
-          const elements: SelectedElement[] = allData.map((item: any, index: number) => ({
-            id: item.localId || index,
-            type: item.type || 'Unknown',
-            name: item.name || `Element ${index + 1}`,
-            properties: item.attributes || {},
-          }));
-
-          setSelectedElements(elements);
-        });
-
-        highlighter.events.select.onClear.add(() => {
-          setSelectedElements([]);
-        });
+        // Selection events removed - properties panel disabled
 
         // Setup resize observer
         const resizeObserver = new ResizeObserver(() => {
@@ -431,13 +397,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
     }
   }, []);
 
-  // Clear selection
-  const handleClearSelection = useCallback(() => {
-    if (highlighterRef.current) {
-      highlighterRef.current.clear('select');
-    }
-    setSelectedElements([]);
-  }, []);
+  // Selection handlers removed - properties panel disabled
 
   return (
     <div className={`relative flex h-full ${className}`}>
@@ -637,24 +597,9 @@ export function IfcViewer({ className }: IfcViewerProps) {
                 <Upload className="h-4 w-4" />
                 다른 파일
               </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                onClick={() => setShowPropertiesPanel(!showPropertiesPanel)}
-                title={showPropertiesPanel ? '패널 숨기기' : '패널 보이기'}
-              >
-                {showPropertiesPanel ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
             </div>
           )}
 
-          {/* Selection hint */}
-          {loadingState.phase === 'complete' && selectedElements.length === 0 && (
-            <div className="absolute bottom-4 right-4 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg px-3 py-2 text-xs text-zinc-600 dark:text-slate-400 border border-zinc-300 dark:border-slate-600">
-              <MousePointer2 className="h-3 w-3 inline-block mr-1" />
-              클릭하여 선택 • Ctrl+클릭으로 다중 선택
-            </div>
-          )}
         </div>
 
         {/* Stats info */}
@@ -663,74 +608,9 @@ export function IfcViewer({ className }: IfcViewerProps) {
             <span>모델: {stats.meshCount.toLocaleString()}개</span>
             <span>파일: {stats.fileSize}</span>
             <span>로드: {stats.loadTime}ms</span>
-            {selectedElements.length > 0 && (
-              <span className="text-primary">선택: {selectedElements.length}개</span>
-            )}
           </div>
         )}
       </div>
-
-      {/* Properties Panel */}
-      {loadingState.phase === 'complete' && showPropertiesPanel && (
-        <div className="w-80 ml-4 bg-white/50 dark:bg-slate-800/50 rounded-lg overflow-hidden flex flex-col border border-zinc-300 dark:border-slate-600">
-          <div className="px-4 py-3 bg-zinc-100 dark:bg-slate-800 flex items-center justify-between border-b border-zinc-300 dark:border-slate-600">
-            <h3 className="font-medium text-zinc-900 dark:text-white text-sm">속성 정보</h3>
-            {selectedElements.length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-zinc-500 dark:text-slate-400 hover:text-zinc-900 dark:hover:text-white"
-                onClick={handleClearSelection}
-                title="선택 해제"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-auto p-4">
-            {selectedElements.length === 0 ? (
-              <div className="text-center text-zinc-500 dark:text-slate-500 py-8">
-                <MousePointer2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">요소를 선택하면<br />속성이 표시됩니다</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {selectedElements.map((element, index) => (
-                  <div key={element.id || index} className="bg-zinc-100 dark:bg-slate-700/50 rounded-lg p-3 border border-zinc-300 dark:border-slate-600">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Box className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-zinc-900 dark:text-white text-sm truncate">
-                        {element.name}
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-600 dark:text-slate-400 mb-2">
-                      타입: {element.type}
-                    </div>
-                    {Object.keys(element.properties).length > 0 && (
-                      <div className="space-y-1 border-t border-zinc-300 dark:border-slate-600 pt-2 mt-2">
-                        {Object.entries(element.properties).slice(0, 10).map(([key, value]) => (
-                          <div key={key} className="flex justify-between text-xs">
-                            <span className="text-zinc-600 dark:text-slate-400 truncate max-w-[120px]">{key}</span>
-                            <span className="text-zinc-800 dark:text-slate-300 truncate max-w-[120px]">
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                            </span>
-                          </div>
-                        ))}
-                        {Object.keys(element.properties).length > 10 && (
-                          <div className="text-xs text-zinc-500 dark:text-slate-500 text-center pt-1">
-                            +{Object.keys(element.properties).length - 10}개 더 보기
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Hidden file input */}
       <input
