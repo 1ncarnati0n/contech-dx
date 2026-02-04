@@ -29,6 +29,7 @@ interface Props {
 const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '지하층'];
 
 // 공정 타입 옵션 (구분별로 다름) - 지하층 공정계획은 버림, 기초, 지하층만 사용
+// 참고: '층고6.5m이상'은 3단 가시설 적용부 행에서만 내부적으로 사용됨
 const PROCESS_TYPE_OPTIONS: Partial<Record<ProcessCategory, ProcessType[]>> = {
   '버림': ['표준공정'],
   '기초': ['표준공정'],
@@ -414,6 +415,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
       if (category === '지하층' && building) {
         // 지하층는 각 층별 일수를 합산
         const basementFloors = getBasementFloors.get(building.id) || [];
+        // 일반 지하층은 항상 표준공정 사용 (3단 가시설 적용부 행만 '층고6.5m이상' 내부 사용)
         basementFloors.forEach(floor => {
           const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
           const floorDays = calculateBasementFloorDays(building, category, floorProcessType, floor.floorLabel);
@@ -726,11 +728,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
       
       // 각 지하층별로 3단 가시설 적용부 행 추가 (동 기본 정보에서 체크된 경우에만)
       if (activeBuilding.meta?.floorCount?.hasHighCeilingEquipmentRoom) {
-        rows.push({ 
-          category: '지하층' as ProcessCategory, 
+        rows.push({
+          category: '지하층' as ProcessCategory,
           rowIndex: rowIndex++,
           isSpecialRow: true,
-          floorLabel: `${cleanLabel} 3단 가시설 적용부`
+          floorLabel: `${cleanLabel} 3단 가시설 적용부(6.5m 이상)`
         });
       }
       
@@ -1024,10 +1026,15 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               // 특수 행(주차장, 3단 가시설 적용부)은 일수 계산 건너뛰기
                               if (row.isSpecialRow) {
                                 // 특수 행은 일수 0으로 표시
-                                // 주차장과 3단 가시설에도 해당 지하층의 표준공정 적용
+                                // 3단 가시설 적용부는 내부적으로 '층고6.5m이상' 모듈 사용
+                                // 주차장은 해당 지하층의 표준공정 적용
+                                const isFacilityRow = row.floorLabel?.includes('3단 가시설 적용부');
                                 let processType: ProcessType;
-                                if (row.floorLabel) {
-                                  // floorLabel에서 지하층 정보 추출 (예: "B1 주차장" -> "B1")
+                                if (isFacilityRow) {
+                                  // 3단 가시설 적용부 행은 항상 '층고6.5m이상' 모듈 사용
+                                  processType = '층고6.5m이상' as ProcessType;
+                                } else if (row.floorLabel) {
+                                  // 주차장 등: 해당 지하층의 공정타입 상속
                                   const floorMatch = row.floorLabel.match(/^(B\d+)/);
                                   if (floorMatch) {
                                     const basementFloorLabel = floorMatch[1];
@@ -1324,10 +1331,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               
                               // 지하층 공정계획에서는 버림, 기초, 지하층만 처리
                               const effectiveCategory = row.category;
-                              
-                              const processType = row.floorLabel && row.category === '지하층'
-                                ? getProcessTypeForFloor(plan, row.category, row.floorLabel)
-                                : plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category] || '표준공정';
+
+                              // 일반 지하층 행은 항상 표준공정 사용 (3단 가시설 적용부 행만 내부적으로 '층고6.5m이상')
+                              let processType: ProcessType;
+                              if (row.floorLabel && row.category === '지하층') {
+                                processType = getProcessTypeForFloor(plan, row.category, row.floorLabel);
+                              } else {
+                                processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category] || '표준공정';
+                              }
                               const module = getProcessModule(effectiveCategory, processType);
                               
                               // 일수 계산 - 세부공정의 순작업일 합계
@@ -1483,14 +1494,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 
                                 // 특수 행 처리 (주차장, 3단 가시설 적용부) - 층수 추출하여 표시
                                 if (row.isSpecialRow && row.floorLabel) {
-                                  // floorLabel에서 층수 추출 (예: "B1 주차장" -> "B1", "B2 3단 가시설 적용부" -> "B2")
+                                  // floorLabel에서 층수 추출 (예: "B1 주차장" -> "B1", "B2 3단 가시설 적용부(6.5m 이상)" -> "B2")
                                   const floorMatch = row.floorLabel.match(/^(B\d+)/);
                                   if (floorMatch) {
                                     const floorNumber = floorMatch[1];
                                     if (row.floorLabel.includes('주차장')) {
                                       return `${floorNumber} 주차장`;
                                     } else if (row.floorLabel.includes('3단 가시설 적용부')) {
-                                      return `${floorNumber} 3단 가시설 적용부`;
+                                      return `${floorNumber} 3단 가시설 적용부(6.5m 이상)`;
                                     }
                                   }
                                   return row.floorLabel;
@@ -1796,6 +1807,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   
                                   {/* 일곱 번째 열: 셀렉트박스 */}
                                   <td className="px-1 py-1 border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: row.isSpecialRow ? 'auto' : '24px' }}>
+                                    {/* 일반 지하층 행은 항상 표준공정 드롭다운 표시 */}
                                     <select
                                       value={processType}
                                       onChange={(e) => {

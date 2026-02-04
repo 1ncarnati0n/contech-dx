@@ -627,8 +627,8 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
                     const floor = item.floor;
 
-                    // 기준층이고 층고가 standardHeight와 같은 경우
-                    if (floor.floorClass === '기준층' && floor.height === standardHeight) {
+                    // 층고가 standardHeight와 같은 경우
+                    if (floor.height === standardHeight) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층(마지막 층) 저장
                       if (!lastStandardHeightFloor || floorNum < lastStandardHeightFloor.floorNum) {
                         lastStandardHeightFloor = { floor, floorNum };
@@ -658,8 +658,12 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
                     const floor = item.floor;
 
-                    // 업데이트된 층을 만나면 그 층이 기준층 층고이므로 계속 확인
+                    // 업데이트된 층을 만나면 그 층이 기준층 층고이므로 셋팅층 후보로 고려
                     if (floorNum === updatedFloorNum) {
+                      // 업데이트된 층도 셋팅층 후보가 될 수 있음
+                      if (!settingFloorCandidate || floorNum < settingFloorCandidate.floorNum) {
+                        settingFloorCandidate = { floor, floorNum };
+                      }
                       continue;
                     }
 
@@ -667,7 +671,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                       foundDifferentHeight = true;
                       // 기준층 층고와 다른 층을 만났으므로, 그 위의 기준층 층고 층이 셋팅층 후보
                       break;
-                    } else if (floor.floorClass === '기준층' && floor.height === standardHeight) {
+                    } else if (floor.height === standardHeight) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층 저장
                       if (!settingFloorCandidate || floorNum < settingFloorCandidate.floorNum) {
                         settingFloorCandidate = { floor, floorNum };
@@ -716,6 +720,15 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
   return (
     <Card>
+      {/* 층분류 자동 설정 안내 노트 */}
+      <div className="mx-4 mt-4 mb-0 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+        <p className="font-medium mb-1">※ 층분류 자동 설정 안내</p>
+        <ul className="space-y-0.5 ml-3">
+          <li>• <strong>셋팅층 설정 시:</strong> 셋팅층 위쪽 → 기준층, 아래쪽 → 일반층으로 자동 변경</li>
+          <li>• <strong>기준층 층고 기준:</strong> 기준층 층고와 같은 연속 구간의 마지막 층 = 셋팅층</li>
+          <li>• <strong>예시:</strong> 2F를 셋팅층 설정 → 3~5F는 기준층, 1F는 일반층으로 자동 분류</li>
+        </ul>
+      </div>
       <CardHeader>
         <CardTitle>층 설정</CardTitle>
       </CardHeader>
@@ -847,15 +860,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
               })}
             </tbody>
           </table>
-        </div>
-        {/* 층분류 자동 설정 안내 노트 */}
-        <div className="mt-3 mx-4 mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-          <p className="font-medium mb-1">※ 층분류 자동 설정 안내</p>
-          <ul className="space-y-0.5 ml-3">
-            <li>• <strong>셋팅층 설정 시:</strong> 셋팅층 위쪽 → 기준층, 아래쪽 → 일반층으로 자동 변경</li>
-            <li>• <strong>기준층 층고 기준:</strong> 기준층 층고와 같은 연속 구간의 마지막 층 = 셋팅층</li>
-            <li>• <strong>예시:</strong> 2F를 셋팅층 설정 → 3~5F는 기준층, 1F는 일반층으로 자동 분류</li>
-          </ul>
         </div>
       </CardContent>
     </Card>

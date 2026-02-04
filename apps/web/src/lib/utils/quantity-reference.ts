@@ -39,9 +39,33 @@ export function getQuantityWithRatio(
 }
 
 /**
+ * 층 라벨을 정규화하여 비교 가능한 형식으로 변환
+ * 옥탑층: "옥탑1", "옥탑1층", "PH1" -> "PH1"
+ * 지하층: "B1", "지하1층", "지하1" -> "B1"
+ */
+function normalizeFloorLabel(label: string): string {
+  // 코어 정보 제거
+  let normalized = label.replace(/코어\d+-/, '');
+
+  // 옥탑층 정규화: 옥탑1, 옥탑1층 -> PH1
+  const optapMatch = normalized.match(/^옥탑(\d+)(층)?$/);
+  if (optapMatch) {
+    normalized = `PH${optapMatch[1]}`;
+  }
+
+  // 지하층 정규화: 지하1층, 지하1 -> B1
+  const basementMatch = normalized.match(/^지하(\d+)(층)?$/);
+  if (basementMatch) {
+    normalized = `B${basementMatch[1]}`;
+  }
+
+  return normalized;
+}
+
+/**
  * 특정 층의 물량 데이터 가져오기
  * 물량입력 데이터(building.floorTrades)에서 해당 층의 물량을 가져옵니다.
- * 
+ *
  * @param building - 동 정보 (floors, floorTrades 포함)
  * @param floorLabel - 층 라벨 (예: '1F', '2F', 'B1', '코어1-3F')
  * @param field - 공종 필드 (gangForm, alForm, formwork, stripClean, rebar, concrete)
@@ -58,7 +82,7 @@ export function getQuantityFromFloor(
   // rangeFloorId가 제공된 경우 (기준층 범위 형식), 범위 기준층을 우선 처리
   let rangeFloor: typeof building.floors[0] | null = null;
   let individualFloorId: string | null = null;
-  
+
   if (rangeFloorId) {
     rangeFloor = building.floors.find(f => f.id === rangeFloorId) ?? null;
     if (rangeFloor) {
@@ -69,37 +93,19 @@ export function getQuantityFromFloor(
       }
     }
   }
-  
+
   // 개별 층 찾기 (rangeFloorId가 있어도 개별 층을 먼저 확인 - 개별 층 데이터가 있으면 우선 사용)
   let floor: typeof building.floors[0] | null = null;
-  
-  // 층 찾기 (정확히 일치하거나, 코어 정보를 제거한 후 일치하는 경우)
-  floor = building.floors.find(f => f.floorLabel === floorLabel) ?? null;
-  
-  // 정확히 일치하지 않으면 코어 정보를 제거한 후 매칭 시도
-  if (!floor) {
-      let cleanLabel = floorLabel.replace(/코어\d+-/, '');
-      
-      // 옥탑 형식을 PH 형식으로 역변환 (옥탑1 -> PH1, 옥탑2 -> PH2, 옥탑3 -> PH3)
-      if (cleanLabel.match(/^옥탑\d+$/)) {
-        const optapMatch = cleanLabel.match(/옥탑(\d+)/);
-        if (optapMatch) {
-          cleanLabel = `PH${optapMatch[1]}`;
-        }
-      }
-      
-      floor = building.floors.find(f => {
-        let cleanFloorLabel = f.floorLabel.replace(/코어\d+-/, '');
-        // 옥탑 형식을 PH 형식으로 역변환하여 비교
-        if (cleanFloorLabel.match(/^옥탑\d+$/)) {
-          const optapMatch = cleanFloorLabel.match(/옥탑(\d+)/);
-          if (optapMatch) {
-            cleanFloorLabel = `PH${optapMatch[1]}`;
-          }
-        }
-        return cleanFloorLabel === cleanLabel;
-      }) ?? null;
-    }
+
+  // 정규화된 라벨로 비교
+  const normalizedInput = normalizeFloorLabel(floorLabel);
+
+  // 층 찾기 (정확히 일치하거나, 정규화된 라벨이 일치하는 경우)
+  floor = building.floors.find(f => {
+    if (f.floorLabel === floorLabel) return true;
+    const normalizedFloor = normalizeFloorLabel(f.floorLabel);
+    return normalizedFloor === normalizedInput;
+  }) ?? null;
     
     // 개별 층이 없으면 범위 형식의 기준층 찾기 (예: "7F" -> "2~14F 기준층" 또는 "코어1-2~14F 기준층")
     // rangeFloorId가 제공되지 않은 경우에만 실행 (이미 rangeFloorId가 있으면 위에서 처리됨)
@@ -259,14 +265,16 @@ export function getQuantityByReference(
     tradeGroup = '지하층';
     const basementFloors = building.floors.filter(f => f.levelType === '지하');
     if (basementFloors.length >= 2) {
-      floorLabel = basementFloors[basementFloors.length - 1].floorLabel; // B2
+      // 정규화된 라벨 사용 (코어 정보 제거)
+      floorLabel = normalizeFloorLabel(basementFloors[basementFloors.length - 1].floorLabel); // B2
     }
   } else if (rowNum === 9) {
     // B1 (행 9)
     tradeGroup = '지하층';
     const basementFloors = building.floors.filter(f => f.levelType === '지하');
     if (basementFloors.length >= 1) {
-      floorLabel = basementFloors[0].floorLabel; // B1
+      // 정규화된 라벨 사용 (코어 정보 제거)
+      floorLabel = normalizeFloorLabel(basementFloors[0].floorLabel); // B1
     }
   } else if (rowNum === 11) {
     // 행 11은 1층 - 셋팅층 또는 일반층일 수 있음
@@ -409,26 +417,31 @@ export function getQuantityByReference(
   } else if (rowNum === 26) {
     // 옥탑1층 (행 26)
     tradeGroup = '옥탑층';
-    const phFloors = building.floors.filter(f => f.floorLabel.includes('옥탑'))
-      .sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0)); // 오름차순 정렬 (옥탑1, 옥탑2, 옥탑3)
+    // 옥탑 또는 PH 형식 모두 검색
+    const phFloors = building.floors.filter(f =>
+      f.floorLabel.includes('옥탑') || /PH\d+/i.test(f.floorLabel)
+    ).sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0));
     if (phFloors.length >= 1) {
-      floorLabel = phFloors[0].floorLabel; // 옥탑1층
+      // 정규화된 형식으로 변환 (PH1)
+      floorLabel = normalizeFloorLabel(phFloors[0].floorLabel);
     }
   } else if (rowNum === 27) {
     // 옥탑2층 (행 27)
     tradeGroup = '옥탑층';
-    const phFloors = building.floors.filter(f => f.floorLabel.includes('옥탑'))
-      .sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0)); // 오름차순 정렬 (옥탑1, 옥탑2, 옥탑3)
+    const phFloors = building.floors.filter(f =>
+      f.floorLabel.includes('옥탑') || /PH\d+/i.test(f.floorLabel)
+    ).sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0));
     if (phFloors.length >= 2) {
-      floorLabel = phFloors[1].floorLabel; // 옥탑2층
+      floorLabel = normalizeFloorLabel(phFloors[1].floorLabel);
     }
   } else if (rowNum === 28) {
     // 옥탑3층 (행 28)
     tradeGroup = '옥탑층';
-    const phFloors = building.floors.filter(f => f.floorLabel.includes('옥탑'))
-      .sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0)); // 오름차순 정렬 (옥탑1, 옥탑2, 옥탑3)
+    const phFloors = building.floors.filter(f =>
+      f.floorLabel.includes('옥탑') || /PH\d+/i.test(f.floorLabel)
+    ).sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0));
     if (phFloors.length >= 3) {
-      floorLabel = phFloors[2].floorLabel; // 옥탑3층
+      floorLabel = normalizeFloorLabel(phFloors[2].floorLabel);
     }
   }
   

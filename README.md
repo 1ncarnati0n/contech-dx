@@ -398,6 +398,21 @@ Supabase PostgreSQL 기반 데이터베이스
 ## Changelog
 
 ### 2025-02-03
+#### Fixed
+- **타입 변환 버그 수정** (`ProcessModuleSection.tsx:69`): 빈 문자열(`''`)이 `Number('')` = `0`으로 변환되던 버그 수정
+  - 변경 전: `isNaN(Number(value)) ? value : Number(value)`
+  - 변경 후: 빈 문자열일 경우 `null` 반환하여 의도치 않은 0 저장 방지
+
+#### Changed
+- **미사용 props 제거** (Dead Code 정리):
+  - `FormulaSection.tsx`: `isEditing` prop 및 interface 제거
+  - `CycleDefinitionSection.tsx`: `isEditing` prop 및 interface 제거
+  - `ProcessLogicPage.tsx`: 위 컴포넌트에 전달하던 `isEditing` prop 제거
+- **아이콘 통일** (`ProcessModuleSection.tsx`): `Edit2` → `Edit` 아이콘으로 통일 (편집 의미 일관성)
+- **UX 개선** (`ProcessLogicPage.tsx`): `window.confirm()` → `ConfirmDialog` 컴포넌트로 교체
+  - 앱 디자인과 일관된 커스텀 확인 다이얼로그 사용
+  - 변경 취소, 기본값 초기화 시 적용
+
 #### Added
 - **공정로직 탭** (`ProcessLogicPage.tsx`): 공정계획 메뉴의 첫 번째 탭으로 추가
   - **계산 공식 섹션** (`FormulaSection.tsx`): 공정 일수 산출 공식 표시

@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown, ChevronRight, Calculator, Info } from 'lucide-react';
-import { Card } from '@/components/ui';
+import { useState, useMemo, useCallback } from 'react';
+import { ChevronDown, ChevronRight, Calculator, Info, Edit, Save, X } from 'lucide-react';
+import { Card, Button } from '@/components/ui';
+import type { ProcessModule } from '@/lib/data/process-modules';
+import type { ProcessCategory } from '@/lib/types';
 
 interface Formula {
   id: string;
@@ -11,6 +13,40 @@ interface Formula {
   variables: { name: string; description: string }[];
   example?: string;
 }
+
+interface FormulaSectionProps {
+  modules?: ProcessModule[];
+  onEquipmentBaseChange?: (category: ProcessCategory, value: number) => void;
+  onSave?: () => void;
+}
+
+// UI 라벨과 실제 ProcessCategory 간의 매핑
+type EquipmentBaseLabel = '버림' | '기초' | '지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
+
+const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[] = [
+  { label: '버림', defaultValue: 650 },
+  { label: '기초', defaultValue: 650 },
+  { label: '지하층', defaultValue: 500 },
+  { label: '1층', defaultValue: 400 },
+  { label: '일반층', defaultValue: 200 },
+  { label: '셋팅층', defaultValue: 400 },
+  { label: '기준층', defaultValue: 320 },
+  { label: '최상층', defaultValue: 230 },
+  { label: 'PH층', defaultValue: 230 },
+];
+
+// UI 라벨을 ProcessCategory로 매핑
+const LABEL_TO_CATEGORY_MAP: Record<EquipmentBaseLabel, ProcessCategory> = {
+  '버림': '버림',
+  '기초': '기초',
+  '지하층': '지하층',
+  '1층': '셋팅층',      // 1층은 셋팅층 카테고리에 해당
+  '셋팅층': '셋팅층',
+  '일반층': '일반층',   // 일반층은 별도 카테고리 (200㎥)
+  '기준층': '기준층',
+  '최상층': '최상층',  // 최상층 카테고리
+  'PH층': 'PH층',
+};
 
 const FORMULAS: Formula[] = [
   {
@@ -67,25 +103,130 @@ const FORMULAS: Formula[] = [
   },
 ];
 
-interface FormulaSectionProps {
-  isEditing?: boolean;
+/**
+ * modules에서 각 카테고리의 equipmentCalculationBase 값을 추출
+ * 해당 카테고리의 첫 번째 타설 항목에서 값을 가져옴
+ */
+function getEquipmentBaseByCategory(modules: ProcessModule[]): Record<ProcessCategory, number> {
+  const defaults: Record<ProcessCategory, number> = {
+    '버림': 650,
+    '기초': 650,
+    '지하층': 500,
+    '셋팅층': 400,
+    '기준층': 320,
+    '최상층': 230,
+    'PH층': 230,
+    '옥탑층': 230,
+    '지하주차장': 500,
+    '일반층': 200,
+  };
+
+  for (const module of modules) {
+    // 해당 카테고리의 콘크리트 타설 항목 찾기
+    const concreteItem = module.items.find(
+      (item) => item.equipmentCalculationBase !== undefined
+    );
+    if (concreteItem && concreteItem.equipmentCalculationBase !== undefined) {
+      // 첫 번째로 찾은 값만 사용 (표준공정 우선)
+      if (defaults[module.category] === getDefaultValueForCategory(module.category)) {
+        defaults[module.category] = concreteItem.equipmentCalculationBase;
+      }
+    }
+  }
+  return defaults;
 }
 
-export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+function getDefaultValueForCategory(category: ProcessCategory): number {
+  const categoryDefaults: Record<ProcessCategory, number> = {
+    '버림': 650,
+    '기초': 650,
+    '지하층': 500,
+    '셋팅층': 400,
+    '기준층': 320,
+    '최상층': 230,
+    'PH층': 230,
+    '옥탑층': 230,
+    '지하주차장': 500,
+    '일반층': 200,
+  };
+  return categoryDefaults[category];
+}
+
+export function FormulaSection({ modules = [], onEquipmentBaseChange, onSave }: FormulaSectionProps) {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
+  // 자체 편집 상태 관리 (ProcessModuleSection과 독립적)
+  const [isEditingEquipmentBase, setIsEditingEquipmentBase] = useState(false);
+  // 편집 취소를 위한 이전 값 저장
+  const [previousValues, setPreviousValues] = useState<Record<ProcessCategory, number> | null>(null);
+
+  // modules에서 현재 equipmentCalculationBase 값들 추출
+  const equipmentBaseValues = useMemo(() => {
+    if (modules.length === 0) {
+      // modules가 없으면 기본값 반환
+      return EQUIPMENT_BASE_ITEMS.reduce(
+        (acc, item) => {
+          acc[item.label] = item.defaultValue;
+          return acc;
+        },
+        {} as Record<EquipmentBaseLabel, number>
+      );
+    }
+
+    const categoryValues = getEquipmentBaseByCategory(modules);
+
+    // UI 라벨에 맞게 값 매핑
+    return EQUIPMENT_BASE_ITEMS.reduce(
+      (acc, item) => {
+        const category = LABEL_TO_CATEGORY_MAP[item.label];
+        acc[item.label] = categoryValues[category] ?? item.defaultValue;
+        return acc;
+      },
+      {} as Record<EquipmentBaseLabel, number>
+    );
+  }, [modules]);
 
   const toggleFormula = (id: string) => {
     setExpandedFormula(expandedFormula === id ? null : id);
   };
 
+  const handleValueChange = (label: EquipmentBaseLabel, value: string) => {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue > 0 && onEquipmentBaseChange) {
+      const category = LABEL_TO_CATEGORY_MAP[label];
+      onEquipmentBaseChange(category, numValue);
+    }
+  };
+
+  // 편집 모드 시작 - 현재 값 백업
+  const handleStartEditing = useCallback(() => {
+    const currentCategoryValues = getEquipmentBaseByCategory(modules);
+    setPreviousValues(currentCategoryValues);
+    setIsEditingEquipmentBase(true);
+  }, [modules]);
+
+  // 저장 핸들러
+  const handleSaveChanges = useCallback(() => {
+    setIsEditingEquipmentBase(false);
+    setPreviousValues(null);
+    onSave?.();
+  }, [onSave]);
+
+  // 취소 핸들러 - 이전 값으로 복원
+  const handleCancelEditing = useCallback(() => {
+    if (previousValues && onEquipmentBaseChange) {
+      // 이전 값으로 복원
+      Object.entries(previousValues).forEach(([category, value]) => {
+        onEquipmentBaseChange(category as ProcessCategory, value);
+      });
+    }
+    setIsEditingEquipmentBase(false);
+    setPreviousValues(null);
+  }, [previousValues, onEquipmentBaseChange]);
+
   return (
     <Card className="p-0 overflow-hidden">
       {/* 섹션 헤더 */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-      >
+      <div className="w-full flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -99,16 +240,11 @@ export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
             </p>
           </div>
         </div>
-        {isExpanded ? (
-          <ChevronDown className="w-5 h-5 text-zinc-400" />
-        ) : (
-          <ChevronRight className="w-5 h-5 text-zinc-400" />
-        )}
-      </button>
+
+      </div>
 
       {/* 섹션 콘텐츠 */}
-      {isExpanded && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700">
+      <div className="border-t border-zinc-200 dark:border-zinc-700">
           <div className="p-4 space-y-3">
             {FORMULAS.map((formula) => (
               <div
@@ -179,18 +315,37 @@ export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
 
           {/* 부위별 대당 타설량 기준표 */}
           <div className="border-t border-zinc-200 dark:border-zinc-700 p-4">
-            <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-              부위별 대당 타설량 기준
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-              {[
-                { label: '버림', value: '650㎥' },
-                { label: '기초', value: '650㎥' },
-                { label: '지하층', value: '500㎥' },
-                { label: '셋팅층', value: '400㎥' },
-                { label: '기준층', value: '320㎥' },
-                { label: 'PH층', value: '230㎥' },
-              ].map((item) => (
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                부위별 대당 타설량 기준
+                {isEditingEquipmentBase && (
+                  <span className="ml-2 text-xs text-blue-500 font-normal">
+                    (값을 수정하면 해당 부위의 모든 공정에 적용됩니다)
+                  </span>
+                )}
+              </h4>
+
+              {/* 편집/저장/취소 버튼 */}
+              <div className="flex items-center gap-2">
+                {isEditingEquipmentBase ? (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditing}>
+                      <X className="w-4 h-4 mr-1" /> 취소
+                    </Button>
+                    <Button size="sm" onClick={handleSaveChanges}>
+                      <Save className="w-4 h-4 mr-1" /> 저장
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing}>
+                    <Edit className="w-4 h-4 mr-1" /> 편집
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
+              {EQUIPMENT_BASE_ITEMS.map((item) => (
                 <div
                   key={item.label}
                   className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
@@ -198,15 +353,27 @@ export function FormulaSection({ isEditing = false }: FormulaSectionProps) {
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     {item.label}
                   </span>
-                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                    {item.value}
-                  </span>
+                  {isEditingEquipmentBase ? (
+                    <div className="flex items-center gap-0.5">
+                      <input
+                        type="number"
+                        min="1"
+                        value={equipmentBaseValues[item.label]}
+                        onChange={(e) => handleValueChange(item.label, e.target.value)}
+                        className="w-14 text-sm font-semibold text-center text-zinc-900 dark:text-white bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">㎥</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+                      {equipmentBaseValues[item.label]}㎥
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         </div>
-      )}
     </Card>
   );
 }

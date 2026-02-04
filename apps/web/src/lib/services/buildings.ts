@@ -502,12 +502,18 @@ function generateFloors(
 
 /**
  * 셋팅층 결정 헬퍼 함수
+ * 규칙: 기준층 층고와 같은 연속 구간의 마지막(가장 아래) 층 = 셋팅층
+ *
+ * 예시: floor1=3050, floor2=2950, floor3=2850, standard=2850
+ * - 5층→4층→3층: 기준층 층고(2850)와 같음, 연속 구간
+ * - 3층이 연속 구간의 마지막(가장 아래) 층 → 셋팅층
+ * - 2층, 1층: 기준층 층고와 다름 → 일반층
  */
 function determineSettingFloors(groundFloorCount: number, heights?: BuildingMeta['heights']): number[] {
   if (!heights) return [];
 
   const standardHeight = heights.standard;
-  const settingFloors: number[] = [];
+  if (standardHeight === undefined || standardHeight === null) return [];
 
   const floorHeights = [
     { num: 5, height: heights.floor5 },
@@ -517,18 +523,31 @@ function determineSettingFloors(groundFloorCount: number, heights?: BuildingMeta
     { num: 1, height: heights.floor1 },
   ];
 
+  // 위에서 아래로 순회하며 기준층 층고와 같은 연속 구간의 마지막 층을 찾음
+  let lastStandardHeightFloor: number | null = null;
+
   for (const { num, height } of floorHeights) {
+    // 건물 층수보다 높은 층은 스킵
     if (groundFloorCount < num) continue;
-    if (height !== undefined && height !== null && standardHeight !== undefined && standardHeight !== null && height !== standardHeight) {
-      // 상위층이 이미 셋팅층이면 하위층은 일반층
-      const hasHigherSettingFloor = settingFloors.some(sf => sf > num);
-      if (!hasHigherSettingFloor) {
-        settingFloors.push(num);
+
+    if (height === standardHeight) {
+      // 기준층 층고와 같은 층 → 셋팅층 후보 업데이트 (가장 아래 층)
+      lastStandardHeightFloor = num;
+    } else if (height !== undefined && height !== null) {
+      // 기준층 층고와 다른 층을 만남 → 연속 구간 끊김
+      // 이전까지의 lastStandardHeightFloor가 셋팅층
+      if (lastStandardHeightFloor !== null) {
+        return [lastStandardHeightFloor];
       }
     }
   }
 
-  return settingFloors;
+  // 모든 층이 기준층 층고와 같은 경우, 가장 아래 층이 셋팅층
+  if (lastStandardHeightFloor !== null) {
+    return [lastStandardHeightFloor];
+  }
+
+  return [];
 }
 
 // ============================================

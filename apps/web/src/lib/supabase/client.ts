@@ -25,15 +25,8 @@ export function createClient() {
 
     // 세션 에러 발생 시 자동으로 세션 정리 및 리다이렉트
     supabaseInstance.auth.onAuthStateChange((event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
-        // 토큰 갱신 성공
-        console.log('[Auth] Token refreshed successfully');
-      }
-
-      if (event === 'SIGNED_OUT') {
-        // 로그아웃 시 쿠키 정리
-        console.log('[Auth] User signed out');
-      }
+      // 토큰 갱신 및 로그아웃 이벤트 처리
+      // 프로덕션에서는 로깅 제거하여 성능 최적화
     });
   }
 

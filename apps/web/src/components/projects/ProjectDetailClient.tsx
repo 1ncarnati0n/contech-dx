@@ -18,6 +18,8 @@ import {
   BarChart3,
   Users,
   FileText,
+  LayoutGrid,
+  Map,
   type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -40,7 +42,7 @@ interface Props {
 // 탭별 제목 매핑
 const TAB_TITLES: Record<string, string> = {
   overview: '프로젝트 개요',
-  pouring_section_review: '타설구간 개략검토',
+  pouring_section_review: '타설구간검토',
   data_input: '동 기본 정보',
   quantity_input: '물량 입력',
   detailed_quantity_input: '상세물량입력',
@@ -48,7 +50,7 @@ const TAB_TITLES: Record<string, string> = {
   planned_unit_rate: '단가 입력',
   executed_unit_rate: '실행 단가',
   process_logic: '공정로직',
-  building_process_plan: '동별 공정계획',
+  building_process_plan: '지상층 공정계획',
   basement_process_plan: '지하층 공정계획',
   gantt_chart: '간트차트',
   team: '팀 관리',
@@ -67,7 +69,7 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   planned_unit_rate: '계획 단가를 입력합니다.',
   executed_unit_rate: '실행 단가를 입력합니다.',
   process_logic: '공정 계산 공식, 모듈, 사이클 정의를 관리합니다.',
-  building_process_plan: '동별 공정계획을 수립하고 일수를 계산합니다.',
+  building_process_plan: '지상층 공정계획을 수립하고 일수를 계산합니다.',
   basement_process_plan: '지하층 공정계획을 수립하고 일수를 계산합니다.',
   gantt_chart: '프로젝트 공정 현황을 한눈에 확인하세요.',
   team: '프로젝트에 참여하는 팀원을 관리합니다.',
@@ -107,9 +109,10 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [project, setProject] = useState<Project>(initialProject);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
+  const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [pouringSectionViewMode, setPouringSectionViewMode] = useState<'simple' | 'visual'>('visual');
 
   // 프로필 로드
   useEffect(() => {
@@ -320,6 +323,32 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                   </Button>
                 </div>
               )}
+              {activeTab === 'pouring_section_review' && (
+                <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setPouringSectionViewMode('simple')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pouringSectionViewMode === 'simple'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                    Simple
+                  </button>
+                  <button
+                    onClick={() => setPouringSectionViewMode('visual')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pouringSectionViewMode === 'visual'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Map className="w-4 h-4" />
+                    Visual
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 탭별 콘텐츠 */}
@@ -390,7 +419,11 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
 
 
             {activeTab === 'pouring_section_review' && (
-              <PouringSectionReviewPage projectId={project.id} />
+              <PouringSectionReviewPage
+                projectId={project.id}
+                viewMode={pouringSectionViewMode}
+                onViewModeChange={setPouringSectionViewMode}
+              />
             )}
 
             {activeTab === 'data_input' && (

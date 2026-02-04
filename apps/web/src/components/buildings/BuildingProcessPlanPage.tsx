@@ -25,18 +25,22 @@ interface Props {
   projectId: string;
 }
 
-// 공정 구분 목록
-const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '지하층', '셋팅층', '기준층', '옥탑층'];
+// 공정 구분 목록 (지상층만 - 지하층, 기초, 버림은 별도 탭에서 관리)
+const PROCESS_CATEGORIES: ProcessCategory[] = ['셋팅층', '기준층', '옥탑층'];
 
 // 공정 타입 옵션 (구분별로 다름)
+// 참고: '층고6.5m이상'은 3단 가시설 적용부 행에서만 내부적으로 사용됨
 const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
   '버림': ['표준공정'],
   '기초': ['표준공정'],
   '지하층': ['표준공정'],
-  '셋팅층': ['표준공정'],
+  '셋팅층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
   '기준층': ['5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
-  'PH층': ['표준공정'],
+  '최상층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
+  'PH층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
   '옥탑층': ['표준공정'],
+  '지하주차장': ['표준공정'],
+  '일반층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
 };
 
 // 기본 공정 타입
@@ -46,8 +50,11 @@ const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
   '지하층': '표준공정',
   '셋팅층': '표준공정',
   '기준층': '6일 사이클',
+  '최상층': '표준공정',
   'PH층': '표준공정',
   '옥탑층': '표준공정',
+  '지하주차장': '표준공정',
+  '일반층': '표준공정',
 };
 
 export function BuildingProcessPlanPage({ projectId }: Props) {
@@ -513,20 +520,12 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     return categoryProcess.processType || DEFAULT_PROCESS_TYPES[category];
   };
 
-  // 합계일수 계산 - 모든 공정 카테고리의 일수 합계
+  // 합계일수 계산 - 지상층 공정 카테고리의 일수 합계 (지하층, 기초, 버림은 별도 탭에서 관리)
   const calculateTotalDays = (processes: BuildingProcessPlan['processes'], building?: Building): number => {
     let total = 0;
     // 모든 공정 카테고리의 일수를 합산
     PROCESS_CATEGORIES.forEach(category => {
-      if (category === '지하층' && building) {
-        // 지하층는 각 층별 일수를 합산
-        const basementFloors = getBasementFloors.get(building.id) || [];
-        basementFloors.forEach(floor => {
-          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-          const floorDays = calculateBasementFloorDays(building, category, floorProcessType, floor.floorLabel);
-          total += floorDays;
-        });
-      } else if (category === '옥탑층' && building) {
+      if (category === '옥탑층' && building) {
         // 옥탑층은 각 층별 일수를 합산
         const phFloors = getPhFloors.get(building.id) || [];
         phFloors.forEach(floor => {
@@ -1225,63 +1224,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         });
       });
     }
-    
-    // 4. 지하층 추가 (각 층별로)
-    const basementFloors = floors.filter(f => f.levelType === '지하' || f.floorClass === '지하층');
-    
-    // 코어 정보를 제거한 cleanLabel 기준으로 중복 제거하고 정렬
-    const uniqueBasementFloorsMap = new Map<string, typeof floors[0]>();
-    
-    basementFloors.forEach(floor => {
-      // 코어 정보 제거 (예: "코어1-B1" -> "B1")
-      let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
-      
-      // 같은 cleanLabel이 이미 있으면 건너뛰기 (중복 제거)
-      if (!uniqueBasementFloorsMap.has(cleanLabel)) {
-        uniqueBasementFloorsMap.set(cleanLabel, floor);
-      }
-    });
-    
-    // B1이 위에 B2가 아래로 오도록 정렬 (숫자가 작은 게 먼저: B1 -> B2)
-    const sortedBasementFloors = Array.from(uniqueBasementFloorsMap.entries())
-      .sort(([labelA], [labelB]) => {
-        const aMatch = labelA.match(/B(\d+)/i);
-        const bMatch = labelB.match(/B(\d+)/i);
-        if (aMatch && bMatch) {
-          // 숫자가 작은 게 먼저 (B1이 위에, B2가 아래)
-          return parseInt(aMatch[1], 10) - parseInt(bMatch[1], 10);
-        }
-        return 0;
-      });
-    
-    sortedBasementFloors.forEach(([cleanLabel, floor]) => {
-      rows.push({
-        category: '지하층' as ProcessCategory,
-        floorLabel: cleanLabel,
-        floor: floor,
-        floorClass: floor.floorClass,
-        rowIndex: rowIndex++
-      });
-    });
-    
-    // 5. 기초 추가
-    rows.push({
-      category: '기초' as ProcessCategory,
-      floorLabel: undefined,
-      floor: undefined,
-      floorClass: undefined,
-      rowIndex: rowIndex++
-    });
-    
-    // 6. 버림 추가
-    rows.push({
-      category: '버림' as ProcessCategory,
-      floorLabel: undefined,
-      floor: undefined,
-      floorClass: undefined,
-      rowIndex: rowIndex++
-    });
-    
+
+    // 지하층, 기초, 버림은 별도의 "지하층 공정계획" 탭에서 관리
+
     return rows;
   }, [activeBuilding]);
 
@@ -1704,12 +1649,16 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                               // 일반층인 경우 옥탑층의 표준공정을 사용
                               const isNormalFloor = row.floorClass === '일반층';
                               const effectiveCategory = isNormalFloor ? '옥탑층' : row.category;
-                              
-                              const processType = row.floorLabel && (row.category === '지하층' || row.category === '옥탑층' || isNormalFloor)
-                                ? (isNormalFloor 
-                                    ? getProcessTypeForFloor(plan, '옥탑층', row.floorLabel)
-                                    : getProcessTypeForFloor(plan, row.category, row.floorLabel))
-                                : plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category];
+
+                              // 일반 지하층 행은 항상 표준공정 사용 (3단 가시설 적용부 행만 내부적으로 '층고6.5m이상')
+                              let processType: ProcessType;
+                              if (row.floorLabel && (row.category === '지하층' || row.category === '옥탑층' || isNormalFloor)) {
+                                processType = isNormalFloor
+                                  ? getProcessTypeForFloor(plan, '옥탑층', row.floorLabel)
+                                  : getProcessTypeForFloor(plan, row.category, row.floorLabel);
+                              } else {
+                                processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category];
+                              }
                               const module = getProcessModule(effectiveCategory, processType);
                               
                               // 일수 계산 - 세부공정의 순작업일 합계
@@ -2137,6 +2086,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   
                                   {/* 일곱 번째 열: 셀렉트박스 */}
                                   <td className="px-1 py-1 border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                    {/* 일반 지하층 행은 항상 표준공정 드롭다운 표시 */}
                                     <select
                                       value={processType}
                                       onChange={(e) => {
@@ -2281,7 +2231,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                 등록된 동이 없습니다
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
-                동별 공정계획을 입력하려면 먼저 <br />
+                지상층 공정계획을 입력하려면 먼저 <br />
                 <span className="font-medium text-primary-600 dark:text-primary-400">"동 기본정보"</span> 탭에서 동을 생성해주세요.
               </p>
             </div>

@@ -6,6 +6,7 @@ import { ClipboardPaste, Construction } from 'lucide-react';
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
 import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
+import { createSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import { toast } from 'sonner';
 
 interface Props {
@@ -457,7 +458,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
             const rowInfo = rows[rowIdx];
             if (rowInfo && rowInfo.type !== 'summary') {
               const tradeGroup = rowInfo.tradeGroup || '아파트';
-              const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? `group-${tradeGroup}` : '');
+              const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? createSpecialFloorId(building.id, tradeGroup) : '');
               if (floorId) {
                 const fieldPath = getColumnFieldPath(colIdx);
                 if (fieldPath) {
@@ -859,7 +860,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         if (!rowInfo || rowInfo.type === 'summary') return; // 소계 행은 건너뛰기
 
         const tradeGroup = rowInfo.tradeGroup || '아파트';
-        const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? `group-${tradeGroup}` : '');
+        const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? createSpecialFloorId(building.id, tradeGroup) : '');
 
         if (!floorId) return;
 
@@ -933,6 +934,16 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
   return (
     <Card>
+      {/* 산식 노트 - 헤더 위에 위치 */}
+      <div className="mx-4 mt-4 mb-0 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+        <p className="font-medium mb-1">※ 산식 안내</p>
+        <ul className="space-y-0.5 ml-3">
+          <li>• 형틀 합계 = 갱폼(M²) + 알폼(M²) + 유로폼(M²)</li>
+          <li>• 해체/정리 = 유로폼(M²) × 2</li>
+          <li>• 철근 합계 = 각 층 철근(TON)의 합계</li>
+          <li>• 콘크리트 합계 = 각 층 콘크리트(M³)의 합계</li>
+        </ul>
+      </div>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>층별 물량 입력</CardTitle>
@@ -1138,7 +1149,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   
                   // 버림/기초는 특별 처리 (버림/기초는 층이 없으므로 특별한 floorId 사용)
                   if (row.type === 'group') {
-                    const specialFloorId = `group-${tradeGroup}`;
+                    const specialFloorId = createSpecialFloorId(building.id, tradeGroup);
                     const groupTrade = getTrade(specialFloorId, tradeGroup);
                     
                     return (
@@ -1526,16 +1537,6 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                 })}
               </tbody>
             </table>
-        </div>
-        {/* 산식 노트 */}
-        <div className="mt-3 mx-4 mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-          <p className="font-medium mb-1">※ 산식 안내</p>
-          <ul className="space-y-0.5 ml-3">
-            <li>• 형틀 합계 = 갱폼(M²) + 알폼(M²) + 유로폼(M²)</li>
-            <li>• 해체/정리 = 유로폼(M²) × 2</li>
-            <li>• 철근 합계 = 각 층 철근(TON)의 합계</li>
-            <li>• 콘크리트 합계 = 각 층 콘크리트(M³)의 합계</li>
-          </ul>
         </div>
       </CardContent>
     </Card>

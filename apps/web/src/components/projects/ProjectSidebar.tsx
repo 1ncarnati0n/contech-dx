@@ -66,7 +66,7 @@ export function ProjectSidebar({
     ];
 
     const dataInputSubItems = [
-        { id: 'pouring_section_review', label: '타설구간 개략검토', icon: Calculator },
+        { id: 'pouring_section_review', label: '타설구간검토', icon: Calculator },
         { id: 'data_input', label: '동 기본 정보', icon: Database },
         { id: 'quantity_input', label: '물량 입력', icon: Package },
         { id: 'detailed_quantity_input', label: '상세물량입력', icon: Package },
@@ -75,7 +75,7 @@ export function ProjectSidebar({
 
     const processPlanSubItems = [
         { id: 'process_logic', label: '공정로직', icon: Calculator, adminOnly: true },
-        { id: 'building_process_plan', label: '동별 공정계획', icon: Building, adminOnly: false },
+        { id: 'building_process_plan', label: '지상층 공정계획', icon: Building, adminOnly: false },
         { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building, adminOnly: false },
         { id: 'gantt_chart', label: '간트차트', icon: BarChart3, adminOnly: false },
     ];
@@ -157,7 +157,7 @@ export function ProjectSidebar({
                         title={isPinned ? '사이드바 고정 해제' : '사이드바 고정'}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                             isPinned
-                                ? 'bg-[#ffff1d]/50 text-zinc-900 dark:bg-[#ffff1d]/60 dark:text-zinc-900'
+                                ? 'text-zinc-700 dark:text-zinc-200'
                                 : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                     >
