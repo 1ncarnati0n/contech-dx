@@ -38,19 +38,21 @@ import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } f
 // 🚀 Stage 2: Lazy load heavy tabs (2,000+ lines) for better performance
 // Target: Initial bundle -40%, Tab switch 2000ms → 1200ms
 
-// Heavy tabs with dynamic imports
+// 🔥 CRITICAL FIX: Direct file imports for proper code splitting
+// ❌ 잘못된 방법: import('@/components/buildings').then(...) - index.ts를 거치면 전체 번들 포함
+// ✅ 올바른 방법: import('@/components/buildings/ComponentName') - 개별 파일 import로 코드 스플리팅
 const BuildingProcessPlanPage = dynamic(
-  () => import('@/components/buildings').then(m => ({ default: m.BuildingProcessPlanPage })),
+  () => import('@/components/buildings/BuildingProcessPlanPage').then(m => ({ default: m.BuildingProcessPlanPage })),
   { loading: () => <TabLoadingSkeleton title="지상층 공정계획 로딩 중..." /> }
 );
 
 const BasementProcessPlanPage = dynamic(
-  () => import('@/components/buildings').then(m => ({ default: m.BasementProcessPlanPage })),
+  () => import('@/components/buildings/BasementProcessPlanPage').then(m => ({ default: m.BasementProcessPlanPage })),
   { loading: () => <TabLoadingSkeleton title="지하층 공정계획 로딩 중..." /> }
 );
 
 const DetailedQuantityInputPage = dynamic(
-  () => import('@/components/buildings').then(m => ({ default: m.DetailedQuantityInputPage })),
+  () => import('@/components/buildings/DetailedQuantityInputPage').then(m => ({ default: m.DetailedQuantityInputPage })),
   { loading: () => <TabLoadingSkeleton title="상세물량 로딩 중..." /> }
 );
 
@@ -63,12 +65,12 @@ const GanttChartPage = dynamic(
 );
 
 const PouringSectionReviewPage = dynamic(
-  () => import('@/components/buildings').then(m => ({ default: m.PouringSectionReviewPage })),
+  () => import('@/components/buildings/PouringSectionReviewPage').then(m => ({ default: m.PouringSectionReviewPage })),
   { loading: () => <TabLoadingSkeleton title="타설구간검토 로딩 중..." /> }
 );
 
 const ProcessLogicPage = dynamic(
-  () => import('@/components/buildings').then(m => ({ default: m.ProcessLogicPage })),
+  () => import('@/components/buildings/ProcessLogicPage').then(m => ({ default: m.ProcessLogicPage })),
   { loading: () => <TabLoadingSkeleton title="공정로직 로딩 중..." /> }
 );
 
