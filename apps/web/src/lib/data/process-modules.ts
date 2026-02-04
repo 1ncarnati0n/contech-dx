@@ -290,7 +290,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-finish-1st',
-        workItem: '마감작업',
+        workItem: '마감작업 (1차)',
         unit: '㎡',
         quantityReference: 'D9*0.05', // 동,층별물량표!D9*0.05
         dailyProductivity: 10,
@@ -303,7 +303,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-concrete-1st',
-        workItem: '타설',
+        workItem: '타설 (1차)',
         unit: '㎥',
         quantityReference: 'G9*0.6', // 동,층별물량표!G9*0.6
         dailyProductivity: 130,
@@ -319,7 +319,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-finish-2nd',
-        workItem: '마감작업',
+        workItem: '마감작업 (2차)',
         unit: '㎡',
         quantityReference: 'D9*0.05', // 동,층별물량표!D9*0.05
         dailyProductivity: 10,
@@ -332,7 +332,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-concrete-2nd',
-        workItem: '타설',
+        workItem: '타설 (2차)',
         unit: '㎥',
         quantityReference: 'G9*0.4', // 동,층별물량표!G9*0.4
         dailyProductivity: 130,
@@ -1926,7 +1926,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-hc-finish-1st',
-        workItem: '마감작업',
+        workItem: '마감작업 (1차)',
         unit: '㎡',
         quantityReference: 'D9*0.05',
         dailyProductivity: 10,
@@ -1939,7 +1939,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-hc-concrete-1st',
-        workItem: '타설',
+        workItem: '타설 (1차)',
         unit: '㎥',
         quantityReference: 'G9*0.6',
         dailyProductivity: 130,
@@ -1954,7 +1954,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-hc-finish-2nd',
-        workItem: '마감작업',
+        workItem: '마감작업 (2차)',
         unit: '㎡',
         quantityReference: 'D9*0.05',
         dailyProductivity: 10,
@@ -1967,7 +1967,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
       },
       {
         id: 'basement-hc-concrete-2nd',
-        workItem: '타설',
+        workItem: '타설 (2차)',
         unit: '㎥',
         quantityReference: 'G9*0.4',
         dailyProductivity: 130,

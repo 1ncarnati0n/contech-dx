@@ -1149,7 +1149,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                   
                   // 버림/기초는 특별 처리 (버림/기초는 층이 없으므로 특별한 floorId 사용)
                   if (row.type === 'group') {
-                    const specialFloorId = `group-${tradeGroup}`;
+                    const specialFloorId = createSpecialFloorId(building.id, tradeGroup);
                     const groupTrade = getTrade(specialFloorId, tradeGroup);
                     
                     return (
