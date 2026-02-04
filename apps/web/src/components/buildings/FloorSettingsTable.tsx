@@ -627,8 +627,8 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
                     const floor = item.floor;
 
-                    // 기준층이고 층고가 standardHeight와 같은 경우
-                    if (floor.floorClass === '기준층' && floor.height === standardHeight) {
+                    // 층고가 standardHeight와 같은 경우
+                    if (floor.height === standardHeight) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층(마지막 층) 저장
                       if (!lastStandardHeightFloor || floorNum < lastStandardHeightFloor.floorNum) {
                         lastStandardHeightFloor = { floor, floorNum };
@@ -658,8 +658,12 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
                     const floor = item.floor;
 
-                    // 업데이트된 층을 만나면 그 층이 기준층 층고이므로 계속 확인
+                    // 업데이트된 층을 만나면 그 층이 기준층 층고이므로 셋팅층 후보로 고려
                     if (floorNum === updatedFloorNum) {
+                      // 업데이트된 층도 셋팅층 후보가 될 수 있음
+                      if (!settingFloorCandidate || floorNum < settingFloorCandidate.floorNum) {
+                        settingFloorCandidate = { floor, floorNum };
+                      }
                       continue;
                     }
 
@@ -667,7 +671,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                       foundDifferentHeight = true;
                       // 기준층 층고와 다른 층을 만났으므로, 그 위의 기준층 층고 층이 셋팅층 후보
                       break;
-                    } else if (floor.floorClass === '기준층' && floor.height === standardHeight) {
+                    } else if (floor.height === standardHeight) {
                       // 연속된 기준층 층고 층들 중 가장 아래 층 저장
                       if (!settingFloorCandidate || floorNum < settingFloorCandidate.floorNum) {
                         settingFloorCandidate = { floor, floorNum };

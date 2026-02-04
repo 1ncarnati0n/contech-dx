@@ -135,7 +135,7 @@ export const useIfcViewerStore = create<IfcViewerState>((set) => ({
   setShowLeftPanel: (showLeftPanel) => set({ showLeftPanel }),
   toggleLeftPanel: () => set((state) => ({ showLeftPanel: !state.showLeftPanel })),
 
-  showRightPanel: true,
+  showRightPanel: false, // 기본 숨김 - 뷰어 왜곡 방지
   setShowRightPanel: (showRightPanel) => set({ showRightPanel }),
   toggleRightPanel: () => set((state) => ({ showRightPanel: !state.showRightPanel })),
 

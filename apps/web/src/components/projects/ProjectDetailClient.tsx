@@ -42,7 +42,7 @@ interface Props {
 // 탭별 제목 매핑
 const TAB_TITLES: Record<string, string> = {
   overview: '프로젝트 개요',
-  pouring_section_review: '타설구간 개략검토',
+  pouring_section_review: '타설구간검토',
   data_input: '동 기본 정보',
   quantity_input: '물량 입력',
   detailed_quantity_input: '상세물량입력',

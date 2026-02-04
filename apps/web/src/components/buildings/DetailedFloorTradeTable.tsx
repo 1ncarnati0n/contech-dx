@@ -6,6 +6,7 @@ import { ClipboardPaste, Construction } from 'lucide-react';
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
 import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
+import { createSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import { toast } from 'sonner';
 
 interface Props {
@@ -457,7 +458,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
             const rowInfo = rows[rowIdx];
             if (rowInfo && rowInfo.type !== 'summary') {
               const tradeGroup = rowInfo.tradeGroup || '아파트';
-              const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? `group-${tradeGroup}` : '');
+              const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? createSpecialFloorId(building.id, tradeGroup) : '');
               if (floorId) {
                 const fieldPath = getColumnFieldPath(colIdx);
                 if (fieldPath) {
@@ -859,7 +860,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         if (!rowInfo || rowInfo.type === 'summary') return; // 소계 행은 건너뛰기
 
         const tradeGroup = rowInfo.tradeGroup || '아파트';
-        const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? `group-${tradeGroup}` : '');
+        const floorId = rowInfo.floor?.id || (rowInfo.type === 'group' ? createSpecialFloorId(building.id, tradeGroup) : '');
 
         if (!floorId) return;
 

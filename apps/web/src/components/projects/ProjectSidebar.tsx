@@ -66,7 +66,7 @@ export function ProjectSidebar({
     ];
 
     const dataInputSubItems = [
-        { id: 'pouring_section_review', label: '타설구간 개략검토', icon: Calculator },
+        { id: 'pouring_section_review', label: '타설구간검토', icon: Calculator },
         { id: 'data_input', label: '동 기본 정보', icon: Database },
         { id: 'quantity_input', label: '물량 입력', icon: Package },
         { id: 'detailed_quantity_input', label: '상세물량입력', icon: Package },

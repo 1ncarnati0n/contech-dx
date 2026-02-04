@@ -78,11 +78,8 @@ function IfcViewerContent() {
   // 뷰어 초기화
   useIfcViewer({ isDarkMode });
 
-  // 파일 로딩
-  const { loadIfcFromFile } = useIfcLoader({
-    autoLoadUrl: '/APT_2x3.ifc',
-    autoLoadFileName: 'APT_2x3',
-  });
+  // 파일 로딩 (자동 로드 제거됨)
+  const { loadIfcFromFile, loadIfcFromUrl } = useIfcLoader();
 
   // 파일 드롭 핸들러
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -103,10 +100,13 @@ function IfcViewerContent() {
     }
   }, [loadIfcFromFile]);
 
+  // 패널이 열렸을 때 전체 컨테이너가 스크롤되도록 함
+  const hasPanel = loadingState.phase === 'complete' && (showLeftPanel || showRightPanel);
+
   return (
-    <div className="relative flex flex-col h-full gap-2">
-      {/* 3D Container */}
-      <div className="relative flex-1 flex flex-col min-h-0">
+    <div className={`relative flex flex-col ${hasPanel ? 'overflow-auto' : 'h-full'}`}>
+      {/* 3D Container - 패널 유무와 관계없이 고정 높이 유지 */}
+      <div className={`relative flex flex-col ${hasPanel ? 'h-[calc(100vh-280px)] min-h-[400px]' : 'h-full'}`}>
         <div
           ref={containerRef}
           className={`relative flex-1 bg-zinc-100 dark:bg-slate-900 rounded-lg overflow-hidden border-2 transition-colors ${
@@ -138,17 +138,31 @@ function IfcViewerContent() {
                     IFC 파일을 드래그하여 놓거나<br />
                     아래 버튼을 클릭하여 파일을 선택하세요
                   </p>
-                  <Button
-                    size="lg"
-                    className="gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                  >
-                    <Upload className="h-5 w-5" />
-                    파일 열기
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      size="lg"
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      <Upload className="h-5 w-5" />
+                      파일 열기
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        loadIfcFromUrl('/APT_2x3.ifc', 'APT_2x3');
+                      }}
+                    >
+                      <Box className="h-5 w-5" />
+                      샘플 열기
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-slate-500">
                   <span className="px-2 py-1 rounded bg-zinc-200 dark:bg-slate-800">.ifc</span>
@@ -270,9 +284,9 @@ function IfcViewerContent() {
         )}
       </div>
 
-      {/* 하단 패널 컨테이너 */}
+      {/* 하단 패널 컨테이너 - 뷰어 외부에 배치하여 크기 영향 없음 */}
       {loadingState.phase === 'complete' && (showLeftPanel || showRightPanel) && (
-        <div className="flex gap-2 h-64 min-h-48 max-h-80">
+        <div className="flex gap-2 h-64 shrink-0 mt-2">
           {showLeftPanel && <LeftPanel className="flex-1" />}
           {showRightPanel && <RightPanel className="flex-1" />}
         </div>
