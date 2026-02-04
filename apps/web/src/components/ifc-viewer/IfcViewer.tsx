@@ -83,6 +83,12 @@ export function IfcViewer({ className }: IfcViewerProps) {
         const THREE = await import('three');
         threeRef.current = THREE;
 
+        // Check if component unmounted during async imports
+        if (!containerRef.current) {
+          console.warn('Component unmounted during initialization');
+          return;
+        }
+
         // Create components
         const components = new OBC.Components();
         componentsRef.current = components;
@@ -98,7 +104,8 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
         // Setup scene, renderer, camera in correct order
         if (!containerRef.current) {
-          throw new Error('Container element not found');
+          console.warn('Container element not available');
+          return;
         }
 
         world.scene = new OBC.SimpleScene(components);
