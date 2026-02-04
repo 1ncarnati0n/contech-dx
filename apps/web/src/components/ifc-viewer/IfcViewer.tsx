@@ -262,12 +262,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
     }
   }, [isReady]);
 
-  // Auto-load default IFC file when ready
-  useEffect(() => {
-    if (!isReady || stats) return;
-
-    loadIfcFromUrl('/APT_2x3.ifc', 'APT_2x3');
-  }, [isReady, stats, loadIfcFromUrl]);
+  // Auto-loading disabled - user must click "로딩" button to load sample
 
   // Load IFC file
   const loadIfcFile = useCallback(async (file: File) => {
