@@ -48,6 +48,23 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
+
+  // 🔥 Stage 1 Optimization: Helper functions for efficient Map updates
+  const updateProcessPlan = useCallback((buildingId: string, updatedPlan: BuildingProcessPlan) => {
+    setProcessPlans(prev => {
+      const newPlans = new Map(prev);
+      newPlans.set(buildingId, updatedPlan);
+      return newPlans;
+    });
+  }, []);
+
+  const updateExpandedModules = useCallback((buildingId: string, newExpanded: Set<string>) => {
+    setExpandedModules(prev => {
+      const newMap = new Map(prev);
+      newMap.set(buildingId, newExpanded);
+      return newMap;
+    });
+  }, []);
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
 
   // 지하층 공정계획에서는 기준층을 사용하지 않음 (BuildingProcessPlanPage에서 처리)
@@ -82,6 +99,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     loadBuildings();
   }, [projectId]);
 
+  // 🔥 Stage 1 Optimization: Memoize floorTrades hash to avoid JSON.stringify on every render
+  const floorTradesHash = useMemo(() => {
+    return buildings
+      .flatMap(b => b.floorTrades || [])
+      .map(ft => `${ft.id}-${ft.tradeGroup}`)
+      .join('|');
+  }, [buildings]);
+
   // 물량 데이터 또는 processPlans 변경 시 자동으로 일수 계산
   useEffect(() => {
     if (buildings.length === 0) return;
@@ -93,20 +118,20 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
         const processType = plan.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
         const module = getProcessModule(category, processType);
-        
+
         if (!module || module.items.length === 0) return;
 
         // 각 세부공종 항목의 순작업일을 계산하고, 모든 항목의 합계를 해당 구분의 일수로 설정
         let sumDays = 0;
-        
+
         module.items.forEach(item => {
           let directWorkDays = 0;
-          
+
           // directWorkDays가 고정값인 경우
           if (item.directWorkDays !== undefined) {
             directWorkDays = item.directWorkDays;
             sumDays += directWorkDays;
-          } 
+          }
           // 장비기반 계산인 경우
           else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
             const quantity = getQuantityByReference(building, item.quantityReference);
@@ -137,6 +162,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
         // 계산된 일수로 업데이트 (기존 일수와 다를 때만)
         const currentDays = plan.processes[category]?.days || 0;
         if (sumDays !== currentDays) {
+          // 🔥 Stage 1 Optimization: More efficient Map update without full copy
           setProcessPlans(prevPlans => {
             const prevPlan = prevPlans.get(building.id);
             if (!prevPlan) return prevPlans;
@@ -152,14 +178,16 @@ export function BasementProcessPlanPage({ projectId }: Props) {
               },
             };
             updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-            return new Map(prevPlans.set(building.id, updatedPlan));
+
+            const newPlans = new Map(prevPlans);
+            newPlans.set(building.id, updatedPlan);
+            return newPlans;
           });
         }
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    buildings.map(b => JSON.stringify(b.floorTrades)).join('|'), // floorTrades 변경 감지
+    floorTradesHash, // 🔥 Stage 1: Use memoized hash instead of JSON.stringify
     processPlans.size, // processPlans 변경 감지 (셀렉트박스 변경 시)
   ]);
 
@@ -335,7 +363,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
       // 합계일수 재계산
       updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-      setProcessPlans(new Map(processPlans.set(buildingId, updatedPlan)));
+      updateProcessPlan(buildingId, updatedPlan); // 🔥 Stage 1: Use helper function
     } else {
       // 기존 로직 (카테고리 전체에 대한 공정 변경)
       // 새로운 모듈 가져오기
@@ -379,14 +407,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
       // 합계일수 재계산
       updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-      setProcessPlans(new Map(processPlans.set(buildingId, updatedPlan)));
+      updateProcessPlan(buildingId, updatedPlan); // 🔥 Stage 1: Use helper function
     }
     
     // 모듈 변경 시 자동으로 확장
     const expanded = expandedModules.get(buildingId) || new Set<string>();
     const newExpanded = new Set(expanded);
     newExpanded.add(category);
-    setExpandedModules(new Map(expandedModules.set(buildingId, newExpanded)));
+    updateExpandedModules(buildingId, newExpanded); // 🔥 Stage 1: Use helper function
   };
 
   // 각 층별 processType을 가져오는 헬퍼 함수
@@ -790,7 +818,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
             [field]: value !== null && value >= 0 ? value : undefined,
           };
           
-          setProcessPlans(new Map(processPlans.set(building.id, updatedPlan)));
+          updateProcessPlan(building.id, updatedPlan); // 🔥 Stage 1: Use helper function
           
           // localStorage에 저장
           try {
@@ -1009,7 +1037,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   specialRowQuantities: Object.keys(updatedQuantities).length > 0 ? updatedQuantities : undefined,
                                 };
                                 
-                                setProcessPlans(new Map(processPlans.set(building.id, updatedPlan)));
+                                updateProcessPlan(building.id, updatedPlan); // 🔥 Stage 1: Use helper function
                                 
                                 // localStorage에 저장
                                 try {
@@ -1558,7 +1586,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   specialRowQuantities: Object.keys(updatedQuantities).length > 0 ? updatedQuantities : undefined,
                                 };
                                 
-                                setProcessPlans(new Map(processPlans.set(building.id, updatedPlan)));
+                                updateProcessPlan(building.id, updatedPlan); // 🔥 Stage 1: Use helper function
                                 
                                 // localStorage에 저장
                                 try {

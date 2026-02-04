@@ -22,18 +22,55 @@ import {
   Map,
   type LucideIcon,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, TabLoadingSkeleton } from '@/components/ui';
 import type { Project, Profile } from '@/lib/types';
 import { deleteProject, getProject } from '@/lib/services/projects';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage, PouringSectionReviewPage, ProcessLogicPage } from '@/components/buildings';
+import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
-import { GanttChartPage } from './GanttChartPage';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
+
+// 🚀 Stage 2: Lazy load heavy tabs (2,000+ lines) for better performance
+// Target: Initial bundle -40%, Tab switch 2000ms → 1200ms
+
+// Heavy tabs with dynamic imports
+const BuildingProcessPlanPage = dynamic(
+  () => import('@/components/buildings').then(m => ({ default: m.BuildingProcessPlanPage })),
+  { loading: () => <TabLoadingSkeleton title="지상층 공정계획 로딩 중..." /> }
+);
+
+const BasementProcessPlanPage = dynamic(
+  () => import('@/components/buildings').then(m => ({ default: m.BasementProcessPlanPage })),
+  { loading: () => <TabLoadingSkeleton title="지하층 공정계획 로딩 중..." /> }
+);
+
+const DetailedQuantityInputPage = dynamic(
+  () => import('@/components/buildings').then(m => ({ default: m.DetailedQuantityInputPage })),
+  { loading: () => <TabLoadingSkeleton title="상세물량 로딩 중..." /> }
+);
+
+const GanttChartPage = dynamic(
+  () => import('./GanttChartPage').then(m => ({ default: m.GanttChartPage })),
+  {
+    loading: () => <TabLoadingSkeleton title="간트차트 로딩 중..." />,
+    ssr: false  // 클라이언트 전용
+  }
+);
+
+const PouringSectionReviewPage = dynamic(
+  () => import('@/components/buildings').then(m => ({ default: m.PouringSectionReviewPage })),
+  { loading: () => <TabLoadingSkeleton title="타설구간검토 로딩 중..." /> }
+);
+
+const ProcessLogicPage = dynamic(
+  () => import('@/components/buildings').then(m => ({ default: m.ProcessLogicPage })),
+  { loading: () => <TabLoadingSkeleton title="공정로직 로딩 중..." /> }
+);
 
 interface Props {
   project: Project;
@@ -130,27 +167,34 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const handleTabChange = useCallback((tab: string) => {
     if (!isValidTab(tab)) return;
 
-    // 🚀 Performance measurement for tab switching
+    // 🚀 Stage 1 Performance measurement: Track all tab switching times
     const tabSwitchStart = performance.now();
 
     setActiveTab(tab);
 
-    // Log performance for pouring_section_review tab (IFC viewer)
-    if (tab === 'pouring_section_review') {
-      requestAnimationFrame(() => {
-        const tabSwitchTime = performance.now() - tabSwitchStart;
-        console.log(`⚡ Tab switch to IFC viewer: ${tabSwitchTime.toFixed(2)}ms`);
+    // Measure tab switch performance after next render
+    requestAnimationFrame(() => {
+      const tabSwitchTime = performance.now() - tabSwitchStart;
+      const tabTitle = TAB_TITLES[tab] || tab;
 
-        // Expected: < 100ms with Phase 3 Singleton (display toggle only)
-        if (tabSwitchTime < 100) {
-          console.log('✅ Excellent performance (Phase 3 Singleton working)');
-        } else if (tabSwitchTime < 500) {
-          console.log('⚠️ Good performance (Phase 2 lazy loading working)');
-        } else {
-          console.log('❌ Slow performance (optimization needed)');
-        }
-      });
-    }
+      console.log(`⚡ [Perf] Tab "${tabTitle}" (${tab}): ${tabSwitchTime.toFixed(2)}ms`);
+
+      // Performance thresholds based on tab complexity
+      const isHeavyTab = ['building_process_plan', 'basement_process_plan', 'detailed_quantity_input'].includes(tab);
+      const threshold = isHeavyTab ? 200 : 100;
+
+      if (tabSwitchTime < threshold) {
+        console.log(`✅ Excellent performance (< ${threshold}ms)`);
+      } else if (tabSwitchTime < threshold * 3) {
+        console.log(`⚠️ Good performance (< ${threshold * 3}ms)`);
+      } else {
+        console.log(`❌ Slow performance (> ${threshold * 3}ms) - optimization needed`);
+      }
+
+      // Stage 1 target: building_process_plan < 2000ms (from 3000ms)
+      // Stage 2 target: building_process_plan < 800ms
+      // Stage 3 target: building_process_plan < 100ms
+    });
 
     // URL 쿼리 파라미터 업데이트
     const params = new URLSearchParams(searchParams.toString());

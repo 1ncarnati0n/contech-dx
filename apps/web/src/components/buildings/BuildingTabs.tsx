@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useRef, useEffect } from 'react';
+import { ReactNode, useState, useRef, useEffect, memo } from 'react';
 import { X, Check, X as XIcon } from 'lucide-react';
 import type { Building } from '@/lib/types';
 import { useTabDragDrop } from '@/lib/hooks';
@@ -21,7 +21,8 @@ interface Props {
 // ============================================
 // 컴포넌트
 // ============================================
-export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, onUpdateBuildingName, onReorder, children }: Props) {
+// 🔥 Stage 1 Optimization: Memoize component to prevent unnecessary re-renders
+export const BuildingTabs = memo(function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, onUpdateBuildingName, onReorder, children }: Props) {
   // 편집 상태 관리
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -179,5 +180,5 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
       </div>
     </div>
   );
-}
+});
 

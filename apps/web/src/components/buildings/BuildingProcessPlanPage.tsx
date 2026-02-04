@@ -18,6 +18,7 @@ import {
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
+import { calculateModuleWorkDays } from '@/lib/utils/process-days-calculator';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
 import { ProcessDetailPanel } from './process-plan';
 
@@ -205,6 +206,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     loadBuildings();
   }, [projectId]);
 
+  // 🔥 Stage 1 Optimization: Memoize floorTrades hash to avoid JSON.stringify on every render
+  const floorTradesHash = useMemo(() => {
+    return buildings
+      .flatMap(b => b.floorTrades || [])
+      .map(ft => `${ft.id}-${ft.tradeGroup}`)
+      .join('|');
+  }, [buildings]);
+
   // 물량 데이터 또는 processPlans 변경 시 자동으로 일수 계산
   useEffect(() => {
     if (buildings.length === 0) return;
@@ -216,51 +225,17 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
         const processType = plan.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
         const module = getProcessModule(category, processType);
-        
+
         if (!module || module.items.length === 0) return;
 
-        // 각 세부공종 항목의 순작업일을 계산하고, 모든 항목의 합계를 해당 구분의 일수로 설정
-        let sumDays = 0;
-        
-        module.items.forEach(item => {
-          let directWorkDays = 0;
-          
-          // directWorkDays가 고정값인 경우
-          if (item.directWorkDays !== undefined) {
-            directWorkDays = item.directWorkDays;
-            sumDays += directWorkDays;
-          } 
-          // 장비기반 계산인 경우
-          else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
-            const quantity = getQuantityByReference(building, item.quantityReference);
-            if (quantity > 0 && item.dailyProductivity > 0) {
-              // 장비대수 계산 (펌프카 최대 투입대수 기준)
-              const maxPumpCarCount = building.meta?.pumpCarCount || 2;
-              const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
-              // 1일 투입인원 = 장비대수 * 인원수
-              const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-              // 순작업일 계산
-              if (dailyInputWorkers > 0) {
-                directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                sumDays += directWorkDays;
-              }
-            }
-          }
-          // 계산식이 필요한 경우 (quantityReference와 dailyProductivity가 있는 경우)
-          else if (item.quantityReference && item.dailyProductivity > 0) {
-            const quantity = getQuantityByReference(building, item.quantityReference);
-            if (quantity > 0) {
-              const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-              const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-              directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-              sumDays += directWorkDays;
-            }
-          }
-        });
+        // 🚀 Stage 2 Optimization: Use consolidated calculation utility
+        // Replaces 35 lines of duplicate logic with single function call
+        const sumDays = calculateModuleWorkDays(building, module, category);
 
         // 계산된 일수로 업데이트 (기존 일수와 다를 때만)
         const currentDays = plan.processes[category]?.days || 0;
         if (sumDays !== currentDays) {
+          // 🔥 Stage 1 Optimization: More efficient Map update without full copy
           setProcessPlans(prevPlans => {
             const prevPlan = prevPlans.get(building.id);
             if (!prevPlan) return prevPlans;
@@ -276,14 +251,16 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
               },
             };
             updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-            return new Map(prevPlans.set(building.id, updatedPlan));
+
+            const newPlans = new Map(prevPlans);
+            newPlans.set(building.id, updatedPlan);
+            return newPlans;
           });
         }
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    buildings.map(b => JSON.stringify(b.floorTrades)).join('|'), // floorTrades 변경 감지
+    floorTradesHash, // 🔥 Stage 1: Use memoized hash instead of JSON.stringify
     processPlans.size, // processPlans 변경 감지 (셀렉트박스 변경 시)
   ]);
 
@@ -453,30 +430,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       // 기존 로직 (카테고리 전체에 대한 공정 변경)
       // 새로운 모듈 가져오기
       const module = getProcessModule(category, processType);
-      
-      // 일수 재계산 (순작업일 합계)
-      let sumDays = 0;
-      if (module && module.items.length > 0) {
-        module.items.forEach(item => {
-          let directWorkDays = 0;
-          
-          // directWorkDays가 고정값인 경우
-          if (item.directWorkDays !== undefined) {
-            directWorkDays = item.directWorkDays;
-            sumDays += directWorkDays;
-          } 
-          // 계산식이 필요한 경우 (quantityReference와 dailyProductivity가 있는 경우)
-          else if (item.quantityReference && item.dailyProductivity > 0) {
-            const quantity = getQuantityByReference(building, item.quantityReference);
-            if (quantity > 0) {
-              const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-              const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-              directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-              sumDays += directWorkDays;
-            }
-          }
-        });
-      }
+
+      // 🚀 Stage 2 Optimization: Use consolidated calculation utility
+      const sumDays = module ? calculateModuleWorkDays(building, module, category) : 0;
 
       const updatedPlan = {
         ...plan,
