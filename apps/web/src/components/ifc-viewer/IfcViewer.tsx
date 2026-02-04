@@ -399,6 +399,31 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
   // Selection handlers removed - properties panel disabled
 
+  // Load sample IFC file
+  const handleLoadSample = useCallback(async () => {
+    try {
+      setLoadingState({ phase: 'loading', progress: 10, message: '샘플 파일 다운로드 중...' });
+
+      // Fetch sample IFC file from public folder
+      const response = await fetch('/sample.ifc');
+      if (!response.ok) {
+        throw new Error('샘플 파일을 찾을 수 없습니다');
+      }
+
+      const blob = await response.blob();
+      const file = new File([blob], 'sample.ifc', { type: 'application/x-step' });
+
+      await loadIfcFile(file);
+    } catch (error) {
+      console.error('샘플 로드 실패:', error);
+      setLoadingState({
+        phase: 'error',
+        progress: 0,
+        message: error instanceof Error ? error.message : '샘플 로드 실패',
+      });
+    }
+  }, [loadIfcFile]);
+
   return (
     <div className={`relative flex h-full ${className}`}>
       {/* 3D Container */}
@@ -434,17 +459,31 @@ export function IfcViewer({ className }: IfcViewerProps) {
                     IFC 파일을 드래그하여 놓거나<br />
                     아래 버튼을 클릭하여 파일을 선택하세요
                   </p>
-                  <Button
-                    size="lg"
-                    className="gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                  >
-                    <Upload className="h-5 w-5" />
-                    파일 열기
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      size="lg"
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                    >
+                      <Upload className="h-5 w-5" />
+                      파일 열기
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLoadSample();
+                      }}
+                    >
+                      <Box className="h-5 w-5" />
+                      로딩
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-zinc-500 dark:text-slate-500">
                   <span className="px-2 py-1 rounded bg-zinc-200 dark:bg-slate-800">.ifc</span>
