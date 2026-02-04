@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PROCESS_MODULES, type ProcessModule } from '@/lib/data/process-modules';
+import { migrateTopFloorModules } from '@/lib/utils/process-module-migration';
 
 const STORAGE_KEY_PREFIX = 'contech-process-logic-';
 
@@ -34,9 +35,19 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as ProcessModule[];
+
+        // 🔄 마이그레이션: 최상층에서 거푸집 해체/정리 제거
+        const { modules: migratedModules, migrated } = migrateTopFloorModules(parsed);
+
+        if (migrated) {
+          console.log('[Migration] 최상층 공정 모듈 자동 마이그레이션: 7개→6개 (거푸집 해체/정리 제거)');
+          // 마이그레이션된 데이터를 localStorage에 다시 저장
+          localStorage.setItem(storageKey, JSON.stringify(migratedModules));
+        }
+
         setState((prev) => ({
           ...prev,
-          modules: parsed,
+          modules: migratedModules,
           isLoading: false,
         }));
       } else {
@@ -122,9 +133,13 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as ProcessModule[];
+
+        // 마이그레이션 적용 (취소 시에도 최신 데이터 사용)
+        const { modules: migratedModules } = migrateTopFloorModules(parsed);
+
         setState((prev) => ({
           ...prev,
-          modules: parsed,
+          modules: migratedModules,
           hasChanges: false,
           isEditing: false,
         }));

@@ -50,12 +50,9 @@ export function ProjectSidebar({
     onMouseLeave,
     isAdmin = false,
 }: ProjectSidebarProps) {
-    const [isDataInputExpanded, setIsDataInputExpanded] = useState(
-        activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data'
-    );
-    const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(
-        activeTab === 'process_logic' || activeTab === 'basement_process_plan' || activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
-    );
+    // 모든 서브메뉴를 디폴트로 펼친 상태로 설정
+    const [isDataInputExpanded, setIsDataInputExpanded] = useState(true);
+    const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(true);
 
     const menuItems = [
         { id: 'overview', label: '개요', icon: LayoutDashboard },
@@ -75,8 +72,8 @@ export function ProjectSidebar({
 
     const processPlanSubItems = [
         { id: 'process_logic', label: '공정로직', icon: Calculator, adminOnly: true },
-        { id: 'building_process_plan', label: '지상층 공정계획', icon: Building, adminOnly: false },
         { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building, adminOnly: false },
+        { id: 'building_process_plan', label: '지상층 공정계획', icon: Building, adminOnly: false },
         { id: 'gantt_chart', label: '간트차트', icon: BarChart3, adminOnly: false },
     ];
 

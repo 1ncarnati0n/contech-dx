@@ -34,6 +34,24 @@ import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuanti
 import { ProjectTeamPage } from './ProjectTeamPage';
 import { GanttChartPage } from './GanttChartPage';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
+import dynamic from 'next/dynamic';
+import { Loader2 } from 'lucide-react';
+
+// 🚀 Phase 3: IFC 뷰어를 동적 import (singleton 패턴을 위한 사전 준비)
+const IfcViewer = dynamic(
+  () => import('@/components/ifc-viewer').then((mod) => mod.IfcViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full bg-slate-900 rounded-lg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-white text-sm font-medium">3D 뷰어 초기화 중...</span>
+        </div>
+      </div>
+    )
+  }
+);
 
 interface Props {
   project: Project;
@@ -113,11 +131,55 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
   const [pouringSectionViewMode, setPouringSectionViewMode] = useState<'simple' | 'visual'>('visual');
+  const [ifcLibsPreloaded, setIfcLibsPreloaded] = useState(false);
+  const [ifcViewerMounted, setIfcViewerMounted] = useState(false);  // Phase 3: Singleton 패턴
 
   // 프로필 로드
   useEffect(() => {
     getCurrentUserProfile().then(setProfile);
   }, []);
+
+  // 🚀 IFC 라이브러리 사전 로드 (백그라운드에서 비동기 로딩)
+  useEffect(() => {
+    // 프로젝트 진입 5초 후 유휴 시간에 라이브러리 preload
+    const timer = setTimeout(() => {
+      if (!ifcLibsPreloaded) {
+        Promise.all([
+          import('@thatopen/components'),
+          import('@thatopen/components-front'),
+          import('three'),
+        ]).then(() => {
+          setIfcLibsPreloaded(true);
+          console.log('✅ IFC libraries preloaded successfully');
+        }).catch((error) => {
+          console.warn('⚠️ Failed to preload IFC libraries:', error);
+        });
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [ifcLibsPreloaded]);
+
+  // 🎯 Phase 3: IFC 뷰어 백그라운드 마운트 (Singleton 패턴)
+  useEffect(() => {
+    // 프로젝트 진입 2초 후 백그라운드에서 뷰어 초기화
+    const timer = setTimeout(() => {
+      const mountStart = performance.now();
+      setIfcViewerMounted(true);
+
+      // Performance measurement
+      requestAnimationFrame(() => {
+        const mountTime = performance.now() - mountStart;
+        console.log(`🎨 IFC Viewer mounted in background (Singleton) - ${mountTime.toFixed(2)}ms`);
+      });
+    }, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      // Cleanup on project unmount
+      setIfcViewerMounted(false);
+    };
+  }, [project.id]); // Re-mount on project change
 
   // 관리자 권한 체크
   const isAdmin = isSystemAdmin(profile);
@@ -130,7 +192,27 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const handleTabChange = useCallback((tab: string) => {
     if (!isValidTab(tab)) return;
 
+    // 🚀 Performance measurement for tab switching
+    const tabSwitchStart = performance.now();
+
     setActiveTab(tab);
+
+    // Log performance for pouring_section_review tab (IFC viewer)
+    if (tab === 'pouring_section_review') {
+      requestAnimationFrame(() => {
+        const tabSwitchTime = performance.now() - tabSwitchStart;
+        console.log(`⚡ Tab switch to IFC viewer: ${tabSwitchTime.toFixed(2)}ms`);
+
+        // Expected: < 100ms with Phase 3 Singleton (display toggle only)
+        if (tabSwitchTime < 100) {
+          console.log('✅ Excellent performance (Phase 3 Singleton working)');
+        } else if (tabSwitchTime < 500) {
+          console.log('⚠️ Good performance (Phase 2 lazy loading working)');
+        } else {
+          console.log('❌ Slow performance (optimization needed)');
+        }
+      });
+    }
 
     // URL 쿼리 파라미터 업데이트
     const params = new URLSearchParams(searchParams.toString());
@@ -492,6 +574,26 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           </div>
         </main>
       </div>
+
+      {/* 🎯 Phase 3: Singleton IFC Viewer - 항상 마운트, display로 가시성 제어 */}
+      {ifcViewerMounted && (
+        <div
+          style={{
+            display: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? 'block' : 'none',
+            position: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? 'fixed' : 'absolute',
+            top: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? '64px' : '0',
+            left: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? '64px' : '0',
+            right: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? '0' : '0',
+            bottom: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? '0' : '0',
+            pointerEvents: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? 'auto' : 'none',
+            zIndex: activeTab === 'pouring_section_review' && pouringSectionViewMode === 'visual' ? 10 : -1,
+          }}
+        >
+          <div className="h-full p-10">
+            <IfcViewer className="h-full" />
+          </div>
+        </div>
+      )}
 
       <ProjectEditModal
         project={project}
