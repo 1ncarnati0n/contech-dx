@@ -8,17 +8,26 @@ import { toast } from 'sonner';
 import { Calendar, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { ProcessDetailPanel } from './process-plan/ProcessDetailPanel';
+import { BuildingInfoHeader, ProcessTableHeader } from './process-plan'; // 🎯 Stage 2 Task 5: New components
 import { getProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
-import { 
-  calculateTotalWorkers, 
-  calculateDailyInputWorkers, 
+import {
+  calculateTotalWorkers,
+  calculateDailyInputWorkers,
   calculateTotalWorkDays,
   calculateWorkDaysWithRounding,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
+import { calculateModuleWorkDays } from '@/lib/utils/process-days-calculator'; // 🎯 Stage 2 Task 5: Unified calculation
+import {
+  getCategoryLabel,
+  getFloorNumberLabel,
+  getFormworkQuantity,
+  getRebarQuantity,
+  getConcreteQuantity
+} from '@/lib/utils/process-row-helpers'; // 🎯 Stage 2 Task 5: Helper functions
 import { logger } from '@/lib/utils/logger';
 
 interface Props {
@@ -107,6 +116,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
       .join('|');
   }, [buildings]);
 
+  // 🎯 Stage 2 Task 5: Simplified auto-calculation using calculateModuleWorkDays utility
   // 물량 데이터 또는 processPlans 변경 시 자동으로 일수 계산
   useEffect(() => {
     if (buildings.length === 0) return;
@@ -121,43 +131,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
         if (!module || module.items.length === 0) return;
 
-        // 각 세부공종 항목의 순작업일을 계산하고, 모든 항목의 합계를 해당 구분의 일수로 설정
-        let sumDays = 0;
-
-        module.items.forEach(item => {
-          let directWorkDays = 0;
-
-          // directWorkDays가 고정값인 경우
-          if (item.directWorkDays !== undefined) {
-            directWorkDays = item.directWorkDays;
-            sumDays += directWorkDays;
-          }
-          // 장비기반 계산인 경우
-          else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
-            const quantity = getQuantityByReference(building, item.quantityReference);
-            if (quantity > 0 && item.dailyProductivity > 0) {
-              // 장비대수 계산
-              const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase);
-              // 1일 투입인원 = 장비대수 * 인원수
-              const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-              // 순작업일 계산
-              if (dailyInputWorkers > 0) {
-                directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                sumDays += directWorkDays;
-              }
-            }
-          }
-          // 계산식이 필요한 경우 (quantityReference와 dailyProductivity가 있는 경우)
-          else if (item.quantityReference && item.dailyProductivity > 0) {
-            const quantity = getQuantityByReference(building, item.quantityReference);
-            if (quantity > 0) {
-              const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-              const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-              directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-              sumDays += directWorkDays;
-            }
-          }
-        });
+        // 🎯 Stage 2 Task 5: Use unified calculation utility (replaces 40+ lines of duplicate code)
+        const sumDays = calculateModuleWorkDays(building, module, category);
 
         // 계산된 일수로 업데이트 (기존 일수와 다를 때만)
         const currentDays = plan.processes[category]?.days || 0;
