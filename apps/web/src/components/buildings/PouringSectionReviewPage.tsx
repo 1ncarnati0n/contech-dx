@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
-import { Calculator, Construction } from 'lucide-react';
+import { Calculator, Construction, Loader2 } from 'lucide-react';
 import { calculatePouringSectionDetailed } from '@/lib/utils/pouring-section-calculation';
 import type { PouringSectionCalculationResult } from '@/lib/types';
 import { toast } from 'sonner';
@@ -11,7 +11,17 @@ import dynamic from 'next/dynamic';
 // IFC 뷰어 컴포넌트 동적 import (SSR 비활성화)
 const IfcViewer = dynamic(
   () => import('@/components/ifc-viewer').then((mod) => mod.IfcViewer),
-  { ssr: false, loading: () => <div className="h-full bg-slate-900 rounded-lg animate-pulse" /> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full bg-slate-900 rounded-lg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-white text-sm font-medium">3D 뷰어 로딩 중...</span>
+        </div>
+      </div>
+    )
+  }
 );
 
 interface Props {

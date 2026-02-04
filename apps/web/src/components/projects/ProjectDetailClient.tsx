@@ -130,7 +130,27 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const handleTabChange = useCallback((tab: string) => {
     if (!isValidTab(tab)) return;
 
+    // 🚀 Performance measurement for tab switching
+    const tabSwitchStart = performance.now();
+
     setActiveTab(tab);
+
+    // Log performance for pouring_section_review tab (IFC viewer)
+    if (tab === 'pouring_section_review') {
+      requestAnimationFrame(() => {
+        const tabSwitchTime = performance.now() - tabSwitchStart;
+        console.log(`⚡ Tab switch to IFC viewer: ${tabSwitchTime.toFixed(2)}ms`);
+
+        // Expected: < 100ms with Phase 3 Singleton (display toggle only)
+        if (tabSwitchTime < 100) {
+          console.log('✅ Excellent performance (Phase 3 Singleton working)');
+        } else if (tabSwitchTime < 500) {
+          console.log('⚠️ Good performance (Phase 2 lazy loading working)');
+        } else {
+          console.log('❌ Slow performance (optimization needed)');
+        }
+      });
+    }
 
     // URL 쿼리 파라미터 업데이트
     const params = new URLSearchParams(searchParams.toString());
@@ -492,7 +512,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           </div>
         </main>
       </div>
-
       <ProjectEditModal
         project={project}
         isOpen={isEditModalOpen}

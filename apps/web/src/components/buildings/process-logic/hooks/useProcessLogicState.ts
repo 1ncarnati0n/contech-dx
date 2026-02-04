@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PROCESS_MODULES, type ProcessModule } from '@/lib/data/process-modules';
+import {
+  migrateTopFloorModules,
+  migrateParkingModules,
+} from '@/lib/utils/process-module-migration';
 
 const STORAGE_KEY_PREFIX = 'contech-process-logic-';
 
@@ -34,9 +38,25 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as ProcessModule[];
+
+        // 🔄 마이그레이션: 최상층에서 거푸집 해체/정리 제거
+        const { modules: migratedModules1, migrated: topFloorMigrated } = migrateTopFloorModules(parsed);
+
+        // 🔄 마이그레이션: 지하주차장에서 버림/기초 항목 제거
+        const { modules: migratedModules2, migrated: parkingMigrated } = migrateParkingModules(migratedModules1);
+
+        if (topFloorMigrated || parkingMigrated) {
+          console.log('[Migration] 공정 모듈 자동 마이그레이션 완료:', {
+            최상층: topFloorMigrated ? '거푸집 해체/정리 제거 (7개→6개)' : '변경 없음',
+            지하주차장: parkingMigrated ? '버림/기초 항목 제거 (20개→14개)' : '변경 없음',
+          });
+          // 마이그레이션된 데이터를 localStorage에 다시 저장
+          localStorage.setItem(storageKey, JSON.stringify(migratedModules2));
+        }
+
         setState((prev) => ({
           ...prev,
-          modules: parsed,
+          modules: migratedModules2,
           isLoading: false,
         }));
       } else {
@@ -122,9 +142,14 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as ProcessModule[];
+
+        // 마이그레이션 적용 (취소 시에도 최신 데이터 사용)
+        const { modules: migratedModules1 } = migrateTopFloorModules(parsed);
+        const { modules: migratedModules2 } = migrateParkingModules(migratedModules1);
+
         setState((prev) => ({
           ...prev,
-          modules: parsed,
+          modules: migratedModules2,
           hasChanges: false,
           isEditing: false,
         }));
