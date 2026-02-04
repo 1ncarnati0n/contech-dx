@@ -10,7 +10,7 @@ import type {
   ValidationWarning,
 } from '@/components/buildings/ProcessPlanChatbotTypes';
 
-const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '지하층', '셋팅층', '기준층', 'PH층', '옥탑층'];
+const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '지하층', '셋팅층', '기준층', '최상층', 'PH층', '옥탑층'];
 
 /**
  * 현재 공정계획 상태에서 컨텍스트 스냅샷을 생성합니다.
@@ -136,8 +136,11 @@ function extractProcessPlanSummary(
     '지하층': null,
     '셋팅층': null,
     '기준층': null,
+    '최상층': null,
     'PH층': null,
     '옥탑층': null,
+    '지하주차장': null,
+    '일반층': null,
   };
 
   const calculatedDaysRecord: Record<ProcessCategory, number | null> = {
@@ -146,8 +149,11 @@ function extractProcessPlanSummary(
     '지하층': null,
     '셋팅층': null,
     '기준층': null,
+    '최상층': null,
     'PH층': null,
     '옥탑층': null,
+    '지하주차장': null,
+    '일반층': null,
   };
 
   let totalDays = 0;

@@ -933,6 +933,16 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
 
   return (
     <Card>
+      {/* 산식 노트 - 헤더 위에 위치 */}
+      <div className="mx-4 mt-4 mb-0 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+        <p className="font-medium mb-1">※ 산식 안내</p>
+        <ul className="space-y-0.5 ml-3">
+          <li>• 형틀 합계 = 갱폼(M²) + 알폼(M²) + 유로폼(M²)</li>
+          <li>• 해체/정리 = 유로폼(M²) × 2</li>
+          <li>• 철근 합계 = 각 층 철근(TON)의 합계</li>
+          <li>• 콘크리트 합계 = 각 층 콘크리트(M³)의 합계</li>
+        </ul>
+      </div>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>층별 물량 입력</CardTitle>
@@ -1526,16 +1536,6 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                 })}
               </tbody>
             </table>
-        </div>
-        {/* 산식 노트 */}
-        <div className="mt-3 mx-4 mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-          <p className="font-medium mb-1">※ 산식 안내</p>
-          <ul className="space-y-0.5 ml-3">
-            <li>• 형틀 합계 = 갱폼(M²) + 알폼(M²) + 유로폼(M²)</li>
-            <li>• 해체/정리 = 유로폼(M²) × 2</li>
-            <li>• 철근 합계 = 각 층 철근(TON)의 합계</li>
-            <li>• 콘크리트 합계 = 각 층 콘크리트(M³)의 합계</li>
-          </ul>
         </div>
       </CardContent>
     </Card>

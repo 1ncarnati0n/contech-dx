@@ -75,7 +75,7 @@ export function ProjectSidebar({
 
     const processPlanSubItems = [
         { id: 'process_logic', label: '공정로직', icon: Calculator, adminOnly: true },
-        { id: 'building_process_plan', label: '동별 공정계획', icon: Building, adminOnly: false },
+        { id: 'building_process_plan', label: '지상층 공정계획', icon: Building, adminOnly: false },
         { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building, adminOnly: false },
         { id: 'gantt_chart', label: '간트차트', icon: BarChart3, adminOnly: false },
     ];

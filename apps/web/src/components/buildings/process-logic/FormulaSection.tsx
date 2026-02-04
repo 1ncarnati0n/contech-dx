@@ -28,8 +28,8 @@ const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[
   { label: '기초', defaultValue: 650 },
   { label: '지하층', defaultValue: 500 },
   { label: '1층', defaultValue: 400 },
-  { label: '셋팅층', defaultValue: 400 },
   { label: '일반층', defaultValue: 200 },
+  { label: '셋팅층', defaultValue: 400 },
   { label: '기준층', defaultValue: 320 },
   { label: '최상층', defaultValue: 230 },
   { label: 'PH층', defaultValue: 230 },
@@ -42,9 +42,9 @@ const LABEL_TO_CATEGORY_MAP: Record<EquipmentBaseLabel, ProcessCategory> = {
   '지하층': '지하층',
   '1층': '셋팅층',      // 1층은 셋팅층 카테고리에 해당
   '셋팅층': '셋팅층',
-  '일반층': '기준층',   // 일반층은 기준층 카테고리에 해당
+  '일반층': '일반층',   // 일반층은 별도 카테고리 (200㎥)
   '기준층': '기준층',
-  '최상층': 'PH층',    // 최상층은 PH층/옥탑층에 해당
+  '최상층': '최상층',  // 최상층 카테고리
   'PH층': 'PH층',
 };
 
@@ -114,8 +114,11 @@ function getEquipmentBaseByCategory(modules: ProcessModule[]): Record<ProcessCat
     '지하층': 500,
     '셋팅층': 400,
     '기준층': 320,
+    '최상층': 230,
     'PH층': 230,
     '옥탑층': 230,
+    '지하주차장': 500,
+    '일반층': 200,
   };
 
   for (const module of modules) {
@@ -140,8 +143,11 @@ function getDefaultValueForCategory(category: ProcessCategory): number {
     '지하층': 500,
     '셋팅층': 400,
     '기준층': 320,
+    '최상층': 230,
     'PH층': 230,
     '옥탑층': 230,
+    '지하주차장': 500,
+    '일반층': 200,
   };
   return categoryDefaults[category];
 }

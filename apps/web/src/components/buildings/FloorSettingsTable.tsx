@@ -716,6 +716,15 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
 
   return (
     <Card>
+      {/* 층분류 자동 설정 안내 노트 */}
+      <div className="mx-4 mt-4 mb-0 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+        <p className="font-medium mb-1">※ 층분류 자동 설정 안내</p>
+        <ul className="space-y-0.5 ml-3">
+          <li>• <strong>셋팅층 설정 시:</strong> 셋팅층 위쪽 → 기준층, 아래쪽 → 일반층으로 자동 변경</li>
+          <li>• <strong>기준층 층고 기준:</strong> 기준층 층고와 같은 연속 구간의 마지막 층 = 셋팅층</li>
+          <li>• <strong>예시:</strong> 2F를 셋팅층 설정 → 3~5F는 기준층, 1F는 일반층으로 자동 분류</li>
+        </ul>
+      </div>
       <CardHeader>
         <CardTitle>층 설정</CardTitle>
       </CardHeader>
@@ -847,15 +856,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
               })}
             </tbody>
           </table>
-        </div>
-        {/* 층분류 자동 설정 안내 노트 */}
-        <div className="mt-3 mx-4 mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-          <p className="font-medium mb-1">※ 층분류 자동 설정 안내</p>
-          <ul className="space-y-0.5 ml-3">
-            <li>• <strong>셋팅층 설정 시:</strong> 셋팅층 위쪽 → 기준층, 아래쪽 → 일반층으로 자동 변경</li>
-            <li>• <strong>기준층 층고 기준:</strong> 기준층 층고와 같은 연속 구간의 마지막 층 = 셋팅층</li>
-            <li>• <strong>예시:</strong> 2F를 셋팅층 설정 → 3~5F는 기준층, 1F는 일반층으로 자동 분류</li>
-          </ul>
         </div>
       </CardContent>
     </Card>

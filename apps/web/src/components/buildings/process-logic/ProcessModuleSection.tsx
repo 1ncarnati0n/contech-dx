@@ -17,14 +17,21 @@ interface ProcessModuleSectionProps {
   onCancel?: () => void;
 }
 
-// 카테고리 탭 정의
-const CATEGORY_TABS: { id: ProcessCategory; label: string }[] = [
-  { id: '버림', label: '버림' },
-  { id: '기초', label: '기초' },
-  { id: '지하층', label: '지하층' },
-  { id: '셋팅층', label: '셋팅층' },
-  { id: '기준층', label: '기준층' },
-  { id: '옥탑층', label: '옥탑층' },
+// 탭 ID 타입 확장 (층고6.5m이상 탭 추가)
+type TabId = ProcessCategory | '지하층(층고6.5m이상)';
+
+// 카테고리 탭 정의 - processType 필드로 동일 카테고리 내 변형 구분
+const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string }[] = [
+  { id: '버림', label: '버림', category: '버림' },
+  { id: '기초', label: '기초', category: '기초' },
+  { id: '지하층', label: '지하층', category: '지하층' },
+  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '지하층', processType: '층고6.5m이상' },
+  { id: '지하주차장', label: '지하주차장', category: '지하주차장' },
+  { id: '일반층', label: '일반층', category: '일반층' },
+  { id: '셋팅층', label: '셋팅층', category: '셋팅층' },
+  { id: '기준층', label: '기준층', category: '기준층' },
+  { id: '최상층', label: '최상층', category: '최상층' },
+  { id: '옥탑층', label: '옥탑층', category: '옥탑층' },
 ];
 
 export function ProcessModuleSection({
@@ -37,12 +44,26 @@ export function ProcessModuleSection({
   onSave,
   onCancel,
 }: ProcessModuleSectionProps) {
-  const [activeCategory, setActiveCategory] = useState<ProcessCategory>('버림');
+  const [activeTab, setActiveTab] = useState<TabId>('버림');
 
-  // 현재 카테고리의 모듈들 필터링
+  // 현재 탭에 해당하는 모듈들 필터링
   const categoryModules = useMemo(() => {
-    return modules.filter((m) => m.category === activeCategory);
-  }, [modules, activeCategory]);
+    const currentTab = CATEGORY_TABS.find(t => t.id === activeTab);
+    if (!currentTab) return [];
+
+    return modules.filter((m) => {
+      // 카테고리가 일치하지 않으면 제외
+      if (m.category !== currentTab.category) return false;
+
+      // processType이 지정된 탭인 경우 해당 타입만 필터링
+      if (currentTab.processType) {
+        return m.name === currentTab.processType;
+      }
+
+      // processType이 없는 기본 탭에서는 '층고6.5m이상' 변형 제외
+      return m.name !== '층고6.5m이상';
+    });
+  }, [modules, activeTab]);
 
   // 표준공정 모듈 찾기 (첫 번째 것 사용)
   const primaryModule = categoryModules[0];
@@ -171,9 +192,9 @@ export function ProcessModuleSection({
             {CATEGORY_TABS.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveCategory(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeCategory === tab.id
+                  activeTab === tab.id
                     ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700/50'
                 }`}
