@@ -180,7 +180,9 @@ export function IfcViewer({ className }: IfcViewerProps) {
             world.renderer.resize();
           }
         });
-        resizeObserver.observe(containerRef.current!);
+        if (containerRef.current) {
+          resizeObserver.observe(containerRef.current);
+        }
 
         setIsReady(true);
         setLoadingState({ phase: 'idle', progress: 0, message: '' });
