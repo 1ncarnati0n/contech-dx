@@ -51,11 +51,10 @@ interface Props {
 const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '주동 지하층'];
 
 // 공정 타입 옵션 (구분별로 다름) - 지하층 공정계획은 버림, 기초, 주동 지하층만 사용
-// 참고: '층고6.5m이상'은 B1+B2 통합 행에서만 내부적으로 사용됨
 const PROCESS_TYPE_OPTIONS: Partial<Record<ProcessCategory, ProcessType[]>> = {
   '버림': ['표준공정'],
   '기초': ['표준공정'],
-  '주동 지하층': ['표준공정'],
+  '주동 지하층': ['표준공정', '층고6.5m이상', '피트층포함'],
 };
 
 // 기본 공정 타입 - 지하층 공정계획은 버림, 기초, 주동 지하층만 사용
@@ -905,12 +904,19 @@ export function BasementProcessPlanPage({ projectId }: Props) {
           onReorder={handleReorder}
         >
           {activeBuilding && (
-            <Card className="w-full">
-                <CardContent className="p-0">
-                  <div className="flex gap-4 min-w-[1024px]">
-                    {/* 좌측: 8열 테이블 */}
-                    <div className="flex-1 min-w-0 overflow-x-auto">
-                      <table className="w-full border-collapse text-sm table-fixed">
+            <div className="flex items-start gap-4 min-w-[1024px] p-4">
+                    {/* 좌측: 테이블 카드 */}
+                    <div className="flex-1 min-w-0 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
+                      {/* 테이블 헤더 */}
+                      <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                        <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                          공정 목록
+                        </h3>
+                      </div>
+
+                      {/* 테이블 스크롤 컨테이너 */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-sm table-fixed">
                     <colgroup>
                       {/* 구분 항목 */}<col style={{ width: '80px' }} />
                       {/* 층수 */}<col style={{ width: '115px' }} />
@@ -1828,12 +1834,22 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                         );
                       })()}
                     </tbody>
-                      </table>
+                        </table>
+                      </div>
                     </div>
 
-                    {/* 우측: 세부공정 패널 */}
-                    <div className="w-[400px] flex-shrink-0 border-l-2 border-zinc-200 dark:border-zinc-800 pl-4 bg-white dark:bg-zinc-950">
-                      <div className="sticky top-4 overflow-y-auto space-y-4 text-xs" style={{ maxHeight: 'calc(100vh - 200px)', minHeight: '300px' }}>
+                    {/* 우측: 패널 카드 */}
+                    <div className="w-[400px] flex-shrink-0 rounded-lg shadow-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 overflow-hidden">
+                      {/* 패널 헤더 */}
+                      <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                        <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                          세부공정 정보
+                        </h3>
+                      </div>
+
+                      {/* 패널 콘텐츠 */}
+                      <div className="p-4">
+                        <div className="sticky top-4 overflow-y-auto space-y-4 text-xs" style={{ maxHeight: 'calc(100vh - 260px)', minHeight: '300px' }}>
                         {(() => {
                           const building = activeBuilding;
                           const plan = processPlans.get(building!.id);
@@ -1919,11 +1935,10 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             </div>
                           );
                         })()}
+                        </div>
                       </div>
                     </div>
                   </div>
-              </CardContent>
-            </Card>
           )}
         </BuildingTabs>
       ) : (

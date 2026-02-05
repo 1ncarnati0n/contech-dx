@@ -1137,13 +1137,22 @@ Supabase PostgreSQL 기반 데이터베이스
   - `buildCommand`: `npm run build:lib && npm run build`
 
 ### 2025-02-05
+#### Enhanced
+- **테이블-패널 시각적 구분 강화**: 공정계획 페이지의 테이블과 세부공정 패널을 카드 형태로 분리하여 명확성 개선
+  - **외부 Card 제거**: BuildingTabs 내부의 불필요한 Card/CardContent 래퍼 제거하여 구조 단순화
+  - **독립 카드 형태**: 테이블과 패널 각각을 독립적인 카드로 구현 (`rounded-lg` + `shadow` + `border`)
+  - **헤더 추가**: "공정 목록"(테이블), "세부공정 정보"(패널)로 역할 명시
+  - **시각적 위계**: 패널에 `shadow-lg` + `border-2`로 더 강한 강조, 테이블은 `shadow-md` 적용
+  - **독립적 높이**: `items-start` 추가로 테이블과 패널이 각자의 콘텐츠 높이만큼만 차지 (stretch 동작 제거)
+  - **다크모드 완벽 지원**: 모든 색상에 `dark:` variant 적용
+  - `BasementProcessPlanPage.tsx` (Line 907, 1839-1943)
+  - `BuildingProcessPlanPage.tsx` (Line 1528, 2216-2218)
+
 #### Fixed
 - **세부공정 패널 호버 격리**: 9번째 열(세부공정 상세 패널)에 명시적 배경색(`bg-white dark:bg-zinc-950`)을 추가하여 부모 행의 호버 스타일(`hover:bg-zinc-50`) 상속 방지
 - **확장된 행-헤더 색상 동기화**: 세부공정 패널 헤더 배경색을 확장된 행과 일치시킴 (`bg-accent-50/50` → `bg-accent-50`, `dark:bg-accent-900/10` → `dark:bg-accent-900/20`)
-
-#### Files Changed
-- `BasementProcessPlanPage.tsx` (Line 1288, 1349)
-- `BuildingProcessPlanPage.tsx` (Line 2092, 2135)
+  - `BasementProcessPlanPage.tsx` (Line 1288, 1349)
+  - `BuildingProcessPlanPage.tsx` (Line 2092, 2135)
 
 ### 2025-01-27
 #### Fixed

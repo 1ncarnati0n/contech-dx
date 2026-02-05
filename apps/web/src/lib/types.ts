@@ -659,7 +659,7 @@ export type ProcessCategory = '버림' | '기초' | '주동 지하층' | '셋팅
 /**
  * 공정 타입 (표준공정 또는 사이클)
  */
-export type ProcessType = 
+export type ProcessType =
   | '표준공정'
   | '5일 사이클'
   | '6일 사이클'
@@ -667,6 +667,8 @@ export type ProcessType =
   | '8일 사이클'
   | '지하외벽 합벽 적용'
   | '일체타설 적용'
+  | '층고6.5m이상'
+  | '피트층포함'
   | string; // 기타 커스텀 타입
 
 /**

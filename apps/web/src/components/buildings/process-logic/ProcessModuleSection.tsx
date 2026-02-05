@@ -122,8 +122,8 @@ function getQuantityReferenceDescription(reference: string): string {
   return `물량입력표 ${col}${row} (${rowName} ${colName})${ratioStr}`;
 }
 
-// 탭 ID 타입 확장 (층고6.5m이상 탭 추가)
-type TabId = ProcessCategory | '지하층(층고6.5m이상)';
+// 탭 ID 타입 확장 (지하층 변형 탭 추가)
+type TabId = ProcessCategory | '지하층(층고6.5m이상)' | '지하층(피트층포함)';
 
 // 카테고리 탭 정의 - processType 필드로 동일 카테고리 내 변형 구분
 const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string }[] = [
@@ -131,6 +131,7 @@ const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; proc
   { id: '기초', label: '기초', category: '기초' },
   { id: '주동 지하층', label: '주동 지하층', category: '주동 지하층' },
   { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '주동 지하층', processType: '층고6.5m이상' },
+  { id: '지하층(피트층포함)', label: '지하층(피트층포함)', category: '주동 지하층', processType: '피트층포함' },
   { id: '지하주차장', label: '지하주차장', category: '지하주차장' },
   { id: '일반층', label: '일반층', category: '일반층' },
   { id: '셋팅층', label: '셋팅층', category: '셋팅층' },
