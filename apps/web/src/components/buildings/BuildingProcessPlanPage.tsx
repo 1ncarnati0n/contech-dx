@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
-import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
+import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor, FloorProcessDetails } from '@/lib/types';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
 import { Calendar, ChevronDown, ChevronUp, Building2, Info } from 'lucide-react';
@@ -17,10 +17,13 @@ import {
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
+  calculateIndirectWorkers,
+  calculateIndirectEquipment,
 } from '@/lib/utils/process-calculation';
 import { calculateModuleWorkDays } from '@/lib/utils/process-days-calculator';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
 import { ProcessDetailPanel } from './process-plan';
+import { FloorDetailsTable } from './process-plan/FloorDetailsTable';
 
 interface Props {
   projectId: string;
@@ -434,6 +437,26 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       // 🚀 Stage 2 Optimization: Use consolidated calculation utility
       const sumDays = module ? calculateModuleWorkDays(building, module, category) : 0;
 
+      // 층별 세부 정보 계산
+      let floorDetailsMap: Record<string, FloorProcessDetails> = {};
+
+      if (category === '기준층') {
+        const standardFloors = getStandardFloors.get(building.id) || [];
+        standardFloors.forEach(floor => {
+          floorDetailsMap[floor.floorLabel] = calculateFloorDetailsWithItems(building, category, processType, floor.floorLabel);
+        });
+      } else if (category === '셋팅층') {
+        const settingFloors = getSettingFloors.get(building.id) || [];
+        settingFloors.forEach(floor => {
+          floorDetailsMap[floor.floorLabel] = calculateFloorDetailsWithItems(building, category, processType, floor.floorLabel);
+        });
+      } else if (category === '옥탑층') {
+        const phFloors = getPhFloors.get(building.id) || [];
+        phFloors.forEach(floor => {
+          floorDetailsMap[floor.floorLabel] = calculateFloorDetailsWithItems(building, category, processType, floor.floorLabel);
+        });
+      }
+
       const updatedPlan = {
         ...plan,
         processes: {
@@ -442,6 +465,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
             ...plan.processes[category],
             processType,
             days: Math.floor(sumDays),
+            floorDetails: Object.keys(floorDetailsMap).length > 0 ? floorDetailsMap : undefined,
           },
         },
       };
@@ -747,6 +771,108 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     });
     
     return Math.floor(sumDays);
+  };
+
+  /**
+   * 층별 상세 정보 계산 (세부 항목 포함)
+   * calculateStandardFloorDays의 확장 버전
+   */
+  const calculateFloorDetailsWithItems = (
+    building: Building,
+    category: ProcessCategory,
+    processType: ProcessType,
+    floorLabel: string
+  ): FloorProcessDetails => {
+    const module = getProcessModule(category, processType);
+    if (!module || !module.items.length) {
+      return { floorLabel, workDays: 0, items: [] };
+    }
+
+    let sumDays = 0;
+    const items: FloorProcessDetails['items'] = [];
+
+    module.items.forEach(item => {
+      let directWorkDays = 0;
+      let quantity = 0;
+      let dailyInputWorkers = 0;
+      let totalWorkers = 0;
+      let equipmentCount = item.equipmentCount;
+
+      // 수량 참조를 층별로 조정
+      if (item.quantityReference) {
+        const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
+        if (refMatch) {
+          const [, col] = refMatch;
+          const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
+
+          let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
+          let subField = '';
+
+          switch (col) {
+            case 'B': field = 'gangForm'; subField = 'areaM2'; break;
+            case 'C': field = 'alForm'; subField = 'areaM2'; break;
+            case 'D': field = 'formwork'; subField = 'areaM2'; break;
+            case 'E': field = 'stripClean'; subField = 'areaM2'; break;
+            case 'F': field = 'rebar'; subField = 'ton'; break;
+            case 'G': field = 'concrete'; subField = 'volumeM3'; break;
+          }
+
+          if (field) {
+            quantity = getQuantityFromFloor(building, floorLabel, field, subField) * ratio;
+          } else {
+            quantity = getQuantityByReference(building, item.quantityReference);
+          }
+        } else {
+          quantity = getQuantityByReference(building, item.quantityReference);
+        }
+      }
+
+      // 일수 계산
+      if (item.directWorkDays !== undefined) {
+        directWorkDays = item.directWorkDays;
+        sumDays += directWorkDays;
+      } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
+        if (quantity > 0 && item.dailyProductivity > 0) {
+          const maxPumpCarCount = building.meta?.pumpCarCount || 2;
+          equipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
+          dailyInputWorkers = calculateDailyInputWorkersByEquipment(equipmentCount, item.equipmentWorkersPerUnit);
+          if (dailyInputWorkers > 0) {
+            directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+            sumDays += directWorkDays;
+          }
+        }
+      } else if (item.quantityReference && item.dailyProductivity > 0) {
+        if (quantity > 0) {
+          totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
+          dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, equipmentCount);
+          directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+          sumDays += directWorkDays;
+        }
+      }
+
+      // 간접공사 계산
+      const indirectWorkers = dailyInputWorkers > 0 ? calculateIndirectWorkers(dailyInputWorkers) : undefined;
+      const indirectEquipment = equipmentCount > 0 ? calculateIndirectEquipment(equipmentCount) : undefined;
+
+      // 세부 항목 정보 저장
+      if (quantity > 0 || directWorkDays > 0) {
+        items.push({
+          itemId: item.id,
+          workItem: item.workItem,
+          quantity,
+          directWorkDays,
+          dailyInputWorkers,
+          indirectWorkers,
+          indirectEquipment,
+        });
+      }
+    });
+
+    return {
+      floorLabel,
+      workDays: Math.floor(sumDays),
+      items,
+    };
   };
 
   // 셋팅층 각 층별 일수 계산
@@ -2209,6 +2335,17 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   onDirectWorkDaysChange={(itemKey, value) => handleItemDirectWorkDaysChange(building!, itemKey, value)}
                                   specialRowQuantities={plan?.specialRowQuantities}
                                 />
+
+                                {/* 층별 세부 정보 테이블 */}
+                                {(() => {
+                                  const floorDetails = expandedRow && plan?.processes[expandedRow.category]?.floorDetails;
+                                  return floorDetails ? (
+                                    <FloorDetailsTable
+                                      category={expandedRow.category}
+                                      floorDetails={floorDetails}
+                                    />
+                                  ) : null;
+                                })()}
                               </div>
                             );
                           })()}

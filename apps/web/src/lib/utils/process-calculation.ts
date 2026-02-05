@@ -3,11 +3,16 @@
  * 엑셀의 "골조표준공정 일수고정 산식표" 수식을 JavaScript로 구현
  */
 
+import { logger } from './logger';
+
 /**
  * 총 작업인원 계산 (수량 / 인당 1일 작업량, 올림)
  */
 export function calculateTotalWorkers(quantity: number, dailyProductivity: number): number {
-  if (dailyProductivity === 0) return 0;
+  if (dailyProductivity === 0) {
+    logger.debug('[calculateTotalWorkers] Zero productivity', { quantity });
+    return 0;
+  }
   return Math.ceil(quantity / dailyProductivity);
 }
 
@@ -15,7 +20,10 @@ export function calculateTotalWorkers(quantity: number, dailyProductivity: numbe
  * 1일 투입인원 계산 (총작업인원 / 장비대수, 올림)
  */
 export function calculateDailyInputWorkers(totalWorkers: number, equipmentCount: number): number {
-  if (equipmentCount === 0) return 0;
+  if (equipmentCount === 0) {
+    logger.debug('[calculateDailyInputWorkers] Zero equipment count', { totalWorkers });
+    return 0;
+  }
   return Math.ceil(totalWorkers / equipmentCount);
 }
 
@@ -35,7 +43,14 @@ export function calculateWorkDaysWithRounding(
   dailyProductivity: number,
   dailyInputWorkers: number
 ): number {
-  if (dailyProductivity === 0 || dailyInputWorkers === 0) return 1;
+  if (dailyProductivity === 0 || dailyInputWorkers === 0) {
+    logger.debug('[calculateWorkDaysWithRounding] Zero input', {
+      quantity,
+      dailyProductivity,
+      dailyInputWorkers
+    });
+    return 1;
+  }
   
   const result = quantity / (dailyProductivity * dailyInputWorkers);
   const decimal = result - Math.floor(result);
@@ -119,6 +134,32 @@ export function calculateDailyInputWorkersByWorkDays(
 ): number {
   if (directWorkDays === 0) return 0;
   return Math.ceil(totalWorkers / directWorkDays);
+}
+
+/**
+ * 간접공사 인원 계산 (직영 인원 * 비율, 올림)
+ * @param directWorkers 직영 1일 투입인원
+ * @param ratio 간접공사 비율 (기본값: 0.3 = 30%)
+ */
+export function calculateIndirectWorkers(
+  directWorkers: number,
+  ratio: number = 0.3
+): number {
+  if (directWorkers === 0) return 0;
+  return Math.ceil(directWorkers * ratio);
+}
+
+/**
+ * 간접공사 장비 계산 (직영 장비 * 비율, 올림)
+ * @param directEquipment 직영 장비대수
+ * @param ratio 간접공사 비율 (기본값: 0.3 = 30%)
+ */
+export function calculateIndirectEquipment(
+  directEquipment: number,
+  ratio: number = 0.3
+): number {
+  if (directEquipment === 0) return 0;
+  return Math.ceil(directEquipment * ratio);
 }
 
 

@@ -95,7 +95,10 @@ export function calculateModuleWorkDays(
     totalDays += directWorkDays;
   }
 
-  return Math.floor(totalDays);
+  // 비즈니스 정책: 보수적 추정 (사용자 확정)
+  // 모듈 총일수는 항목별 합산 이상이어야 함
+  // Math.ceil 사용으로 다른 계산 함수들과 일관성 유지
+  return Math.ceil(totalDays);
 }
 
 /**

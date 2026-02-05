@@ -36,6 +36,73 @@ contech-dx/
 | **Testing** | Jest + React Testing Library | 29.x |
 | **Caching** | TTL-based Memory Cache | Custom |
 
+## Recent Updates
+
+### 2026-02-05: Phase 2A - 물량참조 로직 개선 완료 ✅
+
+**목표:** 물량 참조 정확성 확보 및 회귀 방지
+
+**완료된 작업:**
+- ✅ **quantity-reference 테스트 확장** (79.44% 커버리지 달성)
+  - 48개 테스트 케이스 추가 (Row 6-28 전체 매핑 검증)
+  - 복합 참조 (addition, B1+B2 combined, ratio) 테스트
+  - Edge case 처리 검증
+
+- ✅ **핵심 버그 수정**
+  1. **B1/B2 순서 정렬**: 지하층 배열 정렬로 올바른 순서 보장
+  2. **옥탑층 tradeGroup 설정**: 층 수 부족 시 tradeGroup 미설정으로 0 반환
+  3. **Row 13-25 매칭 로직**: 개별 층 매칭 실패 시에도 범위 기준층 체크 수행
+  4. **rangeFloorId 전달**: 범위 기준층 발견 시 getQuantityFromFloor()에 올바르게 전달
+
+**영향:**
+- 간트차트 일수 계산 정확성 향상
+- 범위 형식 기준층 (예: "2~14F 기준층") 올바르게 참조
+- 옥탑층 부재 시 명확한 0 반환
+
+**다음 단계 (Phase 2B):**
+- 층별 일수 계산 구현
+- 옥탑층 정규화 에러 핸들링
+- 비직영 공사 계산
+
+---
+
+### 2026-02-05: Phase 2B - 중요 개선 완료 ✅
+
+**목표:** 간트차트 정확성 향상 및 사용성 개선
+
+**완료된 작업:**
+- ✅ **옥탑층 정규화 에러 핸들링** (Task 2B-2)
+  - `console.warn` → `logger.warn` 전환 (프로덕션 로깅)
+  - 옥탑층 부재 시 명확한 경고 및 조기 반환
+  - 불필요한 DEBUG 로그 제거
+
+- ✅ **비직영 공사 계산** (Task 2B-3)
+  - `calculateIndirectWorkers()` 함수 추가 (기본 30% 비율)
+  - `calculateIndirectEquipment()` 함수 추가
+  - 12개 테스트 케이스 추가 (45/45 테스트 통과)
+
+- ✅ **층별 일수 계산 및 UI 통합** (Task 2B-1 완료)
+  - `FloorProcessDetails` 타입 추가 (층별 상세 정보 구조)
+  - `calculateFloorDetailsWithItems()` 함수 구현
+  - 세부 항목별 물량, 일수, 인원, 간접공사 계산
+  - BuildingProcessPlan 타입 확장 (`floorDetails` 필드 추가)
+  - **FloorDetailsTable 컴포넌트 생성** (층별 상세 정보 표시)
+  - **handleProcessTypeChange 함수 통합** (공정 타입 변경 시 자동 계산)
+  - **UI 통합 완료** (BuildingProcessPlanPage에 FloorDetailsTable 표시)
+
+**영향:**
+- 간접공사 인원/장비 계산 가능
+- 층별 상세 정보 추적 및 표시 완성
+- 프로덕션 환경에서 명확한 에러 로깅
+- **물량입력 → 공정계산 → 공정모듈 → 층별 세부정보 표시 전체 파이프라인 완성**
+
+**검증 결과:**
+- ✅ 빌드 성공 (TypeScript 타입 오류 없음)
+- ✅ 테스트 통과 (129개 테스트 모두 통과)
+- ✅ Phase 2A 기능 보존 (48개 quantity-reference 테스트, 45개 process-calculation 테스트)
+
+---
+
 ## Getting Started
 
 ```bash

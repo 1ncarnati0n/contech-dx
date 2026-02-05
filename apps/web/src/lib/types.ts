@@ -674,6 +674,24 @@ export type ProcessType =
 /**
  * 동별 공정 계획
  */
+/**
+ * 층별 공정 상세 정보
+ */
+export interface FloorProcessDetails {
+  floorLabel: string; // 층 라벨 (예: "3F", "PH1")
+  workDays: number; // 해당 층의 작업일수
+  processType?: ProcessType; // 층별 공정 타입 (옵션)
+  items?: Array<{
+    itemId: string; // 항목 ID
+    workItem: string; // 작업 항목명
+    quantity: number; // 물량
+    directWorkDays: number; // 직영 순작업일
+    dailyInputWorkers: number; // 1일 투입인원
+    indirectWorkers?: number; // 간접공사 인원
+    indirectEquipment?: number; // 간접공사 장비
+  }>; // 세부 항목 정보 (옵션)
+}
+
 export interface BuildingProcessPlan {
   id: string;
   buildingId: string;
@@ -684,6 +702,7 @@ export interface BuildingProcessPlan {
       days: number; // 공정일수 (간트차트에서 duration으로 사용)
       processType: ProcessType; // 선택된 공정 타입 (기본값, 층별 설정이 없을 때 사용)
       floors?: { [floorLabel: string]: { processType: ProcessType } }; // 층별 공정 타입 (지하층, PH층 등)
+      floorDetails?: { [floorLabel: string]: FloorProcessDetails }; // 층별 상세 정보 (일수, 항목별 계산 결과)
     };
   };
   totalDays: number; // 구분공정 합계일수 (간트차트에서 전체 일정 계산에 사용)
