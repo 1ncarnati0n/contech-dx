@@ -343,7 +343,12 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         isAdmin={isAdmin}
       />
 
-      <div className="flex-1 flex flex-col h-full ml-16" onClick={handleBodyClick}>
+      <div
+        className={`flex-1 flex flex-col h-full transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? 'ml-16' : 'ml-54'
+        }`}
+        onClick={handleBodyClick}
+      >
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">

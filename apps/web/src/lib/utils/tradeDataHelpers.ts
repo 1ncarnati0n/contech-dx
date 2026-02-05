@@ -204,3 +204,43 @@ export function isTradeData(value: unknown): value is TradeData {
     (val) => val === undefined || isTradeFieldData(val)
   );
 }
+
+/**
+ * 물량 조회에 사용되는 유효한 subField 값들
+ */
+export const QUANTITY_SUBFIELDS = ['areaM2', 'ton', 'volumeM3'] as const;
+export type QuantitySubField = typeof QUANTITY_SUBFIELDS[number];
+
+/**
+ * subField가 유효한 물량 필드인지 검증
+ */
+export function isValidQuantitySubField(field: string): field is QuantitySubField {
+  return QUANTITY_SUBFIELDS.includes(field as QuantitySubField);
+}
+
+/**
+ * TradeFieldData에서 안전하게 물량 값 가져오기
+ *
+ * @param tradeData - 공종 필드 데이터
+ * @param subField - 조회할 필드명 (areaM2, ton, volumeM3)
+ * @returns 물량 값 (실패 시 0 반환)
+ */
+export function getQuantityValue(
+  tradeData: TradeFieldData | undefined,
+  subField: string
+): number {
+  if (!tradeData) return 0;
+
+  if (!isValidQuantitySubField(subField)) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        `[getQuantityValue] Invalid subField: "${subField}". ` +
+        `Valid fields: ${QUANTITY_SUBFIELDS.join(', ')}`
+      );
+    }
+    return 0;
+  }
+
+  const value = (tradeData as Record<string, number | undefined>)[subField];
+  return typeof value === 'number' ? value : 0;
+}

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, Fragment } from 'react';
 import { Timer, Check, Minus } from 'lucide-react';
 import { Card } from '@/components/ui';
 
@@ -48,68 +47,7 @@ const CYCLE_DEFINITIONS: CycleDefinition[] = [
   },
 ];
 
-// 각 사이클별 세부 일정 정의
-const CYCLE_DETAILS: Record<
-  string,
-  { day: number; task: string; category: string }[]
-> = {
-  '5일': [
-    { day: 1, task: '먹매김, 갱폼설치', category: '준비' },
-    { day: 2, task: '벽철근 조립, 알폼조립', category: '철근/형틀' },
-    { day: 3, task: '슬라브철근 조립, 마감작업', category: '철근/형틀' },
-    { day: 4, task: '콘크리트 타설', category: '타설' },
-    { day: 5, task: '양생', category: '양생' },
-  ],
-  '6일': [
-    { day: 1, task: '먹매김, 갱폼설치', category: '준비' },
-    { day: 2, task: '벽철근 조립', category: '철근' },
-    { day: 3, task: '알폼조립', category: '형틀' },
-    { day: 4, task: '슬라브철근 조립', category: '철근' },
-    { day: 5, task: '마감작업, 타설', category: '타설' },
-    { day: 6, task: '양생', category: '양생' },
-  ],
-  '7일': [
-    { day: 1, task: '먹매김', category: '준비' },
-    { day: 2, task: '갱폼설치, 보강', category: '형틀' },
-    { day: 3, task: '벽철근 조립', category: '철근' },
-    { day: 4, task: '알폼조립', category: '형틀' },
-    { day: 5, task: '슬라브철근 조립, 검측', category: '철근' },
-    { day: 6, task: '마감작업, 타설', category: '타설' },
-    { day: 7, task: '양생', category: '양생' },
-  ],
-  '8일': [
-    { day: 1, task: '먹매김', category: '준비' },
-    { day: 2, task: '갱폼설치', category: '형틀' },
-    { day: 3, task: '갱폼 보강/검측', category: '형틀' },
-    { day: 4, task: '벽철근 조립', category: '철근' },
-    { day: 5, task: '알폼조립', category: '형틀' },
-    { day: 6, task: '슬라브철근 조립', category: '철근' },
-    { day: 7, task: '마감작업, 타설', category: '타설' },
-    { day: 8, task: '양생', category: '양생' },
-  ],
-};
-
 export function CycleDefinitionSection() {
-  const [selectedCycle, setSelectedCycle] = useState<string | null>('6일');
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case '준비':
-        return 'bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300';
-      case '형틀':
-        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
-      case '철근':
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
-      case '철근/형틀':
-        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400';
-      case '타설':
-        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
-      case '양생':
-        return 'bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-400';
-      default:
-        return 'bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300';
-    }
-  };
 
   return (
     <Card className="p-0 overflow-hidden">
@@ -152,21 +90,13 @@ export function CycleDefinitionSection() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
                     설명
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
-                    상세
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {CYCLE_DEFINITIONS.map((def) => (
-                  <Fragment key={def.cycle}>
-                    {/* 사이클 메인 행 */}
                     <tr
-                      className={`transition-colors border-b border-zinc-200 dark:border-zinc-700 ${
-                        selectedCycle === def.cycle
-                          ? 'bg-purple-50 dark:bg-purple-900/20'
-                          : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
-                      }`}
+                      key={def.cycle}
+                      className="transition-colors border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/30"
                     >
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-2">
@@ -202,65 +132,7 @@ export function CycleDefinitionSection() {
                       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
                         {def.description}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() =>
-                            setSelectedCycle(
-                              selectedCycle === def.cycle ? null : def.cycle
-                            )
-                          }
-                          className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                            selectedCycle === def.cycle
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-600'
-                          }`}
-                        >
-                          {selectedCycle === def.cycle ? '접기' : '보기'}
-                        </button>
-                      </td>
                     </tr>
-
-                    {/* 사이클 상세 행 - 선택 시 바로 아래에 표시 */}
-                    {selectedCycle === def.cycle && CYCLE_DETAILS[def.cycle] && (
-                      <tr key={`${def.cycle}-detail`}>
-                        <td
-                          colSpan={6}
-                          className="px-0 py-0 bg-purple-50/50 dark:bg-purple-900/10 border-b border-zinc-200 dark:border-zinc-700"
-                        >
-                          <div className="px-4 py-4">
-                            <h4 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
-                              <Timer className="w-4 h-4" />
-                              {def.cycle} 사이클 일별 작업 상세
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {CYCLE_DETAILS[def.cycle].map((detail) => (
-                                <div
-                                  key={detail.day}
-                                  className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-800 rounded-lg border border-purple-200 dark:border-purple-800/50 shadow-sm"
-                                >
-                                  <span className="w-7 h-7 flex items-center justify-center bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold rounded">
-                                    D{detail.day}
-                                  </span>
-                                  <div className="flex flex-col">
-                                    <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                                      {detail.task}
-                                    </span>
-                                    <span
-                                      className={`text-xs px-1.5 py-0.5 rounded w-fit ${getCategoryColor(
-                                        detail.category
-                                      )}`}
-                                    >
-                                      {detail.category}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
                 ))}
               </tbody>
             </table>

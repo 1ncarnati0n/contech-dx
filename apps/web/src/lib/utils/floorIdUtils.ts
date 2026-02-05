@@ -15,7 +15,7 @@
 export const SPECIAL_FLOOR_GROUPS = ['버림', '기초'] as const;
 export type SpecialFloorGroup = typeof SPECIAL_FLOOR_GROUPS[number];
 
-export const TRADE_GROUPS = ['버림', '기초', '아파트'] as const;
+export const TRADE_GROUPS = ['버림', '기초', '아파트', '옥탑층'] as const;
 export type TradeGroup = typeof TRADE_GROUPS[number];
 
 // ============================================

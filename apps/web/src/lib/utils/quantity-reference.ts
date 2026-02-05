@@ -4,6 +4,8 @@
  */
 
 import type { Building, FloorTrade } from '@/lib/types';
+import { getQuantityValue } from './tradeDataHelpers';
+import { logger } from './logger';
 
 /**
  * 물량 데이터에서 값 가져오기
@@ -40,17 +42,25 @@ export function getQuantityWithRatio(
 
 /**
  * 층 라벨을 정규화하여 비교 가능한 형식으로 변환
- * 옥탑층: "옥탑1", "옥탑1층", "PH1" -> "PH1"
+ * 옥탑층: "옥탑1", "옥탑1층", "옥탑 1", "PH1", "ph1" -> "PH1"
  * 지하층: "B1", "지하1층", "지하1" -> "B1"
  */
 function normalizeFloorLabel(label: string): string {
   // 코어 정보 제거
   let normalized = label.replace(/코어\d+-/, '');
 
-  // 옥탑층 정규화: 옥탑1, 옥탑1층 -> PH1
-  const optapMatch = normalized.match(/^옥탑(\d+)(층)?$/);
+  // 옥탑층 정규화: 다양한 형식 지원
+  // "옥탑1", "옥탑1층", "옥탑 1", "옥탑 1층" -> "PH1"
+  const optapMatch = normalized.match(/^옥탑\s*(\d+)(층)?$/);
   if (optapMatch) {
     normalized = `PH${optapMatch[1]}`;
+  } else {
+    // 이미 PH 형식인 경우 대문자로 통일
+    // "PH1", "Ph1", "ph1" -> "PH1"
+    const phMatch = normalized.match(/^ph(\d+)$/i);
+    if (phMatch) {
+      normalized = `PH${phMatch[1]}`;
+    }
   }
 
   // 지하층 정규화: 지하1층, 지하1 -> B1
@@ -106,6 +116,23 @@ export function getQuantityFromFloor(
     const normalizedFloor = normalizeFloorLabel(f.floorLabel);
     return normalizedFloor === normalizedInput;
   }) ?? null;
+
+  // 옥탑층 특화: 못 찾았고 PH로 시작하는 경우 추가 시도
+  if (!floor && normalizedInput.startsWith('PH')) {
+    const phNum = normalizedInput.match(/^PH(\d+)$/)?.[1];
+    if (phNum) {
+      // "옥탑1", "옥탑1층", "PH1" 등 다양한 형식으로 재시도
+      floor = building.floors.find(f => {
+        const label = f.floorLabel.replace(/코어\d+-/, '');
+        return (
+          label === `옥탑${phNum}` ||
+          label === `옥탑${phNum}층` ||
+          label.toUpperCase() === `PH${phNum}` ||
+          normalizeFloorLabel(label) === normalizedInput
+        );
+      }) ?? null;
+    }
+  }
     
     // 개별 층이 없으면 범위 형식의 기준층 찾기 (예: "7F" -> "2~14F 기준층" 또는 "코어1-2~14F 기준층")
     // rangeFloorId가 제공되지 않은 경우에만 실행 (이미 rangeFloorId가 있으면 위에서 처리됨)
@@ -137,6 +164,11 @@ export function getQuantityFromFloor(
     }
   
   if (!floor && !rangeFloor) {
+    logger.debug('[getQuantityFromFloor] Floor not found', {
+      floorLabel,
+      buildingId: building.id,
+      availableFloors: building.floors.map(f => f.floorLabel),
+    });
     return 0;
   }
   
@@ -149,38 +181,67 @@ export function getQuantityFromFloor(
   if (!primaryTargetFloorId) {
     return 0;
   }
-  
+
+  // 옥탑층 여부 판단
+  const isPHFloor = normalizedInput.startsWith('PH') || floorLabel.includes('옥탑');
+
+  // tradeGroup 조회 순서 결정
+  const tradeGroupPriority = isPHFloor
+    ? ['옥탑층', 'PH층', '아파트']  // 옥탑층: '옥탑층' 우선
+    : ['아파트', '옥탑층', 'PH층']; // 기타: '아파트' 우선
+
   // 정확한 floorId로 직접 조회 (개별 데이터 저장 방식)
-  let trade = building.floorTrades.find(ft => 
-    ft.floorId === primaryTargetFloorId && ft.tradeGroup === '아파트'
-  );
-  
-  // '아파트' tradeGroup이 없으면 다른 tradeGroup도 확인
+  // 우선순위대로 trade 조회
+  let trade: FloorTrade | undefined;
+  for (const tg of tradeGroupPriority) {
+    trade = building.floorTrades.find(ft =>
+      ft.floorId === primaryTargetFloorId && ft.tradeGroup === tg
+    );
+    if (trade) break;
+  }
+
+  // 찾지 못하면 tradeGroup 무시하고 floorId만으로 조회
   if (!trade) {
     trade = building.floorTrades.find(ft => ft.floorId === primaryTargetFloorId);
   }
-  
-  // 개별 층 ID로 trade를 찾지 못하고 범위 기반 individualFloorId가 있으면 fallback
+
+  // 개별 층 ID로 trade를 찾지 못하고 범위 기반 individualFloorId가 있으면 fallback (tradeGroup 우선순위 적용)
   if (!trade && primaryTargetFloorId === floor?.id && individualFloorId) {
-    trade = building.floorTrades.find(ft => 
-      ft.floorId === individualFloorId && ft.tradeGroup === '아파트'
-    );
-    
+    for (const tg of tradeGroupPriority) {
+      trade = building.floorTrades.find(ft =>
+        ft.floorId === individualFloorId && ft.tradeGroup === tg
+      );
+      if (trade) break;
+    }
+
     if (!trade) {
       trade = building.floorTrades.find(ft => ft.floorId === individualFloorId);
     }
   }
 
   if (!trade) {
+    logger.debug('[getQuantityFromFloor] Trade not found', {
+      floorLabel,
+      primaryTargetFloorId,
+      tradeGroupPriority,
+      availableTradeGroups: building.floorTrades
+        .filter(ft => ft.floorId === primaryTargetFloorId)
+        .map(ft => ft.tradeGroup),
+    });
     return 0;
   }
-  
+
   const tradeData = trade.trades[field];
   if (!tradeData) {
+    logger.debug('[getQuantityFromFloor] Trade field not found', {
+      floorLabel,
+      field,
+      availableFields: Object.keys(trade.trades),
+    });
     return 0;
   }
-  
-  const result = (tradeData as any)[subField] || 0;
+
+  const result = getQuantityValue(tradeData, subField);
 
   return result;
 }
@@ -450,6 +511,22 @@ export function getQuantityByReference(
     if (phFloors.length >= 1) {
       // 정규화된 형식으로 변환 (PH1)
       floorLabel = normalizeFloorLabel(phFloors[0].floorLabel);
+
+      // DEBUG: 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getQuantityByReference] Row 26 (옥탑1층):', {
+          originalLabel: phFloors[0].floorLabel,
+          normalizedLabel: floorLabel,
+          floorId: phFloors[0].id,
+          tradeGroup,
+          field,
+          subField,
+        });
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[getQuantityByReference] Row 26: No PH floors found');
+      }
     }
   } else if (rowNum === 27) {
     // 옥탑2층 (행 27)
@@ -459,6 +536,22 @@ export function getQuantityByReference(
     ).sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0));
     if (phFloors.length >= 2) {
       floorLabel = normalizeFloorLabel(phFloors[1].floorLabel);
+
+      // DEBUG: 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getQuantityByReference] Row 27 (옥탑2층):', {
+          originalLabel: phFloors[1].floorLabel,
+          normalizedLabel: floorLabel,
+          floorId: phFloors[1].id,
+          tradeGroup,
+          field,
+          subField,
+        });
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[getQuantityByReference] Row 27: No PH floors found or insufficient floors');
+      }
     }
   } else if (rowNum === 28) {
     // 옥탑3층 (행 28)
@@ -468,6 +561,22 @@ export function getQuantityByReference(
     ).sort((a, b) => (a.floorNumber || 0) - (b.floorNumber || 0));
     if (phFloors.length >= 3) {
       floorLabel = normalizeFloorLabel(phFloors[2].floorLabel);
+
+      // DEBUG: 개발 환경에서만 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getQuantityByReference] Row 28 (옥탑3층):', {
+          originalLabel: phFloors[2].floorLabel,
+          normalizedLabel: floorLabel,
+          floorId: phFloors[2].id,
+          tradeGroup,
+          field,
+          subField,
+        });
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[getQuantityByReference] Row 28: No PH floors found or insufficient floors');
+      }
     }
   }
   
@@ -483,7 +592,7 @@ export function getQuantityByReference(
     trades.forEach(trade => {
       const tradeData = trade.trades[field];
       if (tradeData) {
-        quantity += (tradeData as any)[subField] || 0;
+        quantity += getQuantityValue(tradeData, subField);
       }
     });
   }
