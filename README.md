@@ -464,6 +464,24 @@ Supabase PostgreSQL 기반 데이터베이스
   - **빌드 검증**: TypeScript 컴파일 성공 ✅
   - **최종 결과**: 탭 전환 대기 시간 대폭 감소, 사용자 경험 획기적 개선
 
+#### Refactored
+- **apps/web 리팩토링 완료**: 중복 코드 제거 및 타입 안전성 개선
+  - **Phase 1 - 중복 파일 통합**: `BuildingBasicInfo.tsx` (1,314줄) 제거, `BuildingBasicInfoRefactored.tsx`를 표준으로 채택
+    - 561줄 코드 감소 (43% 개선)
+    - import 경로 통일 (`BuildingBasicInfoPage.tsx`, `index.ts`)
+  - **Phase 2 - ProcessLogicPage 타입 안전성**: 프리셋 모듈 검증 로직 추가
+    - `isProcessModule()`, `isProcessModuleArray()` 타입 가드 함수 추가 (`lib/types.ts`)
+    - `as any` 제거, 런타임 검증으로 대체 (`ProcessLogicPage.tsx:169`)
+    - 잘못된 프리셋 데이터 시 사용자 친화적 에러 토스트 표시
+  - **Phase 3 - BuildingBasicInfo 타입 안전성**: DTO 인터페이스 확장
+    - `UpdateBuildingDTO`에 `forceRegenerateFloors?: boolean` 필드 추가 (`lib/types.ts:606`)
+    - `buildings.ts:676`, `BuildingBasicInfo.tsx:516`에서 `as any` 제거
+  - **최종 결과**:
+    - ✅ 코드 중복 제거: 561줄 감소
+    - ✅ 타입 안전성: `as any` 3곳 완전 제거
+    - ✅ 빌드 검증: TypeScript 컴파일 성공
+    - ✅ 런타임 안정성: 타입 가드로 데이터 유효성 검증
+
 #### Added
 - `getBuildingsForOverview()` 함수 (`lib/services/buildings.ts`): Overview 전용 경량 데이터 조회
 - `saveToLocalStorageThrottled()` 유틸리티 (`components/buildings/BasementProcessPlanPage.tsx`): throttle 기반 localStorage 저장

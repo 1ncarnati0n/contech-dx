@@ -13,7 +13,6 @@ export { ProcessLogicPage } from './ProcessLogicPage';
 export { BuildingForm } from './BuildingForm';
 export { BuildingTabs } from './BuildingTabs';
 export { BuildingBasicInfo } from './BuildingBasicInfo';
-export { BuildingBasicInfoRefactored } from './BuildingBasicInfoRefactored';
 export { FloorSettingsTable } from './FloorSettingsTable';
 
 // 섹션 컴포넌트 및 훅

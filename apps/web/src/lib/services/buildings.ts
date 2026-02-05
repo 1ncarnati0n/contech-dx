@@ -673,7 +673,7 @@ export async function updateBuilding(
 
     const shouldRegenerateFloors =
       floorCountChanged ||
-      (updates as any).forceRegenerateFloors === true ||
+      updates.forceRegenerateFloors === true ||
       (heightsChanged && building.floors && building.floors.length > 0);
 
     if (shouldRegenerateFloors) {

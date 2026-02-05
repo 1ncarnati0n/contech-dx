@@ -16,6 +16,7 @@ interface Formula {
 
 interface FormulaSectionProps {
   modules?: ProcessModule[];
+  isEditing: boolean; // 전역 편집 상태
   onEquipmentBaseChange?: (category: ProcessCategory, value: number) => void;
   onSave?: () => void;
 }
@@ -152,12 +153,8 @@ function getDefaultValueForCategory(category: ProcessCategory): number {
   return categoryDefaults[category];
 }
 
-export function FormulaSection({ modules = [], onEquipmentBaseChange, onSave }: FormulaSectionProps) {
+export function FormulaSection({ modules = [], isEditing, onEquipmentBaseChange, onSave }: FormulaSectionProps) {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
-  // 자체 편집 상태 관리 (ProcessModuleSection과 독립적)
-  const [isEditingEquipmentBase, setIsEditingEquipmentBase] = useState(false);
-  // 편집 취소를 위한 이전 값 저장
-  const [previousValues, setPreviousValues] = useState<Record<ProcessCategory, number> | null>(null);
 
   // modules에서 현재 equipmentCalculationBase 값들 추출
   const equipmentBaseValues = useMemo(() => {
@@ -196,32 +193,6 @@ export function FormulaSection({ modules = [], onEquipmentBaseChange, onSave }: 
       onEquipmentBaseChange(category, numValue);
     }
   };
-
-  // 편집 모드 시작 - 현재 값 백업
-  const handleStartEditing = useCallback(() => {
-    const currentCategoryValues = getEquipmentBaseByCategory(modules);
-    setPreviousValues(currentCategoryValues);
-    setIsEditingEquipmentBase(true);
-  }, [modules]);
-
-  // 저장 핸들러
-  const handleSaveChanges = useCallback(() => {
-    setIsEditingEquipmentBase(false);
-    setPreviousValues(null);
-    onSave?.();
-  }, [onSave]);
-
-  // 취소 핸들러 - 이전 값으로 복원
-  const handleCancelEditing = useCallback(() => {
-    if (previousValues && onEquipmentBaseChange) {
-      // 이전 값으로 복원
-      Object.entries(previousValues).forEach(([category, value]) => {
-        onEquipmentBaseChange(category as ProcessCategory, value);
-      });
-    }
-    setIsEditingEquipmentBase(false);
-    setPreviousValues(null);
-  }, [previousValues, onEquipmentBaseChange]);
 
   return (
     <Card className="p-0 overflow-hidden">
@@ -318,60 +289,62 @@ export function FormulaSection({ modules = [], onEquipmentBaseChange, onSave }: 
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 부위별 대당 타설량 기준
-                {isEditingEquipmentBase && (
-                  <span className="ml-2 text-xs text-blue-500 font-normal">
-                    (값을 수정하면 해당 부위의 모든 공정에 적용됩니다)
-                  </span>
-                )}
               </h4>
-
-              {/* 편집/저장/취소 버튼 */}
-              <div className="flex items-center gap-2">
-                {isEditingEquipmentBase ? (
-                  <>
-                    <Button size="sm" variant="ghost" onClick={handleCancelEditing}>
-                      <X className="w-4 h-4 mr-1" /> 취소
-                    </Button>
-                    <Button size="sm" onClick={handleSaveChanges}>
-                      <Save className="w-4 h-4 mr-1" /> 저장
-                    </Button>
-                  </>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing}>
-                    <Edit className="w-4 h-4 mr-1" /> 편집
-                  </Button>
-                )}
-              </div>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
-              {EQUIPMENT_BASE_ITEMS.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
-                >
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {item.label}
-                  </span>
-                  {isEditingEquipmentBase ? (
-                    <div className="flex items-center gap-0.5">
+            {isEditing ? (
+              // 편집 모드: input 필드로 표시
+              <div className="grid grid-cols-3 md:grid-cols-9 gap-2">
+                {EQUIPMENT_BASE_ITEMS.map((item) => {
+                  const currentValue = equipmentBaseValues[item.label];
+                  const isDefault = currentValue === item.defaultValue;
+
+                  return (
+                    <div
+                      key={item.label}
+                      className="flex flex-col items-center p-3 bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 rounded-lg"
+                    >
+                      <label className="text-xs font-medium mb-1 text-zinc-700 dark:text-zinc-300">
+                        {item.label}
+                      </label>
                       <input
                         type="number"
-                        min="1"
-                        value={equipmentBaseValues[item.label]}
+                        value={currentValue}
                         onChange={(e) => handleValueChange(item.label, e.target.value)}
-                        className="w-14 text-sm font-semibold text-center text-zinc-900 dark:text-white bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder={item.defaultValue.toString()}
+                        className="w-20 px-2 py-1.5 text-center border border-zinc-300 dark:border-zinc-600 rounded text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        min="1"
                       />
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">㎥</span>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">㎥</span>
+                        {isDefault && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400 rounded">
+                            기본
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
+                  );
+                })}
+              </div>
+            ) : (
+              // 읽기 모드: 값만 표시
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
+                {EQUIPMENT_BASE_ITEMS.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
+                  >
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {item.label}
+                    </span>
                     <span className="text-sm font-semibold text-zinc-900 dark:text-white">
                       {equipmentBaseValues[item.label]}㎥
                     </span>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
     </Card>
