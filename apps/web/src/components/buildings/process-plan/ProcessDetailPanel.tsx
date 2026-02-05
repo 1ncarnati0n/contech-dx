@@ -279,22 +279,19 @@ export function ProcessDetailPanel({
   return (
     <div
       className={cn(
-        'border-b border-zinc-300 dark:border-zinc-700 pb-3 last:border-b-0 fade-in',
+        'fade-in',
         className
       )}
     >
-      {/* 헤더: 카테고리명 + 순작업일 합계 */}
-      <div className="font-semibold text-base text-zinc-900 dark:text-white mb-4">
-        {getCategoryDisplayName()}
-        {directWorkDaysSum > 0 && (
-          <span className="ml-2 text-accent-600 dark:text-accent-400 font-normal">
-            (순작업일 합계 {directWorkDaysSum}일)
-          </span>
-        )}
-      </div>
+      {/* 순작업일 합계 표시 */}
+      {directWorkDaysSum > 0 && (
+        <div className="mb-4 text-sm text-accent-600 dark:text-accent-400 font-medium">
+          순작업일 합계: {directWorkDaysSum}일
+        </div>
+      )}
 
-      {/* 세부공종 카드 목록 (반응형 그리드 레이아웃) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* 세부공종 카드 목록 (1열 레이아웃) */}
+      <div className="grid grid-cols-1 gap-4">
         {filteredItems.map((item, idx) => {
           // 오버라이드 키 생성
           const itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;

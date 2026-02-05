@@ -436,6 +436,98 @@ Supabase PostgreSQL 기반 데이터베이스
 ## Changelog
 
 ### 2026-02-05
+#### UI/UX
+- **테이블 구조 분리 및 세부공정 패널 독립화**: 9번째 열을 테이블에서 완전 분리하여 우측 고정 패널로 재구성
+  - **문제**:
+    - 9번째 열(세부공정 상세)이 테이블 내부에 rowSpan으로 구현되어 내용이 길어지면 전체 행 높이 증가
+    - 행 높이가 유동적(`height: 'auto'`)이어서 사용자 경험 저하
+    - 순작업일수 열 폰트 사이즈 불일치 (BasementProcessPlanPage: `text-sm`, BuildingProcessPlanPage: `text-xs`)
+  - **해결**:
+    - **Flexbox 레이아웃**: 좌측(8열 테이블) + 우측(세부공정 패널) 구조로 재구성
+    - **테이블 행 높이 고정**: 모든 행 `32px` 고정으로 일관성 확보
+    - **독립 스크롤**: 우측 패널 `400px` 고정 너비, 독립적인 세로 스크롤
+    - **폰트 통일**: 순작업일수 열을 모두 `text-xs`로 통일
+  - **적용 파일**:
+    - `BasementProcessPlanPage.tsx`:
+      - Line 909-910: CardContent 레이아웃 Flexbox 재구성
+      - Line 912-922: Colgroup 9번째 열 제거
+      - Line 923-971: Thead 9번째 헤더 제거
+      - Line 1072, 1648: 행 높이 `auto` → `32px` 고정
+      - Line 1227, 1234: 순작업일수 폰트 `text-sm` → `text-xs`
+      - Line 1284-1376: rowSpan 로직 제거
+      - Line 1933-2027: 우측 패널 추가 (독립 스크롤, 고정 너비)
+    - `BuildingProcessPlanPage.tsx`:
+      - Line 1471-1530: CardContent 레이아웃 Flexbox 재구성
+      - Line 1532-1541: Colgroup 9번째 열 제거
+      - Line 1582-1593: Thead 9번째 헤더 제거
+      - Line 1995: 행 높이 `24px` → `32px` 고정
+      - Line 2081-2155: rowSpan 로직 제거
+      - Line 2202-2296: 우측 패널 추가 (독립 스크롤, 고정 너비)
+  - **UI 개선**:
+    - ✅ 테이블: 8개 열, 모든 행 `32px` 고정 높이
+    - ✅ 우측 패널: `400px` 고정 너비, 독립 세로 스크롤
+    - ✅ 세로 경계선: 패널과 테이블 사이 `border-l-2` 시각적 구분
+    - ✅ 확장된 행: `border-l-4 border-accent-500` + 배경색으로 강조
+    - ✅ Sticky 위치: 패널 `sticky top-4`로 스크롤 시 상단 고정
+    - ✅ 안내 메시지: 확장된 행이 없을 때 "세부공정 버튼을 클릭하여..." 표시
+  - **레이아웃 변경**:
+    - Before: 테이블 9개 열 (rowSpan으로 9번째 열이 전체 커버)
+    - After: 테이블 8개 열 + 우측 독립 패널 (400px 고정)
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+  - **정량적 개선**:
+    - BasementProcessPlanPage: ~120줄 변경
+    - BuildingProcessPlanPage: ~110줄 변경
+  - **정성적 개선**:
+    - ✅ 행 높이 일관성: 세부공정 길이와 무관하게 테이블 행 32px 유지
+    - ✅ 독립 스크롤: 테이블과 패널 각각 독립적으로 스크롤 가능
+    - ✅ 시각적 명확성: 좌우 분리로 정보 영역 구분 명확
+    - ✅ 유지보수성: rowSpan 복잡성 제거, 테이블과 패널의 완전한 분리
+    - ✅ 폰트 일관성: 헤더와 데이터 폰트 크기 통일
+
+- **세부공정 패널 레이아웃 개선**: 테이블 내부 rowSpan 구조에서 독립 패널 구조로 변경하여 시각적 연결성 강화
+  - **문제**: 9번째 열에 rowSpan으로 배치된 세부공정 패널이 확장된 행과의 연결이 불명확
+  - **해결**: 패널을 테이블 외부로 이동, 확장된 행 바로 아래에 표시
+  - **적용 파일**:
+    - `BuildingProcessPlanPage.tsx` (Line 1584-1589, 2089-2133 삭제 → 2121-2223 추가)
+    - `BasementProcessPlanPage.tsx` (Line 965-971, 1285-1334, 1795-1833 삭제 → 1834-1922 추가)
+    - `ProcessDetailPanel.tsx` (Line 286-294 간소화)
+  - **UI 개선**:
+    - ✅ 확장된 행에 좌측 4px accent-500 보더 + 그림자 추가
+    - ✅ 패널에 4px 상단 accent-500 보더로 시각적 연결 강화
+    - ✅ 패널 헤더에 층 정보 명시 (예: "주동 지하층 B1 상세 공정")
+    - ✅ "세부 공종별 계획 정보" 부제목으로 내용 안내
+    - ✅ 행 클릭 → 아래 패널 표시로 자연스러운 정보 흐름
+  - **레이아웃 변경**:
+    - Before: 테이블 8개 열 + rowSpan 9번째 열 (패널 옆에 배치)
+    - After: 테이블 8개 열 + 독립 패널 영역 (확장된 행 아래 배치)
+  - **ProcessDetailPanel 간소화**:
+    - 내부 헤더 제거 (외부에서 표시)
+    - 순작업일 합계만 상단에 간략히 표시
+    - 카드 목록에 집중
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+  - **정량적 개선**:
+    - BuildingProcessPlanPage: ~90줄 변경 (rowSpan 제거, 독립 패널 추가)
+    - BasementProcessPlanPage: ~100줄 변경 (특수 행 처리 포함)
+    - ProcessDetailPanel: ~15줄 간소화
+  - **정성적 개선**:
+    - ✅ 명확한 시각적 연결: 좌측 보더 + 상단 보더로 확장된 행과 패널 연결 강조
+    - ✅ 정보 흐름 개선: 행 선택 → 바로 아래 상세 정보 (위에서 아래로 자연스러운 읽기 흐름)
+    - ✅ 유지보수성: 테이블과 패널의 독립성으로 향후 수정 용이
+    - ✅ 레이아웃 유연성: 패널이 전체 너비를 활용 가능
+
+- **세부공정 상세 레이아웃 변경**: 반응형 3열 그리드 → 1열 통일로 가독성 향상
+  - **파일**: `ProcessDetailPanel.tsx` (Line 297)
+  - **변경 전**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` (모바일 1열, 태블릿 2열, 데스크톱 3열)
+  - **변경 후**: `grid-cols-1` (모든 화면 크기에서 1열)
+  - **적용 범위**:
+    - 지상층 공정계획 (`BuildingProcessPlanPage.tsx`)의 세부공정 상세 패널
+    - 지하층 공정계획 (`BasementProcessPlanPage.tsx`)의 세부공정 상세 패널
+  - **개선 효과**:
+    - ✅ 가독성 향상: 세부공정 카드의 정보량이 많아 1열에서 더 읽기 쉬움
+    - ✅ 스크롤 편의: 위에서 아래로 순차적으로 읽기 쉬운 구조
+    - ✅ 일관성: 모든 화면 크기에서 동일한 레이아웃 제공
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
 #### Refactored
 - **지하층 공정모듈 재구성: 카테고리 명칭 변경 및 층고 6.5m 이상 통합**: 주동 지하층 명칭 통일 및 B1+B2 통합 지하층 구조 개선
   - **카테고리 명칭 변경**: '지하층' → '주동 지하층' (지하주차장과 구분 명확화)
@@ -999,6 +1091,18 @@ Supabase PostgreSQL 기반 데이터베이스
       └── FloorHeightSection.tsx
   ```
 
+### 2025-02-05
+#### Changed
+- **세부공정 패널 레이아웃 개선**: 테이블 아래에서 테이블 오른편(9번째 열)으로 패널 위치 변경
+  - `BasementProcessPlanPage.tsx`, `BuildingProcessPlanPage.tsx`: 테이블 헤더에 "세부공정 상세" 열 추가
+  - 첫 번째 행에서 `rowSpan={processRows.length + 1}`로 모든 행을 커버하는 9번째 열 셀 추가
+  - 외부 독립 패널 제거 (테이블 내부에 통합)
+  - 확장되지 않은 상태에서는 Info 아이콘과 안내 메시지 표시
+  - 확장된 행의 좌측 보더(`border-l-4 border-accent-500`), transition 효과, hover 효과 유지
+- **폰트 일관성 개선**: Input 필드와 합계 행의 폰트 통일
+  - Input 필드: `text-xs` → `text-xs font-normal` (BasementProcessPlanPage.tsx 5곳)
+  - 합계 행: `font-bold` → `font-semibold` (BasementProcessPlanPage.tsx, BuildingProcessPlanPage.tsx 각 6곳)
+
 ### 2025-02-02
 #### Fixed
 - **프로젝트 멤버 권한 체크 버그 수정**: 프로젝트 번호(숫자)와 UUID 형식 불일치로 인한 접근 거부 문제 해결
@@ -1031,6 +1135,15 @@ Supabase PostgreSQL 기반 데이터베이스
 #### Fixed
 - **Vercel 빌드 실패 수정**: `sa-gantt-lib`를 web 앱보다 먼저 빌드하도록 `vercel.json` 수정
   - `buildCommand`: `npm run build:lib && npm run build`
+
+### 2025-02-05
+#### Fixed
+- **세부공정 패널 호버 격리**: 9번째 열(세부공정 상세 패널)에 명시적 배경색(`bg-white dark:bg-zinc-950`)을 추가하여 부모 행의 호버 스타일(`hover:bg-zinc-50`) 상속 방지
+- **확장된 행-헤더 색상 동기화**: 세부공정 패널 헤더 배경색을 확장된 행과 일치시킴 (`bg-accent-50/50` → `bg-accent-50`, `dark:bg-accent-900/10` → `dark:bg-accent-900/20`)
+
+#### Files Changed
+- `BasementProcessPlanPage.tsx` (Line 1288, 1349)
+- `BuildingProcessPlanPage.tsx` (Line 2092, 2135)
 
 ### 2025-01-27
 #### Fixed
