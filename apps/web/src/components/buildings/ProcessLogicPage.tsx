@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
 import { Card } from '@/components/ui';
@@ -11,8 +11,16 @@ import {
   CycleDefinitionSection,
   useProcessLogicState,
 } from './process-logic';
+import { PresetSelector } from './process-logic/PresetSelector';
+import { PresetManagerModal } from './process-logic/PresetManagerModal';
+import { FormulaEditorModal } from './process-logic/FormulaEditorModal';
+import { ProcessModuleEditModal } from './process-logic/ProcessModuleEditModal';
+import { usePresetManager } from './process-logic/hooks/usePresetManager';
+import { useFormulaEditor } from './process-logic/hooks/useFormulaEditor';
+import { migrateToPreset } from '@/lib/utils/process-logic-migration';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
-import type { Profile, ProcessCategory } from '@/lib/types';
+import type { Profile, ProcessCategory, EquipmentBaseHistoryItem } from '@/lib/types';
+import { isProcessModuleArray } from '@/lib/types';
 
 interface ProcessLogicPageProps {
   projectId: string;
@@ -26,8 +34,15 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
   // 확인 다이얼로그 상태
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
-    type: 'cancel' | 'reset' | null;
+    type: 'cancel' | 'reset' | 'apply-preset' | null;
+    presetId?: string;
   }>({ open: false, type: null });
+
+  // 모달 상태
+  const [isPresetManagerOpen, setIsPresetManagerOpen] = useState(false);
+  const [isFormulaEditorOpen, setIsFormulaEditorOpen] = useState(false);
+  const [isProcessModuleModalOpen, setIsProcessModuleModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ProcessCategory>('버림');
 
   // 프로필 로드
   useEffect(() => {
@@ -52,6 +67,72 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     cancelChanges,
   } = useProcessLogicState({ projectId });
 
+  // 현재 장비 기준 값 계산
+  const currentEquipmentBases = useMemo(() => {
+    const bases: Record<ProcessCategory, number> = {
+      '버림': 650,
+      '기초': 650,
+      '지하층': 500,
+      '셋팅층': 400,
+      '기준층': 320,
+      '최상층': 230,
+      'PH층': 230,
+      '옥탑층': 230,
+      '지하주차장': 500,
+      '일반층': 200,
+    };
+
+    for (const module of modules) {
+      const concreteItem = module.items.find(
+        (item) => item.equipmentCalculationBase !== undefined
+      );
+      if (concreteItem && concreteItem.equipmentCalculationBase !== undefined) {
+        bases[module.category] = concreteItem.equipmentCalculationBase;
+      }
+    }
+
+    return bases;
+  }, [modules]);
+
+  // 공식 편집 훅
+  const {
+    formulas,
+    isLoading: isLoadingFormulas,
+    loadFormulas,
+    createFormula,
+    updateFormula,
+    deleteFormula,
+    validateFormula,
+  } = useFormulaEditor({ projectId });
+
+  // 프리셋 관리 훅
+  const {
+    presets,
+    activePresetId,
+    isLoading: isLoadingPresets,
+    loadPresets,
+    applyPreset,
+    saveCurrentAsPreset,
+    updatePreset,
+    deletePreset,
+    duplicatePreset,
+  } = usePresetManager({
+    projectId,
+    currentModules: modules,
+    currentFormulas: formulas,
+    currentEquipmentBases,
+  });
+
+  // 초기 마이그레이션 및 데이터 로드
+  useEffect(() => {
+    // 레거시 데이터 마이그레이션
+    migrateToPreset(projectId);
+
+    // 공식 및 프리셋 로드
+    loadFormulas();
+    loadPresets();
+  }, [projectId, loadFormulas, loadPresets]);
+
   const handleSave = () => {
     const success = save();
     if (success) {
@@ -75,6 +156,31 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     setConfirmDialog({ open: true, type: 'reset' });
   };
 
+  const handlePresetChange = (presetId: string) => {
+    if (hasChanges) {
+      setConfirmDialog({ open: true, type: 'apply-preset', presetId });
+    } else {
+      applyPresetNow(presetId);
+    }
+  };
+
+  const applyPresetNow = (presetId: string) => {
+    const preset = applyPreset(presetId);
+    if (preset) {
+      if (isProcessModuleArray(preset.modules)) {
+        updateModules(preset.modules);
+        toast.success(`프리셋 "${preset.name}"이(가) 적용되었습니다.`);
+      } else {
+        console.error('Invalid preset modules format:', preset.modules);
+        toast.error('프리셋 형식이 올바르지 않습니다.');
+      }
+    } else {
+      toast.error('프리셋 적용 실패', {
+        description: '프리셋을 찾을 수 없습니다.',
+      });
+    }
+  };
+
   const handleConfirmDialogAction = () => {
     if (confirmDialog.type === 'cancel') {
       cancelChanges();
@@ -82,15 +188,19 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     } else if (confirmDialog.type === 'reset') {
       resetToDefault();
       toast.info('기본값으로 초기화되었습니다. 저장 버튼을 클릭하여 적용하세요.');
+    } else if (confirmDialog.type === 'apply-preset' && confirmDialog.presetId) {
+      applyPresetNow(confirmDialog.presetId);
     }
     setConfirmDialog({ open: false, type: null });
   };
 
   /**
    * 부위별 대당 타설량 변경 핸들러
-   * 해당 카테고리의 모든 ProcessItem.equipmentCalculationBase를 업데이트
+   * 해당 카테고리의 모든 ProcessItem.equipmentCalculationBase를 업데이트하고 이력 저장
    */
   const handleEquipmentBaseChange = (category: ProcessCategory, value: number) => {
+    const previousValue = currentEquipmentBases[category];
+
     const updatedModules = modules.map((module) => {
       // 카테고리가 일치하지 않으면 그대로 반환
       if (module.category !== category) return module;
@@ -107,6 +217,21 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     });
 
     updateModules(updatedModules);
+
+    // 장비 기준 변경 이력 저장
+    const historyKey = `contech-equipment-base-history-${projectId}`;
+    const historyItem: EquipmentBaseHistoryItem = {
+      timestamp: new Date().toISOString(),
+      category,
+      previousValue,
+      newValue: value,
+      changedBy: 'user',
+    };
+
+    const stored = localStorage.getItem(historyKey);
+    const existing = stored ? JSON.parse(stored) : [];
+    const updated = [historyItem, ...existing].slice(0, 10);
+    localStorage.setItem(historyKey, JSON.stringify(updated));
   };
 
   // 프로필 로딩 중
@@ -137,39 +262,106 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* 계산 공식 섹션 - 독립적인 편집 모드 */}
+      {/* 프리셋 선택기 */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <PresetSelector
+            presets={presets}
+            activePresetId={activePresetId}
+            onPresetChange={handlePresetChange}
+            onManageClick={() => setIsPresetManagerOpen(true)}
+            disabled={isLoadingPresets}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsFormulaEditorOpen(true)}
+              className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              공식 관리
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* 계산 공식 섹션 - 전역 편집 상태에서 인라인 편집 */}
       <FormulaSection
         modules={modules}
+        isEditing={isEditing}
         onEquipmentBaseChange={handleEquipmentBaseChange}
         onSave={handleSave}
       />
 
-      {/* 공정 모듈 섹션 - 편집 버튼이 이 섹션 헤더에 있음 */}
+      {/* 공정 모듈 섹션 - 읽기 전용, 고급 편집 버튼 제공 */}
       <ProcessModuleSection
-        isEditing={isEditing}
         modules={modules}
-        hasChanges={hasChanges}
-        onModuleChange={updateModules}
-        onResetToDefault={handleResetToDefault}
-        onToggleEditing={toggleEditing}
-        onSave={handleSave}
-        onCancel={handleCancel}
+        onOpenAdvancedModal={(category) => {
+          setSelectedCategory(category);
+          setIsProcessModuleModalOpen(true);
+        }}
       />
 
       {/* 사이클 정의 섹션 */}
       <CycleDefinitionSection />
 
+      {/* 프리셋 관리 모달 */}
+      <PresetManagerModal
+        open={isPresetManagerOpen}
+        onOpenChange={setIsPresetManagerOpen}
+        presets={presets}
+        activePresetId={activePresetId}
+        onApply={handlePresetChange}
+        onDuplicate={duplicatePreset}
+        onDelete={deletePreset}
+        onUpdate={updatePreset}
+        onSaveCurrentAs={saveCurrentAsPreset}
+      />
+
+      {/* 공식 편집 모달 */}
+      <FormulaEditorModal
+        open={isFormulaEditorOpen}
+        onOpenChange={setIsFormulaEditorOpen}
+        formulas={formulas}
+        onCreate={createFormula}
+        onUpdate={updateFormula}
+        onDelete={deleteFormula}
+        onValidate={validateFormula}
+      />
+
+      {/* 공정모듈 고급 편집 모달 */}
+      <ProcessModuleEditModal
+        open={isProcessModuleModalOpen}
+        onOpenChange={setIsProcessModuleModalOpen}
+        modules={modules}
+        activeCategory={selectedCategory}
+        onSave={(updatedModules) => {
+          updateModules(updatedModules);
+          toast.success('공정모듈이 저장되었습니다.');
+        }}
+        projectId={projectId}
+        equipmentBaseForCategory={currentEquipmentBases[selectedCategory]}
+      />
+
       {/* 확인 다이얼로그 */}
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={(open) => setConfirmDialog({ open, type: open ? confirmDialog.type : null })}
-        title={confirmDialog.type === 'cancel' ? '변경 취소' : '기본값 초기화'}
+        title={
+          confirmDialog.type === 'cancel'
+            ? '변경 취소'
+            : confirmDialog.type === 'reset'
+            ? '기본값 초기화'
+            : '프리셋 적용'
+        }
         description={
           confirmDialog.type === 'cancel'
             ? '저장하지 않은 변경 사항이 모두 사라집니다. 정말 취소하시겠습니까?'
-            : '모든 설정이 기본값으로 초기화됩니다. 계속하시겠습니까?'
+            : confirmDialog.type === 'reset'
+            ? '모든 설정이 기본값으로 초기화됩니다. 계속하시겠습니까?'
+            : '현재 설정이 변경됩니다. 저장하지 않은 변경 사항이 사라집니다. 계속하시겠습니까?'
         }
-        confirmText={confirmDialog.type === 'cancel' ? '취소하기' : '초기화'}
+        confirmText={
+          confirmDialog.type === 'cancel' ? '취소하기' : confirmDialog.type === 'reset' ? '초기화' : '적용'
+        }
         cancelText="돌아가기"
         variant="warning"
         onConfirm={handleConfirmDialogAction}

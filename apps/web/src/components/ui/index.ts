@@ -15,3 +15,4 @@ export * from './FormTextarea';
 export * from './Skeleton';
 export * from './TabLoadingSkeleton';
 export * from './CollapsibleSection';
+export * from './Checkbox';

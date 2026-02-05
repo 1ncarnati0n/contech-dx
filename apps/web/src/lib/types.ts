@@ -606,6 +606,7 @@ export interface CreateBuildingDTO {
 export interface UpdateBuildingDTO {
   buildingName?: string;
   meta?: Partial<BuildingMeta>;
+  forceRegenerateFloors?: boolean; // 층수/층고 변경 시 강제 재생성
 }
 
 /**
@@ -1158,3 +1159,157 @@ export type BuildingProcessPlanInsert = Omit<BuildingProcessPlanRow, 'id' | 'cre
  * PouringSection 생성용 Insert 타입
  */
 export type PouringSectionInsert = Omit<PouringSectionRow, 'id' | 'created_at' | 'updated_at'>;
+
+// ============================================
+// 공정계획 시스템 - 계산 공식 및 프리셋 관리
+// ============================================
+
+/**
+ * 계산 공식 변수 정의
+ */
+export interface FormulaVariable {
+  name: string;
+  description: string;
+  valueType: 'number' | 'reference' | 'calculated';
+}
+
+/**
+ * 계산 공식 정의
+ */
+export interface CalculationFormula {
+  id: string;
+  name: string;
+  formula: string;  // 예: "CEIL({수량} / {인당생산성})"
+  variables: FormulaVariable[];
+  example?: string;
+  isBuiltIn: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * 공정 계획 프리셋
+ */
+export interface ProcessLogicPreset {
+  id: string;
+  name: string;
+  description?: string;
+  projectId?: string;  // null이면 시공사 공통
+  organizationId?: string;
+  isDefault: boolean;
+  modules: any[];  // ProcessModule[] (import 순환참조 방지)
+  formulas: CalculationFormula[];
+  equipmentBases: Record<ProcessCategory, number>;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * ProcessModule 타입 가드
+ *
+ * @param value - 검증할 값
+ * @returns ProcessModule 타입 여부
+ */
+export function isProcessModule(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+
+  const module = value as Record<string, unknown>;
+
+  return (
+    typeof module.id === 'string' &&
+    typeof module.name === 'string' &&
+    typeof module.category === 'string' &&
+    Array.isArray(module.items)
+  );
+}
+
+/**
+ * ProcessModule 배열 타입 가드
+ *
+ * @param value - 검증할 값
+ * @returns ProcessModule 배열 타입 여부
+ */
+export function isProcessModuleArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every(isProcessModule);
+}
+
+/**
+ * 검증 이슈 타입
+ */
+export type ValidationIssueType = 'negative' | 'zero' | 'extreme' | 'deviation' | 'missing';
+
+/**
+ * 검증 이슈 심각도
+ */
+export type ValidationIssueSeverity = 'error' | 'warning' | 'info';
+
+/**
+ * 검증 이슈
+ */
+export interface ValidationIssue {
+  type: ValidationIssueType;
+  severity: ValidationIssueSeverity;
+  message: string;
+  field: string;
+}
+
+/**
+ * 검증 결과
+ */
+export interface ValidationResult {
+  itemId: string;
+  itemName: string;
+  category: ProcessCategory;
+  issues: ValidationIssue[];
+  calculatedValue: number;
+  expectedValue?: number;  // Excel 값
+  deviation?: number;  // 편차 (%)
+}
+
+/**
+ * 계산 단계
+ */
+export interface CalculationStep {
+  step: number;
+  operation: string;
+  input: Record<string, number | string>;
+  output: number;
+  formula: string;
+}
+
+/**
+ * 계산 로그
+ */
+export interface CalculationLog {
+  itemId: string;
+  itemName: string;
+  steps: CalculationStep[];
+  finalValue: number;
+  timestamp: string;
+}
+
+/**
+ * 장비 기준 히스토리 항목
+ */
+export interface EquipmentBaseHistoryItem {
+  timestamp: string;
+  category: ProcessCategory;
+  previousValue: number;
+  newValue: number;
+  changedBy: string;
+}
+
+/**
+ * 공정모듈 변경 이력 항목
+ */
+export interface ProcessModuleHistoryItem {
+  timestamp: string;
+  category: ProcessCategory;
+  itemId: string;
+  itemName: string;
+  field: 'dailyProductivity' | 'directWorkDays' | 'indirectDays' | 'equipmentCalculationBase' | 'equipmentWorkersPerUnit' | 'quantityReference';
+  previousValue: number | string | undefined;
+  newValue: number | string | undefined;
+  changedBy: string;
+}
