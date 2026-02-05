@@ -34,7 +34,7 @@ const PROCESS_CATEGORIES: ProcessCategory[] = ['셋팅층', '기준층', '옥탑
 const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
   '버림': ['표준공정'],
   '기초': ['표준공정'],
-  '지하층': ['표준공정'],
+  '주동 지하층': ['표준공정'],
   '셋팅층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
   '기준층': ['5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
   '최상층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
@@ -48,7 +48,7 @@ const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
 const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
   '버림': '표준공정',
   '기초': '표준공정',
-  '지하층': '표준공정',
+  '주동 지하층': '표준공정',
   '셋팅층': '표준공정',
   '기준층': '6일 사이클',
   '최상층': '표준공정',
@@ -406,7 +406,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     if (!building) return;
 
     // 지하층나 옥탑층의 경우 층별로 저장
-    if ((category === '지하층' || category === '옥탑층') && floorLabel) {
+    if ((category === '주동 지하층' || category === '옥탑층') && floorLabel) {
       const updatedPlan = {
         ...plan,
         processes: {
@@ -466,7 +466,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     if (!categoryProcess) return DEFAULT_PROCESS_TYPES[category];
     
     // 지하층나 옥탑층의 경우 층별 processType 확인
-    if ((category === '지하층' || category === '옥탑층') && categoryProcess.floors) {
+    if ((category === '주동 지하층' || category === '옥탑층') && categoryProcess.floors) {
       if (categoryProcess.floors[floorLabel]) {
         return categoryProcess.floors[floorLabel].processType;
       }
@@ -1226,7 +1226,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     const isExpandedNormalFloor = expandedRow?.floorClass === '일반층';
     const expandedEffectiveCategory = isExpandedNormalFloor ? '옥탑층' : (expandedRow?.category || categoryKey);
 
-    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
+    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '주동 지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
       ? (isExpandedNormalFloor
           ? getProcessTypeForFloor(plan, '옥탑층', expandedRow.floorLabel)
           : getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel))
@@ -1283,7 +1283,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         : expandedRow.floorLabel;
 
       const floorItems = colModule?.items.filter(moduleItem => {
-        if (expandedRow.category === '지하층') {
+        if (expandedRow.category === '주동 지하층') {
           return moduleItem.floorLabel === expandedRow.floorLabel;
         }
         if (expandedRow.category === 'PH층') {
@@ -1345,7 +1345,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
             const [, col] = refMatch;
             const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
 
-            if (expandedRow.category === '지하층' && expandedRow.floorLabel) {
+            if (expandedRow.category === '주동 지하층' && expandedRow.floorLabel) {
               quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
                 col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
                 col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3') * ratio;
@@ -1608,7 +1608,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
                               // 일반 지하층 행은 항상 표준공정 사용 (3단 가시설 적용부 행만 내부적으로 '층고6.5m이상')
                               let processType: ProcessType;
-                              if (row.floorLabel && (row.category === '지하층' || row.category === '옥탑층' || isNormalFloor)) {
+                              if (row.floorLabel && (row.category === '주동 지하층' || row.category === '옥탑층' || isNormalFloor)) {
                                 processType = isNormalFloor
                                   ? getProcessTypeForFloor(plan, '옥탑층', row.floorLabel)
                                   : getProcessTypeForFloor(plan, row.category, row.floorLabel);
@@ -1623,7 +1623,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                 // 모듈이 없으면 기존 방식 사용
                                 if (row.category === '버림' || row.category === '기초') {
                                   days = plan?.processes[row.category]?.days || 0;
-                                } else if (row.category === '지하층' && row.floorLabel) {
+                                } else if (row.category === '주동 지하층' && row.floorLabel) {
                                   days = calculateBasementFloorDays(building, row.category, processType, row.floorLabel);
                                 } else if (row.category === '셋팅층' && row.floorLabel) {
                                   if (isNormalFloor) {
@@ -1688,11 +1688,11 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   });
                                 }
                                 // 셋팅층, 일반층, 지하층, PH층, 옥탑층, 기준층 - 각 층별로 해당 층의 항목만 계산
-                                else if (row.floorLabel && (row.category === '셋팅층' || row.category === '지하층' || row.category === 'PH층' || row.category === '옥탑층' || row.category === '기준층' || isNormalFloor)) {
+                                else if (row.floorLabel && (row.category === '셋팅층' || row.category === '주동 지하층' || row.category === 'PH층' || row.category === '옥탑층' || row.category === '기준층' || isNormalFloor)) {
                                   // 해당 층의 항목만 필터링
                                   const floorItems = module.items.filter(item => {
                                     // 지하층의 경우 item.floorLabel과 row.floorLabel이 일치해야 함
-                                    if (row.category === '지하층') {
+                                    if (row.category === '주동 지하층') {
                                       return item.floorLabel === row.floorLabel;
                                     }
                                     // PH층의 경우 floorLabel이 없으면 모든 항목 포함 (일반층처럼 처리)
@@ -1766,7 +1766,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       if (refMatch && row.floorLabel) {
                                         const [, col] = refMatch;
 
-                                        if (row.category === '지하층') {
+                                        if (row.category === '주동 지하층') {
                                           // 지하층은 floorLabel 그대로 사용 (B1, B2 등)
                                           quantity = getQuantityFromFloor(building, row.floorLabel,
                                             col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
@@ -1879,8 +1879,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   return row.category;
                                 }
                                 // 지하층인 경우 "지하층" 표시
-                                if (row.category === '지하층') {
-                                  return '지하층';
+                                if (row.category === '주동 지하층') {
+                                  return '주동 지하층';
                                 }
                                 // 옥탑층인 경우 "옥탑층" 표시
                                 if (row.category === '옥탑층') {
@@ -2106,7 +2106,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           const isExpandedNormalFloor = expandedRow?.floorClass === '일반층';
                                           const expandedEffectiveCategory = isExpandedNormalFloor ? '옥탑층' : expandedRow?.category;
 
-                                          const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
+                                          const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '주동 지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
                                             ? (isExpandedNormalFloor
                                                 ? getProcessTypeForFloor(plan, '옥탑층', expandedRow.floorLabel)
                                                 : getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel))

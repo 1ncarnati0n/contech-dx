@@ -170,7 +170,7 @@ export function ProcessDetailPanel({
     if (expandedRow.category === '기준층') {
       return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
     }
-    if (expandedRow.category === '지하층') {
+    if (expandedRow.category === '주동 지하층') {
       // 특수 행(주차장, 3단 가시설)인 경우 해당 지하층의 항목 사용
       if (isSpecialRow) {
         return item.floorLabel === targetFloorLabel;
@@ -247,7 +247,7 @@ export function ProcessDetailPanel({
     if (expandedRow.category === '버림' || expandedRow.category === '기초') {
       return expandedRow.category;
     }
-    if (expandedRow.category === '지하층') {
+    if (expandedRow.category === '주동 지하층') {
       // 특수 행(주차장, 3단 가시설)인 경우 그대로 표시
       if (isSpecialRow) {
         return expandedRow.floorLabel || '';

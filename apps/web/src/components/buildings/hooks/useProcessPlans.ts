@@ -5,7 +5,7 @@ import { getProcessModule } from '@/lib/data/process-modules';
 const DEFAULT_PROCESS_TYPES = {
   '버림': '표준공정' as const,
   '기초': '표준공정' as const,
-  '지하층': '표준공정' as const,
+  '주동 지하층': '표준공정' as const,
   '셋팅층': '표준공정' as const,
   '기준층': '6일 사이클' as const,
   '옥탑층': '표준공정' as const,

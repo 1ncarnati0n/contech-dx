@@ -45,12 +45,12 @@ interface UnifiedSettingsModalProps {
 }
 
 // UI 라벨과 실제 ProcessCategory 간의 매핑
-type EquipmentBaseLabel = '버림' | '기초' | '지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
+type EquipmentBaseLabel = '버림' | '기초' | '주동 지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
 
 const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[] = [
   { label: '버림', defaultValue: 650 },
   { label: '기초', defaultValue: 650 },
-  { label: '지하층', defaultValue: 500 },
+  { label: '주동 지하층', defaultValue: 500 },
   { label: '1층', defaultValue: 400 },
   { label: '일반층', defaultValue: 200 },
   { label: '셋팅층', defaultValue: 400 },
@@ -63,7 +63,7 @@ const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[
 const LABEL_TO_CATEGORY_MAP: Record<EquipmentBaseLabel, ProcessCategory> = {
   '버림': '버림',
   '기초': '기초',
-  '지하층': '지하층',
+  '주동 지하층': '주동 지하층',
   '1층': '셋팅층',
   '셋팅층': '셋팅층',
   '일반층': '일반층',

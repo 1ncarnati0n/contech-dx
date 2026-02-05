@@ -129,8 +129,8 @@ type TabId = ProcessCategory | '지하층(층고6.5m이상)';
 const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string }[] = [
   { id: '버림', label: '버림', category: '버림' },
   { id: '기초', label: '기초', category: '기초' },
-  { id: '지하층', label: '지하층', category: '지하층' },
-  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '지하층', processType: '층고6.5m이상' },
+  { id: '주동 지하층', label: '주동 지하층', category: '주동 지하층' },
+  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '주동 지하층', processType: '층고6.5m이상' },
   { id: '지하주차장', label: '지하주차장', category: '지하주차장' },
   { id: '일반층', label: '일반층', category: '일반층' },
   { id: '셋팅층', label: '셋팅층', category: '셋팅층' },
@@ -207,6 +207,12 @@ export function ProcessModuleSection({
   // 표준공정 모듈 찾기 (첫 번째 것 사용)
   const primaryModule = categoryModules[0];
 
+  // 현재 탭의 실제 카테고리 가져오기 (고급 편집용)
+  const currentCategory = useMemo(() => {
+    const currentTab = CATEGORY_TABS.find(t => t.id === activeTab);
+    return currentTab?.category || (activeTab as ProcessCategory);
+  }, [activeTab]);
+
   return (
     <TooltipProvider>
       <Card className="p-0 overflow-hidden">
@@ -231,7 +237,7 @@ export function ProcessModuleSection({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onOpenAdvancedModal(activeTab as ProcessCategory)}
+              onClick={() => onOpenAdvancedModal(currentCategory)}
               className="gap-1"
             >
               <Settings className="w-3.5 h-3.5" />

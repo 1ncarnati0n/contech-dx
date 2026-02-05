@@ -1263,7 +1263,16 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         {row.label}
                       </td>
                       {/* 형틀 합계 (읽기 전용) */}
-                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                      <td className="relative px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                        {/* 셀 주소 라벨 */}
+                        {getCellAddress(2, rowIndex, rows) && (
+                          <span
+                            className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60"
+                            aria-hidden="true"
+                          >
+                            {getCellAddress(2, rowIndex, rows)}
+                          </span>
+                        )}
                         {(() => {
                           const val = calculateFormworkTotal(floorTrade);
                           return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1275,6 +1284,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'gangForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={3}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="gangForm.areaM2"
@@ -1297,6 +1307,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'alForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={4}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="alForm.areaM2"
@@ -1318,6 +1329,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'euroForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={5}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="euroForm.areaM2"
@@ -1334,7 +1346,16 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         isLocked={false}
                       />
                       {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
-                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                      <td className="relative px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                        {/* 셀 주소 라벨 */}
+                        {getCellAddress(6, rowIndex, rows) && (
+                          <span
+                            className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60"
+                            aria-hidden="true"
+                          >
+                            {getCellAddress(6, rowIndex, rows)}
+                          </span>
+                        )}
                         {(() => {
                           const euroFormVal = floorTrade.euroForm?.areaM2 || 0;
                           const val = euroFormVal * 2;
@@ -1347,6 +1368,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'rebar.ton', v)}
                         rowIndex={rowIndex}
                         colIndex={7}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="rebar.ton"
@@ -1368,6 +1390,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'concrete.volumeM3', v)}
                         rowIndex={rowIndex}
                         colIndex={8}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="concrete.volumeM3"
@@ -1421,14 +1444,15 @@ function calculateFormula(formula: string): number | null {
 
 /**
  * 열 인덱스를 공정모듈 열 문자로 변환
- * quantity-reference.ts의 열 매핑과 일치
- * B=갱폼, C=알폼, D=형틀 합계, E=해체/정리, F=철근, G=콘크리트
+ * quantity-reference.ts의 열 매핑과 일치 (+ 유로폼은 U열로 독립 매핑)
+ * B=갱폼, C=알폼, D=형틀 합계, U=유로폼, E=해체/정리, F=철근, G=콘크리트
  */
 function getColumnLetter(colIndex: number): string | null {
   const mapping: Record<number, string> = {
     2: 'D', // 형틀 합계
     3: 'B', // 갱폼
     4: 'C', // 알폼
+    5: 'U', // 유로폼 (공정모듈에서 직접 참조 안 함, 독립 표시용)
     6: 'E', // 해체/정리
     7: 'F', // 철근
     8: 'G', // 콘크리트

@@ -123,7 +123,7 @@ function SortableRow({
       <td className="px-2 py-2 align-middle">
         <div className="flex items-center gap-2 min-w-0">
           <span
-            className="font-medium text-zinc-900 dark:text-white truncate max-w-[200px]"
+            className="font-medium text-zinc-900 dark:text-white truncate max-w-[180px]"
             title={item.workItem}
           >
             {item.workItem}
@@ -134,6 +134,22 @@ function SortableRow({
             </Badge>
           )}
         </div>
+      </td>
+      <td className="px-2 py-2 align-middle">
+        {item.floorLabel ? (
+          <Badge
+            variant={
+              item.floorLabel.startsWith('B') ? 'info' :
+              item.floorLabel.startsWith('옥탑') || item.floorLabel.startsWith('PH') ? 'warning' :
+              'secondary'
+            }
+            className="text-xs font-mono"
+          >
+            {item.floorLabel}
+          </Badge>
+        ) : (
+          <span className="text-zinc-400 dark:text-zinc-500 text-xs text-center block">-</span>
+        )}
       </td>
       <td className="px-2 py-2 align-middle">
         <Input
@@ -555,6 +571,7 @@ export function ProcessModuleEditModal({
                             <GripVertical className="w-4 h-4 text-zinc-400" />
                           </th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">공정명</th>
+                          <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200 w-[70px]">층</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">인당생산성</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">순작업일</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">간접일</th>

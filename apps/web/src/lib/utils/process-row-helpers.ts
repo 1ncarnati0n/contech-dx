@@ -41,8 +41,8 @@ export function getCategoryLabel(row: ProcessRow): string {
   }
 
   // 지하층인 경우 "지하층" 표시
-  if (row.category === '지하층') {
-    return '지하층';
+  if (row.category === '주동 지하층') {
+    return '주동 지하층';
   }
 
   // 옥탑층인 경우 "옥탑층" 표시

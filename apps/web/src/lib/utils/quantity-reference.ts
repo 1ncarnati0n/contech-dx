@@ -10,7 +10,7 @@ import type { Building, FloorTrade } from '@/lib/types';
  */
 export function getQuantityFromBuilding(
   building: Building,
-  category: string, // '버림', '기초', '지하층' 등
+  category: string, // '버림', '기초', '주동 지하층' 등
   field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
   subField: string // 'areaM2', 'ton', 'volumeM3' 등
 ): number {
@@ -262,7 +262,7 @@ export function getQuantityByReference(
     tradeGroup = '기초';
   } else if (rowNum === 8) {
     // B2 (행 8)
-    tradeGroup = '지하층';
+    tradeGroup = '주동 지하층';
     const basementFloors = building.floors.filter(f => f.levelType === '지하');
     if (basementFloors.length >= 2) {
       // 정규화된 라벨 사용 (코어 정보 제거)
@@ -270,7 +270,7 @@ export function getQuantityByReference(
     }
   } else if (rowNum === 9) {
     // B1 (행 9)
-    tradeGroup = '지하층';
+    tradeGroup = '주동 지하층';
     const basementFloors = building.floors.filter(f => f.levelType === '지하');
     if (basementFloors.length >= 1) {
       // 정규화된 라벨 사용 (코어 정보 제거)

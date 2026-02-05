@@ -69,7 +69,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     const bases: Record<ProcessCategory, number> = {
       '버림': 650,
       '기초': 650,
-      '지하층': 500,
+      '주동 지하층': 500,
       '셋팅층': 400,
       '기준층': 320,
       '최상층': 230,
@@ -96,7 +96,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     return {
       '버림': currentEquipmentBases['버림'],
       '기초': currentEquipmentBases['기초'],
-      '지하층': currentEquipmentBases['지하층'],
+      '주동 지하층': currentEquipmentBases['주동 지하층'],
       '1층': currentEquipmentBases['셋팅층'],
       '셋팅층': currentEquipmentBases['셋팅층'],
       '일반층': currentEquipmentBases['일반층'],
