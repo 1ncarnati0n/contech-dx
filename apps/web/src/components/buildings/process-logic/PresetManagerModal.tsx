@@ -197,7 +197,7 @@ export function PresetManagerModal({
             {/* 프리셋 목록 */}
             <div className="space-y-3">
               {presets.length === 0 && (
-                <p className="text-center text-gray-500 py-8">
+                <p className="text-center text-zinc-500 py-8">
                   저장된 프리셋이 없습니다. 현재 설정을 프리셋으로 저장해보세요.
                 </p>
               )}
@@ -307,7 +307,7 @@ export function PresetManagerModal({
                     )}
                   </CardFooter>
 
-                  <CardContent className="text-xs text-gray-500 border-t pt-3">
+                  <CardContent className="text-xs text-zinc-500 border-t pt-3">
                     생성일: {new Date(preset.createdAt).toLocaleDateString('ko-KR')} |
                     수정일: {new Date(preset.updatedAt).toLocaleDateString('ko-KR')} |
                     생성자: {preset.createdBy}

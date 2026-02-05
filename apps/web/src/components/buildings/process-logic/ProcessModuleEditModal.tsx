@@ -431,19 +431,19 @@ export function ProcessModuleEditModal({
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="px-2 py-2 text-left border-r border-gray-200">
+                        <th className="px-2 py-2 text-left border-r border-zinc-200">
                           <Checkbox
                             checked={allSelected}
                             onCheckedChange={handleSelectAll}
                             aria-label="전체 선택"
                           />
                         </th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold border-r border-gray-200">공정명</th>
-                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-gray-200">인당생산성</th>
-                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-gray-200">순작업일</th>
-                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-gray-200">간접일</th>
-                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-gray-200">대당타설량</th>
-                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-gray-200">장비당인원</th>
+                        <th className="px-2 py-2 text-left text-xs font-semibold border-r border-zinc-200">공정명</th>
+                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-zinc-200">인당생산성</th>
+                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-zinc-200">순작업일</th>
+                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-zinc-200">간접일</th>
+                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-zinc-200">대당타설량</th>
+                        <th className="px-2 py-2 text-right text-xs font-semibold border-r border-zinc-200">장비당인원</th>
                         <th className="px-2 py-2 text-left text-xs font-semibold">물량참조</th>
                       </tr>
                     </thead>
@@ -455,15 +455,15 @@ export function ProcessModuleEditModal({
                         return (
                           <tr
                             key={item.id}
-                            className={`border-b hover:bg-gray-50 ${isChanged ? 'bg-yellow-50' : ''}`}
+                            className={`border-b hover:bg-zinc-50 ${isChanged ? 'bg-yellow-50' : ''}`}
                           >
-                            <td className="px-2 py-2 border-r border-gray-200">
+                            <td className="px-2 py-2 border-r border-zinc-200">
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={(checked) => handleSelectItem(item.id, checked as boolean)}
                               />
                             </td>
-                            <td className="px-2 py-2 font-medium border-r border-gray-200">
+                            <td className="px-2 py-2 font-medium border-r border-zinc-200">
                               {item.workItem}
                               {isChanged && (
                                 <Badge variant="warning" className="ml-2 text-xs">
@@ -471,7 +471,7 @@ export function ProcessModuleEditModal({
                                 </Badge>
                               )}
                             </td>
-                            <td className="px-2 py-2 border-r border-gray-200">
+                            <td className="px-2 py-2 border-r border-zinc-200">
                               <Input
                                 type="number"
                                 value={getFieldValue(item, 'dailyProductivity')}
@@ -479,7 +479,7 @@ export function ProcessModuleEditModal({
                                 className="w-20 text-right"
                               />
                             </td>
-                            <td className="px-2 py-2 border-r border-gray-200">
+                            <td className="px-2 py-2 border-r border-zinc-200">
                               <Input
                                 type="number"
                                 value={getFieldValue(item, 'directWorkDays')}
@@ -488,7 +488,7 @@ export function ProcessModuleEditModal({
                                 placeholder="계산"
                               />
                             </td>
-                            <td className="px-2 py-2 border-r border-gray-200">
+                            <td className="px-2 py-2 border-r border-zinc-200">
                               <Input
                                 type="number"
                                 value={getFieldValue(item, 'indirectDays')}
@@ -496,7 +496,7 @@ export function ProcessModuleEditModal({
                                 className="w-20 text-right"
                               />
                             </td>
-                            <td className="px-2 py-2 border-r border-gray-200">
+                            <td className="px-2 py-2 border-r border-zinc-200">
                               {item.equipmentCalculationBase !== undefined ? (
                                 <div className="flex items-center justify-end gap-1">
                                   <Badge variant="secondary" className="text-xs font-mono">
@@ -504,7 +504,7 @@ export function ProcessModuleEditModal({
                                   </Badge>
                                   <Tooltip>
                                     <TooltipTrigger>
-                                      <Info className="w-3 h-3 text-gray-400" />
+                                      <Info className="w-3 h-3 text-zinc-400" />
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       <p className="text-xs font-semibold">프리셋 참조 값</p>
@@ -513,10 +513,10 @@ export function ProcessModuleEditModal({
                                   </Tooltip>
                                 </div>
                               ) : (
-                                <span className="text-gray-400 text-xs text-right block">-</span>
+                                <span className="text-zinc-400 text-xs text-right block">-</span>
                               )}
                             </td>
-                            <td className="px-2 py-2 border-r border-gray-200">
+                            <td className="px-2 py-2 border-r border-zinc-200">
                               <Input
                                 type="number"
                                 value={getFieldValue(item, 'equipmentWorkersPerUnit')}
@@ -554,7 +554,7 @@ export function ProcessModuleEditModal({
               </CardHeader>
               <CardContent>
                 {history.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">
+                  <p className="text-center text-zinc-500 py-4">
                     변경 이력이 없습니다.
                   </p>
                 ) : (
@@ -562,21 +562,21 @@ export function ProcessModuleEditModal({
                     {history.map((item, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm"
+                        className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg text-sm"
                       >
                         <div className="flex-1">
                           <div className="font-medium">
                             [{item.category}] {item.itemName}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-zinc-500">
                             {FIELD_LABELS[item.field as EditableField] || '대당타설량'} • {new Date(item.timestamp).toLocaleString('ko-KR')}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-600">
+                          <span className="text-zinc-600">
                             {item.previousValue ?? '-'}
                           </span>
-                          <span className="text-gray-400">→</span>
+                          <span className="text-zinc-400">→</span>
                           <span className="font-medium text-blue-600">
                             {item.newValue ?? '-'}
                           </span>

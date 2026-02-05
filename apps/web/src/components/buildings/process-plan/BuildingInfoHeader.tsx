@@ -67,9 +67,9 @@ export const BuildingInfoHeader = memo(function BuildingInfoHeader({
   };
 
   return (
-    <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800">
+    <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border-b-2 border-zinc-200 dark:border-zinc-800">
       <div className="flex gap-6 text-sm items-center">
-        <div className="font-semibold text-slate-900 dark:text-white">
+        <div className="font-semibold text-zinc-900 dark:text-white">
           호수:{' '}
           <span className="font-normal">
             {buildingInfo.coreUnits && buildingInfo.coreUnits.length > 0
@@ -77,7 +77,7 @@ export const BuildingInfoHeader = memo(function BuildingInfoHeader({
               : buildingInfo.totalUnits}
           </span>
         </div>
-        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
           펌프카 최대 투입대수:
           <Input
             type="number"

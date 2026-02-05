@@ -275,7 +275,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
           <div className="flex gap-2">
             <button
               onClick={() => setIsFormulaEditorOpen(true)}
-              className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              className="px-3 py-1.5 text-sm text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:text-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors"
             >
               공식 관리
             </button>

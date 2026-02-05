@@ -1475,16 +1475,16 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                       const building = activeBuilding;
                       const info = getBuildingInfo(building);
                       return (
-                        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800">
+                        <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-900 border-b-2 border-zinc-200 dark:border-zinc-800">
                           <div className="flex gap-6 text-sm items-center">
-                            <div className="font-semibold text-slate-900 dark:text-white">
+                            <div className="font-semibold text-zinc-900 dark:text-white">
                               호수: <span className="font-normal">
                                 {info.coreUnits && info.coreUnits.length > 0
                                   ? info.coreUnits.map((cu, idx) => `코어${cu.coreNumber} ${cu.units}호`).join(', ')
                                   : info.totalUnits}
                               </span>
                             </div>
-                            <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <div className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                               펌프카 최대 투입대수:
                               <Input
                                 type="number"
@@ -1540,26 +1540,26 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                       {/* 세부공정 */}<col style={{ width: '80px' }} />
                       {/* 세부공정 상세 */}<col />
                     </colgroup>
-                    <thead className="bg-slate-50 dark:bg-slate-900/50">
-                      <tr className="border-b border-slate-200 dark:border-slate-800" style={{ height: '24px' }}>
+                    <thead className="bg-zinc-50 dark:bg-zinc-900/50">
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800" style={{ height: '24px' }}>
                         {/* 첫 번째 열: 구분 항목 */}
-                        <th className="px-2 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           구분
                         </th>
                         {/* 두 번째 열: 층수 */}
-                        <th className="px-2 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           층수
                         </th>
                         {/* 세 번째 열: 형틀 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           형틀
                         </th>
                         {/* 네 번째 열: 철근 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           철근
                         </th>
                         {/* 다섯 번째 열: 콘크리트 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r-2 border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           콘크리트
                         </th>
                         
@@ -1567,15 +1567,15 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         {processColumns.length > 0 && (
                           <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
                             {/* 일수 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               순작업일수
                             </th>
                             {/* 셀렉트박스 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               공정타입
                             </th>
                             {/* 버튼 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-r border-slate-200 dark:border-slate-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               세부공정
                             </th>
                           </Fragment>
@@ -1583,7 +1583,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         
                         {/* 마지막 열: 세부공정 확장 영역 (모든 행에 걸친 넓은 칸) */}
                         <th
-                          className="px-4 py-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                          className="px-4 py-2 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"
                           rowSpan={totalRows}
                           style={{ height: '30px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', maxWidth: '218px' }}
                         >
@@ -1591,7 +1591,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                    <tbody className="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-800">
                       {(() => {
                         const building = activeBuilding;
                         const plan = processPlans.get(building.id);
@@ -1999,49 +1999,49 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                               return (
                                 <tr
                                   key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
-                                  className={`border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50 ${isExpanded ? 'bg-cyan-50 dark:bg-cyan-900/20' : ''}`}
+                                  className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20' : ''}`}
                                   style={{ height: '24px' }}
                                 >
                                   {/* 첫 번째 열: 구분 항목 */}
-                                  <td className="px-2 py-1 text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     <div className="text-center">{getCategoryLabel()}</div>
                                   </td>
                                   
                                   {/* 두 번째 열: 층수 */}
-                                  <td className="px-2 py-1 text-xs font-semibold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     <div className="text-center font-normal">{getFloorNumberLabel()}</div>
                                   </td>
                                   
                                   {/* 세 번째 열: 형틀 */}
-                                  <td className="px-1 py-1 text-center text-xs border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                  <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                     <div className="text-xs">
                                       {getFormworkQuantity() > 0 ? getFormworkQuantity().toFixed(2) : '0.00'}
                                     </div>
                                   </td>
                                   
                                   {/* 네 번째 열: 철근 */}
-                                  <td className="px-1 py-1 text-center text-xs border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                  <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                     <div className="text-xs">
                                       {getRebarQuantity() > 0 ? getRebarQuantity().toFixed(2) : '0.00'}
                                     </div>
                                   </td>
                                   
                                   {/* 다섯 번째 열: 콘크리트 */}
-                                  <td className="px-1 py-1 text-center text-xs border-r-2 border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                  <td className="px-1 py-1 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                     <div className="text-xs">
                                       {getConcreteQuantity() > 0 ? getConcreteQuantity().toFixed(2) : '0.00'}
                                     </div>
                                   </td>
                                   
                                   {/* 여섯 번째 열: 일수 */}
-                                  <td className="px-1 py-1 text-center border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
-                                    <div className="w-full px-1 py-0.5 text-xs text-center border border-slate-300 dark:border-slate-700 rounded bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white">
+                                  <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                    <div className="w-full px-1 py-0.5 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
                                       {days}
                                     </div>
                                   </td>
                                   
                                   {/* 일곱 번째 열: 셀렉트박스 */}
-                                  <td className="px-1 py-1 border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                  <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                     {/* 일반 지하층 행은 항상 표준공정 드롭다운 표시 */}
                                     <select
                                       value={processType}
@@ -2050,7 +2050,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                         const targetCategory = isNormalFloor ? '옥탑층' : row.category;
                                         handleProcessTypeChange(building.id, targetCategory, e.target.value as ProcessType, row.floorLabel);
                                       }}
-                                      className="w-full px-1 py-0.5 text-xs border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                      className="w-full px-1 py-0.5 text-xs border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     >
                                       {(PROCESS_TYPE_OPTIONS[effectiveCategory] || []).map(option => (
                                         <option key={option} value={option}>
@@ -2061,7 +2061,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   </td>
                                   
                                   {/* 여덟 번째 열: 세부공정 버튼 */}
-                                  <td className="px-1 py-1 border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                  <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                     {module && module.items.length > 0 && (
                                       <button
                                         onClick={() => {
@@ -2074,7 +2074,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           // 이미 확장된 경우 닫기 (newExpanded는 빈 Set이므로 아무것도 표시되지 않음)
                                           setExpandedModules(new Map(expandedModules.set(building.id, newExpanded)));
                                         }}
-                                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded mx-auto block"
+                                        className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded mx-auto block"
                                         title="세부공정 보기/숨기기"
                                       >
                                         {isExpanded ? (
@@ -2088,7 +2088,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   
                                   {/* 아홉 번째 열: 세부공정 상세 (첫 번째 행에서만 rowSpan으로 표시) */}
                                   {rowIdx === 0 && (
-                                    <td rowSpan={totalRows} className="px-4 py-2 align-top border-l-2 border-slate-200 dark:border-slate-800" style={{ width: '100%' }}>
+                                    <td rowSpan={totalRows} className="px-4 py-2 align-top border-l-2 border-zinc-200 dark:border-zinc-800" style={{ width: '100%' }}>
                                       <div className="space-y-4 text-xs overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)', minHeight: '300px' }}>
                                         {/* ProcessDetailPanel 컴포넌트 사용 */}
                                         {(() => {
@@ -2137,32 +2137,32 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                             })}
                             
                             {/* 합계 행 - 첫 번째 공정 열의 첫 번째 칸에만 표시 */}
-                            <tr className="border-t-2 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" style={{ height: '24px' }}>
+                            <tr className="border-t-2 border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800" style={{ height: '24px' }}>
                               {/* 구분 항목 열 */}
-                              <td className="px-2 py-1 text-center text-xs font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                              <td className="px-2 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                 합계
                               </td>
                               {/* 층수 열 */}
-                              <td className="px-2 py-1 text-center text-xs font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                              <td className="px-2 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                               </td>
                               {/* 형틀 열 */}
-                              <td className="px-1 py-1 text-center text-xs font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                              <td className="px-1 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                               </td>
                               {/* 철근 열 */}
-                              <td className="px-1 py-1 text-center text-xs font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                              <td className="px-1 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                               </td>
                               {/* 콘크리트 열 */}
-                              <td className="px-1 py-1 text-center text-xs font-bold text-slate-900 dark:text-white border-r-2 border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                              <td className="px-1 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                               </td>
                               {processColumns.length > 0 && (
                                 <>
                                   {/* 첫 번째 공정 열의 첫 번째 칸(일수 열)에만 합계 표시 */}
-                                  <td className="px-1 py-1 text-center text-xs font-bold text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}>
+                                  <td className="px-1 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                     {plan ? calculateTotalDays(plan.processes, building) : 0}
                                   </td>
                                   {/* 첫 번째 공정 열의 2번째, 3번째 칸은 빈 칸 */}
-                                  <td className="px-1 py-1 border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}></td>
-                                  <td className="px-1 py-1 border-r border-slate-200 dark:border-slate-800 align-middle" style={{ height: '24px' }}></td>
+                                  <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
+                                  <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
                                 </>
                               )}
                             </tr>
@@ -2179,14 +2179,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       ) : (
         <Card className="p-8">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+            <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-zinc-400 dark:text-zinc-500" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+              <h3 className="text-lg font-medium text-zinc-900 dark:text-white">
                 등록된 동이 없습니다
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
                 지상층 공정계획을 입력하려면 먼저 <br />
                 <span className="font-medium text-primary-600 dark:text-primary-400">"동 기본정보"</span> 탭에서 동을 생성해주세요.
               </p>

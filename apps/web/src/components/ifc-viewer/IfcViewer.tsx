@@ -36,6 +36,27 @@ interface ViewerStats {
 type ViewOrientation = 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
 type ProjectionMode = 'Perspective' | 'Orthographic';
 
+/**
+ * next-themes와 시스템 설정을 고려한 초기 테마 감지
+ * SSR 안전, hydration 불일치 최소화
+ */
+function detectInitialTheme(): boolean {
+  if (typeof window === 'undefined') return false; // SSR: 라이트모드 기본
+
+  try {
+    // 1순위: localStorage에서 명시적 테마 설정 확인 (next-themes 저장소)
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme === 'dark') return true;
+    if (storedTheme === 'light') return false;
+
+    // 2순위: system 테마 - 브라우저 설정 확인
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch {
+    // localStorage 접근 실패 시 안전한 기본값
+    return false;
+  }
+}
+
 export function IfcViewer({ className }: IfcViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +77,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
     setMounted(true);
   }, []);
 
-  const isDarkMode = mounted ? resolvedTheme === 'dark' : true;
+  const isDarkMode = mounted ? resolvedTheme === 'dark' : detectInitialTheme();
 
   const [loadingState, setLoadingState] = useState<LoadingState>({
     phase: 'idle',
@@ -117,7 +138,11 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
         // Setup scene after init
         world.scene.setup();
-        world.scene.three.background = new THREE.Color(0x1e293b);
+
+        // 초기 배경색: 테마 감지 시도
+        const initialTheme = detectInitialTheme();
+        const initialBgColor = initialTheme ? 0x1e293b : 0xf4f4f5; // dark : light
+        world.scene.three.background = new THREE.Color(initialBgColor);
 
         // Setup grids
         const grids = components.get(OBC.Grids);
@@ -219,11 +244,11 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
   // Sync Three.js scene background with theme
   useEffect(() => {
-    if (!worldRef.current?.scene?.three || !threeRef.current || !mounted) return;
+    if (!worldRef.current?.scene?.three || !threeRef.current) return;
 
     const bgColor = isDarkMode ? 0x1e293b : 0xf4f4f5; // slate-800 : zinc-100
     worldRef.current.scene.three.background = new threeRef.current.Color(bgColor);
-  }, [isDarkMode, mounted]);
+  }, [isDarkMode]); // mounted 의존성 제거 - isDarkMode가 이미 mounted 상태 반영
 
   // Load IFC from URL (for auto-loading)
   const loadIfcFromUrl = useCallback(async (url: string, fileName: string) => {

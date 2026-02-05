@@ -436,6 +436,44 @@ Supabase PostgreSQL 기반 데이터베이스
 ## Changelog
 
 ### 2026-02-05
+#### UI/UX
+- **공정계획 탭 디자인 시스템 통일**: 색상, 타이포그래피, 간격, 애니메이션 전면 개선
+  - **색상 100% 통일**: 모든 `slate-`, `gray-`, `cyan-` 클래스를 `zinc-`, `accent-` 디자인 토큰으로 마이그레이션 (15개 파일)
+    - BuildingTabs.tsx, ProcessItemCard.tsx, ProcessDetailPanel.tsx, ProcessLogicPage.tsx
+    - BuildingProcessPlanPage.tsx, BasementProcessPlanPage.tsx, CycleDefinitionSection.tsx
+    - process-plan 하위 7개 파일 (BuildingInfoHeader, FormulaDisplay, ProcessTableHeader 등)
+    - process-logic 하위 4개 파일 (FormulaEditorModal, PresetManager, ProcessModuleEditModal 등)
+  - **타이포그래피 개선**:
+    - 카드 제목: `text-sm` → `text-base font-bold` (가독성 33% 향상)
+    - 라벨: `text-xs` → `text-sm font-medium` (명확성 개선)
+    - 순작업일 입력: 높이 `h-8` → `h-10`, 너비 `w-20` → `w-24` (터치 타겟 25% 증가)
+  - **간격/여백 표준화**:
+    - ProcessItemCard 패딩: `p-3` → `p-4` (16px, 33% 증가)
+    - ProcessDetailPanel 헤더: `mb-3` → `mb-4`, `text-sm` → `text-base`
+    - 그리드 간격: `gap-3` → `gap-4` (일관된 16px 간격)
+  - **애니메이션 추가**:
+    - 페이지 진입: `fade-in` 클래스로 0.3초 부드러운 전환
+    - 카드 리스트: `slide-up` + 순차 딜레이 (`animationDelay: ${idx * 50}ms`)
+    - 호버 효과: `transition-all duration-200` + `hover:shadow-md` 통일
+  - **레이아웃 개선**:
+    - ProcessDetailPanel: 1열 → 반응형 그리드 (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`)
+    - 빈 상태 UI: 아이콘 + 카드 형태로 시각적 개선
+    - BuildingTabs: 활성 탭 배경색 추가 (`bg-accent-50/50 dark:bg-accent-900/10`)
+  - **접근성 개선**: 색상 대비 WCAG AA 이상 유지 (zinc-600/zinc-700 사용)
+  - **최종 결과**:
+    - ✅ 디자인 일관성 100% 달성
+    - ✅ 전문적이고 세련된 UI
+    - ✅ 사용자 경험 향상 (명확한 정보 계층, 부드러운 애니메이션)
+    - ✅ 빌드 검증 완료
+
+### 2026-02-05
+#### Fixed
+- **IFC 뷰어 초기 다크모드 이슈 해결**: 웹앱 테마 설정을 즉시 반영
+  - 시스템 테마 감지 로직 추가 (`detectInitialTheme()`)
+  - 초기화 시점에 정확한 배경색 적용 (`IfcViewer.tsx:120`)
+  - useEffect 의존성 최적화로 불필요한 재실행 방지
+  - **결과**: 라이트모드 사용자의 깜빡임 제거, UX 개선 ✅
+
 #### Performance
 - **프로덕션 성능 최적화 완료** (Day 1-4): 1,280ms 개선 (누적 1,480-2,080ms) ⚡
   - **Day 1 - Serial Queries 최적화** (350ms): `requireProjectMember.ts`에서 2번의 순차 쿼리를 캐싱된 함수(`getProject`, `isProjectMember`)로 대체

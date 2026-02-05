@@ -194,11 +194,11 @@ export function FormulaEditorModal({
       </div>
 
       {variables.length === 0 && (
-        <p className="text-sm text-gray-500">변수를 추가해주세요.</p>
+        <p className="text-sm text-zinc-500">변수를 추가해주세요.</p>
       )}
 
       {variables.map((variable, index) => (
-        <div key={index} className="flex gap-2 items-start p-2 bg-gray-50 rounded">
+        <div key={index} className="flex gap-2 items-start p-2 bg-zinc-50 rounded">
           <Input
             placeholder="변수명 (예: 수량)"
             value={variable.name}
@@ -339,11 +339,11 @@ export function FormulaEditorModal({
 
             {/* 공식 목록 */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700">내장 공식</h3>
+              <h3 className="text-sm font-semibold text-zinc-700">내장 공식</h3>
               {formulas
                 .filter((f) => f.isBuiltIn)
                 .map((formula) => (
-                  <Card key={formula.id} className="bg-gray-50">
+                  <Card key={formula.id} className="bg-zinc-50">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-base">
                         {formula.name}
@@ -355,7 +355,7 @@ export function FormulaEditorModal({
                     </CardHeader>
                     {formula.example && (
                       <CardContent>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-zinc-600">
                           <strong>예제:</strong> {formula.example}
                         </p>
                       </CardContent>
@@ -363,9 +363,9 @@ export function FormulaEditorModal({
                   </Card>
                 ))}
 
-              <h3 className="text-sm font-semibold text-gray-700 mt-6">사용자 정의 공식</h3>
+              <h3 className="text-sm font-semibold text-zinc-700 mt-6">사용자 정의 공식</h3>
               {formulas.filter((f) => !f.isBuiltIn).length === 0 && (
-                <p className="text-center text-gray-500 py-4">
+                <p className="text-center text-zinc-500 py-4">
                   사용자 정의 공식이 없습니다.
                 </p>
               )}
@@ -429,7 +429,7 @@ export function FormulaEditorModal({
 
                     {editingId !== formula.id && formula.example && (
                       <CardContent>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-zinc-600">
                           <strong>예제:</strong> {formula.example}
                         </p>
                       </CardContent>

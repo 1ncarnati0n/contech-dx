@@ -105,7 +105,7 @@ export function CycleDefinitionSection() {
       case '타설':
         return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
       case '양생':
-        return 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400';
+        return 'bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-400';
       default:
         return 'bg-zinc-100 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300';
     }
