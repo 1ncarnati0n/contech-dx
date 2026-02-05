@@ -436,7 +436,58 @@ Supabase PostgreSQL 기반 데이터베이스
 ## Changelog
 
 ### 2026-02-05
+
+#### Process Module Data Connection (Latest)
+- **B1+B2 통합 참조 계산 구현**: basement-high-ceiling 모듈의 데이터 연결 완료
+  - **B1+B2 Combined References**: `F_B1B2_COMBINED`, `D_B1B2_COMBINED` 등 특수 참조 패턴 지원
+    - `quantity-reference.ts`에 통합 참조 핸들러 추가
+    - B1, B2 층의 수량을 자동 합산하여 반환
+    - 모든 공종(갱폼, 알폼, 형틀, 해체/정리, 철근, 콘크리트) 지원
+  - **Source Description**: "B1+B2 합산 (철근)" 형식 표시 지원
+    - `useProcessCalculation.ts`에 소스 설명 추가
+    - 세부공정 패널에서 데이터 출처 명확히 표시
+  - **Module ID System**: moduleId 기반 명시적 모듈 선택 구현
+    - `getProcessModuleById()` 함수 추가로 ID 기반 직접 조회 가능
+    - CATEGORY_TABS에 moduleId 필드 추가하여 탭-모듈 명확한 매핑
+    - 동일한 name='표준공정'을 가진 모듈 충돌 방지
+  - **Module Name Update**: basement-high-ceiling 모듈 이름 '층고6.5m이상' → '표준공정' 변경
+  - **Floor Label Helpers**: 층 라벨 유틸리티 함수 추가 (새 파일)
+    - `normalizeFloorLabel()`: 주차장 접미사 제거 정규화
+    - `isBasementParking()`, `isThreeStageShoring()`: 특수 층 판별
+  - **PROCESS_TYPE_OPTIONS Cleanup**: '층고6.5m이상' 타입 제거로 UI 명확화
+  - **영향 범위**: 7개 파일 (수정 5개, 신규 1개, 문서 1개)
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+  - **효과**: '지하층(층고6.5m이상)' 탭에서 수량이 0에서 정상 값으로 계산됨
+
+#### Architecture
+- **주동 지하층 모듈 구조 리팩토링**: 3개 모듈을 2개로 통합하여 구조 단순화
+  - **모듈 통합**: basement 모듈 3개 → 2개로 간소화
+    - `basement-standard` (표준공정) 모듈 완전 삭제
+    - `basement-with-pit` 모듈 이름 변경: '피트층포함' → '표준공정' (ID는 유지)
+    - `basement-high-ceiling` (층고6.5m이상) 유지
+  - **UI 개선**: "주동 지하층" 독립 탭 제거, processType 필터링 방식 통일
+    - "주동 지하층" 탭에 `processType='표준공정'` 추가 (기본값)
+    - "지하층(피트층포함)" 탭 제거 (역할을 "주동 지하층"이 대체)
+    - 탭 레이블 변경: '주동 지하층(피트)' → '주동 지하층'
+  - **영향 범위**: 5개 파일 수정
+    - `process-modules.ts`: 모듈 삭제 및 이름 변경
+    - `ProcessModuleSection.tsx`: TabId 타입 및 CATEGORY_TABS 배열 수정
+    - `BasementProcessPlanPage.tsx`: PROCESS_TYPE_OPTIONS 업데이트
+    - `BuildingProcessPlanPage.tsx`: PROCESS_TYPE_OPTIONS 업데이트
+    - `useProcessPlans.ts`: 확인만 (변경 불필요)
+  - **데이터 호환성**: 기존 localStorage 데이터 자동 폴백 처리 (명시적 마이그레이션 불필요)
+  - **리스크**: 중간 (모듈 데이터 구조 변경, 자동 복구 메커니즘 포함)
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+  - **최종 결과**: '주동 지하층' 카테고리는 2개 processType만 지원 ('표준공정', '층고6.5m이상')
+
 #### UI/UX
+- **공정모듈 탭 순서 최적화**: 지하층 관련 탭들의 논리적 배치
+  - **최종 순서**: 버림 → 기초 → 지하주차장 → 지하층(층고6.5m이상) → **주동 지하층** → 일반층 → ...
+  - **목적**: 지하층 특수 공정(층고6.5m이상) → 지하층 표준공정 → 지상층 순서로 논리적 흐름 구성
+  - **영향 범위**: `ProcessModuleSection.tsx` 단일 파일 수정 (CATEGORY_TABS 배열 순서만 변경)
+  - **리스크**: 매우 낮음 (순서만 변경, 모든 탭 속성 유지)
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
 - **테이블 구조 분리 및 세부공정 패널 독립화**: 9번째 열을 테이블에서 완전 분리하여 우측 고정 패널로 재구성
   - **문제**:
     - 9번째 열(세부공정 상세)이 테이블 내부에 rowSpan으로 구현되어 내용이 길어지면 전체 행 높이 증가

@@ -140,228 +140,6 @@ export const PROCESS_MODULES: ProcessModule[] = [
   },
 
   // ============================================
-  // 주동 지하층 - 지하2층 표준 지하1층 2차마감
-  // ============================================
-  {
-    id: 'basement-standard',
-    name: '표준공정',
-    category: '주동 지하층',
-    items: [
-      {
-        id: 'basement-meokmaekim-1',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 1, // 고정값
-        dailyProductivity: 0,
-        indirectDays: 0,
-        floorLabel: 'B2', // 지하2층
-      },
-      {
-        id: 'basement-wall-rebar-b2',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F8*0.45', // 동,층별물량표!F8*0.45
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 5, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B2', // 지하2층
-      },
-      {
-        id: 'basement-formwork-b2',
-        workItem: '지하2층 거푸집 설치',
-        unit: '㎡',
-        quantityReference: 'D8*0.95', // 동,층별물량표!D8*0.95
-        dailyProductivity: 11,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 17, // 고정값
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-        floorLabel: 'B2', // 지하2층
-      },
-      {
-        id: 'basement-slab-rebar-b2',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F8*0.55', // 동,층별물량표!F8*0.55
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 5, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B2', // 지하2층
-      },
-      {
-        id: 'basement-finish-b2',
-        workItem: '마감작업',
-        unit: '㎡',
-        quantityReference: 'D8*0.05', // 동,층별물량표!D8*0.05
-        dailyProductivity: 11,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B2', // 지하2층
-      },
-      {
-        id: 'basement-concrete-b2',
-        workItem: '타설',
-        unit: '㎥',
-        quantityReference: 'G8', // 동,층별물량표!G8
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*5명 /지하층부분',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1, // 계산식: CEILING(MIN(2, E17/I28), 1)
-        equipmentCalculationBase: 500, // 지하 대당 타설량 기준값
-        equipmentWorkersPerUnit: 5, // 장비당 인원수
-        indirectDays: 3,
-        indirectWorkItem: '양생',
-        floorLabel: 'B2', // 지하2층
-        // directWorkDays는 계산식
-      },
-      {
-        id: 'basement-stripclean-b2',
-        workItem: '거푸집 해체/정리',
-        unit: '㎡',
-        quantityReference: 'D8', // 해당 층의 형틀 수량 (D열, 행 8 = B2층)
-        dailyProductivity: 50,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 0, // 순작업일은 0 (간접일로 분류)
-        indirectDays: 16, // 간접일로 분류
-        floorLabel: 'B2', // 지하2층
-      },
-      {
-        id: 'basement-meokmaekim-2',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 1, // 고정값
-        dailyProductivity: 0,
-        indirectDays: 0,
-        floorLabel: 'B1', // 지하1층
-      },
-      {
-        id: 'basement-wall-rebar-b1',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F9*0.45', // 동,층별물량표!F9*0.45
-        dailyProductivity: 0.7,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 5, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B1', // 지하1층
-      },
-      {
-        id: 'basement-formwork-b1',
-        workItem: '지하1층 거푸집 설치',
-        unit: '㎡',
-        quantityReference: 'D9*0.9', // 동,층별물량표!D9*0.9
-        dailyProductivity: 9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 19, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B1', // 지하1층
-      },
-      {
-        id: 'basement-slab-rebar-b1',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F9*0.55', // 동,층별물량표!F9*0.55
-        dailyProductivity: 0.7,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 5, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B1', // 지하1층
-      },
-      {
-        id: 'basement-finish-1st',
-        workItem: '마감작업 (1차)',
-        unit: '㎡',
-        quantityReference: 'D9*0.05', // 동,층별물량표!D9*0.05
-        dailyProductivity: 10,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B1', // 지하1층
-      },
-      {
-        id: 'basement-concrete-1st',
-        workItem: '타설 (1차)',
-        unit: '㎥',
-        quantityReference: 'G9*0.6', // 동,층별물량표!G9*0.6
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*5명 /지하층부분',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1, // 계산식
-        equipmentCalculationBase: 500, // 지하 대당 타설량 기준값
-        equipmentWorkersPerUnit: 5, // 장비당 인원수
-        indirectDays: 3,
-        indirectWorkItem: '양생',
-        floorLabel: 'B1', // 지하1층
-        // directWorkDays는 계산식
-      },
-      {
-        id: 'basement-finish-2nd',
-        workItem: '마감작업 (2차)',
-        unit: '㎡',
-        quantityReference: 'D9*0.05', // 동,층별물량표!D9*0.05
-        dailyProductivity: 10,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 고정값
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-        floorLabel: 'B1', // 지하1층
-      },
-      {
-        id: 'basement-concrete-2nd',
-        workItem: '타설 (2차)',
-        unit: '㎥',
-        quantityReference: 'G9*0.4', // 동,층별물량표!G9*0.4
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*5명 /지하층부분',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1, // 계산식
-        equipmentCalculationBase: 500, // 지하 대당 타설량 기준값
-        equipmentWorkersPerUnit: 5, // 장비당 인원수
-        indirectDays: 3,
-        indirectWorkItem: '양생',
-        floorLabel: 'B1', // 지하1층
-        // directWorkDays는 계산식
-      },
-      {
-        id: 'basement-stripclean-b1',
-        workItem: '거푸집 해체/정리',
-        unit: '㎡',
-        quantityReference: 'D9', // 해당 층의 형틀 수량 (D열, 행 9 = B1층)
-        dailyProductivity: 50,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 0, // 순작업일은 0 (간접일로 분류)
-        indirectDays: 22, // 간접일로 분류
-        floorLabel: 'B1', // 지하1층
-      },
-    ],
-  },
-
-  // ============================================
   // 셋팅층 - 표준공정
   // ============================================
   {
@@ -1681,7 +1459,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
   // ============================================
   {
     id: 'basement-high-ceiling',
-    name: '층고6.5m이상',
+    name: '표준공정',
     category: '주동 지하층',
     items: [
       {
@@ -1796,7 +1574,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
   // ============================================
   {
     id: 'basement-with-pit',
-    name: '피트층포함',
+    name: '표준공정',
     category: '주동 지하층',
     items: [
       // === B2 층 항목 (7개) ===
@@ -2811,6 +2589,14 @@ export function getProcessModule(
   return PROCESS_MODULES.find(
     module => module.category === category && module.name === processType
   );
+}
+
+/**
+ * 모듈 ID로 직접 모듈 가져오기
+ * 동일한 name을 가진 모듈이 여러 개 있을 때 명확하게 구분하기 위해 사용
+ */
+export function getProcessModuleById(moduleId: string): ProcessModule | undefined {
+  return PROCESS_MODULES.find(module => module.id === moduleId);
 }
 
 /**

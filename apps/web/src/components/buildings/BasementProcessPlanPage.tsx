@@ -51,10 +51,11 @@ interface Props {
 const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '주동 지하층'];
 
 // 공정 타입 옵션 (구분별로 다름) - 지하층 공정계획은 버림, 기초, 주동 지하층만 사용
+// Note: '층고6.5m이상'은 별도 탭(moduleId 기반)으로 분리됨
 const PROCESS_TYPE_OPTIONS: Partial<Record<ProcessCategory, ProcessType[]>> = {
   '버림': ['표준공정'],
   '기초': ['표준공정'],
-  '주동 지하층': ['표준공정', '층고6.5m이상', '피트층포함'],
+  '주동 지하층': ['표준공정'],
 };
 
 // 기본 공정 타입 - 지하층 공정계획은 버림, 기초, 주동 지하층만 사용

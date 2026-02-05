@@ -17,6 +17,22 @@ import {
  * 물량 참조 패턴에서 데이터 출처 설명을 생성합니다.
  */
 function getQuantitySourceDescription(reference: string): string {
+  // Handle combined B1+B2 references
+  const combinedMatch = reference.match(/^([A-Z])_B1B2_COMBINED$/);
+  if (combinedMatch) {
+    const col = combinedMatch[1];
+    const columnNames: Record<string, string> = {
+      B: '갱폼',
+      C: '알폼',
+      D: '형틀',
+      E: '해체/정리',
+      F: '철근',
+      G: '콘크리트',
+    };
+    const colName = columnNames[col] || col;
+    return `B1+B2 합산 (${colName})`;
+  }
+
   const match = reference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
   if (!match) return reference;
 

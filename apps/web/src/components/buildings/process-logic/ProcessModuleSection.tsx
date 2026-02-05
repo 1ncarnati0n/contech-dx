@@ -123,16 +123,15 @@ function getQuantityReferenceDescription(reference: string): string {
 }
 
 // 탭 ID 타입 확장 (지하층 변형 탭 추가)
-type TabId = ProcessCategory | '지하층(층고6.5m이상)' | '지하층(피트층포함)';
+type TabId = ProcessCategory | '지하층(층고6.5m이상)';
 
-// 카테고리 탭 정의 - processType 필드로 동일 카테고리 내 변형 구분
-const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string }[] = [
-  { id: '버림', label: '버림', category: '버림' },
-  { id: '기초', label: '기초', category: '기초' },
-  { id: '주동 지하층', label: '주동 지하층', category: '주동 지하층' },
-  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '주동 지하층', processType: '층고6.5m이상' },
-  { id: '지하층(피트층포함)', label: '지하층(피트층포함)', category: '주동 지하층', processType: '피트층포함' },
-  { id: '지하주차장', label: '지하주차장', category: '지하주차장' },
+// 카테고리 탭 정의 - moduleId로 명시적 모듈 지정, processType은 fallback
+const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string; moduleId?: string }[] = [
+  { id: '버림', label: '버림', category: '버림', moduleId: 'blinding-standard' },
+  { id: '기초', label: '기초', category: '기초', moduleId: 'foundation-standard' },
+  { id: '지하주차장', label: '지하주차장', category: '지하주차장', moduleId: 'parking-standard' },
+  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '주동 지하층', moduleId: 'basement-high-ceiling' },
+  { id: '주동 지하층', label: '주동 지하층', category: '주동 지하층', moduleId: 'basement-with-pit' },
   { id: '일반층', label: '일반층', category: '일반층' },
   { id: '셋팅층', label: '셋팅층', category: '셋팅층' },
   { id: '기준층', label: '기준층', category: '기준층' },
@@ -191,6 +190,13 @@ export function ProcessModuleSection({
     const currentTab = CATEGORY_TABS.find(t => t.id === activeTab);
     if (!currentTab) return [];
 
+    // moduleId가 지정된 경우 해당 모듈만 반환 (명시적 모듈 지정)
+    if (currentTab.moduleId) {
+      const module = modules.find(m => m.id === currentTab.moduleId);
+      return module ? [module] : [];
+    }
+
+    // moduleId가 없는 경우 기존 로직 사용
     return modules.filter((m) => {
       // 카테고리가 일치하지 않으면 제외
       if (m.category !== currentTab.category) return false;

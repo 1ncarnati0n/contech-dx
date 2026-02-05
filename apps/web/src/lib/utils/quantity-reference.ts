@@ -205,11 +205,37 @@ export function getQuantityByReference(
     return parts.reduce((sum, part) => sum + getQuantityByReference(building, part), 0);
   }
 
+  // Handle combined B1+B2 references (for basement-high-ceiling module)
+  // 예: 'F_B1B2_COMBINED' -> F열(철근), B1+B2 합산
+  const combinedMatch = reference.match(/^([A-Z])_B1B2_COMBINED$/);
+  if (combinedMatch) {
+    const [, col] = combinedMatch;
+
+    // Map column to field and subField
+    const fieldMap: Record<string, { field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete'; subField: string }> = {
+      B: { field: 'gangForm', subField: 'areaM2' },
+      C: { field: 'alForm', subField: 'areaM2' },
+      D: { field: 'formwork', subField: 'areaM2' },
+      E: { field: 'stripClean', subField: 'areaM2' },
+      F: { field: 'rebar', subField: 'ton' },
+      G: { field: 'concrete', subField: 'volumeM3' },
+    };
+
+    const mapping = fieldMap[col];
+    if (mapping) {
+      const b1Qty = getQuantityFromFloor(building, 'B1', mapping.field, mapping.subField);
+      const b2Qty = getQuantityFromFloor(building, 'B2', mapping.field, mapping.subField);
+      return b1Qty + b2Qty;
+    }
+
+    return 0;
+  }
+
   // 참조 패턴 파싱
   // 예: 'D6' -> D열(형틀), 6행(버림)
   // 예: 'G6' -> G열(콘크리트), 6행(버림)
   // 예: 'F7*0.45' -> F열(철근), 7행(기초), 45% 비율
-  
+
   const match = reference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
   if (!match) return 0;
   
