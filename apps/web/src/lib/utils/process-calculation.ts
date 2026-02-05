@@ -136,4 +136,30 @@ export function calculateDailyInputWorkersByWorkDays(
   return Math.ceil(totalWorkers / directWorkDays);
 }
 
+/**
+ * 간접공사 인원 계산 (직영 인원 * 비율, 올림)
+ * @param directWorkers 직영 1일 투입인원
+ * @param ratio 간접공사 비율 (기본값: 0.3 = 30%)
+ */
+export function calculateIndirectWorkers(
+  directWorkers: number,
+  ratio: number = 0.3
+): number {
+  if (directWorkers === 0) return 0;
+  return Math.ceil(directWorkers * ratio);
+}
+
+/**
+ * 간접공사 장비 계산 (직영 장비 * 비율, 올림)
+ * @param directEquipment 직영 장비대수
+ * @param ratio 간접공사 비율 (기본값: 0.3 = 30%)
+ */
+export function calculateIndirectEquipment(
+  directEquipment: number,
+  ratio: number = 0.3
+): number {
+  if (directEquipment === 0) return 0;
+  return Math.ceil(directEquipment * ratio);
+}
+
 

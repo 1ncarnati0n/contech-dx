@@ -6,6 +6,8 @@ import {
   calculateTotalWorkDays,
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
+  calculateIndirectWorkers,
+  calculateIndirectEquipment,
 } from '@/lib/utils/process-calculation';
 
 describe('process-calculation', () => {
@@ -157,6 +159,68 @@ describe('process-calculation', () => {
 
     it('should handle exact division', () => {
       expect(calculateDailyInputWorkersByWorkDays(12, 4)).toBe(3);
+    });
+  });
+
+  describe('calculateIndirectWorkers', () => {
+    it('should calculate indirect workers with default 30% ratio', () => {
+      // 10 * 0.3 = 3.0 → ceil → 3
+      expect(calculateIndirectWorkers(10)).toBe(3);
+    });
+
+    it('should calculate indirect workers with custom ratio', () => {
+      // 10 * 0.5 = 5.0 → ceil → 5
+      expect(calculateIndirectWorkers(10, 0.5)).toBe(5);
+    });
+
+    it('should ceil fractional results', () => {
+      // 15 * 0.3 = 4.5 → ceil → 5
+      expect(calculateIndirectWorkers(15)).toBe(5);
+    });
+
+    it('should return 0 for zero direct workers', () => {
+      expect(calculateIndirectWorkers(0)).toBe(0);
+    });
+
+    it('should handle very small ratios', () => {
+      // 10 * 0.01 = 0.1 → ceil → 1
+      expect(calculateIndirectWorkers(10, 0.01)).toBe(1);
+    });
+
+    it('should handle 100% ratio', () => {
+      // 8 * 1.0 = 8.0 → ceil → 8
+      expect(calculateIndirectWorkers(8, 1.0)).toBe(8);
+    });
+  });
+
+  describe('calculateIndirectEquipment', () => {
+    it('should calculate indirect equipment with default 30% ratio', () => {
+      // 5 * 0.3 = 1.5 → ceil → 2
+      expect(calculateIndirectEquipment(5)).toBe(2);
+    });
+
+    it('should calculate indirect equipment with custom ratio', () => {
+      // 6 * 0.5 = 3.0 → ceil → 3
+      expect(calculateIndirectEquipment(6, 0.5)).toBe(3);
+    });
+
+    it('should ceil fractional results', () => {
+      // 10 * 0.3 = 3.0 → ceil → 3
+      expect(calculateIndirectEquipment(10)).toBe(3);
+    });
+
+    it('should return 0 for zero direct equipment', () => {
+      expect(calculateIndirectEquipment(0)).toBe(0);
+    });
+
+    it('should handle single equipment unit', () => {
+      // 1 * 0.3 = 0.3 → ceil → 1
+      expect(calculateIndirectEquipment(1)).toBe(1);
+    });
+
+    it('should handle very small ratios', () => {
+      // 100 * 0.01 = 1.0 → ceil → 1
+      expect(calculateIndirectEquipment(100, 0.01)).toBe(1);
     });
   });
 
