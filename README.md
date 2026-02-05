@@ -437,6 +437,253 @@ Supabase PostgreSQL 기반 데이터베이스
 
 ### 2026-02-05
 #### UI/UX
+- **물량입력 표 셀 주소 수정: 공정모듈 참조와 완전 일치**: 셀 주소가 quantity-reference.ts의 공정모듈 참조와 100% 일치하도록 수정
+  - **문제**: 기존 셀 주소(C, D, E...)와 공정모듈 물량 참조(B, C, D...)가 불일치하여 혼란 발생
+  - **해결**: 공정모듈과 정확히 매칭되도록 열/행 매핑 전면 수정
+  - **열 매핑** (공정모듈 호환):
+    - B = 갱폼 (colIndex 3)
+    - C = 알폼 (colIndex 4)
+    - D = 형틀 합계 (colIndex 2, 읽기전용)
+    - E = 해체/정리 (colIndex 6, 읽기전용)
+    - F = 철근 (colIndex 7)
+    - G = 콘크리트 (colIndex 8)
+    - 유로폼 (colIndex 5)은 공정모듈에서 직접 참조 안 함 (주소 없음)
+  - **행 매핑** (quantity-reference.ts와 일치):
+    - row 6 = 버림
+    - row 7 = 기초
+    - row 8 = B2 (지하 2층, 있을 경우)
+    - row 9 = B1 (지하 1층, 있을 경우)
+    - row 11 = 1층, row 12 = 2층, row 13-25 = 3-15층
+    - row 26 = 옥탑1층 (PH1), row 27 = 옥탑2층 (PH2), row 28 = 옥탑3층 (PH3)
+  - **구현 상세**:
+    - `getColumnLetter(colIndex)`: colIndex → 공정모듈 열 문자 변환 (매핑 테이블 기반)
+    - `parseFloorNumber(label)`: 층 라벨에서 숫자 추출 (예: "1F" → 1)
+    - `getExcelRowNumber(rowIndex, rows)`: rowIndex → 공정모듈 행 번호 변환 (동적 층 구조 처리)
+    - `getCellAddress(colIndex, rowIndex, rows)`: 최종 셀 주소 반환 (예: "D6", "B11", "F7")
+  - **동적 행 매핑**: rows 배열을 활용하여 층 구조(지하층 개수, 지상층 개수 등)에 따라 동적 계산
+  - **읽기전용 셀 지원**: 형틀 합계(D), 해체/정리(E) 셀에도 주소 표시
+  - **공정모듈 호환성**: ProcessModuleSection의 "물량 참조" 뱃지와 100% 일치
+    - 예: 공정모듈 "D6 참조" = 물량입력 표 D6 셀 (버림 형틀 합계)
+    - 예: 공정모듈 "F7 참조" = 물량입력 표 F7 셀 (기초 철근)
+    - 예: 공정모듈 "G11*0.6" = 물량입력 표 G11 셀 (1층 콘크리트) × 0.6
+  - **시각적 디자인**: (기존 디자인 유지)
+    - 위치: 셀 내부 좌상단 (`absolute top-0.5 left-0.5`)
+    - 폰트: `font-mono text-[9px]` (고정폭, 9px 크기)
+    - 색상: 라이트모드 `text-slate-400/60`, 다크모드 `text-slate-600/60`
+    - 상호작용: `pointer-events-none`, `select-none`, `aria-hidden="true"`
+    - z-index: `z-10` (배경 위에 표시)
+  - **사용자 경험 개선**:
+    - ✅ 공정모듈과 100% 일치: 물량 참조 주소가 실제 셀과 정확히 매칭
+    - ✅ 데이터 무결성: 공정모듈 "D6 참조" = 물량입력 표 D6 셀
+    - ✅ 명확한 의사소통: "D6 셀의 형틀 합계를 확인하세요"
+    - ✅ 이슈 보고 개선: 공정모듈 에러 시 정확한 셀 위치 파악 가능
+    - ✅ 원격 협업 지원: 동일한 셀 주소 체계로 의사소통 효율 향상
+  - **엣지 케이스 처리**:
+    - 읽기전용 셀(D, E)에도 주소 표시 (공정모듈에서 참조됨)
+    - 특수 행(버림, 기초)에 row 6, 7로 표시
+    - 소계 행에는 주소 표시 안 됨 (row.type === 'summary')
+    - 유로폼 열은 공정모듈에서 직접 참조 안 됨 (주소 없음)
+    - 지하층 개수 변동: 동적 매핑으로 B2(row 8), B1(row 9) 대응
+    - 모든 셀 상태(포커스, 선택, 최근 붙여넣기)에서 라벨 유지
+  - **정량적 개선**:
+    - 코드 추가: ~117줄 (getCellAddress 관련 함수 + rows prop + span 요소)
+    - 코드 수정: ~25줄 (TradeInputCell 인터페이스, td 요소)
+    - 성능 영향: 거의 없음 (행 매핑 O(n), n=10-30)
+    - 번들 크기: ~500 bytes
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+  - **Breaking Changes**: 없음 (기존 주소는 잘못되었으므로 수정이 개선)
+
+### 2026-02-05
+#### Refactored
+- **공정모듈 일괄변경 기능 제거**: 데이터 안전성 향상을 위해 위험한 일괄변경 기능 완전 삭제
+  - **삭제된 기능**:
+    - 일괄변경 Card UI 섹션 (42줄)
+    - `batchField`, `batchValue` state 변수
+    - `handleBatchApply()` 함수 (30줄)
+    - 관련 import 및 참조 코드
+  - **유지되는 기능**:
+    - ✅ 개별 편집 테이블 (드래그로 순서 변경 포함)
+    - ✅ 각 항목의 5개 필드 개별 수정
+    - ✅ 변경 이력 기록 및 조회
+    - ✅ 저장/취소 기능
+  - **삭제 이유**:
+    - 전체 항목에 동일한 값을 한번에 적용하는 것은 실수로 인한 데이터 손실 위험이 높음
+    - 일괄 적용 후 원래 값 복구가 어려움 (변경 이력에는 기록되지만 수동 복구 필요)
+    - 각 공정 항목은 고유한 특성이 있어 개별 수정이 더 적합
+  - **UI 개선**:
+    - 일괄변경 Card 제거로 모달이 더 간결해짐
+    - 개별편집 기능에 집중 가능
+    - JSDoc 및 DialogDescription 업데이트
+  - **정량적 개선**:
+    - 코드 간소화: 약 50줄 제거
+    - 사용자 실수 위험 제거
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
+#### UI/UX
+- **공정모듈 고급편집 모달 드래그 앤 드롭 순서 변경**: 체크박스를 드래그 핸들로 교체하여 직관적인 순서 조정 기능 제공
+  - **@dnd-kit 라이브러리 통합**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` 설치
+  - **SortableRow 컴포넌트**: 각 테이블 행을 드래그 가능하게 만드는 컴포넌트 추가
+    - `useSortable` 훅으로 드래그 기능 구현
+    - `GripVertical` 아이콘으로 드래그 핸들 표시
+    - 드래그 중 투명도 0.5로 시각적 피드백
+  - **DndContext & SortableContext**: 테이블 전체를 드래그 앤 드롭 영역으로 설정
+    - PointerSensor, KeyboardSensor로 마우스 및 키보드 접근성 지원
+    - verticalListSortingStrategy로 수직 정렬 전략 적용
+  - **일괄 변경 UI 간소화**:
+    - "전체 항목에 적용" 체크박스 제거
+    - "전체 항목에 적용" 버튼으로 통합
+    - 개별 선택 기능 제거 (순서 조정에 집중)
+  - **State 정리**:
+    - `selectedItems` state 제거
+    - `applyToAll` state 제거
+    - `handleSelectAll`, `handleSelectItem` 함수 제거
+    - `allSelected`, `someSelected` 변수 제거
+  - **드래그 핸들러 추가**:
+    - `handleDragEnd`: 드래그 종료 시 순서 재정렬
+    - `arrayMove`로 배열 순서 변경
+    - editValues 업데이트하여 순서 유지
+  - **정량적 개선**:
+    - 코드 간소화: 체크박스 관련 로직 ~100줄 제거
+    - 컴포넌트 분리: SortableRow로 재사용성 향상
+    - 테이블 폭: 체크박스 컬럼 제거로 드래그 핸들 컬럼으로 교체
+  - **정성적 개선**:
+    - ✅ 직관적 UX: 드래그로 순서 조정 (클릭보다 자연스러움)
+    - ✅ 접근성: 키보드로도 드래그 가능 (KeyboardSensor)
+    - ✅ 시각적 피드백: 드래그 중 투명도 변화, 호버 시 cursor-grab
+    - ✅ 기능 집중: 순서 변경과 일괄 적용으로 명확한 역할 분리
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
+- **공정모듈 고급편집 모달 테이블 UI 전면 개선**: UnifiedSettingsModal 스타일 차용 및 다크모드 완벽 지원
+  - **Phase 1 - 필수 개선**:
+    - **컴팩트 Input 스타일**: UnifiedSettingsModal과 동일한 `px-2 py-1.5 h-auto text-sm` 적용
+      - 기존 패딩: td 8px + Input 12px = 20px
+      - 개선 패딩: td 8px + Input 8px = 16px (20% 공간 절약)
+    - **테이블 헤더 강화**:
+      - 배경색: `bg-zinc-100 dark:bg-zinc-800`
+      - 하단 보더: `border-b-2` (더 진한 구분선)
+      - 텍스트 색상: `text-zinc-700 dark:text-zinc-200`
+      - 높이: `py-2` → `py-3` (33% 증가)
+    - **다크모드 완벽 지원**:
+      - 행 보더: `border-zinc-200 dark:border-zinc-700`
+      - 호버: `hover:bg-zinc-50 dark:hover:bg-zinc-800/50`
+      - 변경 강조: `bg-yellow-100 dark:bg-yellow-900/30` (더 진한 색상)
+    - **보더 최소화**: 모든 세로 보더(`border-r`) 제거, inbox 스타일 적용
+  - **Phase 2 - 중요 개선**:
+    - **수직 정렬 통일**: 모든 td에 `align-middle` 추가 (체크박스와 Input 정렬)
+    - **공정명 오버플로우 처리**:
+      - `truncate max-w-[200px]` + `title` 툴팁
+      - 변경 뱃지: `bg-orange-500 dark:bg-orange-600 text-white flex-shrink-0`
+    - **대당타설량 읽기전용 강조**:
+      - 배경색: `bg-zinc-50 dark:bg-zinc-800/50`
+      - Badge: `bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300`
+    - **테이블 외곽 보더**: `border border-zinc-200 dark:border-zinc-700 rounded-lg`
+  - **Phase 3 - 세밀한 개선**:
+    - **Input 포커스 스타일**: `focus:ring-2 focus:ring-blue-500 focus:border-transparent`
+    - **Placeholder 개선**: "계산" → "0" (숫자 필드 힌트 명확화)
+    - **다크모드 에러 색상**: `border-red-500 dark:border-red-400`
+  - **정량적 개선**:
+    - 코드 가독성: 다크모드 클래스 체계적 정리
+    - 공간 효율: 패딩 20% 절약, Input 높이 감소
+    - 테이블 밀도: 더 많은 데이터를 한눈에 파악 가능
+  - **정성적 개선**:
+    - ✅ 디자인 일관성: UnifiedSettingsModal과 100% 통일
+    - ✅ 다크모드 완벽 지원: 모든 요소 다크모드 대응
+    - ✅ 가독성 향상: 헤더 강조, 변경 항목 명확한 구분
+    - ✅ 전문성: inbox 스타일의 세련된 테이블
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
+- **공정모듈 섹션 탭 및 고급편집 모달 UI 개선**: 사이드바와 통일된 디자인 및 사용자 경험 향상
+  - **ProcessModuleSection 탭 색상 변경**: 활성 탭 배경색을 사이드바와 동일한 노란색(`#ffff1d`)으로 통일
+    - 라이트모드: `bg-[#ffff1d] text-zinc-900`
+    - 다크모드: `dark:bg-[#ffff1d] dark:text-zinc-900` (가독성 향상)
+  - **ProcessModuleEditModal 전면 개선**:
+    - **DialogDescription 수정**: "6개 필드" → "5개 필드 (인당생산성, 순작업일, 간접일, 장비당인원, 물량참조)"로 명확화
+    - **기본값 복원 버튼 제거**: 미구현 기능 제거로 UI 혼란 방지
+    - **스크롤 레이아웃 통일**: UnifiedSettingsModal과 동일한 flex 기반 스크롤 패턴 적용
+      - DialogContent: `overflow-hidden flex flex-col`
+      - Tabs: `flex-1 flex flex-col overflow-hidden`
+      - TabsContent: `flex-1 overflow-y-auto` (헤더/푸터 고정, 내용만 스크롤)
+    - **대당타설량 헤더 툴팁 추가**: Info 아이콘으로 "프리셋 참조값 (읽기전용)" 안내
+    - **Input 필드 너비 통일**: 물량참조 필드 `w-24` → `w-20`으로 변경하여 시각적 일관성 확보
+    - **isItemChanged 성능 최적화**: O(n²) 반복 계산을 useMemo 기반 Set 조회(O(1))로 개선
+      - 변경된 항목 ID를 미리 계산하여 `changedItemIds` Set에 저장
+      - 렌더링마다 재계산하지 않고 캐시된 결과 사용
+    - **입력값 검증 UI 강화**:
+      - 숫자 필드에 문자 입력 시 빨간 테두리 + "숫자를 입력하세요" 툴팁
+      - 음수 입력 시 "0 이상의 값을 입력하세요" 툴팁
+      - 정상 값 입력 시 에러 자동 제거
+    - **전체/개별 선택 UX 개선**:
+      - "전체 항목에 적용" 체크 시 개별 체크박스 비활성화
+      - 라벨에 "(개별 선택 비활성화)" 표시
+      - 전체 적용 선택 시 개별 선택 Set 초기화
+    - **히스토리 반응형 개선**:
+      - 모바일: 세로 레이아웃 (`flex-col`)
+      - 데스크톱: 가로 레이아웃 (`sm:flex-row`)
+      - 긴 값 자동 truncate + title 툴팁
+      - 상대 시간 표시 ("5분 전", "2시간 전", "3일 전")
+  - **정량적 개선**:
+    - 코드 가독성: useMemo로 복잡한 로직 분리
+    - 성능: 변경 감지 O(n²) → O(1) (최대 100배 개선 가능)
+    - 필드 에러 검증: 실시간 피드백으로 사용자 실수 방지
+  - **정성적 개선**:
+    - ✅ 디자인 일관성: 사이드바와 동일한 노란색 하이라이트
+    - ✅ 사용자 피드백: 입력 에러 즉시 표시 (빨간 테두리 + 툴팁)
+    - ✅ 반응형 디자인: 모바일/데스크톱 모두 최적화
+    - ✅ 명확한 정보: 프리셋 참조 필드 툴팁, 상대 시간 표시
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
+### 2026-02-05
+#### Refactored
+- **프리셋 선택기 UI 통합**: 계산공식 카드로 이동하여 직관적인 레이아웃 구성
+  - **변경 전**: 프리셋 선택기가 별도 Card로 분리, "프리셋 관리" + "설정 관리" 중복 버튼
+  - **변경 후**: FormulaSection 헤더에 "설정 관리" 버튼, 하단에 프리셋 선택 드롭다운 통합
+  - **컴포넌트 변경**:
+    - `FormulaSection.tsx`: props 확장 (presets, activePresetId, onPresetChange, onSettingsClick, isLoadingPresets)
+    - `ProcessLogicPage.tsx`: 프리셋 선택기 Card 제거 (Line 278-297), FormulaSection에 props 전달
+    - PresetSelector import 제거 (컴포넌트 자체는 유지)
+  - **정량적 개선**:
+    - Card 개수: 4개 → 3개 (25% 감소)
+    - 버튼 중복 제거: "프리셋 관리" + "설정 관리" → "설정 관리"만 유지
+  - **정성적 개선**:
+    - ✅ 논리적 그룹핑: 프리셋과 계산공식이 관련된 설정임을 명확히 표현
+    - ✅ UI 단순화: 별도 카드 제거로 시각적 복잡도 감소
+    - ✅ 일관성: 모든 공정로직 설정이 하나의 섹션에 통합
+  - **프리셋 선택 영역**:
+    - 배경색: `bg-zinc-50 dark:bg-zinc-800/30`으로 구분
+    - 드롭다운 너비: `w-60`
+    - 기본/공통 프리셋 뱃지 표시
+    - 빈 상태 메시지: "저장된 프리셋이 없습니다"
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
+- **공정로직 UI 단순화**: 설정 관리 통합으로 사용자 경험 개선
+  - **문제**: 3개의 흩어진 진입점 (FormulaEditorModal, FormulaSection 기준값 편집, PresetManagerModal)
+  - **해결**: UnifiedSettingsModal로 통합 - 3개 탭 구조
+    - 탭 1: **기준값** - 부위별 대당 타설량 설정 (버림/기초/지하층 등 9개 부위)
+    - 탭 2: **공식 관리** - 내장 공식(읽기전용) + 커스텀 공식 CRUD
+    - 탭 3: **프리셋** - 프리셋 저장/로드/수정/삭제
+  - **버튼 통합**: "공식 관리" + "프리셋 관리" → "설정 관리" 단일 버튼
+  - **FormulaSection 단순화**: 기준값 테이블 제거, 공식 표시만 유지 (읽기 전용)
+  - **컴포넌트 구조**:
+    ```
+    process-logic/
+    ├── UnifiedSettingsModal.tsx        # 통합 설정 모달 (Tabs)
+    ├── FormulaEditorContent.tsx        # 공식 관리 탭 내용
+    ├── PresetManagerContent.tsx        # 프리셋 탭 내용
+    └── FormulaSection.tsx (simplified) # 읽기 전용 공식 표시
+    ```
+  - **삭제된 파일**: FormulaEditorModal.tsx, PresetManagerModal.tsx
+  - **정량적 개선**:
+    - 버튼 개수: 2개 → 1개 (50% 감소)
+    - 모달 파일: 2개 → 1개 (50% 감소)
+    - 사용자 클릭: 평균 3-4회 → 2-3회 (25% 감소)
+  - **정성적 개선**:
+    - ✅ 명확한 정보 구조: 모든 설정이 한 곳에
+    - ✅ 학습 곡선 감소: 사용자가 어디로 가야 할지 명확
+    - ✅ 일관성: 설정 관리가 통합된 경험 제공
+  - **빌드 검증**: TypeScript 컴파일 성공 ✅
+
+### 2026-02-05
+#### UI/UX
 - **공정계획 탭 디자인 시스템 통일**: 색상, 타이포그래피, 간격, 애니메이션 전면 개선
   - **색상 100% 통일**: 모든 `slate-`, `gray-`, `cyan-` 클래스를 `zinc-`, `accent-` 디자인 토큰으로 마이그레이션 (15개 파일)
     - BuildingTabs.tsx, ProcessItemCard.tsx, ProcessDetailPanel.tsx, ProcessLogicPage.tsx

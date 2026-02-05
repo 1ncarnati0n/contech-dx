@@ -251,7 +251,7 @@ export function ProcessModuleSection({
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                    ? 'bg-[#ffff1d] text-zinc-900 dark:bg-[#ffff1d] dark:text-zinc-900 shadow-sm'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700/50'
                 }`}
               >
