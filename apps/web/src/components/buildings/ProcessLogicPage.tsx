@@ -11,9 +11,7 @@ import {
   CycleDefinitionSection,
   useProcessLogicState,
 } from './process-logic';
-import { PresetSelector } from './process-logic/PresetSelector';
-import { PresetManagerModal } from './process-logic/PresetManagerModal';
-import { FormulaEditorModal } from './process-logic/FormulaEditorModal';
+import { UnifiedSettingsModal } from './process-logic/UnifiedSettingsModal';
 import { ProcessModuleEditModal } from './process-logic/ProcessModuleEditModal';
 import { usePresetManager } from './process-logic/hooks/usePresetManager';
 import { useFormulaEditor } from './process-logic/hooks/useFormulaEditor';
@@ -39,8 +37,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
   }>({ open: false, type: null });
 
   // 모달 상태
-  const [isPresetManagerOpen, setIsPresetManagerOpen] = useState(false);
-  const [isFormulaEditorOpen, setIsFormulaEditorOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProcessModuleModalOpen, setIsProcessModuleModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProcessCategory>('버림');
 
@@ -72,7 +69,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
     const bases: Record<ProcessCategory, number> = {
       '버림': 650,
       '기초': 650,
-      '지하층': 500,
+      '주동 지하층': 500,
       '셋팅층': 400,
       '기준층': 320,
       '최상층': 230,
@@ -93,6 +90,21 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
     return bases;
   }, [modules]);
+
+  // UI 라벨에 맞게 매핑된 장비 기준값 (UnifiedSettingsModal용)
+  const equipmentBaseValues = useMemo(() => {
+    return {
+      '버림': currentEquipmentBases['버림'],
+      '기초': currentEquipmentBases['기초'],
+      '주동 지하층': currentEquipmentBases['주동 지하층'],
+      '1층': currentEquipmentBases['셋팅층'],
+      '셋팅층': currentEquipmentBases['셋팅층'],
+      '일반층': currentEquipmentBases['일반층'],
+      '기준층': currentEquipmentBases['기준층'],
+      '최상층': currentEquipmentBases['최상층'],
+      'PH층': currentEquipmentBases['PH층'],
+    };
+  }, [currentEquipmentBases]);
 
   // 공식 편집 훅
   const {
@@ -262,33 +274,14 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
   return (
     <div className="space-y-6">
-      {/* 프리셋 선택기 */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <PresetSelector
-            presets={presets}
-            activePresetId={activePresetId}
-            onPresetChange={handlePresetChange}
-            onManageClick={() => setIsPresetManagerOpen(true)}
-            disabled={isLoadingPresets}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => setIsFormulaEditorOpen(true)}
-              className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              공식 관리
-            </button>
-          </div>
-        </div>
-      </Card>
-
-      {/* 계산 공식 섹션 - 전역 편집 상태에서 인라인 편집 */}
+      {/* 계산 공식 섹션 - 프리셋 선택 통합 */}
       <FormulaSection
         modules={modules}
-        isEditing={isEditing}
-        onEquipmentBaseChange={handleEquipmentBaseChange}
-        onSave={handleSave}
+        presets={presets}
+        activePresetId={activePresetId}
+        onPresetChange={handlePresetChange}
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        isLoadingPresets={isLoadingPresets}
       />
 
       {/* 공정 모듈 섹션 - 읽기 전용, 고급 편집 버튼 제공 */}
@@ -303,28 +296,24 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
       {/* 사이클 정의 섹션 */}
       <CycleDefinitionSection />
 
-      {/* 프리셋 관리 모달 */}
-      <PresetManagerModal
-        open={isPresetManagerOpen}
-        onOpenChange={setIsPresetManagerOpen}
+      {/* 통합 설정 모달 */}
+      <UnifiedSettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        formulas={formulas}
+        onCreateFormula={createFormula}
+        onUpdateFormula={updateFormula}
+        onDeleteFormula={deleteFormula}
+        onValidateFormula={validateFormula}
+        equipmentBaseValues={equipmentBaseValues}
+        onEquipmentBaseChange={handleEquipmentBaseChange}
         presets={presets}
         activePresetId={activePresetId}
-        onApply={handlePresetChange}
-        onDuplicate={duplicatePreset}
-        onDelete={deletePreset}
-        onUpdate={updatePreset}
-        onSaveCurrentAs={saveCurrentAsPreset}
-      />
-
-      {/* 공식 편집 모달 */}
-      <FormulaEditorModal
-        open={isFormulaEditorOpen}
-        onOpenChange={setIsFormulaEditorOpen}
-        formulas={formulas}
-        onCreate={createFormula}
-        onUpdate={updateFormula}
-        onDelete={deleteFormula}
-        onValidate={validateFormula}
+        onApplyPreset={handlePresetChange}
+        onDuplicatePreset={duplicatePreset}
+        onDeletePreset={deletePreset}
+        onUpdatePreset={updatePreset}
+        onSaveCurrentAsPreset={saveCurrentAsPreset}
       />
 
       {/* 공정모듈 고급 편집 모달 */}

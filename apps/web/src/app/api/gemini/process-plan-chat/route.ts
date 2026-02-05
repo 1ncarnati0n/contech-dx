@@ -148,7 +148,7 @@ function contextSnapshotToPromptText(snapshot?: ChatContextSnapshot): string {
   if (snapshot.processPlanSummary) {
     lines.push('');
     lines.push('### 공정계획 현황');
-    const categories = ['버림', '기초', '지하층', '셋팅층', '기준층', '옥탑층'] as const;
+    const categories = ['버림', '기초', '주동 지하층', '셋팅층', '기준층', '옥탑층'] as const;
     for (const category of categories) {
       const type = snapshot.processPlanSummary.selectedTypes[category];
       const days = snapshot.processPlanSummary.calculatedDays[category];

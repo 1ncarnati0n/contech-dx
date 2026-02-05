@@ -33,7 +33,7 @@ export function PresetSelector({
 }: PresetSelectorProps) {
   return (
     <div className="flex items-center gap-3">
-      <label className="text-sm font-medium text-gray-700">프리셋:</label>
+      <label className="text-sm font-medium text-zinc-700">프리셋:</label>
 
       <Select
         value={activePresetId || ''}
@@ -45,7 +45,7 @@ export function PresetSelector({
         </SelectTrigger>
         <SelectContent>
           {presets.length === 0 && (
-            <div className="px-2 py-1.5 text-sm text-gray-500">
+            <div className="px-2 py-1.5 text-sm text-zinc-500">
               저장된 프리셋이 없습니다
             </div>
           )}
@@ -54,7 +54,7 @@ export function PresetSelector({
               <div className="flex items-center gap-2">
                 <span>{preset.name}</span>
                 {preset.isDefault && (
-                  <span className="text-xs text-gray-500">(기본)</span>
+                  <span className="text-xs text-zinc-500">(기본)</span>
                 )}
                 {!preset.projectId && (
                   <span className="text-xs text-blue-600">(공통)</span>

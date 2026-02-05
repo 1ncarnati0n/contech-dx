@@ -1,10 +1,17 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Calculator, Info, Edit, Save, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calculator, Info, Edit, Save, X, Settings } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { ProcessModule } from '@/lib/data/process-modules';
-import type { ProcessCategory } from '@/lib/types';
+import type { ProcessCategory, ProcessLogicPreset } from '@/lib/types';
 
 interface Formula {
   id: string;
@@ -16,18 +23,22 @@ interface Formula {
 
 interface FormulaSectionProps {
   modules?: ProcessModule[];
-  isEditing: boolean; // 전역 편집 상태
-  onEquipmentBaseChange?: (category: ProcessCategory, value: number) => void;
-  onSave?: () => void;
+
+  // 프리셋 관련 props
+  presets?: ProcessLogicPreset[];
+  activePresetId?: string | null;
+  onPresetChange?: (presetId: string) => void;
+  onSettingsClick?: () => void;
+  isLoadingPresets?: boolean;
 }
 
 // UI 라벨과 실제 ProcessCategory 간의 매핑
-type EquipmentBaseLabel = '버림' | '기초' | '지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
+type EquipmentBaseLabel = '버림' | '기초' | '주동 지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
 
 const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[] = [
   { label: '버림', defaultValue: 650 },
   { label: '기초', defaultValue: 650 },
-  { label: '지하층', defaultValue: 500 },
+  { label: '주동 지하층', defaultValue: 500 },
   { label: '1층', defaultValue: 400 },
   { label: '일반층', defaultValue: 200 },
   { label: '셋팅층', defaultValue: 400 },
@@ -40,7 +51,7 @@ const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[
 const LABEL_TO_CATEGORY_MAP: Record<EquipmentBaseLabel, ProcessCategory> = {
   '버림': '버림',
   '기초': '기초',
-  '지하층': '지하층',
+  '주동 지하층': '주동 지하층',
   '1층': '셋팅층',      // 1층은 셋팅층 카테고리에 해당
   '셋팅층': '셋팅층',
   '일반층': '일반층',   // 일반층은 별도 카테고리 (200㎥)
@@ -112,7 +123,7 @@ function getEquipmentBaseByCategory(modules: ProcessModule[]): Record<ProcessCat
   const defaults: Record<ProcessCategory, number> = {
     '버림': 650,
     '기초': 650,
-    '지하층': 500,
+    '주동 지하층': 500,
     '셋팅층': 400,
     '기준층': 320,
     '최상층': 230,
@@ -141,7 +152,7 @@ function getDefaultValueForCategory(category: ProcessCategory): number {
   const categoryDefaults: Record<ProcessCategory, number> = {
     '버림': 650,
     '기초': 650,
-    '지하층': 500,
+    '주동 지하층': 500,
     '셋팅층': 400,
     '기준층': 320,
     '최상층': 230,
@@ -153,7 +164,14 @@ function getDefaultValueForCategory(category: ProcessCategory): number {
   return categoryDefaults[category];
 }
 
-export function FormulaSection({ modules = [], isEditing, onEquipmentBaseChange, onSave }: FormulaSectionProps) {
+export function FormulaSection({
+  modules = [],
+  presets,
+  activePresetId,
+  onPresetChange,
+  onSettingsClick,
+  isLoadingPresets,
+}: FormulaSectionProps) {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
 
   // modules에서 현재 equipmentCalculationBase 값들 추출
@@ -186,17 +204,9 @@ export function FormulaSection({ modules = [], isEditing, onEquipmentBaseChange,
     setExpandedFormula(expandedFormula === id ? null : id);
   };
 
-  const handleValueChange = (label: EquipmentBaseLabel, value: string) => {
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue) && numValue > 0 && onEquipmentBaseChange) {
-      const category = LABEL_TO_CATEGORY_MAP[label];
-      onEquipmentBaseChange(category, numValue);
-    }
-  };
-
   return (
     <Card className="p-0 overflow-hidden">
-      {/* 섹션 헤더 */}
+      {/* 헤더 - 제목 + 설정 관리 버튼 */}
       <div className="w-full flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -212,7 +222,60 @@ export function FormulaSection({ modules = [], isEditing, onEquipmentBaseChange,
           </div>
         </div>
 
+        {/* 설정 관리 버튼 */}
+        {onSettingsClick && (
+          <Button
+            variant="outline"
+            onClick={onSettingsClick}
+            className="flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            설정 관리
+          </Button>
+        )}
       </div>
+
+      {/* 프리셋 선택 영역 */}
+      {presets && onPresetChange && (
+        <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 bg-zinc-50 dark:bg-zinc-800/30">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              프리셋:
+            </label>
+
+            <Select
+              value={activePresetId || ''}
+              onValueChange={onPresetChange}
+              disabled={isLoadingPresets}
+            >
+              <SelectTrigger className="w-80">
+                <SelectValue placeholder="프리셋 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {presets.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-zinc-500">
+                    저장된 프리셋이 없습니다
+                  </div>
+                ) : (
+                  presets.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{preset.name}</span>
+                        {preset.isDefault && (
+                          <span className="text-xs text-zinc-500">(기본)</span>
+                        )}
+                        {!preset.projectId && (
+                          <span className="text-xs text-blue-600 dark:text-blue-400">(공통)</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* 섹션 콘텐츠 */}
       <div className="border-t border-zinc-200 dark:border-zinc-700">
@@ -284,7 +347,7 @@ export function FormulaSection({ modules = [], isEditing, onEquipmentBaseChange,
             ))}
           </div>
 
-          {/* 부위별 대당 타설량 기준표 */}
+          {/* 부위별 대당 타설량 기준표 (읽기 전용) */}
           <div className="border-t border-zinc-200 dark:border-zinc-700 p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -292,59 +355,22 @@ export function FormulaSection({ modules = [], isEditing, onEquipmentBaseChange,
               </h4>
             </div>
 
-            {isEditing ? (
-              // 편집 모드: input 필드로 표시
-              <div className="grid grid-cols-3 md:grid-cols-9 gap-2">
-                {EQUIPMENT_BASE_ITEMS.map((item) => {
-                  const currentValue = equipmentBaseValues[item.label];
-                  const isDefault = currentValue === item.defaultValue;
-
-                  return (
-                    <div
-                      key={item.label}
-                      className="flex flex-col items-center p-3 bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 rounded-lg"
-                    >
-                      <label className="text-xs font-medium mb-1 text-zinc-700 dark:text-zinc-300">
-                        {item.label}
-                      </label>
-                      <input
-                        type="number"
-                        value={currentValue}
-                        onChange={(e) => handleValueChange(item.label, e.target.value)}
-                        placeholder={item.defaultValue.toString()}
-                        className="w-20 px-2 py-1.5 text-center border border-zinc-300 dark:border-zinc-600 rounded text-sm bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="1"
-                      />
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">㎥</span>
-                        {isDefault && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400 rounded">
-                            기본
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              // 읽기 모드: 값만 표시
-              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
-                {EQUIPMENT_BASE_ITEMS.map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
-                  >
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {item.label}
-                    </span>
-                    <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                      {equipmentBaseValues[item.label]}㎥
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* 읽기 모드: 값만 표시 */}
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
+              {EQUIPMENT_BASE_ITEMS.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
+                >
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {item.label}
+                  </span>
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+                    {equipmentBaseValues[item.label]}㎥
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
     </Card>

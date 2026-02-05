@@ -1101,7 +1101,16 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         </td>
                         <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">-</td>
                         {/* 형틀 합계 (읽기 전용) */}
-                        <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                        <td className="relative px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                          {/* 셀 주소 라벨 */}
+                          {getCellAddress(2, rowIndex, rows) && (
+                            <span
+                              className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60"
+                              aria-hidden="true"
+                            >
+                              {getCellAddress(2, rowIndex, rows)}
+                            </span>
+                          )}
                           {(() => {
                             const val = calculateFormworkTotal(groupTrade);
                             return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1113,6 +1122,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'gangForm.areaM2', v)}
                           rowIndex={rowIndex}
                           colIndex={3}
+                          rows={rows}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="gangForm.areaM2"
@@ -1135,6 +1145,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'alForm.areaM2', v)}
                           rowIndex={rowIndex}
                           colIndex={4}
+                          rows={rows}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="alForm.areaM2"
@@ -1157,6 +1168,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'euroForm.areaM2', v)}
                           rowIndex={rowIndex}
                           colIndex={5}
+                          rows={rows}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="euroForm.areaM2"
@@ -1174,7 +1186,16 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           isLocked={false}
                         />
                         {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
-                        <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                        <td className="relative px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                          {/* 셀 주소 라벨 */}
+                          {getCellAddress(6, rowIndex, rows) && (
+                            <span
+                              className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60"
+                              aria-hidden="true"
+                            >
+                              {getCellAddress(6, rowIndex, rows)}
+                            </span>
+                          )}
                           {(() => {
                             const euroFormVal = groupTrade.euroForm?.areaM2 || 0;
                             const val = euroFormVal * 2;
@@ -1187,6 +1208,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'rebar.ton', v)}
                           rowIndex={rowIndex}
                           colIndex={7}
+                          rows={rows}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="rebar.ton"
@@ -1209,6 +1231,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                           onChange={(v) => updateTrade(specialFloorId, tradeGroup, 'concrete.volumeM3', v)}
                           rowIndex={rowIndex}
                           colIndex={8}
+                          rows={rows}
                           floorId={specialFloorId}
                           tradeGroup={tradeGroup}
                           fieldPath="concrete.volumeM3"
@@ -1240,7 +1263,16 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         {row.label}
                       </td>
                       {/* 형틀 합계 (읽기 전용) */}
-                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                      <td className="relative px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                        {/* 셀 주소 라벨 */}
+                        {getCellAddress(2, rowIndex, rows) && (
+                          <span
+                            className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60"
+                            aria-hidden="true"
+                          >
+                            {getCellAddress(2, rowIndex, rows)}
+                          </span>
+                        )}
                         {(() => {
                           const val = calculateFormworkTotal(floorTrade);
                           return val === 0 ? '-' : val.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1252,6 +1284,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'gangForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={3}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="gangForm.areaM2"
@@ -1274,6 +1307,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'alForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={4}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="alForm.areaM2"
@@ -1295,6 +1329,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'euroForm.areaM2', v)}
                         rowIndex={rowIndex}
                         colIndex={5}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="euroForm.areaM2"
@@ -1311,7 +1346,16 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         isLocked={false}
                       />
                       {/* 해체/정리 - 유로폼 * 2로 자동 계산 (읽기 전용) */}
-                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                      <td className="relative px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
+                        {/* 셀 주소 라벨 */}
+                        {getCellAddress(6, rowIndex, rows) && (
+                          <span
+                            className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60"
+                            aria-hidden="true"
+                          >
+                            {getCellAddress(6, rowIndex, rows)}
+                          </span>
+                        )}
                         {(() => {
                           const euroFormVal = floorTrade.euroForm?.areaM2 || 0;
                           const val = euroFormVal * 2;
@@ -1324,6 +1368,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'rebar.ton', v)}
                         rowIndex={rowIndex}
                         colIndex={7}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="rebar.ton"
@@ -1345,6 +1390,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                         onChange={(v) => updateTrade(floorId, tradeGroup, 'concrete.volumeM3', v)}
                         rowIndex={rowIndex}
                         colIndex={8}
+                        rows={rows}
                         floorId={floorId}
                         tradeGroup={tradeGroup}
                         fieldPath="concrete.volumeM3"
@@ -1396,12 +1442,125 @@ function calculateFormula(formula: string): number | null {
   }
 }
 
+/**
+ * 열 인덱스를 공정모듈 열 문자로 변환
+ * quantity-reference.ts의 열 매핑과 일치 (+ 유로폼은 U열로 독립 매핑)
+ * B=갱폼, C=알폼, D=형틀 합계, U=유로폼, E=해체/정리, F=철근, G=콘크리트
+ */
+function getColumnLetter(colIndex: number): string | null {
+  const mapping: Record<number, string> = {
+    2: 'D', // 형틀 합계
+    3: 'B', // 갱폼
+    4: 'C', // 알폼
+    5: 'U', // 유로폼 (공정모듈에서 직접 참조 안 함, 독립 표시용)
+    6: 'E', // 해체/정리
+    7: 'F', // 철근
+    8: 'G', // 콘크리트
+  };
+  return mapping[colIndex] || null;
+}
+
+/**
+ * 층 라벨에서 숫자 추출 (예: "1F" → 1, "15F" → 15, "B1" → null)
+ */
+function parseFloorNumber(label: string): number | null {
+  const match = label.match(/^(\d+)F?$/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * 행 인덱스를 공정모듈 행 번호로 변환
+ * quantity-reference.ts의 행 매핑과 일치
+ * row 6=버림, row 7=기초, row 8=B2, row 9=B1, row 11=1층, row 12=2층,
+ * row 13-25=3-15층, row 26=옥탑1층, row 27=옥탑2층, row 28=옥탑3층
+ */
+function getExcelRowNumber(rowIndex: number, rows: Array<{
+  type: 'group' | 'floor' | 'summary';
+  label: string;
+  floor?: {
+    id: string;
+    levelType?: string;
+    floorClass?: string;
+    floorNumber?: number;
+  };
+}>): number {
+  const row = rows[rowIndex];
+  if (!row || row.type === 'summary') return -1;
+
+  // 버림/기초 (고정)
+  if (row.type === 'group') {
+    if (row.label === '버림') return 6;
+    if (row.label === '기초') return 7;
+  }
+
+  // 일반 층
+  if (row.type === 'floor' && row.floor) {
+    const floor = row.floor;
+
+    // 지하층: B2=8, B1=9
+    if (floor.levelType === '지하') {
+      const basementFloors = rows
+        .filter(r => r.type === 'floor' && r.floor?.levelType === '지하')
+        .reverse(); // B2, B1 순서 (깊은 층부터)
+      const bIndex = basementFloors.findIndex(r => r.floor?.id === floor.id);
+      return bIndex >= 0 ? 8 + bIndex : -1;
+    }
+
+    // 옥탑층: PH1=26, PH2=27, PH3=28 (지상층보다 먼저 체크!)
+    if (floor.floorClass === '옥탑층' || floor.floorClass === 'PH층') {
+      const phFloors = rows
+        .filter(r => r.type === 'floor' && (r.floor?.floorClass === '옥탑층' || r.floor?.floorClass === 'PH층'));
+      const phIndex = phFloors.findIndex(r => r.floor?.id === floor.id);
+      return phIndex >= 0 ? 26 + phIndex : -1;
+    }
+
+    // 지상층: 1F=11, 2F=12, 3F=13, ...
+    if (floor.levelType === '지상') {
+      const floorNum = parseFloorNumber(row.label);
+      return floorNum ? 10 + floorNum : -1;
+    }
+  }
+
+  return -1;
+}
+
+/**
+ * 열/행 인덱스를 공정모듈 호환 셀 주소로 변환
+ * @param colIndex - 열 인덱스 (0-8)
+ * @param rowIndex - 행 인덱스 (0부터 시작)
+ * @param rows - rows 배열 (행 정보)
+ * @returns 공정모듈 셀 주소 (예: "D6", "B11", "F7") 또는 null
+ */
+function getCellAddress(
+  colIndex: number,
+  rowIndex: number,
+  rows: Array<{
+    type: 'group' | 'floor' | 'summary';
+    label: string;
+    floor?: {
+      id: string;
+      levelType?: string;
+      floorClass?: string;
+      floorNumber?: number;
+    };
+  }>
+): string | null {
+  const columnLetter = getColumnLetter(colIndex);
+  if (!columnLetter) return null;
+
+  const rowNumber = getExcelRowNumber(rowIndex, rows);
+  if (rowNumber < 0) return null;
+
+  return `${columnLetter}${rowNumber}`;
+}
+
 // 헬퍼 컴포넌트: 입력 셀
 function TradeInputCell({
   value,
   onChange,
   rowIndex,
   colIndex,
+  rows,
   floorId,
   tradeGroup,
   fieldPath,
@@ -1422,6 +1581,16 @@ function TradeInputCell({
   onChange: (value: number | null) => void;
   rowIndex?: number;
   colIndex?: number;
+  rows?: Array<{
+    type: 'group' | 'floor' | 'summary';
+    label: string;
+    floor?: {
+      id: string;
+      levelType?: string;
+      floorClass?: string;
+      floorNumber?: number;
+    };
+  }>;
   floorId?: string;
   tradeGroup?: string;
   fieldPath?: string;
@@ -1784,9 +1953,19 @@ function TradeInputCell({
 
   return (
     <td
-      className={`px-0.5 py-0 border-r border-slate-200 dark:border-slate-800 w-16 transition-colors duration-150 ${getCellBgClass()}`}
+      className={`relative px-0.5 py-0 border-r border-slate-200 dark:border-slate-800 w-16 transition-colors duration-150 ${getCellBgClass()}`}
       onMouseDown={handleCellMouseDown}
     >
+      {/* 셀 주소 라벨 - 공정모듈 호환 (예: D6, B11, F7) */}
+      {rowIndex !== undefined && colIndex !== undefined && rows && getCellAddress(colIndex, rowIndex, rows) && (
+        <span
+          className="absolute top-0.5 left-0.5 pointer-events-none select-none z-10 text-[9px] font-mono leading-none text-slate-400/60 dark:text-slate-600/60 transition-opacity duration-150"
+          aria-hidden="true"
+        >
+          {getCellAddress(colIndex, rowIndex, rows)}
+        </span>
+      )}
+
       <Input
         type="text"
         inputMode="decimal"

@@ -1,7 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui';
 import { ProcessItemCard } from './ProcessItemCard';
 import { useProcessCalculation } from './hooks/useProcessCalculation';
 import type { Building, ProcessCategory, BuildingProcessPlan, Floor } from '@/lib/types';
@@ -108,28 +110,36 @@ export function ProcessDetailPanel({
   // 확장된 행이 없을 때
   if (!expandedRow) {
     return (
-      <div
-        className={cn(
-          'text-slate-400 dark:text-slate-500 text-center py-8',
-          className
-        )}
-      >
-        세부공정 버튼을 클릭하여 상세 정보를 확인하세요
-      </div>
+      <Card className={cn(
+        'flex flex-col items-center justify-center py-12 px-4',
+        'bg-zinc-50 dark:bg-zinc-900/50',
+        className
+      )}>
+        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+          <Info className="w-8 h-8 text-zinc-400" />
+        </div>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          세부공정 버튼을 클릭하여 상세 정보를 확인하세요
+        </p>
+      </Card>
     );
   }
 
   // 모듈이 없을 때
   if (!module || !module.items.length) {
     return (
-      <div
-        className={cn(
-          'text-slate-400 dark:text-slate-500 text-center py-8',
-          className
-        )}
-      >
-        세부공정 데이터가 없습니다
-      </div>
+      <Card className={cn(
+        'flex flex-col items-center justify-center py-12 px-4',
+        'bg-zinc-50 dark:bg-zinc-900/50',
+        className
+      )}>
+        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+          <Info className="w-8 h-8 text-zinc-400" />
+        </div>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          세부공정 데이터가 없습니다
+        </p>
+      </Card>
     );
   }
 
@@ -160,7 +170,7 @@ export function ProcessDetailPanel({
     if (expandedRow.category === '기준층') {
       return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
     }
-    if (expandedRow.category === '지하층') {
+    if (expandedRow.category === '주동 지하층') {
       // 특수 행(주차장, 3단 가시설)인 경우 해당 지하층의 항목 사용
       if (isSpecialRow) {
         return item.floorLabel === targetFloorLabel;
@@ -237,7 +247,7 @@ export function ProcessDetailPanel({
     if (expandedRow.category === '버림' || expandedRow.category === '기초') {
       return expandedRow.category;
     }
-    if (expandedRow.category === '지하층') {
+    if (expandedRow.category === '주동 지하층') {
       // 특수 행(주차장, 3단 가시설)인 경우 그대로 표시
       if (isSpecialRow) {
         return expandedRow.floorLabel || '';
@@ -269,22 +279,19 @@ export function ProcessDetailPanel({
   return (
     <div
       className={cn(
-        'border-b border-slate-300 dark:border-slate-700 pb-3 last:border-b-0',
+        'fade-in',
         className
       )}
     >
-      {/* 헤더: 카테고리명 + 순작업일 합계 */}
-      <div className="font-semibold text-sm text-slate-900 dark:text-white mb-3">
-        {getCategoryDisplayName()}
-        {directWorkDaysSum > 0 && (
-          <span className="ml-2 text-cyan-600 dark:text-cyan-400 font-normal">
-            (순작업일 합계 {directWorkDaysSum}일)
-          </span>
-        )}
-      </div>
+      {/* 순작업일 합계 표시 */}
+      {directWorkDaysSum > 0 && (
+        <div className="mb-4 text-sm text-accent-600 dark:text-accent-400 font-medium">
+          순작업일 합계: {directWorkDaysSum}일
+        </div>
+      )}
 
       {/* 세부공종 카드 목록 (1열 레이아웃) */}
-      <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-4">
         {filteredItems.map((item, idx) => {
           // 오버라이드 키 생성
           const itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
@@ -308,19 +315,24 @@ export function ProcessDetailPanel({
           }
 
           return (
-            <ProcessItemWithCalculation
+            <div
               key={item.id}
-              building={building}
-              item={item}
-              index={idx + 1}
-              category={expandedRow.category}
-              floorLabel={isSpecialRow ? targetFloorLabel : expandedRow.floorLabel}
-              floor={expandedRow.floor ? { id: expandedRow.floor.id, floorLabel: expandedRow.floor.floorLabel } : undefined}
-              overriddenDirectWorkDays={overriddenDays}
-              onDirectWorkDaysChange={(value) => onDirectWorkDaysChange(itemKey, value)}
-              isSpecialRow={isSpecialRow}
-              specialRowQuantities={currentSpecialRowQuantities}
-            />
+              className="slide-up"
+              style={{ animationDelay: `${idx * 50}ms` }}
+            >
+              <ProcessItemWithCalculation
+                building={building}
+                item={item}
+                index={idx + 1}
+                category={expandedRow.category}
+                floorLabel={isSpecialRow ? targetFloorLabel : expandedRow.floorLabel}
+                floor={expandedRow.floor ? { id: expandedRow.floor.id, floorLabel: expandedRow.floor.floorLabel } : undefined}
+                overriddenDirectWorkDays={overriddenDays}
+                onDirectWorkDaysChange={(value) => onDirectWorkDaysChange(itemKey, value)}
+                isSpecialRow={isSpecialRow}
+                specialRowQuantities={currentSpecialRowQuantities}
+              />
+            </div>
           );
         })}
       </div>

@@ -95,7 +95,7 @@ export function useProcessCalculation({
       quantitySource = getQuantitySourceDescription(item.quantityReference);
 
       // 카테고리별 수량 가져오기 로직
-      if (category === '지하층' && floorLabel) {
+      if (category === '주동 지하층' && floorLabel) {
         const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
         if (refMatch) {
           const [, col] = refMatch;

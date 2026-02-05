@@ -11,7 +11,7 @@ import {
   type ProcessPlanContext,
 } from '@/lib/stores/useTabContextStore';
 
-const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '지하층', '셋팅층', '기준층', 'PH층', '옥탑층'];
+const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '주동 지하층', '셋팅층', '기준층', 'PH층', '옥탑층'];
 
 interface UseSyncTabContextOptions {
   activeBuildingIndex: number;

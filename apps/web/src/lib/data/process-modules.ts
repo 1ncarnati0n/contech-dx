@@ -140,12 +140,12 @@ export const PROCESS_MODULES: ProcessModule[] = [
   },
 
   // ============================================
-  // 지하층 - 지하2층 표준 지하1층 2차마감
+  // 주동 지하층 - 지하2층 표준 지하1층 2차마감
   // ============================================
   {
     id: 'basement-standard',
     name: '표준공정',
-    category: '지하층',
+    category: '주동 지하층',
     items: [
       {
         id: 'basement-meokmaekim-1',
@@ -1677,15 +1677,131 @@ export const PROCESS_MODULES: ProcessModule[] = [
   },
 
   // ============================================
-  // 지하층 - 층고6.5m이상 (시스템동바리 포함)
+  // 주동 지하층 - 층고6.5m이상 (B1+B2 통합, 시스템동바리 포함)
   // ============================================
   {
     id: 'basement-high-ceiling',
     name: '층고6.5m이상',
-    category: '지하층',
+    category: '주동 지하층',
     items: [
       {
-        id: 'basement-hc-meokmaekim-1',
+        id: 'bhc-floor-marking',
+        workItem: '먹매김',
+        unit: '',
+        dailyProductivity: 0,
+        quantityReference: undefined,
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 1,
+        indirectDays: 0,
+        // floorLabel 없음 (통합 지하층)
+      },
+      {
+        id: 'bhc-wall-rebar',
+        workItem: '벽 철근조립',
+        unit: 'ton',
+        dailyProductivity: 0.8,
+        quantityReference: 'F_B1B2_COMBINED', // B1+B2 합산 벽 철근량
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 5,
+        indirectDays: 0.5,
+        indirectWorkItem: '검측',
+        // floorLabel 없음
+      },
+      // 시스템동바리 - 층고6.5m이상에서만 적용 (통합)
+      {
+        id: 'bhc-system-support',
+        workItem: '시스템동바리',
+        unit: '㎡',
+        dailyProductivity: 20.0,
+        directWorkDays: 6,
+        quantityReference: 'C_B1B2_COMBINED', // 특수 계산 - 바닥 면적 기반
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        indirectDays: 0,
+        // floorLabel 없음
+      },
+      {
+        id: 'bhc-formwork-install',
+        workItem: '거푸집 설치',
+        unit: '㎡',
+        dailyProductivity: 11.0,
+        quantityReference: 'D_B1B2_COMBINED', // B1+B2 합산 형틀 면적
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 17,
+        indirectDays: 1,
+        indirectWorkItem: '보강/검측',
+        // floorLabel 없음
+      },
+      {
+        id: 'bhc-slab-rebar',
+        workItem: '보슬라브 철근조립',
+        unit: 'ton',
+        dailyProductivity: 0.8,
+        quantityReference: 'F_B1B2_COMBINED', // B1+B2 합산 슬라브 철근량
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 5,
+        indirectDays: 0.5,
+        indirectWorkItem: '검측',
+        // floorLabel 없음
+      },
+      {
+        id: 'bhc-finishing',
+        workItem: '마감작업',
+        unit: '㎡',
+        dailyProductivity: 11,
+        quantityReference: 'D_B1B2_COMBINED', // B1+B2 합산 마감 면적
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 2,
+        indirectDays: 0.5,
+        indirectWorkItem: '검측',
+        // floorLabel 없음
+      },
+      {
+        id: 'bhc-concrete',
+        workItem: '타설',
+        unit: '㎥',
+        dailyProductivity: 130,
+        calculationBasis: '장비대수*5명 /지하층부분',
+        equipmentName: '콘크리트 펌프차',
+        equipmentCalculationBase: 500,
+        equipmentWorkersPerUnit: 5,
+        equipmentCount: 1,
+        quantityReference: 'G_B1B2_COMBINED',
+        indirectDays: 3,
+        indirectWorkItem: '양생',
+        // floorLabel 없음
+      },
+      {
+        id: 'bhc-formwork-dismantle',
+        workItem: '거푸집 해체/정리',
+        unit: '㎡',
+        dailyProductivity: 50.0,
+        quantityReference: 'D_B1B2_COMBINED', // B1+B2 합산 거푸집 면적
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 0,
+        indirectDays: 16,
+        // floorLabel 없음
+      },
+    ],
+  },
+
+  // ============================================
+  // 주동 지하층 - 피트층포함
+  // ============================================
+  {
+    id: 'basement-with-pit',
+    name: '피트층포함',
+    category: '주동 지하층',
+    items: [
+      // === B2 층 항목 (7개) ===
+      {
+        id: 'bwp-meokmaekim-b2',
         workItem: '먹매김',
         calculationBasis: '일수고정',
         unit: '',
@@ -1696,7 +1812,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B2',
       },
       {
-        id: 'basement-hc-wall-rebar-b2',
+        id: 'bwp-wall-rebar-b2',
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F8*0.45',
@@ -1708,20 +1824,8 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectWorkItem: '검측',
         floorLabel: 'B2',
       },
-      // 시스템동바리 - 층고6.5m이상에서만 적용
       {
-        id: 'basement-hc-system-support-b2',
-        workItem: '시스템동바리',
-        unit: '㎡',
-        dailyProductivity: 20,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 6,
-        indirectDays: 0,
-        floorLabel: 'B2',
-      },
-      {
-        id: 'basement-hc-formwork-b2',
+        id: 'bwp-formwork-b2',
         workItem: '지하2층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D8*0.95',
@@ -1734,7 +1838,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B2',
       },
       {
-        id: 'basement-hc-slab-rebar-b2',
+        id: 'bwp-slab-rebar-b2',
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F8*0.55',
@@ -1747,7 +1851,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B2',
       },
       {
-        id: 'basement-hc-finish-b2',
+        id: 'bwp-finish-b2',
         workItem: '마감작업',
         unit: '㎡',
         quantityReference: 'D8*0.05',
@@ -1760,7 +1864,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B2',
       },
       {
-        id: 'basement-hc-concrete-b2',
+        id: 'bwp-concrete-b2',
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G8',
@@ -1775,7 +1879,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B2',
       },
       {
-        id: 'basement-hc-stripclean-b2',
+        id: 'bwp-stripclean-b2',
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D8',
@@ -1786,8 +1890,10 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectDays: 16,
         floorLabel: 'B2',
       },
+
+      // === B1 층 항목 (6개) ===
       {
-        id: 'basement-hc-meokmaekim-2',
+        id: 'bwp-meokmaekim-b1',
         workItem: '먹매김',
         calculationBasis: '일수고정',
         unit: '',
@@ -1798,7 +1904,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B1',
       },
       {
-        id: 'basement-hc-wall-rebar-b1',
+        id: 'bwp-wall-rebar-b1',
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.45',
@@ -1810,20 +1916,8 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectWorkItem: '검측',
         floorLabel: 'B1',
       },
-      // 시스템동바리 - B1층 (층고6.5m이상)
       {
-        id: 'basement-hc-system-support-b1',
-        workItem: '시스템동바리',
-        unit: '㎡',
-        dailyProductivity: 20,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 6,
-        indirectDays: 0,
-        floorLabel: 'B1',
-      },
-      {
-        id: 'basement-hc-formwork-b1',
+        id: 'bwp-formwork-b1',
         workItem: '지하1층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D9*0.9',
@@ -1836,7 +1930,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B1',
       },
       {
-        id: 'basement-hc-slab-rebar-b1',
+        id: 'bwp-slab-rebar-b1',
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.55',
@@ -1849,8 +1943,8 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B1',
       },
       {
-        id: 'basement-hc-finish-1st',
-        workItem: '마감작업 (1차)',
+        id: 'bwp-finish-1st',
+        workItem: '마감작업',
         unit: '㎡',
         quantityReference: 'D9*0.05',
         dailyProductivity: 10,
@@ -1862,8 +1956,8 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B1',
       },
       {
-        id: 'basement-hc-concrete-1st',
-        workItem: '타설 (1차)',
+        id: 'bwp-concrete-1st',
+        workItem: '타설',
         unit: '㎥',
         quantityReference: 'G9*0.6',
         dailyProductivity: 130,
@@ -1876,11 +1970,26 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectWorkItem: '양생',
         floorLabel: 'B1',
       },
+
+      // === B1 피트층 항목 (5개) ===
       {
-        id: 'basement-hc-finish-2nd',
-        workItem: '마감작업 (2차)',
+        id: 'bwp-wall-rebar-pit',
+        workItem: '벽 철근조립',
+        unit: 'ton',
+        quantityReference: 'F9*0.45',
+        dailyProductivity: 0.7,
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 3,
+        indirectDays: 0.5,
+        indirectWorkItem: '검측',
+        floorLabel: 'B1',
+      },
+      {
+        id: 'bwp-formwork-pit',
+        workItem: '피트층 거푸집 설치',
         unit: '㎡',
-        quantityReference: 'D9*0.05',
+        quantityReference: 'D9*0.1',
         dailyProductivity: 10,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -1890,8 +1999,21 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B1',
       },
       {
-        id: 'basement-hc-concrete-2nd',
-        workItem: '타설 (2차)',
+        id: 'bwp-slab-rebar-pit',
+        workItem: '보슬라브 철근조립',
+        unit: 'ton',
+        quantityReference: 'F9*0.55',
+        dailyProductivity: 0.7,
+        calculationBasis: '일수고정',
+        equipmentCount: 1,
+        directWorkDays: 3,
+        indirectDays: 0.5,
+        indirectWorkItem: '검측',
+        floorLabel: 'B1',
+      },
+      {
+        id: 'bwp-concrete-pit',
+        workItem: '피트층 타설',
         unit: '㎥',
         quantityReference: 'G9*0.4',
         dailyProductivity: 130,
@@ -1905,7 +2027,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         floorLabel: 'B1',
       },
       {
-        id: 'basement-hc-stripclean-b1',
+        id: 'bwp-stripclean-b1',
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D9',

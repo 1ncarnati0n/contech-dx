@@ -19,7 +19,7 @@ function getEquipmentBaseByCategory(modules: ProcessModule[]): Record<ProcessCat
   const defaults: Record<ProcessCategory, number> = {
     '버림': 650,
     '기초': 650,
-    '지하층': 500,
+    '주동 지하층': 500,
     '셋팅층': 400,
     '기준층': 320,
     '최상층': 230,
