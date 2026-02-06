@@ -40,6 +40,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProcessModuleModalOpen, setIsProcessModuleModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProcessCategory>('버림');
+  const [selectedProcessType, setSelectedProcessType] = useState<string | undefined>(undefined);
 
   // 프로필 로드
   useEffect(() => {
@@ -70,6 +71,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
       '버림': 650,
       '기초': 650,
       '주동 지하층': 500,
+      '지하층(층고6.5m이상)': 500,
       '셋팅층': 400,
       '기준층': 320,
       '최상층': 230,
@@ -287,8 +289,9 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
       {/* 공정 모듈 섹션 - 읽기 전용, 고급 편집 버튼 제공 */}
       <ProcessModuleSection
         modules={modules}
-        onOpenAdvancedModal={(category) => {
+        onOpenAdvancedModal={(category, processType) => {
           setSelectedCategory(category);
+          setSelectedProcessType(processType);
           setIsProcessModuleModalOpen(true);
         }}
       />
@@ -322,6 +325,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
         onOpenChange={setIsProcessModuleModalOpen}
         modules={modules}
         activeCategory={selectedCategory}
+        activeProcessType={selectedProcessType}
         onSave={(updatedModules) => {
           updateModules(updatedModules);
           toast.success('공정모듈이 저장되었습니다.');

@@ -13,13 +13,13 @@ import { logger } from './logger';
 export function getQuantityFromBuilding(
   building: Building,
   category: string, // '버림', '기초', '주동 지하층' 등
-  field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
+  field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string // 'areaM2', 'ton', 'volumeM3' 등
 ): number {
   // 구분에 맞는 FloorTrade 찾기
   const trade = building.floorTrades.find(ft => ft.tradeGroup === category);
   if (!trade) return 0;
-  
+
   const tradeData = trade.trades[field];
   if (!tradeData) return 0;
   
@@ -32,7 +32,7 @@ export function getQuantityFromBuilding(
 export function getQuantityWithRatio(
   building: Building,
   category: string,
-  field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
+  field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string,
   ratio: number // 0.45, 0.55, 0.95 등
 ): number {
@@ -85,7 +85,7 @@ function normalizeFloorLabel(label: string): string {
 export function getQuantityFromFloor(
   building: Building,
   floorLabel: string, // '1F', '2F', 'B1', '코어1-3F' 등 또는 범위 형식 기준층의 floor.id
-  field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
+  field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string,
   rangeFloorId?: string // 범위 형식 기준층의 floor.id (선택적)
 ): number {
@@ -263,7 +263,15 @@ export function getQuantityByReference(
   // 복합 참조 처리 (예: E14+E16)
   if (reference.includes('+')) {
     const parts = reference.split('+').map(p => p.trim());
-    return parts.reduce((sum, part) => sum + getQuantityByReference(building, part), 0);
+    const result = parts.reduce((sum, part) => {
+      const partValue = getQuantityByReference(building, part);
+      if (isNaN(partValue)) {
+        logger.warn('[getQuantityByReference] NaN in composite reference part', { reference, part });
+        return sum;
+      }
+      return sum + partValue;
+    }, 0);
+    return result;
   }
 
   // Handle combined B1+B2 references (for basement-high-ceiling module)
@@ -273,13 +281,14 @@ export function getQuantityByReference(
     const [, col] = combinedMatch;
 
     // Map column to field and subField
-    const fieldMap: Record<string, { field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete'; subField: string }> = {
+    const fieldMap: Record<string, { field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete'; subField: string }> = {
       B: { field: 'gangForm', subField: 'areaM2' },
       C: { field: 'alForm', subField: 'areaM2' },
       D: { field: 'formwork', subField: 'areaM2' },
       E: { field: 'stripClean', subField: 'areaM2' },
       F: { field: 'rebar', subField: 'ton' },
       G: { field: 'concrete', subField: 'volumeM3' },
+      U: { field: 'euroForm', subField: 'areaM2' },
     };
 
     const mapping = fieldMap[col];
@@ -303,11 +312,23 @@ export function getQuantityByReference(
   const [, col, row, ratioStr] = match;
   const rowNum = parseInt(row, 10);
   const ratio = ratioStr ? parseFloat(ratioStr) : 1;
-  
-  // 열에 따른 필드 결정 (수정: B=갱폼, C=알폼, D=형틀, E=해체/정리, F=철근, G=콘크리트)
-  let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
+
+  // 행 번호 범위 검증 (유효 범위: 6~28)
+  if (rowNum < 6 || rowNum > 28) {
+    logger.warn('[getQuantityByReference] Row out of range', { reference, rowNum });
+    return 0;
+  }
+
+  // 비율 값 검증
+  if (isNaN(ratio) || ratio < 0) {
+    logger.warn('[getQuantityByReference] Invalid ratio', { reference, ratio });
+    return 0;
+  }
+
+  // 열에 따른 필드 결정 (B=갱폼, C=알폼, D=형틀, E=해체/정리, F=철근, G=콘크리트, U=유로폼)
+  let field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete' | null = null;
   let subField = '';
-  
+
   switch (col) {
     case 'B':
       field = 'gangForm';
@@ -332,6 +353,10 @@ export function getQuantityByReference(
     case 'G':
       field = 'concrete';
       subField = 'volumeM3';
+      break;
+    case 'U':
+      field = 'euroForm';
+      subField = 'areaM2';
       break;
   }
   

@@ -654,7 +654,7 @@ export type UnitRateType = 'planned' | 'executed';
 /**
  * 공정 구분 타입
  */
-export type ProcessCategory = '버림' | '기초' | '주동 지하층' | '셋팅층' | '기준층' | '최상층' | 'PH층' | '옥탑층' | '지하주차장' | '일반층';
+export type ProcessCategory = '버림' | '기초' | '주동 지하층' | '지하층(층고6.5m이상)' | '셋팅층' | '기준층' | '최상층' | 'PH층' | '옥탑층' | '지하주차장' | '일반층';
 
 /**
  * 공정 타입 (표준공정 또는 사이클)
@@ -667,7 +667,6 @@ export type ProcessType =
   | '8일 사이클'
   | '지하외벽 합벽 적용'
   | '일체타설 적용'
-  | '층고6.5m이상'
   | '피트층포함'
   | string; // 기타 커스텀 타입
 

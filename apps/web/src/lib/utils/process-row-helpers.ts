@@ -1,20 +1,16 @@
 /**
  * Process Row Helper Functions
  *
- * 🎯 Stage 2 Task 4: Component Separation
- * These utilities extract helper logic from BuildingProcessPlanPage
- * to support the new component architecture.
- *
- * 📦 Functions:
+ * Functions:
  * - getCategoryLabel: Generate display label for process category
  * - getFloorNumberLabel: Generate display label for floor number
- * - getFormworkQuantity: Calculate formwork quantities (갱폼 + 알폼 + 형틀)
+ * - getFormworkQuantity: Calculate formwork total (갱폼 + 알폼 + 유로폼)
+ * - getGangFormQuantity: Calculate 갱폼 quantity
+ * - getAlFormQuantity: Calculate 알폼 quantity
+ * - getEuroFormQuantity: Calculate 유로폼 quantity
+ * - getStripCleanQuantity: Calculate 해체/정리 quantity (유로폼 × 2)
  * - getRebarQuantity: Calculate rebar quantities
  * - getConcreteQuantity: Calculate concrete quantities
- *
- * 💡 Usage:
- * These functions are used by ProcessCategoryRow to display quantities
- * from building.floorTrades data.
  */
 
 import type { Building, ProcessCategory, Floor } from '@/lib/types';
@@ -86,7 +82,25 @@ export function getFloorNumberLabel(row: ProcessRow): string {
 }
 
 /**
- * 형틀 물량 계산 (갱폼 + 알폼 + 형틀)
+ * 층 물량 조회를 위한 공통 파라미터 해석
+ * rangeFloorId와 quantityFloorLabel을 산출
+ */
+function resolveFloorParams(row: ProcessRow): { quantityFloorLabel: string; rangeFloorId: string | undefined } | null {
+  if (!row.floorLabel) return null;
+
+  const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
+    ? row.floor.id
+    : undefined;
+
+  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
+    ? row.floor.floorLabel.replace(/코어\d+-/, '')
+    : row.floorLabel;
+
+  return { quantityFloorLabel, rangeFloorId };
+}
+
+/**
+ * 형틀 합계 물량 계산 (갱폼 + 알폼 + 유로폼)
  */
 export function getFormworkQuantity(row: ProcessRow, building: Building): number {
   // 버림, 기초는 tradeGroup으로 가져오기
@@ -96,29 +110,84 @@ export function getFormworkQuantity(row: ProcessRow, building: Building): number
     trades.forEach(trade => {
       const gangForm = trade.trades.gangForm?.areaM2 || 0;
       const alForm = trade.trades.alForm?.areaM2 || 0;
-      const formwork = trade.trades.formwork?.areaM2 || 0;
-      total += gangForm + alForm + formwork;
+      const euroForm = trade.trades.euroForm?.areaM2 || 0;
+      total += gangForm + alForm + euroForm;
     });
     return total;
   }
 
-  if (!row.floorLabel) return 0;
+  const params = resolveFloorParams(row);
+  if (!params) return 0;
 
-  // 기준층 범위 형식인 경우 row.floor.id를 rangeFloorId로 전달하여 정확한 범위 찾기
-  const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
-    ? row.floor.id
-    : undefined;
+  const gangForm = getQuantityFromFloor(building, params.quantityFloorLabel, 'gangForm', 'areaM2', params.rangeFloorId);
+  const alForm = getQuantityFromFloor(building, params.quantityFloorLabel, 'alForm', 'areaM2', params.rangeFloorId);
+  const euroForm = getQuantityFromFloor(building, params.quantityFloorLabel, 'euroForm', 'areaM2', params.rangeFloorId);
 
-  // 옥탑층인 경우 원본 floorLabel 사용 (PH1, PH2, PH3 형식)
-  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
-    ? row.floor.floorLabel.replace(/코어\d+-/, '') // 코어 정보 제거
-    : row.floorLabel;
+  return gangForm + alForm + euroForm;
+}
 
-  const gangForm = getQuantityFromFloor(building, quantityFloorLabel, 'gangForm', 'areaM2', rangeFloorId);
-  const alForm = getQuantityFromFloor(building, quantityFloorLabel, 'alForm', 'areaM2', rangeFloorId);
-  const formwork = getQuantityFromFloor(building, quantityFloorLabel, 'formwork', 'areaM2', rangeFloorId);
+/**
+ * 갱폼 물량 계산
+ */
+export function getGangFormQuantity(row: ProcessRow, building: Building): number {
+  if (row.category === '버림' || row.category === '기초') {
+    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
+    let total = 0;
+    trades.forEach(trade => {
+      total += trade.trades.gangForm?.areaM2 || 0;
+    });
+    return total;
+  }
 
-  return gangForm + alForm + formwork;
+  const params = resolveFloorParams(row);
+  if (!params) return 0;
+
+  return getQuantityFromFloor(building, params.quantityFloorLabel, 'gangForm', 'areaM2', params.rangeFloorId);
+}
+
+/**
+ * 알폼 물량 계산
+ */
+export function getAlFormQuantity(row: ProcessRow, building: Building): number {
+  if (row.category === '버림' || row.category === '기초') {
+    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
+    let total = 0;
+    trades.forEach(trade => {
+      total += trade.trades.alForm?.areaM2 || 0;
+    });
+    return total;
+  }
+
+  const params = resolveFloorParams(row);
+  if (!params) return 0;
+
+  return getQuantityFromFloor(building, params.quantityFloorLabel, 'alForm', 'areaM2', params.rangeFloorId);
+}
+
+/**
+ * 유로폼 물량 계산
+ */
+export function getEuroFormQuantity(row: ProcessRow, building: Building): number {
+  if (row.category === '버림' || row.category === '기초') {
+    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
+    let total = 0;
+    trades.forEach(trade => {
+      total += trade.trades.euroForm?.areaM2 || 0;
+    });
+    return total;
+  }
+
+  const params = resolveFloorParams(row);
+  if (!params) return 0;
+
+  return getQuantityFromFloor(building, params.quantityFloorLabel, 'euroForm', 'areaM2', params.rangeFloorId);
+}
+
+/**
+ * 해체/정리 물량 계산 (유로폼 × 2)
+ */
+export function getStripCleanQuantity(row: ProcessRow, building: Building): number {
+  return getEuroFormQuantity(row, building) * 2;
 }
 
 /**
@@ -135,19 +204,10 @@ export function getRebarQuantity(row: ProcessRow, building: Building): number {
     return total;
   }
 
-  if (!row.floorLabel) return 0;
+  const params = resolveFloorParams(row);
+  if (!params) return 0;
 
-  // 기준층 범위 형식인 경우 row.floor.id를 rangeFloorId로 전달하여 정확한 범위 찾기
-  const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
-    ? row.floor.id
-    : undefined;
-
-  // 옥탑층인 경우 원본 floorLabel 사용 (PH1, PH2, PH3 형식)
-  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
-    ? row.floor.floorLabel.replace(/코어\d+-/, '') // 코어 정보 제거
-    : row.floorLabel;
-
-  return getQuantityFromFloor(building, quantityFloorLabel, 'rebar', 'ton', rangeFloorId);
+  return getQuantityFromFloor(building, params.quantityFloorLabel, 'rebar', 'ton', params.rangeFloorId);
 }
 
 /**
@@ -164,17 +224,8 @@ export function getConcreteQuantity(row: ProcessRow, building: Building): number
     return total;
   }
 
-  if (!row.floorLabel) return 0;
+  const params = resolveFloorParams(row);
+  if (!params) return 0;
 
-  // 기준층 범위 형식인 경우 row.floor.id를 rangeFloorId로 전달하여 정확한 범위 찾기
-  const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
-    ? row.floor.id
-    : undefined;
-
-  // 옥탑층인 경우 원본 floorLabel 사용 (PH1, PH2, PH3 형식)
-  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
-    ? row.floor.floorLabel.replace(/코어\d+-/, '') // 코어 정보 제거
-    : row.floorLabel;
-
-  return getQuantityFromFloor(building, quantityFloorLabel, 'concrete', 'volumeM3', rangeFloorId);
+  return getQuantityFromFloor(building, params.quantityFloorLabel, 'concrete', 'volumeM3', params.rangeFloorId);
 }
