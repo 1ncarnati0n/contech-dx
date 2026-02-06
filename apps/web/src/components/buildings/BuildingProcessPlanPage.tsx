@@ -21,7 +21,7 @@ import {
   calculateIndirectWorkers,
   calculateIndirectEquipment,
 } from '@/lib/utils/process-calculation';
-import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
+import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
 import { ProcessDetailPanel } from './process-plan';
 
@@ -39,8 +39,8 @@ const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
   '주동 지하층': ['표준공정'],
   '지하층(층고6.5m이상)': ['표준공정'],
   '셋팅층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
-  '기준층': ['5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
-  '최상층': ['5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
+  '기준층': ['표준공정'],
+  '최상층': ['표준공정'],
   'PH층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
   '옥탑층': ['표준공정'],
   '지하주차장': ['표준공정'],
@@ -54,8 +54,8 @@ const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
   '주동 지하층': '표준공정',
   '지하층(층고6.5m이상)': '표준공정',
   '셋팅층': '표준공정',
-  '기준층': '6일 사이클',
-  '최상층': '6일 사이클',
+  '기준층': '표준공정',
+  '최상층': '표준공정',
   'PH층': '표준공정',
   '옥탑층': '표준공정',
   '지하주차장': '표준공정',
@@ -68,7 +68,6 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
-
   // 전역 챗봇과 탭 컨텍스트 동기화
   useSyncTabContext({
     activeBuildingIndex,
@@ -513,6 +512,54 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         const days = processes[category]?.days;
         if (days !== undefined && days !== null && !isNaN(days)) {
           total += days;
+        }
+      }
+    });
+    return total;
+  };
+
+  // 합계 간접작업일 계산 - calculateTotalDays와 동일 구조, 간접일만 합산
+  const calculateTotalIndirectDays = (processes: BuildingProcessPlan['processes'], building?: Building): number => {
+    let total = 0;
+    PROCESS_CATEGORIES.forEach(category => {
+      if (category === '옥탑층' && building) {
+        const phFloors = getPhFloors.get(building.id) || [];
+        phFloors.forEach(floor => {
+          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+          const module = getProcessModule(category, floorProcessType);
+          if (module) {
+            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
+          }
+        });
+      } else if (category === '기준층' && building) {
+        const standardFloors = getStandardFloors.get(building.id) || [];
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+        standardFloors.forEach(floor => {
+          const module = getProcessModule(category, processType);
+          if (module) {
+            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
+          }
+        });
+      } else if (category === '셋팅층' && building) {
+        const settingFloors = getSettingFloors.get(building.id) || [];
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+        settingFloors.forEach(floor => {
+          const module = getProcessModule(
+            floor.floorClass === '일반층' ? '옥탑층' : category,
+            floor.floorClass === '일반층'
+              ? (processes['옥탑층']?.floors?.[floor.floorLabel]?.processType || processes['옥탑층']?.processType || DEFAULT_PROCESS_TYPES['옥탑층'])
+              : processType
+          );
+          if (module) {
+            const effectiveCat = floor.floorClass === '일반층' ? '옥탑층' as ProcessCategory : category;
+            total += calculateModuleIndirectDaysForFloor(module, effectiveCat, floor.floorLabel);
+          }
+        });
+      } else {
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+        const module = getProcessModule(category, processType);
+        if (module) {
+          total += calculateModuleIndirectDays(module);
         }
       }
     });
@@ -1165,11 +1212,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     let newProcessType = previousProcessType;
 
     if (targetCategory === '기준층') {
-      if (sumDirectDays === 5) newProcessType = '5일 사이클';
-      else if (sumDirectDays === 6) newProcessType = '6일 사이클';
-      else if (sumDirectDays === 7) newProcessType = '7일 사이클';
-      else if (sumDirectDays === 8) newProcessType = '8일 사이클';
-      else newProcessType = DEFAULT_PROCESS_TYPES[targetCategory];
+      newProcessType = '표준공정';
     }
 
     // processPlans의 해당 구분의 days 업데이트
@@ -1321,7 +1364,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         {/* 해체/정리 */}<col style={{ width: '52px' }} />
                         {/* 철근 */}<col style={{ width: '54px' }} />
                         {/* 콘크리트 */}<col style={{ width: '58px' }} />
-                        {/* 일수 */}<col style={{ width: '64px' }} />
+                        {/* 순작업일수 */}<col style={{ width: '58px' }} />
+                        {/* 간접작업일 */}<col style={{ width: '58px' }} />
+                        {/* 총작업일수 */}<col style={{ width: '58px' }} />
                         {/* 공정타입 */}<col style={{ width: '90px' }} />
                         {/* 세부공정 */}<col style={{ width: '56px' }} />
                       </colgroup>
@@ -1348,8 +1393,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                           </th>
                           {processColumns.length > 0 && (
                             <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                순작업일수
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                                순작업<br />일수
+                              </th>
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                                간접<br />작업일
+                              </th>
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                                총작업<br />일수
                               </th>
                               <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 공정타입
@@ -1404,32 +1455,62 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
                                 // 일수 계산 - 세부공정의 순작업일 합계
                                 let days = 0;
+                                let indirectDays = 0;
+                                let totalDays = 0;
                                 if (!module || !module.items || module.items.length === 0) {
                                   // 모듈이 없으면 기존 방식 사용
+                                  // fallback에서도 간접일 계산을 위해 모듈을 한번 더 조회
+                                  const fallbackModule = getProcessModule(effectiveCategory, processType);
                                   if (row.category === '버림' || row.category === '기초') {
                                     days = plan?.processes[row.category]?.days || 0;
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDays(fallbackModule);
+                                    }
                                   } else if (row.category === '주동 지하층' && row.floorLabel) {
                                     days = calculateBasementFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                    }
                                   } else if (row.category === '셋팅층' && row.floorLabel) {
                                     if (isNormalFloor) {
                                       days = calculatePhFloorDays(building, '옥탑층', processType, row.floorLabel);
+                                      if (fallbackModule) {
+                                        indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, '옥탑층', row.floorLabel);
+                                      }
                                     } else {
                                       days = calculateSettingFloorDays(building, row.category, processType, row.floorLabel);
+                                      if (fallbackModule) {
+                                        indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                      }
                                     }
                                   } else if (row.category === '기준층' && row.floorLabel) {
-                                    // 기준층은 이제 개별 층으로 처리
                                     days = calculateStandardFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                    }
                                   } else if (row.category === '최상층' && row.floorLabel) {
-                                    // 최상층은 자기 자신의 수량으로 계산
                                     days = calculateStandardFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                    }
                                   } else if (row.category === 'PH층' && row.floorLabel) {
                                     days = calculatePhFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                    }
                                   } else if (row.category === '옥탑층' && row.floorLabel) {
                                     days = calculatePhFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                    }
                                   }
+                                  // fallback의 days는 이미 direct+indirect를 포함하므로 순작업일에서 간접일을 빼기
+                                  days = days - indirectDays;
+                                  totalDays = days + indirectDays;
                                 } else {
                                   // 세부공정의 순작업일 합계 계산 (오버라이드된 값 고려)
                                   let sumDirectDays = 0;
+                                  let sumIndirectDays = 0;
 
                                   // 버림, 기초는 floorLabel 없이 계산
                                   if (row.category === '버림' || row.category === '기초') {
@@ -1441,6 +1522,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       if (overriddenDays !== undefined) {
                                         // 오버라이드된 값 사용
                                         sumDirectDays += overriddenDays;
+                                        sumIndirectDays += item.indirectDays;
                                         return;
                                       }
 
@@ -1473,6 +1555,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           sumDirectDays += directWorkDays;
                                         }
                                       }
+                                      sumIndirectDays += item.indirectDays;
                                     });
                                   }
                                   // 셋팅층, 일반층, 지하층, PH층, 옥탑층, 기준층 - 각 층별로 해당 층의 항목만 계산
@@ -1546,6 +1629,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       if (overriddenDays !== undefined) {
                                         // 오버라이드된 값 사용
                                         sumDirectDays += overriddenDays;
+                                        sumIndirectDays += item.indirectDays;
                                         return;
                                       }
 
@@ -1660,12 +1744,15 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                           sumDirectDays += directWorkDays;
                                         }
                                       }
+                                      sumIndirectDays += item.indirectDays;
                                     });
                                   }
 
                                   // 세부공정이 있는 경우 항상 계산된 sumDirectDays 사용 (소수점 버림)
                                   // 저장된 days 값은 무시하고 항상 실시간 계산된 합계를 표시
                                   days = Math.floor(sumDirectDays);
+                                  indirectDays = Math.ceil(sumIndirectDays);
+                                  totalDays = days + indirectDays;
                                 }
 
                                 // 확장 상태 확인
@@ -1915,14 +2002,28 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       </div>
                                     </td>
 
-                                    {/* 여섯 번째 열: 일수 */}
+                                    {/* 순작업일수 */}
                                     <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                       <div className="w-full px-1 py-0.5 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
                                         {days}
                                       </div>
                                     </td>
 
-                                    {/* 일곱 번째 열: 셀렉트박스 */}
+                                    {/* 간접작업일 */}
+                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                      <div className="w-full px-1 py-0.5 text-xs text-center text-zinc-500 dark:text-zinc-400">
+                                        {indirectDays}
+                                      </div>
+                                    </td>
+
+                                    {/* 총작업일수 */}
+                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                      <div className="w-full px-1 py-0.5 text-xs text-center font-semibold text-zinc-900 dark:text-white">
+                                        {totalDays}
+                                      </div>
+                                    </td>
+
+                                    {/* 공정타입 셀렉트박스 */}
                                     <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                       {/* 일반 지하층 행은 항상 표준공정 드롭다운 표시 */}
                                       <select
@@ -1993,18 +2094,31 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                 <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
                                 {/* 콘크리트 열 */}
                                 <td className="px-1 py-1 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {processColumns.length > 0 && (
-                                  <>
-                                    {/* 순작업일수 열에 합계 표시 */}
-                                    <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      {plan ? calculateTotalDays(plan.processes, building) : 0}
-                                    </td>
-                                    {/* 공정타입 열 (빈칸) */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                    {/* 세부공정 열 (빈칸) */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                  </>
-                                )}
+                                {processColumns.length > 0 && (() => {
+                                  const totalAllDays = plan ? calculateTotalDays(plan.processes, building) : 0;
+                                  const totalIndirect = plan ? calculateTotalIndirectDays(plan.processes, building) : 0;
+                                  const totalDirect = totalAllDays - totalIndirect;
+                                  return (
+                                    <>
+                                      {/* 순작업일수 합계 */}
+                                      <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                        {totalDirect}
+                                      </td>
+                                      {/* 간접작업일 합계 */}
+                                      <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                        {totalIndirect}
+                                      </td>
+                                      {/* 총작업일수 합계 */}
+                                      <td className="px-1 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                        {totalAllDays}
+                                      </td>
+                                      {/* 공정타입 열 (빈칸) */}
+                                      <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
+                                      {/* 세부공정 열 (빈칸) */}
+                                      <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
+                                    </>
+                                  );
+                                })()}
                               </tr>
                             </Fragment>
                           );

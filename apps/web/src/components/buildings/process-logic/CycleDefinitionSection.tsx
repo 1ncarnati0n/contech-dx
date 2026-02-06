@@ -7,7 +7,6 @@ interface CycleDefinition {
   cycle: string;
   days: number;
   settingFloor: boolean;
-  standardFloor: boolean;
   phFloor: boolean;
   description: string;
 }
@@ -17,7 +16,6 @@ const CYCLE_DEFINITIONS: CycleDefinition[] = [
     cycle: '5일',
     days: 5,
     settingFloor: false,
-    standardFloor: true,
     phFloor: true,
     description: '빠른 공정 (고층 단순 구조)',
   },
@@ -25,7 +23,6 @@ const CYCLE_DEFINITIONS: CycleDefinition[] = [
     cycle: '6일',
     days: 6,
     settingFloor: true,
-    standardFloor: true,
     phFloor: true,
     description: '표준 공정 (일반적인 아파트)',
   },
@@ -33,7 +30,6 @@ const CYCLE_DEFINITIONS: CycleDefinition[] = [
     cycle: '7일',
     days: 7,
     settingFloor: true,
-    standardFloor: true,
     phFloor: true,
     description: '안정 공정 (복잡한 구조)',
   },
@@ -41,7 +37,6 @@ const CYCLE_DEFINITIONS: CycleDefinition[] = [
     cycle: '8일',
     days: 8,
     settingFloor: true,
-    standardFloor: true,
     phFloor: true,
     description: '여유 공정 (대형 평면)',
   },
@@ -62,7 +57,7 @@ export function CycleDefinitionSection() {
               사이클 정의
             </h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              기준층/셋팅층/PH층 공정 사이클 비교
+              셋팅층/PH층 공정 사이클 비교
             </p>
           </div>
         </div>
@@ -80,9 +75,6 @@ export function CycleDefinitionSection() {
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
                     셋팅층
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
-                    기준층
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
                     PH층
@@ -110,13 +102,6 @@ export function CycleDefinitionSection() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {def.settingFloor ? (
-                          <Check className="w-5 h-5 text-green-500 mx-auto" />
-                        ) : (
-                          <Minus className="w-5 h-5 text-zinc-300 dark:text-zinc-600 mx-auto" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {def.standardFloor ? (
                           <Check className="w-5 h-5 text-green-500 mx-auto" />
                         ) : (
                           <Minus className="w-5 h-5 text-zinc-300 dark:text-zinc-600 mx-auto" />

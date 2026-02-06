@@ -761,6 +761,36 @@ export class SupabaseGanttDataService implements DataService {
   }
 
   // ============================================
+  // Append (공정계획 → 간트차트 추가용)
+  // ============================================
+
+  /**
+   * 기존 태스크 뒤에 새 태스크를 추가 (append)
+   * sort_order를 기존 max + 1부터 할당
+   */
+  async appendTasks(newTasks: ConstructionTask[]): Promise<ConstructionTask[]> {
+    this.log('appendTasks', newTasks.length);
+
+    if (newTasks.length === 0) {
+      this.log('appendTasks: no tasks to append');
+      return [];
+    }
+
+    // 기존 태스크 로드
+    const existingTasks = await this.loadTasks();
+    this.log('appendTasks existing count:', existingTasks.length);
+
+    // 합치기
+    const mergedTasks = [...existingTasks, ...newTasks];
+
+    // 저장 (saveTasks는 sort_order를 index 기반으로 할당)
+    await this.saveTasks(mergedTasks);
+    this.log('appendTasks merged count:', mergedTasks.length);
+
+    return mergedTasks;
+  }
+
+  // ============================================
   // Import/Export
   // ============================================
 

@@ -142,7 +142,8 @@ export const PAGE_CHATBOT_CONFIGS: Record<PageType, PageChatbotConfig> = {
 - **공정일수**: 순작업일 + 간접일로 계산
 
 ### 자주 묻는 질문
-- 5일 사이클 vs 6일 사이클: 콘크리트 양생 기간에 따른 차이
+- 기준층/최상층 표준공정: 6일 사이클 기반 표준공정으로 통일
+- 사이클 공정: 셋팅층, PH층, 일반층에서 5일/6일/7일/8일 사이클 선택 가능
 - 물량 참조: 건물의 층별 물량 데이터를 가져와서 계산에 활용
 - 순작업일: 실제 작업이 수행되는 일수
 - 간접일: 준비, 양생, 대기 등의 간접 작업일`,
@@ -150,7 +151,7 @@ export const PAGE_CHATBOT_CONFIGS: Record<PageType, PageChatbotConfig> = {
       { id: 'bpp-1', question: '공정 타입은 어떻게 선택하나요?', description: '타입 선택', category: 'guide' },
       { id: 'bpp-2', question: '물량 참조는 어떻게 하나요?', description: '물량 참조', category: 'guide' },
       { id: 'bpp-3', question: '공정일수 계산 방법은?', description: '계산 방법', category: 'help' },
-      { id: 'bpp-4', question: '5일 사이클과 6일 사이클의 차이는?', description: '사이클 비교', category: 'faq' },
+      { id: 'bpp-4', question: '기준층 표준공정은 어떻게 구성되나요?', description: '표준공정 구성', category: 'faq' },
     ],
   },
 
@@ -322,8 +323,8 @@ const PROCESS_PLAN_STEP_QUESTIONS: Record<
     },
     {
       id: 'step-type-2',
-      question: '5일 사이클과 6일 사이클의 차이는?',
-      description: '사이클 비교',
+      question: '기준층 표준공정은 어떻게 구성되나요?',
+      description: '표준공정 구성',
       category: 'faq',
       priority: 9,
     },

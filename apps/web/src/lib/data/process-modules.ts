@@ -231,11 +231,11 @@ export const PROCESS_MODULES: ProcessModule[] = [
   },
 
   // ============================================
-  // 기준층 - 8일 사이클
+  // 기준층 - 표준공정 (6일 사이클 기반)
   // ============================================
   {
-    id: 'standard-8day',
-    name: '8일 사이클',
+    id: 'standard-standard',
+    name: '표준공정',
     category: '기준층',
     items: [
       {
@@ -253,11 +253,11 @@ export const PROCESS_MODULES: ProcessModule[] = [
         id: 'standard-gangform',
         workItem: '갱폼 설치',
         unit: '㎡',
-        quantityReference: 'B14*0.45', // 동,층별물량표!B14*0.45 (갱폼, 4층 기준)
+        quantityReference: 'B14*0.45',
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
-        directWorkDays: 2, // 8일 사이클: +1
+        directWorkDays: 2,
         indirectDays: 1,
         indirectWorkItem: '보강/검측',
       },
@@ -265,11 +265,11 @@ export const PROCESS_MODULES: ProcessModule[] = [
         id: 'standard-wall-rebar',
         workItem: '벽 철근조립',
         unit: 'ton',
-        quantityReference: 'F14*0.5', // 동,층별물량표!F14*0.5 (또는 하드코딩: 18.83*0.5)
+        quantityReference: 'F14*0.5',
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
-        directWorkDays: 2, // 8일 사이클: +1
+        directWorkDays: 1,
         indirectDays: 0.5,
         indirectWorkItem: '검측',
       },
@@ -277,11 +277,11 @@ export const PROCESS_MODULES: ProcessModule[] = [
         id: 'standard-alform',
         workItem: '알폼 조립',
         unit: '㎡',
-        quantityReference: 'C14*0.55', // 동,층별물량표!C14*0.55 (또는 하드코딩: 1731*0.55)
+        quantityReference: 'C14*0.55',
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
-        directWorkDays: 2, // 8일 사이클: +1
+        directWorkDays: 1,
         indirectDays: 0.5,
         indirectWorkItem: '검측',
       },
@@ -289,11 +289,11 @@ export const PROCESS_MODULES: ProcessModule[] = [
         id: 'standard-slab-rebar',
         workItem: '보슬라브 철근조립',
         unit: 'ton',
-        quantityReference: 'F14*0.5', // 동,층별물량표!F14*0.5 (또는 하드코딩: 18.83*0.5)
+        quantityReference: 'F14*0.5',
         dailyProductivity: 0.9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
-        directWorkDays: 1, // 고정값
+        directWorkDays: 1,
         indirectDays: 0.5,
         indirectWorkItem: '검측',
       },
@@ -301,260 +301,13 @@ export const PROCESS_MODULES: ProcessModule[] = [
         id: 'standard-concrete',
         workItem: '타설',
         unit: '㎥',
-        quantityReference: 'G14', // 동,층별물량표!G14 (콘크리트, 4층 기준)
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*6명 /기준층',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1, // 계산식: CEILING(MIN(2, E43/I44), 1)
-        equipmentCalculationBase: 320, // 기준층 대당 타설량 기준값
-        equipmentWorkersPerUnit: 6, // 장비당 인원수
-        indirectDays: 2,
-        indirectWorkItem: '양생',
-        // directWorkDays는 계산식
-      },
-    ],
-  },
-
-  // 기준층 - 사이클별 directWorkDays 차별화
-  // 5일: 먹매김1+갱폼1+벽철근1+알폼1+보슬라브1 = 5
-  // 6일: 갱폼+1 = 6
-  // 7일: 갱폼+1, 알폼+1 = 7
-  // 8일: 갱폼+1, 알폼+1, 벽철근+1 = 8
-  {
-    id: 'standard-5day',
-    name: '5일 사이클',
-    category: '기준층',
-    items: [
-      {
-        id: 'standard-meokmaekim-5day',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 0,
-        dailyProductivity: 0,
-        indirectDays: 1,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-gangform-5day',
-        workItem: '갱폼 설치',
-        unit: '㎡',
-        quantityReference: 'B14*0.45',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-      },
-      {
-        id: 'standard-wall-rebar-5day',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-alform-5day',
-        workItem: '알폼 조립',
-        unit: '㎡',
-        quantityReference: 'C14*0.55',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-slab-rebar-5day',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-concrete-5day',
-        workItem: '타설',
-        unit: '㎥',
         quantityReference: 'G14',
         dailyProductivity: 130,
         calculationBasis: '장비대수*6명 /기준층',
         equipmentName: '콘크리트 펌프차',
         equipmentCount: 1,
-        equipmentCalculationBase: 320, // 기준층 대당 타설량 기준값
-        equipmentWorkersPerUnit: 6, // 장비당 인원수
-        indirectDays: 2,
-        indirectWorkItem: '양생',
-      },
-    ],
-  },
-  {
-    id: 'standard-6day',
-    name: '6일 사이클',
-    category: '기준층',
-    items: [
-      {
-        id: 'standard-meokmaekim-6day',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 0,
-        dailyProductivity: 0,
-        indirectDays: 1,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-gangform-6day',
-        workItem: '갱폼 설치',
-        unit: '㎡',
-        quantityReference: 'B14*0.45',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 6일 사이클: +1
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-      },
-      {
-        id: 'standard-wall-rebar-6day',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-alform-6day',
-        workItem: '알폼 조립',
-        unit: '㎡',
-        quantityReference: 'C14*0.55',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-slab-rebar-6day',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-concrete-6day',
-        workItem: '타설',
-        unit: '㎥',
-        quantityReference: 'G14',
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*6명 /기준층',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1,
-        equipmentCalculationBase: 320, // 기준층 대당 타설량 기준값
-        equipmentWorkersPerUnit: 6, // 장비당 인원수
-        indirectDays: 2,
-        indirectWorkItem: '양생',
-      },
-    ],
-  },
-  {
-    id: 'standard-7day',
-    name: '7일 사이클',
-    category: '기준층',
-    items: [
-      {
-        id: 'standard-meokmaekim-7day',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 0,
-        dailyProductivity: 0,
-        indirectDays: 1,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-gangform-7day',
-        workItem: '갱폼 설치',
-        unit: '㎡',
-        quantityReference: 'B14*0.45',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 7일 사이클: +1
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-      },
-      {
-        id: 'standard-wall-rebar-7day',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-alform-7day',
-        workItem: '알폼 조립',
-        unit: '㎡',
-        quantityReference: 'C14*0.55',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 7일 사이클: +1
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-slab-rebar-7day',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'standard-concrete-7day',
-        workItem: '타설',
-        unit: '㎥',
-        quantityReference: 'G14',
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*6명 /기준층',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1,
-        equipmentCalculationBase: 320, // 기준층 대당 타설량 기준값
-        equipmentWorkersPerUnit: 6, // 장비당 인원수
+        equipmentCalculationBase: 320,
+        equipmentWorkersPerUnit: 6,
         indirectDays: 2,
         indirectWorkItem: '양생',
       },
@@ -1283,14 +1036,16 @@ export const PROCESS_MODULES: ProcessModule[] = [
     ],
   },
 
-  // 최상층 - 5일 사이클
+  // ============================================
+  // 최상층 - 표준공정 (6일 사이클 기반)
+  // ============================================
   {
-    id: 'top-5day',
-    name: '5일 사이클',
+    id: 'top-standard',
+    name: '표준공정',
     category: '최상층',
     items: [
       {
-        id: 'top-meokmaekim-5day',
+        id: 'top-meokmaekim',
         workItem: '먹매김',
         calculationBasis: '일수고정',
         unit: '',
@@ -1300,19 +1055,19 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectDays: 1,
       },
       {
-        id: 'top-gangform-5day',
+        id: 'top-gangform',
         workItem: '갱폼 설치',
         unit: '㎡',
         quantityReference: 'B14*0.45',
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
-        directWorkDays: 1,
+        directWorkDays: 2,
         indirectDays: 1,
         indirectWorkItem: '보강/검측',
       },
       {
-        id: 'top-wall-rebar-5day',
+        id: 'top-wall-rebar',
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F14*0.5',
@@ -1324,7 +1079,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectWorkItem: '검측',
       },
       {
-        id: 'top-alform-5day',
+        id: 'top-alform',
         workItem: '알폼 조립',
         unit: '㎡',
         quantityReference: 'C14*0.55',
@@ -1336,7 +1091,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectWorkItem: '검측',
       },
       {
-        id: 'top-slab-rebar-5day',
+        id: 'top-slab-rebar',
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F14*0.5',
@@ -1348,249 +1103,10 @@ export const PROCESS_MODULES: ProcessModule[] = [
         indirectWorkItem: '검측',
       },
       {
-        id: 'top-concrete-5day',
+        id: 'top-concrete',
         workItem: '타설',
         unit: '㎥',
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*6명 /최상층',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1,
-        equipmentCalculationBase: 230,
-        equipmentWorkersPerUnit: 6,
-        indirectDays: 2,
-        indirectWorkItem: '양생',
-      },
-    ],
-  },
-
-  // 최상층 - 6일 사이클
-  {
-    id: 'top-6day',
-    name: '6일 사이클',
-    category: '최상층',
-    items: [
-      {
-        id: 'top-meokmaekim-6day',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 0,
-        dailyProductivity: 0,
-        indirectDays: 1,
-      },
-      {
-        id: 'top-gangform-6day',
-        workItem: '갱폼 설치',
-        unit: '㎡',
-        quantityReference: 'B14*0.45',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 6일 사이클: +1
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-      },
-      {
-        id: 'top-wall-rebar-6day',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-alform-6day',
-        workItem: '알폼 조립',
-        unit: '㎡',
-        quantityReference: 'C14*0.55',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-slab-rebar-6day',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-concrete-6day',
-        workItem: '타설',
-        unit: '㎥',
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*6명 /최상층',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1,
-        equipmentCalculationBase: 230,
-        equipmentWorkersPerUnit: 6,
-        indirectDays: 2,
-        indirectWorkItem: '양생',
-      },
-    ],
-  },
-
-  // 최상층 - 7일 사이클
-  {
-    id: 'top-7day',
-    name: '7일 사이클',
-    category: '최상층',
-    items: [
-      {
-        id: 'top-meokmaekim-7day',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 0,
-        dailyProductivity: 0,
-        indirectDays: 1,
-      },
-      {
-        id: 'top-gangform-7day',
-        workItem: '갱폼 설치',
-        unit: '㎡',
-        quantityReference: 'B14*0.45',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 7일 사이클: +1
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-      },
-      {
-        id: 'top-wall-rebar-7day',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-alform-7day',
-        workItem: '알폼 조립',
-        unit: '㎡',
-        quantityReference: 'C14*0.55',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 7일 사이클: +1
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-slab-rebar-7day',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-concrete-7day',
-        workItem: '타설',
-        unit: '㎥',
-        dailyProductivity: 130,
-        calculationBasis: '장비대수*6명 /최상층',
-        equipmentName: '콘크리트 펌프차',
-        equipmentCount: 1,
-        equipmentCalculationBase: 230,
-        equipmentWorkersPerUnit: 6,
-        indirectDays: 2,
-        indirectWorkItem: '양생',
-      },
-    ],
-  },
-
-  // 최상층 - 8일 사이클
-  {
-    id: 'top-8day',
-    name: '8일 사이클',
-    category: '최상층',
-    items: [
-      {
-        id: 'top-meokmaekim-8day',
-        workItem: '먹매김',
-        calculationBasis: '일수고정',
-        unit: '',
-        equipmentCount: 1,
-        directWorkDays: 0,
-        dailyProductivity: 0,
-        indirectDays: 1,
-      },
-      {
-        id: 'top-gangform-8day',
-        workItem: '갱폼 설치',
-        unit: '㎡',
-        quantityReference: 'B14*0.45',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 8일 사이클: +1
-        indirectDays: 1,
-        indirectWorkItem: '보강/검측',
-      },
-      {
-        id: 'top-wall-rebar-8day',
-        workItem: '벽 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.8,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 8일 사이클: +1
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-alform-8day',
-        workItem: '알폼 조립',
-        unit: '㎡',
-        quantityReference: 'C14*0.55',
-        dailyProductivity: 60,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 2, // 8일 사이클: +1
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-slab-rebar-8day',
-        workItem: '보슬라브 철근조립',
-        unit: 'ton',
-        quantityReference: 'F14*0.5',
-        dailyProductivity: 0.9,
-        calculationBasis: '일수고정',
-        equipmentCount: 1,
-        directWorkDays: 1,
-        indirectDays: 0.5,
-        indirectWorkItem: '검측',
-      },
-      {
-        id: 'top-concrete-8day',
-        workItem: '타설',
-        unit: '㎥',
+        quantityReference: 'G14',
         dailyProductivity: 130,
         calculationBasis: '장비대수*6명 /최상층',
         equipmentName: '콘크리트 펌프차',
@@ -1605,15 +1121,38 @@ export const PROCESS_MODULES: ProcessModule[] = [
 ];
 
 /**
+ * 기준층/최상층 레거시 사이클 → 표준공정 폴백 매핑
+ * DB에 '5일 사이클'~'8일 사이클'로 저장된 기존 데이터 호환용
+ */
+const LEGACY_PROCESS_TYPE_MAP: Partial<Record<string, ProcessType>> = {
+  '5일 사이클': '표준공정',
+  '6일 사이클': '표준공정',
+  '7일 사이클': '표준공정',
+  '8일 사이클': '표준공정',
+};
+
+/**
  * 구분과 공정타입으로 모듈 찾기
  */
 export function getProcessModule(
   category: ProcessCategory,
   processType: ProcessType
 ): ProcessModule | undefined {
-  return PROCESS_MODULES.find(
+  let result = PROCESS_MODULES.find(
     module => module.category === category && module.name === processType
   );
+
+  // 기준층/최상층의 레거시 사이클 → 표준공정 폴백
+  if (!result && (category === '기준층' || category === '최상층')) {
+    const mapped = LEGACY_PROCESS_TYPE_MAP[processType];
+    if (mapped) {
+      result = PROCESS_MODULES.find(
+        module => module.category === category && module.name === mapped
+      );
+    }
+  }
+
+  return result;
 }
 
 /**

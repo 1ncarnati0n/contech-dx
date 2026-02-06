@@ -21,7 +21,7 @@ import {
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
-import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
+import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
 import { logger } from '@/lib/utils/logger';
 import { throttle } from 'es-toolkit';
 
@@ -465,6 +465,31 @@ export function BasementProcessPlanPage({ projectId }: Props) {
         const days = processes[category]?.days;
         if (days !== undefined && days !== null && !isNaN(days)) {
           total += days;
+        }
+      }
+    });
+    return total;
+  };
+
+  // 합계 간접작업일 계산 - 모든 공정 카테고리의 간접작업일 합계
+  const calculateTotalIndirectDays = (processes: BuildingProcessPlan['processes'], building?: Building): number => {
+    let total = 0;
+    PROCESS_CATEGORIES.forEach(category => {
+      if (category === '주동 지하층' && building) {
+        const basementFloors = getBasementFloors.get(building.id) || [];
+        basementFloors.forEach(floor => {
+          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
+          const module = getProcessModule(category, floorProcessType);
+          if (module) {
+            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
+          }
+        });
+      } else {
+        // 버림, 기초: 모듈 전체 간접작업일
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
+        const module = getProcessModule(category, processType);
+        if (module) {
+          total += calculateModuleIndirectDays(module);
         }
       }
     });
@@ -952,7 +977,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                         {/* 해체/정리 */}<col style={{ width: '52px' }} />
                         {/* 철근 */}<col style={{ width: '54px' }} />
                         {/* 콘크리트 */}<col style={{ width: '58px' }} />
-                        {/* 일수 */}<col style={{ width: '64px' }} />
+                        {/* 순작업일수 */}<col style={{ width: '58px' }} />
+                        {/* 간접작업일 */}<col style={{ width: '58px' }} />
+                        {/* 총작업일수 */}<col style={{ width: '58px' }} />
                         {/* 공정타입 */}<col style={{ width: '90px' }} />
                         {/* 세부공정 */}<col style={{ width: '56px' }} />
                       </colgroup>
@@ -979,8 +1006,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           </th>
                           {processColumns.length > 0 && (
                             <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                순작업일수
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                                순작업<br />일수
+                              </th>
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                                간접<br />작업일
+                              </th>
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                                총작업<br />일수
                               </th>
                               <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 공정타입
@@ -1496,6 +1529,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
                                 // 일수 계산 - 세부공정의 순작업일 합계
                                 let days = 0;
+                                let indirectDays = 0;
+                                let totalDays = 0;
                                 if (!module || !module.items || module.items.length === 0) {
                                   // 모듈이 없으면 기존 방식 사용
                                   if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
@@ -1503,13 +1538,26 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   } else if (row.category === '주동 지하층' && row.floorLabel) {
                                     days = calculateBasementFloorDays(building, row.category, processType, row.floorLabel);
                                   }
+                                  // fallback에서도 간접작업일 계산
+                                  if (module) {
+                                    if (row.floorLabel && (row.category === '주동 지하층')) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(module, row.category, row.floorLabel);
+                                    } else {
+                                      indirectDays = calculateModuleIndirectDays(module);
+                                    }
+                                  }
+                                  // days는 이미 totalDays(직접+간접)이므로 순작업일수 = days - indirectDays
+                                  totalDays = days;
+                                  days = days - indirectDays;
                                 } else {
                                   // 세부공정의 순작업일 합계 계산 (오버라이드된 값 고려)
                                   let sumDirectDays = 0;
+                                  let sumIndirectDays = 0;
 
                                   // 버림, 기초, 지하층(층고6.5m이상)은 floorLabel 없이 전체 항목 계산
                                   if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
                                     module.items.forEach(item => {
+                                      sumIndirectDays += item.indirectDays;
                                       // 오버라이드된 순작업일 확인
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
@@ -1557,6 +1605,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     const floorItems = module.items.filter(item => item.floorLabel === baseFloorLabel);
 
                                     floorItems.forEach(item => {
+                                      sumIndirectDays += item.indirectDays;
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
 
@@ -1592,6 +1641,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     });
 
                                     floorItems.forEach(item => {
+                                      sumIndirectDays += item.indirectDays;
                                       // 오버라이드된 순작업일 확인
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
@@ -1650,6 +1700,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   }
 
                                   days = Math.floor(sumDirectDays);
+                                  indirectDays = Math.ceil(sumIndirectDays);
+                                  totalDays = days + indirectDays;
                                 }
 
                                 // 확장 상태 확인
@@ -2141,10 +2193,24 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                       )}
                                     </td>
 
-                                    {/* 여섯 번째 열: 일수 */}
-                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+                                    {/* 순작업일수 */}
+                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                       <div className="w-full px-1 py-0.5 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
                                         {days}
+                                      </div>
+                                    </td>
+
+                                    {/* 간접작업일 */}
+                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                      <div className="w-full px-1 py-0.5 text-xs text-center text-zinc-500 dark:text-zinc-400">
+                                        {indirectDays}
+                                      </div>
+                                    </td>
+
+                                    {/* 총작업일수 */}
+                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                      <div className="w-full px-1 py-0.5 text-xs text-center font-semibold text-zinc-900 dark:text-white">
+                                        {totalDays}
                                       </div>
                                     </td>
 
@@ -2218,18 +2284,31 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
                                 {/* 콘크리트 열 */}
                                 <td className="px-1 py-1 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {processColumns.length > 0 && (
-                                  <>
-                                    {/* 순작업일수 열에 합계 표시 */}
-                                    <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      {plan ? calculateTotalDays(plan.processes, building) : 0}
-                                    </td>
-                                    {/* 공정타입 열 (빈칸) */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                    {/* 세부공정 열 (빈칸) */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                  </>
-                                )}
+                                {processColumns.length > 0 && (() => {
+                                  const totalAllDays = plan ? calculateTotalDays(plan.processes, building) : 0;
+                                  const totalIndirect = plan ? calculateTotalIndirectDays(plan.processes, building) : 0;
+                                  const totalDirect = totalAllDays - totalIndirect;
+                                  return (
+                                    <>
+                                      {/* 순작업일수 합계 */}
+                                      <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                        {totalDirect}
+                                      </td>
+                                      {/* 간접작업일 합계 */}
+                                      <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                        {totalIndirect}
+                                      </td>
+                                      {/* 총작업일수 합계 */}
+                                      <td className="px-1 py-1 text-center text-xs font-bold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                        {totalAllDays}
+                                      </td>
+                                      {/* 공정타입 열 (빈칸) */}
+                                      <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
+                                      {/* 세부공정 열 (빈칸) */}
+                                      <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
+                                    </>
+                                  );
+                                })()}
                               </tr>
                             </Fragment>
                           );
