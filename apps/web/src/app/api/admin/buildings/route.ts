@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isSystemAdmin } from '@/lib/permissions/shared';
 import type { AdminStats, RecentBuilding } from '@/app/(container)/admin/buildings/AdminBuildingsClient';
 import { extractBuildingDisplayData } from '@/lib/utils/building-metadata';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * 프로젝트별 건물 통계 및 동 목록 조회 API
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       buildings,
     });
   } catch (error) {
-    console.error('Admin buildings API error:', error);
+    logger.error('Admin buildings API error:', error);
     return NextResponse.json(
       {
         success: false,

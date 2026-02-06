@@ -44,6 +44,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { logger } from '@/lib/utils/logger';
 
 // ============================================
 // 계산 방식 판별 유틸 (ProcessModuleSection.tsx와 동일)
@@ -411,7 +412,7 @@ export function ProcessModuleEditModal({
           setHistory(parsed.slice(0, 10)); // 최근 10개
         }
       } catch (error) {
-        console.error('Failed to load process module history:', error);
+        logger.error('Failed to load process module history:', error);
       }
     }
   }, [open, modules, activeCategory, equipmentBaseForCategory, historyStorageKey]);
@@ -442,7 +443,7 @@ export function ProcessModuleEditModal({
       localStorage.setItem(historyStorageKey, JSON.stringify(updated));
       setHistory(updated);
     } catch (error) {
-      console.error('Failed to save process module history:', error);
+      logger.error('Failed to save process module history:', error);
     }
   };
 

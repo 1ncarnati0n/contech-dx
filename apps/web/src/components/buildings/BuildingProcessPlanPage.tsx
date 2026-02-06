@@ -24,6 +24,7 @@ import {
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
 import { ProcessDetailPanel } from './process-plan';
+import { logger } from '@/lib/utils/logger';
 
 interface Props {
   projectId: string;
@@ -296,7 +297,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                 existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
               }
             } catch (error) {
-              console.error('Failed to load process plan from localStorage:', error);
+              logger.error('Failed to load process plan from localStorage:', error);
             }
           }
 
@@ -1241,7 +1242,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         localStorage.setItem(storageKey, JSON.stringify(updatedPlan));
       }
     } catch (error) {
-      console.error('Failed to save direct work days:', error);
+      logger.error('Failed to save direct work days:', error);
       toast.error('순작업일 저장에 실패했습니다.');
     }
   }, [processPlans, processRows, expandedModules, getProcessTypeForFloor, calculateTotalDays]);

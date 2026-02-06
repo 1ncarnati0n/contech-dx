@@ -16,6 +16,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { logger } from '@/lib/utils/logger';
 
 interface IfcViewerProps {
   className?: string;
@@ -106,7 +107,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
         // Check if component unmounted during async imports
         if (!containerRef.current) {
-          console.warn('Component unmounted during initialization');
+          logger.warn('Component unmounted during initialization');
           return;
         }
 
@@ -125,7 +126,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
         // Setup scene, renderer, camera in correct order
         if (!containerRef.current) {
-          console.warn('Container element not available');
+          logger.warn('Container element not available');
           return;
         }
 
@@ -224,7 +225,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         setLoadingState({ phase: 'idle', progress: 0, message: '' });
 
       } catch (error) {
-        console.error('Viewer initialization failed:', error);
+        logger.error('Viewer initialization failed:', error);
         setLoadingState({
           phase: 'error',
           progress: 0,
@@ -294,7 +295,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
       setLoadingState({ phase: 'complete', progress: 100, message: '로딩 완료' });
 
     } catch (error) {
-      console.warn('Auto-load failed:', error);
+      logger.warn('Auto-load failed:', error);
       // Silently fail and show upload prompt
       setLoadingState({ phase: 'idle', progress: 0, message: '' });
     }
@@ -352,7 +353,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
       setLoadingState({ phase: 'complete', progress: 100, message: '로딩 완료' });
 
     } catch (error) {
-      console.error('IFC 로드 실패:', error);
+      logger.error('IFC 로드 실패:', error);
       setLoadingState({
         phase: 'error',
         progress: 0,
@@ -380,7 +381,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         true
       );
     } catch (error) {
-      console.warn('View orientation failed:', error);
+      logger.warn('View orientation failed:', error);
     }
   }, []);
 
@@ -394,7 +395,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
       await camera.projection.set(newMode);
       setProjectionMode(newMode);
     } catch (error) {
-      console.warn('Projection toggle failed:', error);
+      logger.warn('Projection toggle failed:', error);
     }
   }, [projectionMode]);
 
@@ -448,7 +449,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
       await loadIfcFile(file);
     } catch (error) {
-      console.error('샘플 로드 실패:', error);
+      logger.error('샘플 로드 실패:', error);
       setLoadingState({
         phase: 'error',
         progress: 0,

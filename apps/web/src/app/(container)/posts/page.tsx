@@ -1,5 +1,6 @@
 import { getPosts } from '@/lib/services/posts.server';
 import { requireAuth } from '@/lib/auth/requireAuth';
+import { logger } from '@/lib/utils/logger';
 import Link from 'next/link';
 import {
   PenSquare,
@@ -17,7 +18,7 @@ export default async function PostsPage() {
   const { posts, error } = await getPosts(20);
 
   if (error) {
-    console.error('Error fetching posts:', error);
+    logger.error('Error fetching posts:', error);
     return (
       <div className="max-w-7xl mx-auto py-8 px-4">
         <Card className="border-red-200 bg-red-50">

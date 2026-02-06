@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/utils/logger';
 import { useState, useEffect, useMemo } from 'react';
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/components/ui';
@@ -278,7 +279,7 @@ export function PlannedUnitRatePage({ projectId }: Props) {
         setItems(data);
       }
     } catch (error) {
-      console.error('Failed to load unit rates:', error);
+      logger.error('Failed to load unit rates:', error);
       toast.error('단가 목록을 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
@@ -291,7 +292,7 @@ export function PlannedUnitRatePage({ projectId }: Props) {
       await saveUnitRates(projectId, 'planned', items);
       toast.success('단가 정보가 저장되었습니다.');
     } catch (error) {
-      console.error('Failed to save unit rates:', error);
+      logger.error('Failed to save unit rates:', error);
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -309,7 +310,7 @@ export function PlannedUnitRatePage({ projectId }: Props) {
       setItems(items.filter(item => item.id !== itemId));
       toast.success('행이 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete row:', error);
+      logger.error('Failed to delete row:', error);
       toast.error('삭제에 실패했습니다.');
     }
   };
@@ -351,7 +352,7 @@ export function PlannedUnitRatePage({ projectId }: Props) {
       };
       await updateUnitRateItem(projectId, 'planned', itemId, updates);
     } catch (error) {
-      console.error('Failed to update cell:', error);
+      logger.error('Failed to update cell:', error);
       // 실패 시 이전 상태로 복구
       setItems(items);
       toast.error('업데이트에 실패했습니다.');
@@ -499,7 +500,7 @@ export function PlannedUnitRatePage({ projectId }: Props) {
       toast.success(`${validRows.length}행의 데이터가 붙여넣기되었습니다.`);
     } catch (error) {
       toast.error('붙여넣기에 실패했습니다.');
-      console.error('Paste error:', error);
+      logger.error('Paste error:', error);
       // 실패 시 이전 상태로 복구
       setItems(items);
     }

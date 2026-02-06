@@ -197,18 +197,18 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
       const tabSwitchTime = performance.now() - tabSwitchStart;
       const tabTitle = TAB_TITLES[tab] || tab;
 
-      console.log(`⚡ [Perf] Tab "${tabTitle}" (${tab}): ${tabSwitchTime.toFixed(2)}ms`);
+      logger.debug(`⚡ [Perf] Tab "${tabTitle}" (${tab}): ${tabSwitchTime.toFixed(2)}ms`);
 
       // Performance thresholds based on tab complexity
       const isHeavyTab = ['building_process_plan', 'basement_process_plan', 'detailed_quantity_input'].includes(tab);
       const threshold = isHeavyTab ? 200 : 100;
 
       if (tabSwitchTime < threshold) {
-        console.log(`✅ Excellent performance (< ${threshold}ms)`);
+        logger.debug(`✅ Excellent performance (< ${threshold}ms)`);
       } else if (tabSwitchTime < threshold * 3) {
-        console.log(`⚠️ Good performance (< ${threshold * 3}ms)`);
+        logger.debug(`⚠️ Good performance (< ${threshold * 3}ms)`);
       } else {
-        console.log(`❌ Slow performance (> ${threshold * 3}ms) - optimization needed`);
+        logger.warn(`❌ Slow performance (> ${threshold * 3}ms) - optimization needed`);
       }
     });
   }, []); // ✅ No dependencies - pure client-side operation

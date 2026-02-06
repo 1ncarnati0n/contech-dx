@@ -7,6 +7,7 @@ import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
 import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
 import { createSpecialFloorId } from '@/lib/utils/floorIdUtils';
+import { logger } from '@/lib/utils/logger';
 import { toast } from 'sonner';
 
 interface Props {
@@ -675,7 +676,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         await onUpdate(); // 저장 후 업데이트
       }
     } catch (error) {
-      console.error('Flush save failed:', error);
+      logger.error('Flush save failed:', error);
       throw error; // 에러를 상위로 전달
     } finally {
       setIsSaving(false);
@@ -734,7 +735,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       onUpdate();
         }
     } catch (error) {
-        console.error('Auto-save failed:', error);
+        logger.error('Auto-save failed:', error);
         toast.error('자동 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -913,7 +914,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       }
     } catch (error) {
       toast.error('붙여넣기에 실패했습니다.');
-      console.error('Paste error:', error);
+      logger.error('Paste error:', error);
     }
   };
 

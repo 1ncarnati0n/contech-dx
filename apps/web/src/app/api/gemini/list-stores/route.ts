@@ -3,6 +3,7 @@ import type { GeminiFileSearchStore } from '@/lib/types';
 import { getErrorMessage } from '@/lib/utils';
 import { geminiStoreRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 
 export async function GET() {
   // 인증 확인
@@ -13,7 +14,7 @@ export async function GET() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API 키가 설정되지 않았습니다.' },
+        { success: false, error: 'Gemini API 키가 설정되지 않았습니다.' },
         { status: 500 }
       );
     }
@@ -42,9 +43,9 @@ export async function GET() {
     });
 
   } catch (error: unknown) {
-    console.error('Error listing file search stores:', error);
+    logger.error('Error listing file search stores:', error);
     return NextResponse.json(
-      { error: getErrorMessage(error) },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geminiModelRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 
 interface CitationSource {
   startIndex?: number;
@@ -19,14 +20,14 @@ export async function POST(request: NextRequest) {
 
     if (!query) {
       return NextResponse.json(
-        { error: '질문을 입력해주세요.' },
+        { success: false, error: '질문을 입력해주세요.' },
         { status: 400 }
       );
     }
 
     if (!storeName) {
       return NextResponse.json(
-        { error: '스토어를 선택해주세요.' },
+        { success: false, error: '스토어를 선택해주세요.' },
         { status: 400 }
       );
     }
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API 키가 설정되지 않았습니다.' },
+        { success: false, error: 'Gemini API 키가 설정되지 않았습니다.' },
         { status: 500 }
       );
     }
@@ -87,10 +88,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error searching:', error);
+    logger.error('Error searching:', error);
     const errorMessage = error instanceof Error ? error.message : '검색 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

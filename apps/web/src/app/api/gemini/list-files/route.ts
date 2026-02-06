@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geminiStoreRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 
 interface GeminiDocument {
   name: string;
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     if (!storeName) {
       return NextResponse.json(
-        { error: '스토어 이름을 입력해주세요.' },
+        { success: false, error: '스토어 이름을 입력해주세요.' },
         { status: 400 }
       );
     }
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API 키가 설정되지 않았습니다.' },
+        { success: false, error: 'Gemini API 키가 설정되지 않았습니다.' },
         { status: 500 }
       );
     }
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Gemini API Error Response:', {
+      logger.error('Gemini API Error Response:', {
         status: response.status,
         statusText: response.statusText,
         endpoint: `${storeName}/documents`,
@@ -89,10 +90,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error listing documents:', error);
+    logger.error('Error listing documents:', error);
     const errorMessage = error instanceof Error ? error.message : '문서 목록 조회 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

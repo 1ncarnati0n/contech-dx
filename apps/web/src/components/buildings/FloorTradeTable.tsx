@@ -709,7 +709,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         await onUpdate();
       }
     } catch (error) {
-      console.error('Save failed:', error);
+      logger.error('Save failed:', error);
       toast.error('저장 실패. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
@@ -899,7 +899,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       }
     } catch (error) {
       toast.error('붙여넣기에 실패했습니다.');
-      console.error('Paste error:', error);
+      logger.error('Paste error:', error);
     }
   };
 

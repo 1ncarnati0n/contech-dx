@@ -8,6 +8,7 @@ import AdminBuildingsClient, {
 } from './AdminBuildingsClient';
 import type { Project } from '@/lib/types';
 import { extractBuildingDisplayData } from '@/lib/utils/building-metadata';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * 서버 사이드에서 프로젝트 목록 조회
@@ -21,7 +22,7 @@ async function getProjectList(): Promise<Pick<Project, 'id' | 'name'>[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Failed to fetch projects:', error);
+    logger.error('Failed to fetch projects:', error);
     return [];
   }
 
@@ -81,7 +82,7 @@ async function getRecentBuildings(limit: number = 20): Promise<RecentBuilding[]>
     .limit(limit);
 
   if (error) {
-    console.error('Failed to fetch recent buildings:', error);
+    logger.error('Failed to fetch recent buildings:', error);
     throw new Error(`Failed to fetch recent buildings: ${error.message}`);
   }
 

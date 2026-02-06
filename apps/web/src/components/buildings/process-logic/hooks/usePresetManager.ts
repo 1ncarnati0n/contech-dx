@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ProcessLogicPreset, CalculationFormula, ProcessCategory } from '@/lib/types';
 import type { ProcessModule } from '@/lib/data/process-modules';
+import { logger } from '@/lib/utils/logger';
 
 const STORAGE_PRESETS_KEY = 'contech-process-presets';
 const STORAGE_ACTIVE_PRESET_PREFIX = 'contech-active-preset-';
@@ -73,7 +74,7 @@ export function usePresetManager({
       setActivePresetIdState(activePresetId);
       setIsLoading(false);
     } catch (error) {
-      console.error('Failed to load presets:', error);
+      logger.error('Failed to load presets:', error);
       setIsLoading(false);
     }
   }, [projectId, activePresetStorageKey]);
@@ -100,7 +101,7 @@ export function usePresetManager({
       localStorage.setItem(STORAGE_PRESETS_KEY, JSON.stringify(merged));
       setPresets(updatedPresets);
     } catch (error) {
-      console.error('Failed to save presets:', error);
+      logger.error('Failed to save presets:', error);
     }
   }, [projectId]);
 

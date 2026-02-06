@@ -20,6 +20,7 @@ import {
   Upload,
 } from 'lucide-react';
 import type { ConstructionTask, Milestone, GroupDependency } from 'sa-gantt-lib';
+import { logger } from '@/lib/utils/logger';
 
 interface GanttChartPageProps {
   projectId: string;
@@ -89,7 +90,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
       setMilestones(data.milestones);
       setDependencies(data.dependencies);
     } catch (err) {
-      console.error('Failed to load gantt data:', err);
+      logger.error('Failed to load gantt data:', err);
       setError('간트차트 데이터를 불러오는데 실패했습니다.');
       toast.error('데이터 로드 실패', {
         description: '간트차트 데이터를 불러오는데 실패했습니다.',
@@ -242,7 +243,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
       // 7. 간트차트 데이터 리로드 (stats 업데이트)
       await loadGanttData();
     } catch (error) {
-      console.error('Import from process plan failed:', error);
+      logger.error('Import from process plan failed:', error);
       toast.error('공정계획 가져오기에 실패했습니다.');
     } finally {
       setIsImporting(false);

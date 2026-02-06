@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '@/lib/constants';
+import { logger } from '@/lib/utils/logger';
 import type { FileSearchStore, UploadedFile } from './types';
 
 /**
@@ -33,7 +34,7 @@ export function useStoreManagement() {
         setStores(data.stores);
       }
     } catch (err) {
-      console.error('Error loading stores:', err);
+      logger.error('Error loading stores:', err);
     }
   }, []);
 
@@ -62,7 +63,7 @@ export function useStoreManagement() {
         setNextPageToken(filesData.nextPageToken || null);
       }
     } catch (err) {
-      console.error('Error loading store info:', err);
+      logger.error('Error loading store info:', err);
     }
   }, []);
 
@@ -97,7 +98,7 @@ export function useStoreManagement() {
         setNextPageToken(data.nextPageToken || null);
       }
     } catch (err) {
-      console.error('Error loading more files:', err);
+      logger.error('Error loading more files:', err);
     } finally {
       setIsLoadingMore(false);
     }

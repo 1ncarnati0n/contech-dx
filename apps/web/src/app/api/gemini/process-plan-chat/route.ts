@@ -3,6 +3,7 @@ import { buildFullSystemPrompt } from '@/lib/data/chatbot-prompts';
 import { parseHighlightMarkersEnhanced } from '@/lib/utils/highlight-registry';
 import { geminiModelRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 import type {
   ChatContextSnapshot,
   ChatbotError,
@@ -344,7 +345,7 @@ export async function POST(request: NextRequest) {
       highlightTargets,
     });
   } catch (error) {
-    console.error('Error in process-plan-chat:', error);
+    logger.error('Error in process-plan-chat:', error);
     const chatbotError = classifyError(error);
     return NextResponse.json({ success: false, error: chatbotError }, { status: 500 });
   }

@@ -5,6 +5,7 @@
  */
 
 import type { TradeData, TradeFieldData } from '@/lib/types';
+import { logger } from '@/lib/utils/logger';
 
 export type { TradeData, TradeFieldData };
 
@@ -233,7 +234,7 @@ export function getQuantityValue(
 
   if (!isValidQuantitySubField(subField)) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn(
+      logger.warn(
         `[getQuantityValue] Invalid subField: "${subField}". ` +
         `Valid fields: ${QUANTITY_SUBFIELDS.join(', ')}`
       );

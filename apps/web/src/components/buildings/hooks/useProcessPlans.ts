@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Building, BuildingProcessPlan, ProcessCategory } from '@/lib/types';
 import { getProcessModule } from '@/lib/data/process-modules';
+import { logger } from '@/lib/utils/logger';
 
 const DEFAULT_PROCESS_TYPES = {
   '버림': '표준공정' as const,
@@ -54,7 +55,7 @@ export function useProcessPlans(projectId: string, buildings: Building[]) {
           const storedPlan = JSON.parse(storedPlanJson);
           plans.set(building.id, storedPlan);
         } catch (error) {
-          console.error(`Failed to load process plan for building ${building.id}:`, error);
+          logger.error(`Failed to load process plan for building ${building.id}:`, error);
         }
       } else {
         // 🏗️ Generate default plan for new building
@@ -89,7 +90,7 @@ export function useProcessPlans(projectId: string, buildings: Building[]) {
         try {
           localStorage.setItem(storageKey, JSON.stringify(plan));
         } catch (error) {
-          console.error(`Failed to save process plan for building ${buildingId}:`, error);
+          logger.error(`Failed to save process plan for building ${buildingId}:`, error);
         }
       });
     }, 500);

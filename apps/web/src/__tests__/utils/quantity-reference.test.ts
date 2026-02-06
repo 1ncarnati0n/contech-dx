@@ -89,6 +89,7 @@ describe('Type Safety', () => {
       getQuantityFromFloor(building, '3F', 'formwork', 'wrong');
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[WARN]',
         expect.stringContaining('Invalid subField')
       );
 

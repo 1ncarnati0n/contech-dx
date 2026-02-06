@@ -12,6 +12,8 @@ import type {
   UpdateBuildingDTO,
   Floor,
   FloorTrade,
+  TradeData,
+  TradeFieldData,
   UpdateFloorDTO,
   UpdateFloorTradeDTO,
 } from '@/lib/types';
@@ -581,14 +583,16 @@ export async function getBuildingsForOverview(projectId: string): Promise<Buildi
    * TradeData에서 Overview에 필요한 필드만 추출
    * areaM2, ton, volumeM3만 유지하고 나머지 제거
    */
-  const filterTradeData = (trades: any): any => {
-    const filtered: any = {};
+  type OverviewTradeFields = { areaM2: number; ton: number; volumeM3: number };
+  const filterTradeData = (trades: TradeData): Record<string, OverviewTradeFields> => {
+    const filtered: Record<string, OverviewTradeFields> = {};
     REQUIRED_TRADES.forEach(trade => {
       if (trades[trade]) {
+        const t = trades[trade] as TradeFieldData;
         filtered[trade] = {
-          areaM2: trades[trade].areaM2 || 0,
-          ton: trades[trade].ton || 0,
-          volumeM3: trades[trade].volumeM3 || 0,
+          areaM2: t.areaM2 || 0,
+          ton: t.ton || 0,
+          volumeM3: t.volumeM3 || 0,
         };
       }
     });
@@ -616,7 +620,7 @@ export async function getBuildingsForOverview(projectId: string): Promise<Buildi
     meta: {
       ...building.meta,
       floorCount: { basement: 0, ground: 0, ph: 0 }, // Overview에서는 카운트 불필요
-      heights: {} as any, // 높이 정보 제거
+      heights: {} as Partial<BuildingMeta['heights']> as BuildingMeta['heights'], // 높이 정보 제거
     },
   }));
 }
