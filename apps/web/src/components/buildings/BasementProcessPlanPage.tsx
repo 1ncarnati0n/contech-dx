@@ -62,6 +62,18 @@ const DEFAULT_PROCESS_TYPES: Partial<Record<ProcessCategory, ProcessType>> = {
   '지하주차장': '표준공정',
 };
 
+// 특수 행 필드 → floorTrade 필드 매핑 (getQuantityFromFloor 호출용)
+const SPECIAL_FIELD_TO_TRADE: Record<
+  'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete',
+  { tradeField: 'gangForm' | 'alForm' | 'euroForm' | 'rebar' | 'concrete'; subField: string }
+> = {
+  gangForm:  { tradeField: 'gangForm',  subField: 'areaM2' },
+  alForm:    { tradeField: 'alForm',    subField: 'areaM2' },
+  formwork:  { tradeField: 'euroForm',  subField: 'areaM2' },   // UI: formwork → data: euroForm
+  rebar:     { tradeField: 'rebar',     subField: 'ton' },
+  concrete:  { tradeField: 'concrete',  subField: 'volumeM3' },
+};
+
 export function BasementProcessPlanPage({ projectId }: Props) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
@@ -1034,7 +1046,34 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const storageKey = `contech_process_plan_${building.id}`;
                                 saveToLocalStorageThrottled(storageKey, updatedPlan);
                               };
-                              
+
+                              // 특수 행 필드별 최대 가용물량 계산 (주동 지하층 base - 다른 특수 행 합계)
+                              const getMaxAvailableForSpecialRow = (
+                                field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete'
+                              ): number => {
+                                if (!row.isSpecialRow || !row.floorLabel) return Infinity;
+                                const baseFloor = row.floorLabel.match(/^(B\d+)/)?.[1];
+                                if (!baseFloor) return Infinity;
+
+                                const { tradeField, subField } = SPECIAL_FIELD_TO_TRADE[field];
+                                const baseQty = getQuantityFromFloor(building, baseFloor, tradeField, subField);
+
+                                const currentKey = row.floorLabel;
+                                const otherKeys = [
+                                  `${baseFloor} 주차장`,
+                                  `${baseFloor} 3단 가시설 적용부`,
+                                  `${baseFloor} 6.5m이상`,
+                                ].filter(k => k !== currentKey);
+
+                                let otherSum = 0;
+                                const plan = processPlans.get(building.id);
+                                otherKeys.forEach(k => {
+                                  otherSum += plan?.specialRowQuantities?.[k]?.[field] || 0;
+                                });
+
+                                return Math.max(0, baseQty - otherSum);
+                              };
+
                               // 특수 행(주차장, 3단 가시설 적용부, 6.5m이상)은 일수 계산 건너뛰기
                               if (row.isSpecialRow) {
                                 // 특수 행은 해당 지하층의 표준공정 적용
@@ -1220,12 +1259,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('gangForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('gangForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('gangForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="갱폼"
+                                        title={`갱폼 (최대: ${getMaxAvailableForSpecialRow('gangForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1241,12 +1282,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('alForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('alForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('alForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="알폼"
+                                        title={`알폼 (최대: ${getMaxAvailableForSpecialRow('alForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1262,12 +1305,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('formwork', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('formwork');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('formwork', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="유로폼"
+                                        title={`유로폼 (최대: ${getMaxAvailableForSpecialRow('formwork').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1291,11 +1336,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('rebar', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('rebar');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('rebar', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`철근 (최대: ${getMaxAvailableForSpecialRow('rebar').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1312,11 +1360,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('concrete', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('concrete');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('concrete', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`콘크리트 (최대: ${getMaxAvailableForSpecialRow('concrete').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1658,7 +1709,34 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const storageKey = `contech_process_plan_${building.id}`;
                                 saveToLocalStorageThrottled(storageKey, updatedPlan);
                               };
-                              
+
+                              // 특수 행 필드별 최대 가용물량 계산 (Path B용)
+                              const getMaxAvailableForSpecialRowB = (
+                                field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete'
+                              ): number => {
+                                if (!row.isSpecialRow || !row.floorLabel) return Infinity;
+                                const baseFloor = row.floorLabel.match(/^(B\d+)/)?.[1];
+                                if (!baseFloor) return Infinity;
+
+                                const { tradeField, subField } = SPECIAL_FIELD_TO_TRADE[field];
+                                const baseQty = getQuantityFromFloor(building, baseFloor, tradeField, subField);
+
+                                const currentKey = row.floorLabel;
+                                const otherKeys = [
+                                  `${baseFloor} 주차장`,
+                                  `${baseFloor} 3단 가시설 적용부`,
+                                  `${baseFloor} 6.5m이상`,
+                                ].filter(k => k !== currentKey);
+
+                                let otherSum = 0;
+                                const plan = processPlans.get(building.id);
+                                otherKeys.forEach(k => {
+                                  otherSum += plan?.specialRowQuantities?.[k]?.[field] || 0;
+                                });
+
+                                return Math.max(0, baseQty - otherSum);
+                              };
+
                               // 물량 데이터 가져오기 - 특수 행 수량 차감을 위한 공통 헬퍼
                               const getSpecialRowDeduction = (field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete') => {
                                 if (row.category !== '주동 지하층' || !row.floorLabel || row.isSpecialRow) return 0;
@@ -1861,12 +1939,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('gangForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('gangForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('gangForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="갱폼"
+                                        title={`갱폼 (최대: ${getMaxAvailableForSpecialRowB('gangForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1895,12 +1975,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('alForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('alForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('alForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="알폼"
+                                        title={`알폼 (최대: ${getMaxAvailableForSpecialRowB('alForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1929,12 +2011,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('formwork', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('formwork');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('formwork', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="유로폼"
+                                        title={`유로폼 (최대: ${getMaxAvailableForSpecialRowB('formwork').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1976,11 +2060,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('rebar', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('rebar');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('rebar', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`철근 (최대: ${getMaxAvailableForSpecialRowB('rebar').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -2010,11 +2097,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('concrete', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('concrete');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('concrete', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`콘크리트 (최대: ${getMaxAvailableForSpecialRowB('concrete').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
