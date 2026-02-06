@@ -32,6 +32,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
+          disableTransitionOnChange
         >
           <Suspense fallback={null}>
             <LoadingBar />
