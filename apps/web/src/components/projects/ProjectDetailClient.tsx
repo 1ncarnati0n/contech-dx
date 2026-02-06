@@ -7,8 +7,6 @@ import {
   DollarSign,
   MapPin,
   Building2,
-  Edit,
-  Trash2,
   Settings,
   LayoutDashboard,
   Calculator,
@@ -24,12 +22,11 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
-import { Button, Card, TabLoadingSkeleton } from '@/components/ui';
+import { Card, TabLoadingSkeleton } from '@/components/ui';
 import type { Project, Profile } from '@/lib/types';
-import { deleteProject, getProject } from '@/lib/services/projects';
+import { getProject } from '@/lib/services/projects';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import { ProjectSidebar } from './ProjectSidebar';
-import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
 import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
@@ -151,8 +148,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [project, setProject] = useState<Project>(initialProject);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
   const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -242,25 +237,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     setProject(initialProject);
   }, [initialProject]);
 
-  const handleDelete = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    if (!window.confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
-
-    try {
-      setIsDeleting(true);
-      await deleteProject(project.id);
-      toast.success('프로젝트가 삭제되었습니다.');
-      router.push('/projects');
-    } catch (error) {
-      logger.error('Failed to delete project:', error);
-      toast.error('프로젝트 삭제 실패', {
-        description: '프로젝트 삭제에 실패했습니다. 다시 시도해주세요.',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [project.id, router]);
-
   const handleTogglePin = useCallback(() => {
     setSidebarPinned(prev => {
       const newPinned = !prev;
@@ -320,12 +296,9 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         toast.success('프로젝트 정보가 업데이트되었습니다.');
       }
       router.refresh();
-      setIsEditModalOpen(false);
     } catch (error) {
       logger.error('Failed to reload project:', error);
-      // 에러가 발생해도 모달은 닫기
       router.refresh();
-      setIsEditModalOpen(false);
     }
   }, [project.id, router]);
 
@@ -381,29 +354,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                   </p>
                 </div>
               </div>
-              {activeTab === 'overview' && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setIsEditModalOpen(true)}
-                  >
-                    <Edit className="w-4 h-4" />
-                    수정
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {isDeleting ? '삭제 중...' : '삭제'}
-                  </Button>
-                </div>
-              )}
               {activeTab === 'pouring_section_review' && (
                 <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
                   <button
@@ -577,12 +527,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           </div>
         </main>
       </div>
-      <ProjectEditModal
-        project={project}
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onUpdate={handleProjectUpdate}
-      />
     </div>
   );
 }

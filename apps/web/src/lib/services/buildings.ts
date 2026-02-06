@@ -222,11 +222,16 @@ function preserveFloorTrades(
   });
 
   // 새로운 floors에 매칭하여 보존
+  const matchedOldKeys = new Set<string>();
+  const matchedNewIds = new Set<string>();
+
   newFloors.forEach(newFloor => {
     const key = `${newFloor.floorLabel}_${newFloor.floorClass}`;
     const existingTrades = existingFloorTradesMap.get(key);
 
     if (existingTrades && existingTrades.length > 0) {
+      matchedOldKeys.add(key);
+      matchedNewIds.add(newFloor.id);
       existingTrades.forEach(trade => {
         preservedFloorTrades.push({
           ...trade,
@@ -234,6 +239,59 @@ function preserveFloorTrades(
         });
       });
     }
+  });
+
+  // 3. 폴백 매칭: floorClass(+ 코어 접두사) 기준
+  // 정확 매칭 실패한 층끼리 floorClass로 2차 매칭 시도
+  const extractCorePrefix = (label: string): string => {
+    const match = label.match(/^(코어\d+)-/);
+    return match ? match[1] : '';
+  };
+
+  // 미매칭 old floors: floorClass + 코어 접두사 → trades 그룹핑
+  const unmatchedOldByClass = new Map<string, { oldFloorId: string; trades: FloorTrade[] }[]>();
+  oldFloors.forEach(oldFloor => {
+    const key = `${oldFloor.floorLabel}_${oldFloor.floorClass}`;
+    if (matchedOldKeys.has(key)) return;
+
+    const trades = existingFloorTrades.filter(
+      t => t.floorId === oldFloor.id && !isSpecialFloorId(t.floorId)
+    );
+    if (trades.length === 0) return;
+
+    const fallbackKey = `${extractCorePrefix(oldFloor.floorLabel)}_${oldFloor.floorClass}`;
+    if (!unmatchedOldByClass.has(fallbackKey)) {
+      unmatchedOldByClass.set(fallbackKey, []);
+    }
+    unmatchedOldByClass.get(fallbackKey)!.push({ oldFloorId: oldFloor.id, trades });
+  });
+
+  // 미매칭 new floors: floorClass + 코어 접두사로 그룹핑
+  const unmatchedNewByClass = new Map<string, Floor[]>();
+  newFloors.forEach(newFloor => {
+    if (matchedNewIds.has(newFloor.id)) return;
+
+    const fallbackKey = `${extractCorePrefix(newFloor.floorLabel)}_${newFloor.floorClass}`;
+    if (!unmatchedNewByClass.has(fallbackKey)) {
+      unmatchedNewByClass.set(fallbackKey, []);
+    }
+    unmatchedNewByClass.get(fallbackKey)!.push(newFloor);
+  });
+
+  // 1:1 매칭만 허용 — 같은 class의 미매칭 후보가 양쪽 모두 1개일 때만 폴백
+  unmatchedOldByClass.forEach((oldEntries, fallbackKey) => {
+    const newEntries = unmatchedNewByClass.get(fallbackKey);
+    if (!newEntries || oldEntries.length !== 1 || newEntries.length !== 1) return;
+
+    const oldEntry = oldEntries[0];
+    const newFloor = newEntries[0];
+
+    oldEntry.trades.forEach(trade => {
+      preservedFloorTrades.push({
+        ...trade,
+        floorId: newFloor.id,
+      });
+    });
   });
 
   return preservedFloorTrades;
@@ -672,7 +730,14 @@ export async function updateBuilding(
 
     // 층수 변경 또는 층고 변경 시 층 재생성
     const floorCountChanged = updates.meta.floorCount !== undefined && (
-      JSON.stringify(updates.meta.floorCount) !== JSON.stringify(building.meta.floorCount)
+      updates.meta.floorCount.basement !== building.meta.floorCount.basement ||
+      updates.meta.floorCount.ground !== building.meta.floorCount.ground ||
+      updates.meta.floorCount.ph !== building.meta.floorCount.ph ||
+      updates.meta.floorCount.pilotisCount !== building.meta.floorCount.pilotisCount ||
+      JSON.stringify(updates.meta.floorCount.corePilotisCounts) !== JSON.stringify(building.meta.floorCount.corePilotisCounts) ||
+      JSON.stringify(updates.meta.floorCount.coreGroundFloors) !== JSON.stringify(building.meta.floorCount.coreGroundFloors) ||
+      JSON.stringify(updates.meta.floorCount.coreBasementFloors) !== JSON.stringify(building.meta.floorCount.coreBasementFloors) ||
+      JSON.stringify(updates.meta.floorCount.corePhFloors) !== JSON.stringify(building.meta.floorCount.corePhFloors)
     );
 
     const shouldRegenerateFloors =

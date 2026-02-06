@@ -27,7 +27,7 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body className="font-sans min-h-screen bg-background text-foreground transition-colors">
+      <body className="font-sans min-h-screen bg-background text-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -37,7 +37,7 @@ export default function RootLayout({
             <LoadingBar />
           </Suspense>
           <NavBar />
-          <main className="pt-16 min-h-screen text-foreground transition-colors">
+          <main className="pt-16 min-h-screen text-foreground">
             {children}
           </main>
           <Suspense fallback={null}>

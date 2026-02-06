@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { SaveStatusBar } from './SaveStatusBar';
 import { ClipboardPaste } from 'lucide-react';
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
@@ -930,30 +931,13 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       </div>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle>층별 물량 입력</CardTitle>
-            {hasUnsavedChanges && (
-              <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                저장되지 않은 변경사항
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {hasUnsavedChanges && !isSaving && (
-              <Button variant="ghost" size="sm" onClick={discardChanges}>
-                취소
-              </Button>
-            )}
-            <Button
-              variant={hasUnsavedChanges ? "primary" : "secondary"}
-              size="sm"
-              onClick={saveChanges}
-              disabled={isSaving || !hasUnsavedChanges}
-            >
-              {isSaving ? '저장 중...' : '저장'}
-            </Button>
-          </div>
+          <CardTitle>층별 물량 입력</CardTitle>
+          <SaveStatusBar
+            hasUnsavedChanges={hasUnsavedChanges}
+            isSaving={isSaving}
+            onSave={saveChanges}
+            onDiscard={discardChanges}
+          />
         </div>
       </CardHeader>
       {/* 붙여넣기 안내 배너 */}

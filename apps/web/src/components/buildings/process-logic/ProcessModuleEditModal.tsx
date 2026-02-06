@@ -124,7 +124,7 @@ type EditableField = 'dailyProductivity' | 'directWorkDays' | 'indirectDays' | '
 const FIELD_LABELS: Record<EditableField, string> = {
   dailyProductivity: '인당생산성',
   directWorkDays: '순작업일',
-  indirectDays: '간접일',
+  indirectDays: '간접작업일',
   equipmentWorkersPerUnit: '장비당인원',
   quantityReference: '물량참조',
 };
@@ -682,7 +682,7 @@ export function ProcessModuleEditModal({
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">공정타입</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">인당생산성</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">순작업일</th>
-                          <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">간접일</th>
+                          <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">간접작업일</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">
                             대당타설량
                             <Tooltip>
