@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
@@ -904,6 +904,24 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           />
                           <span className="text-sm text-zinc-600 dark:text-zinc-400">일</span>
                         </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const storageKey = `contech_process_plan_${building.id}`;
+                            const currentPlan = processPlans.get(building.id);
+                            if (currentPlan) {
+                              try {
+                                localStorage.setItem(storageKey, JSON.stringify(currentPlan));
+                                toast.success('공정계획이 저장되었습니다.');
+                              } catch (error) {
+                                toast.error('저장에 실패했습니다.');
+                              }
+                            }
+                          }}
+                          className="ml-auto bg-primary-600 hover:bg-primary-700 active:bg-primary-800 active:scale-95 text-white transition-all duration-150"
+                        >
+                          저장
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
