@@ -50,6 +50,7 @@ interface ProcessModuleEditModalProps {
   onOpenChange: (open: boolean) => void;
   modules: ProcessModule[];
   activeCategory: ProcessCategory;
+  activeProcessType?: string; // 선택된 공정타입 (예: "6일 사이클")
   onSave: (updatedModules: ProcessModule[]) => void;
   projectId: string;
   equipmentBaseForCategory: number; // 현재 카테고리의 프리셋 값
@@ -67,7 +68,7 @@ const FIELD_LABELS: Record<EditableField, string> = {
 
 // Sortable Row 컴포넌트
 interface SortableRowProps {
-  item: ProcessItem & { moduleId: string };
+  item: ProcessItem & { moduleId: string; moduleName: string };
   isChanged: boolean;
   activeCategory: ProcessCategory;
   equipmentBaseForCategory: number;
@@ -150,6 +151,14 @@ function SortableRow({
         ) : (
           <span className="text-zinc-400 dark:text-zinc-500 text-xs text-center block">-</span>
         )}
+      </td>
+      <td className="px-2 py-2 align-middle">
+        <Badge
+          variant={item.moduleName === '표준공정' ? 'secondary' : 'info'}
+          className="text-xs whitespace-nowrap"
+        >
+          {item.moduleName}
+        </Badge>
       </td>
       <td className="px-2 py-2 align-middle">
         <Input
@@ -249,6 +258,7 @@ export function ProcessModuleEditModal({
   onOpenChange,
   modules,
   activeCategory,
+  activeProcessType,
   onSave,
   projectId,
   equipmentBaseForCategory,
@@ -317,14 +327,18 @@ export function ProcessModuleEditModal({
     }
   }, [open, modules, activeCategory, equipmentBaseForCategory, historyStorageKey]);
 
-  // 현재 카테고리의 모듈 필터링
+  // 현재 카테고리의 모듈 필터링 (공정타입 선택 시 해당 타입만)
   const filteredModules = useMemo(() => {
-    return editValues.filter(m => m.category === activeCategory);
-  }, [editValues, activeCategory]);
+    return editValues.filter(m => {
+      if (m.category !== activeCategory) return false;
+      if (activeProcessType) return m.name === activeProcessType;
+      return true;
+    });
+  }, [editValues, activeCategory, activeProcessType]);
 
   // 현재 카테고리의 모든 항목
   const filteredItems = useMemo(() => {
-    return filteredModules.flatMap(m => m.items.map(item => ({ ...item, moduleId: m.id })));
+    return filteredModules.flatMap(m => m.items.map(item => ({ ...item, moduleId: m.id, moduleName: m.name })));
   }, [filteredModules]);
 
   // 히스토리 저장
@@ -529,7 +543,10 @@ export function ProcessModuleEditModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>공정모듈 고급 편집 - {activeCategory}</DialogTitle>
+          <DialogTitle>
+            공정모듈 고급 편집 - {activeCategory}
+            {activeProcessType && activeProcessType !== '표준공정' && ` (${activeProcessType})`}
+          </DialogTitle>
           <DialogDescription>
             5개 필드를 개별 편집하고 변경 이력을 관리합니다. (인당생산성, 순작업일, 간접일, 장비당인원, 물량참조)
           </DialogDescription>
@@ -572,6 +589,7 @@ export function ProcessModuleEditModal({
                           </th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">공정명</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200 w-[70px]">층</th>
+                          <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">공정타입</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">인당생산성</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">순작업일</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">간접일</th>

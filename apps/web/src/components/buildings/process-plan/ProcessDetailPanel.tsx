@@ -170,12 +170,19 @@ export function ProcessDetailPanel({
     if (expandedRow.category === '기준층') {
       return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
     }
+    if (expandedRow.category === '최상층') {
+      return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
+    }
     if (expandedRow.category === '주동 지하층') {
       // 특수 행(주차장, 3단 가시설)인 경우 해당 지하층의 항목 사용
       if (isSpecialRow) {
         return item.floorLabel === targetFloorLabel;
       }
       return item.floorLabel === expandedRow.floorLabel;
+    }
+    if (expandedRow.category === '지하주차장') {
+      // 지하주차장: targetFloorLabel("B1")로 매칭 (expandedRow.floorLabel은 "B1 주차장")
+      return item.floorLabel === targetFloorLabel;
     }
     if (expandedRow.category === 'PH층') {
       return !item.floorLabel || item.floorLabel === expandedRow.floorLabel;
@@ -272,6 +279,12 @@ export function ProcessDetailPanel({
     }
     if (expandedRow.category === '기준층') {
       return `기준층 ${expandedRow.floorLabel}`;
+    }
+    if (expandedRow.category === '최상층') {
+      return `최상층 ${expandedRow.floorLabel}`;
+    }
+    if (expandedRow.category === '지하주차장') {
+      return expandedRow.floorLabel || '지하주차장';
     }
     return `${expandedRow.category} ${expandedRow.floorLabel || ''}`;
   };

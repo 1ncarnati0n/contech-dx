@@ -11,6 +11,7 @@ import { ProcessDetailPanel } from './process-plan/ProcessDetailPanel';
 import { BuildingInfoHeader, ProcessTableHeader } from './process-plan'; // 🎯 Stage 2 Task 5: New components
 import { getProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
+import { getCellReferenceForRow } from '@/lib/utils/process-cell-reference';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
@@ -21,13 +22,6 @@ import {
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
-import {
-  getCategoryLabel,
-  getFloorNumberLabel,
-  getFormworkQuantity,
-  getRebarQuantity,
-  getConcreteQuantity
-} from '@/lib/utils/process-row-helpers'; // 🎯 Stage 2 Task 5: Helper functions
 import { logger } from '@/lib/utils/logger';
 import { throttle } from 'es-toolkit';
 
@@ -50,12 +44,13 @@ interface Props {
 // 공정 구분 목록 (지하층 공정계획: 버림, 기초, 주동 지하층만)
 const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '주동 지하층'];
 
-// 공정 타입 옵션 (구분별로 다름) - 지하층 공정계획은 버림, 기초, 주동 지하층만 사용
-// Note: '층고6.5m이상'은 별도 탭(moduleId 기반)으로 분리됨
+// 공정 타입 옵션 (구분별로 다름) - 지하층 공정계획용
 const PROCESS_TYPE_OPTIONS: Partial<Record<ProcessCategory, ProcessType[]>> = {
   '버림': ['표준공정'],
   '기초': ['표준공정'],
   '주동 지하층': ['표준공정'],
+  '지하층(층고6.5m이상)': ['표준공정'],
+  '지하주차장': ['표준공정'],
 };
 
 // 기본 공정 타입 - 지하층 공정계획은 버림, 기초, 주동 지하층만 사용
@@ -63,6 +58,8 @@ const DEFAULT_PROCESS_TYPES: Partial<Record<ProcessCategory, ProcessType>> = {
   '버림': '표준공정',
   '기초': '표준공정',
   '주동 지하층': '표준공정',
+  '지하층(층고6.5m이상)': '표준공정',
+  '지하주차장': '표준공정',
 };
 
 export function BasementProcessPlanPage({ projectId }: Props) {
@@ -320,8 +317,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
 
-    // 주동 지하층의 경우 층별로 저장
-    if (category === '주동 지하층' && floorLabel) {
+    // 주동 지하층/지하주차장의 경우 층별로 저장
+    if ((category === '주동 지하층' || category === '지하주차장') && floorLabel) {
       // 주차장이나 통합 지하층(6.5m 이상)인 경우, 해당 지하층의 공정타입도 함께 업데이트
       let targetFloorLabel = floorLabel;
       const parkingMatch = floorLabel.match(/^(B\d+)\s+주차장/);
@@ -413,8 +410,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     const categoryProcess = plan.processes[category];
     if (!categoryProcess) return DEFAULT_PROCESS_TYPES[category] || '표준공정';
     
-    // 지하층의 경우 층별 processType 확인
-    if (category === '주동 지하층' && categoryProcess.floors) {
+    // 지하층/지하주차장의 경우 층별 processType 확인
+    if ((category === '주동 지하층' || category === '지하주차장') && categoryProcess.floors) {
       if (categoryProcess.floors[floorLabel]) {
         return categoryProcess.floors[floorLabel].processType;
       }
@@ -432,7 +429,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
       if (category === '주동 지하층' && building) {
         // 주동 지하층는 각 층별 일수를 합산
         const basementFloors = getBasementFloors.get(building.id) || [];
-        // 일반 지하층은 항상 표준공정 사용 (B1+B2 통합 행만 '층고6.5m이상' 내부 사용)
+        // 일반 지하층은 항상 표준공정 사용
         basementFloors.forEach(floor => {
           const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
           const floorDays = calculateBasementFloorDays(building, category, floorProcessType, floor.floorLabel);
@@ -508,7 +505,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     const targetFloorLabel = isSpecialRow && floorMatch ? floorMatch[1] : floorLabel;
 
     // processType 결정
-    const processType = floorLabel && category === '주동 지하층'
+    const processType = floorLabel && (category === '주동 지하층' || category === '지하주차장')
       ? getProcessTypeForFloor(currentPlan, category, targetFloorLabel || floorLabel)
       : currentPlan?.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
     const module = getProcessModule(category, processType);
@@ -536,7 +533,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
             }
           }
         });
-      } else if (category === '주동 지하층' && floorLabel) {
+      } else if ((category === '주동 지하층' || category === '지하주차장') && floorLabel) {
         const floorItems = module.items.filter(moduleItem => moduleItem.floorLabel === targetFloorLabel);
         floorItems.forEach(moduleItem => {
           const moduleItemKey = `${category}-${floorLabel}-${moduleItem.id}`;
@@ -654,9 +651,23 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   };
 
   // activeBuilding을 먼저 계산 (hooks 순서 보장을 위해)
-  const activeBuilding = buildings.length > 0 && activeBuildingIndex < buildings.length 
-    ? buildings[activeBuildingIndex] 
+  const activeBuilding = buildings.length > 0 && activeBuildingIndex < buildings.length
+    ? buildings[activeBuildingIndex]
     : null;
+
+  // 해당 동의 최대 지상층 번호 (옥탑 제외) - 셀 주소 라벨의 옥탑층 행 번호 계산용
+  const maxFloorNumber = useMemo(() => {
+    if (!activeBuilding) return undefined;
+    const aboveGroundFloors = activeBuilding.floors
+      .filter(f => f.levelType === '지상' && f.floorClass !== '옥탑층')
+      .map(f => {
+        const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F/);
+        if (rangeMatch) return parseInt(rangeMatch[2], 10);
+        const match = f.floorLabel.match(/(\d+)F/);
+        return match ? parseInt(match[1], 10) : f.floorNumber;
+      });
+    return aboveGroundFloors.length > 0 ? Math.max(...aboveGroundFloors) : undefined;
+  }, [activeBuilding]);
 
   // 물량입력표와 반대 순서로 행 생성 (옥탑층, PH층, 지상층, 지하층, 기초, 버림)
   const processRows = useMemo(() => {
@@ -700,35 +711,26 @@ export function BasementProcessPlanPage({ projectId }: Props) {
         floorLabel: `${cleanLabel} 주차장`
       });
 
-      // B1+B2 통합(6.5m 이상) 행은 아래에서 별도로 생성 (중복 방지)
-
       // 주동 지하층 행 추가
       rows.push({
-        category: '주동 지하층', 
-        floorLabel: cleanLabel, 
-        floor, 
+        category: '주동 지하층',
+        floorLabel: cleanLabel,
+        floor,
         floorClass: floor.floorClass,
-        rowIndex: rowIndex++ 
+        rowIndex: rowIndex++
       });
-    });
 
-    // 3.5. B1+B2 통합(6.5m 이상) 행 추가 - 단일 통합 행
-    if (activeBuilding.meta?.floorCount?.hasHighCeilingEquipmentRoom) {
-      const hasB1 = basementFloors.some(f => f.floorLabel === 'B1' || f.floorLabel.includes('B1'));
-      const hasB2 = basementFloors.some(f => f.floorLabel === 'B2' || f.floorLabel.includes('B2'));
-
-      // B1과 B2가 모두 있을 때만 통합 행 생성
-      if (hasB1 && hasB2) {
-        rows.push({
-          category: '주동 지하층' as ProcessCategory,
-          rowIndex: rowIndex++,
-          isSpecialRow: true,
-          floorLabel: 'B1+B2 통합(6.5m 이상)',
-          // 통합 행임을 표시하는 플래그 추가
-          isConsolidatedBasement: true,
-        });
+      // B1 직후에 지하층(6.5m이상) 삽입 (B1과 B2 사이에 위치)
+      if (cleanLabel === 'B1' && activeBuilding.meta?.floorCount?.hasHighCeilingEquipmentRoom) {
+        const hasB2 = basementFloors.some(f => f.floorLabel === 'B2' || f.floorLabel.includes('B2'));
+        if (hasB2) {
+          rows.push({
+            category: '지하층(층고6.5m이상)',
+            rowIndex: rowIndex++,
+          });
+        }
       }
-    }
+    });
 
     // 4. 기초 행 추가
     rows.push({ category: '기초', rowIndex: rowIndex++ });
@@ -881,55 +883,68 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                       <div className="overflow-x-auto">
                         <table className="w-full border-collapse text-sm table-fixed">
                     <colgroup>
-                      {/* 구분 항목 */}<col style={{ width: '80px' }} />
-                      {/* 층수 */}<col style={{ width: '115px' }} />
-                      {/* 형틀 */}<col style={{ width: '80px' }} />
-                      {/* 철근 */}<col style={{ width: '80px' }} />
-                      {/* 콘크리트 */}<col style={{ width: '80px' }} />
-                      {/* 일수 */}<col style={{ width: '90px' }} />
-                      {/* 공정타입 */}<col style={{ width: '115px' }} />
-                      {/* 세부공정 */}<col style={{ width: '80px' }} />
+                      {/* 구분 항목 */}<col style={{ width: '92px' }} />
+                      {/* 층수 */}<col style={{ width: '44px' }} />
+                      {/* 형틀 합계 */}<col style={{ width: '52px' }} />
+                      {/* 갱폼 */}<col style={{ width: '48px' }} />
+                      {/* 알폼 */}<col style={{ width: '48px' }} />
+                      {/* 유로폼 */}<col style={{ width: '52px' }} />
+                      {/* 해체/정리 */}<col style={{ width: '52px' }} />
+                      {/* 철근 */}<col style={{ width: '54px' }} />
+                      {/* 콘크리트 */}<col style={{ width: '58px' }} />
+                      {/* 일수 */}<col style={{ width: '64px' }} />
+                      {/* 공정타입 */}<col style={{ width: '90px' }} />
+                      {/* 세부공정 */}<col style={{ width: '56px' }} />
                     </colgroup>
                     <thead>
-                      <tr className="bg-zinc-50 dark:bg-zinc-900 border-b-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px' }}>
-                        {/* 첫 번째 열: 구분 항목 */}
-                        <th className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {/* 상단 헤더 행 */}
+                      <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800" style={{ height: '24px' }}>
+                        <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           구분
                         </th>
-                        {/* 두 번째 열: 층수 */}
-                        <th className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           층수
                         </th>
-                        {/* 세 번째 열: 형틀 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th colSpan={4} className="px-1 py-0.5 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
                           형틀
                         </th>
-                        {/* 네 번째 열: 철근 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th rowSpan={2} className="px-0.5 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                          해체/<br/>정리
+                        </th>
+                        <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           철근
                         </th>
-                        {/* 다섯 번째 열: 콘크리트 */}
-                        <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           콘크리트
                         </th>
-                        
-                        {/* 첫 번째 공정 열만 헤더 표시 (일수, 셀렉트박스, 버튼) */}
                         {processColumns.length > 0 && (
                           <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
-                            {/* 일수 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               순작업일수
                             </th>
-                            {/* 셀렉트박스 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               공정타입
                             </th>
-                            {/* 버튼 열 */}
-                            <th className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               세부공정
                             </th>
                           </Fragment>
                         )}
+                      </tr>
+                      {/* 하단 서브헤더 행: 형틀 세분화 */}
+                      <tr className="bg-zinc-50 dark:bg-zinc-900 border-b-2 border-zinc-200 dark:border-zinc-800" style={{ height: '20px' }}>
+                        <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          합계
+                        </th>
+                        <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          갱폼
+                        </th>
+                        <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          알폼
+                        </th>
+                        <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          유로폼
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -994,16 +1009,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               
                               // 특수 행(주차장, 3단 가시설 적용부)은 일수 계산 건너뛰기
                               if (row.isSpecialRow) {
-                                // 특수 행은 일수 0으로 표시
-                                // 3단 가시설 적용부는 내부적으로 '층고6.5m이상' 모듈 사용
-                                // 주차장은 해당 지하층의 표준공정 적용
-                                const isFacilityRow = row.floorLabel?.includes('3단 가시설 적용부');
+                                // 특수 행(주차장)은 해당 지하층의 표준공정 적용
                                 let processType: ProcessType;
-                                if (isFacilityRow) {
-                                  // 3단 가시설 적용부 행은 항상 '층고6.5m이상' 모듈 사용
-                                  processType = '층고6.5m이상' as ProcessType;
-                                } else if (row.floorLabel) {
-                                  // 주차장 등: 해당 지하층의 공정타입 상속
+                                if (row.floorLabel) {
                                   const floorMatch = row.floorLabel.match(/^(B\d+)/);
                                   if (floorMatch) {
                                     const basementFloorLabel = floorMatch[1];
@@ -1022,18 +1030,17 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   : row.category;
                                 const isExpanded = isDetailExpanded.has(expandKey);
                                 
-                                // 3단 가시설 적용부는 여러 줄 표기 허용
-                                const isMultiLineRow = row.floorLabel?.includes('3단 가시설 적용부');
+                                const isMultiLineRow = false;
                                 
                                 // 구분 항목 표시
                                 const getCategoryLabelLocal = () => {
-                                  return '주동 지하층';
+                                  return row.category;
                                 };
                                 
                                 return (
                                   <tr
                                     key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
-                                    className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-4 border-accent-500 shadow-sm' : ''}`}
+                                    className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 border-l-4 border-l-transparent ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-accent-500 shadow-sm' : ''}`}
                                     style={{ height: '32px' }}
                                   >
                                     {/* 첫 번째 열: 구분 항목 */}
@@ -1043,11 +1050,59 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     
                                     {/* 두 번째 열: 층수 */}
                                     <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ ...(isMultiLineRow ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
-                                      <div className="text-center font-normal">{row.floorLabel || ''}</div>
+                                      <div className="text-center font-normal">{row.floorLabel?.match(/^(B\d+)/)?.[1] || ''}</div>
                                     </td>
                                     
-                                    {/* 세 번째 열: 형틀 */}
-                                    <td className="px-1 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                    {/* 형틀 합계 (읽기전용 - 갱폼+알폼+유로폼) */}
+                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                      <div className="text-xs font-medium text-zinc-500">
+                                        {((getSpecialRowQuantityLocal('gangForm') || 0) + (getSpecialRowQuantityLocal('alForm') || 0) + (getSpecialRowQuantityLocal('formwork') || 0)).toFixed(2)}
+                                      </div>
+                                    </td>
+                                    {/* 갱폼 */}
+                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={getSpecialRowQuantityLocal('gangForm') || ''}
+                                        onChange={(e) => {
+                                          const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                          handleSpecialRowQuantityChangeLocal('gangForm', value);
+                                        }}
+                                        onBlur={(e) => {
+                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          handleSpecialRowQuantityChangeLocal('gangForm', value);
+                                        }}
+                                        className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        placeholder="0"
+                                        title="갱폼"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </td>
+                                    {/* 알폼 */}
+                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={getSpecialRowQuantityLocal('alForm') || ''}
+                                        onChange={(e) => {
+                                          const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                          handleSpecialRowQuantityChangeLocal('alForm', value);
+                                        }}
+                                        onBlur={(e) => {
+                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          handleSpecialRowQuantityChangeLocal('alForm', value);
+                                        }}
+                                        className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        placeholder="0"
+                                        title="알폼"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </td>
+                                    {/* 유로폼 */}
+                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
                                       <Input
                                         type="number"
                                         min="0"
@@ -1061,14 +1116,21 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
                                           handleSpecialRowQuantityChangeLocal('formwork', value);
                                         }}
-                                        className="flex justify-center items-center text-center w-16 h-5 text-xs font-normal px-1 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="형틀"
+                                        title="유로폼"
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
-                                    
-                                    {/* 네 번째 열: 철근 */}
+
+                                    {/* 해체/정리 (유로폼 × 2, 자동계산) */}
+                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {((getSpecialRowQuantityLocal('formwork') || 0) * 2).toFixed(2)}
+                                      </div>
+                                    </td>
+
+                                    {/* 철근 */}
                                     <td className="px-1 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
                                       <Input
                                         type="number"
@@ -1083,7 +1145,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
                                           handleSpecialRowQuantityChangeLocal('rebar', value);
                                         }}
-                                        className="flex justify-center items-center text-center w-16 h-5 text-xs font-normal px-1 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
                                         onClick={(e) => e.stopPropagation()}
                                       />
@@ -1104,7 +1166,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
                                           handleSpecialRowQuantityChangeLocal('concrete', value);
                                         }}
-                                        className="flex justify-center items-center text-center w-16 h-5 text-xs font-normal px-1 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
                                         onClick={(e) => e.stopPropagation()}
                                       />
@@ -1249,9 +1311,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               // 지하층 공정계획에서는 버림, 기초, 지하층만 처리
                               const effectiveCategory = row.category;
 
-                              // 일반 지하층 행은 항상 표준공정 사용 (3단 가시설 적용부 행만 내부적으로 '층고6.5m이상')
+                              // processType 결정 (주동 지하층/지하주차장은 층별, 나머지는 카테고리별)
                               let processType: ProcessType;
-                              if (row.floorLabel && row.category === '주동 지하층') {
+                              if (row.floorLabel && (row.category === '주동 지하층' || row.category === '지하주차장')) {
                                 processType = getProcessTypeForFloor(plan, row.category, row.floorLabel);
                               } else {
                                 processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category] || '표준공정';
@@ -1262,18 +1324,17 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               let days = 0;
                               if (!module || !module.items || module.items.length === 0) {
                                 // 모듈이 없으면 기존 방식 사용
-                                if (row.category === '버림' || row.category === '기초') {
+                                if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
                                   days = plan?.processes[row.category]?.days || 0;
                                 } else if (row.category === '주동 지하층' && row.floorLabel) {
                                   days = calculateBasementFloorDays(building, row.category, processType, row.floorLabel);
                                 }
-                                // 지하층 공정계획에서는 셋팅층, 기준층, PH층, 옥탑층을 처리하지 않음
                               } else {
                                 // 세부공정의 순작업일 합계 계산 (오버라이드된 값 고려)
                                 let sumDirectDays = 0;
                                 
-                                // 버림, 기초는 floorLabel 없이 계산
-                                if (row.category === '버림' || row.category === '기초') {
+                                // 버림, 기초, 지하층(층고6.5m이상)은 floorLabel 없이 전체 항목 계산
+                                if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
                                   module.items.forEach(item => {
                                     // 오버라이드된 순작업일 확인
                                     const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
@@ -1305,6 +1366,40 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                         }
                                       }
                                     } else if (item.quantityReference && item.dailyProductivity > 0) {
+                                      if (quantity > 0) {
+                                        const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
+                                        const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
+                                        directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+                                        sumDirectDays += directWorkDays;
+                                      }
+                                    }
+                                  });
+                                }
+                                // 지하주차장 공정
+                                else if (row.floorLabel && row.category === '지하주차장') {
+                                  // "B1 주차장" → "B1" 추출
+                                  const parkingFloorMatch = row.floorLabel.match(/^(B\d+)/);
+                                  const baseFloorLabel = parkingFloorMatch ? parkingFloorMatch[1] : row.floorLabel;
+                                  const floorItems = module.items.filter(item => item.floorLabel === baseFloorLabel);
+
+                                  floorItems.forEach(item => {
+                                    const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
+                                    const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
+
+                                    if (overriddenDays !== undefined) {
+                                      sumDirectDays += overriddenDays;
+                                      return;
+                                    }
+
+                                    let directWorkDays = 0;
+
+                                    if (item.directWorkDays !== undefined) {
+                                      directWorkDays = item.directWorkDays;
+                                      sumDirectDays += directWorkDays;
+                                    } else if (item.quantityReference && item.dailyProductivity > 0) {
+                                      const quantity = getQuantityFromFloor(building, baseFloorLabel,
+                                        item.quantityReference.charAt(0) === 'B' ? 'gangForm' : item.quantityReference.charAt(0) === 'C' ? 'alForm' : item.quantityReference.charAt(0) === 'D' ? 'formwork' : item.quantityReference.charAt(0) === 'E' ? 'stripClean' : item.quantityReference.charAt(0) === 'F' ? 'rebar' : 'concrete',
+                                        item.quantityReference.charAt(0) === 'B' || item.quantityReference.charAt(0) === 'C' || item.quantityReference.charAt(0) === 'D' || item.quantityReference.charAt(0) === 'E' ? 'areaM2' : item.quantityReference.charAt(0) === 'F' ? 'ton' : 'volumeM3');
                                       if (quantity > 0) {
                                         const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
                                         const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
@@ -1391,46 +1486,25 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               
                               // 구분 항목 표시 (왼쪽 열)
                               const getCategoryLabel = () => {
-                                // 특수 행 처리 (주차장, 3단 가시설 적용부)
-                                if (row.isSpecialRow) {
-                                  return '주동 지하층';
+                                if (row.category === '지하층(층고6.5m이상)') {
+                                  return '지하층(6.5m이상)';
                                 }
-                                if (row.category === '버림' || row.category === '기초') {
-                                  return row.category;
-                                }
-                                // 지하층는 그대로 표시
                                 return row.category;
                               };
                               
                               // 층수 표시 (오른쪽 열)
                               const getFloorNumberLabel = () => {
-                                // 버림, 기초는 층수 없음
-                                if (row.category === '버림' || row.category === '기초') {
+                                // 버림, 기초, 지하층(층고6.5m이상)은 층수 없음
+                                if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
                                   return '';
                                 }
-                                
-                                // 특수 행 처리 (주차장, 3단 가시설 적용부) - 층수 추출하여 표시
-                                if (row.isSpecialRow && row.floorLabel) {
-                                  // floorLabel에서 층수 추출 (예: "B1 주차장" -> "B1", "B2 3단 가시설 적용부(6.5m 이상)" -> "B2")
-                                  const floorMatch = row.floorLabel.match(/^(B\d+)/);
-                                  if (floorMatch) {
-                                    const floorNumber = floorMatch[1];
-                                    if (row.floorLabel.includes('주차장')) {
-                                      return `${floorNumber} 주차장`;
-                                    } else if (row.floorLabel.includes('3단 가시설 적용부')) {
-                                      return `${floorNumber} 3단 가시설 적용부(6.5m 이상)`;
-                                    }
-                                  }
-                                  return row.floorLabel;
+
+                                // B번호만 추출하여 표시 (B1, B2)
+                                if (row.floorLabel) {
+                                  return row.floorLabel.match(/^(B\d+)/)?.[1] || row.floorLabel;
                                 }
-                                
-                                // 지하층인 경우 "B1 동지하", "B2 동지하" 형식으로 표시
-                                if (row.category === '주동 지하층' && row.floorLabel) {
-                                  return `${row.floorLabel} 동지하`;
-                                }
-                                
-                                // 나머지는 floorLabel 표시 (B2, B1 등)
-                                return row.floorLabel || '';
+
+                                return '';
                               };
                               
                               // 특수 행 수량 가져오기/저장
@@ -1482,58 +1556,68 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 saveToLocalStorageThrottled(storageKey, updatedPlan);
                               };
                               
-                              // 물량 데이터 가져오기
-                              const getFormworkQuantity = () => {
-                                // 특수 행인 경우 저장된 수량 반환 (형틀만 표시)
-                                if (row.isSpecialRow) {
-                                  return getSpecialRowQuantity('formwork');
-                                }
-                                
-                                // 버림, 기초는 tradeGroup으로 가져오기
+                              // 물량 데이터 가져오기 - 특수 행 수량 차감을 위한 공통 헬퍼
+                              const getSpecialRowDeduction = (field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete') => {
+                                if (row.category !== '주동 지하층' || !row.floorLabel || row.isSpecialRow) return 0;
+                                const plan = processPlans.get(building.id);
+                                const parkingKey = `${row.floorLabel} 주차장`;
+                                const facilityKey = `${row.floorLabel} 3단 가시설 적용부`;
+                                const parkingQty = plan?.specialRowQuantities?.[parkingKey] || {};
+                                const facilityQty = plan?.specialRowQuantities?.[facilityKey] || {};
+                                return (parkingQty[field] || 0) + (facilityQty[field] || 0);
+                              };
+
+                              const getGangFormQty = () => {
+                                if (row.isSpecialRow) return getSpecialRowQuantity('gangForm');
                                 if (row.category === '버림' || row.category === '기초') {
-                                  const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-                                  let total = 0;
-                                  trades.forEach(trade => {
-                                    const gangForm = trade.trades.gangForm?.areaM2 || 0;
-                                    const alForm = trade.trades.alForm?.areaM2 || 0;
-                                    const formwork = trade.trades.formwork?.areaM2 || 0;
-                                    total += gangForm + alForm + formwork;
-                                  });
-                                  return total;
+                                  return building.floorTrades.filter(ft => ft.tradeGroup === row.category)
+                                    .reduce((sum, t) => sum + (t.trades.gangForm?.areaM2 || 0), 0);
+                                }
+                                if (row.category === '지하층(층고6.5m이상)') {
+                                  return getQuantityFromFloor(building, 'B1', 'gangForm', 'areaM2')
+                                       + getQuantityFromFloor(building, 'B2', 'gangForm', 'areaM2');
                                 }
                                 if (!row.floorLabel) return 0;
-                                
-                                // 지하층인 경우 주차장과 3단 가시설 수량 제외
-                                // 형틀 수량은 갱폼+알폼을 제외하고 형틀만 표시
-                                let baseQuantity = 0;
-                                // 지하층 공정계획에서는 범위 층 처리가 필요 없음
-                                const rangeFloorId = undefined;
-                                // 지하층인 경우 형틀만 가져오기 (갱폼+알폼 제외)
-                                if (row.category === '주동 지하층') {
-                                  baseQuantity = getQuantityFromFloor(building, row.floorLabel, 'formwork', 'areaM2', rangeFloorId);
-                                  
-                                  // 같은 지하층의 주차장과 3단 가시설 수량 제외 (형틀만)
-                                  if (row.floorLabel && !row.isSpecialRow) {
-                                    const plan = processPlans.get(building.id);
-                                    const parkingKey = `${row.floorLabel} 주차장`;
-                                    const facilityKey = `${row.floorLabel} 3단 가시설 적용부`;
-                                    const parkingQty = plan?.specialRowQuantities?.[parkingKey] || {};
-                                    const facilityQty = plan?.specialRowQuantities?.[facilityKey] || {};
-                                    const parkingFormwork = parkingQty.formwork || 0;
-                                    const facilityFormwork = facilityQty.formwork || 0;
-                                    baseQuantity = Math.max(0, baseQuantity - parkingFormwork - facilityFormwork);
-                                  }
-                                } else {
-                                  // 다른 카테고리는 기존 로직 유지
-                                  const gangForm = getQuantityFromFloor(building, row.floorLabel, 'gangForm', 'areaM2', rangeFloorId);
-                                  const alForm = getQuantityFromFloor(building, row.floorLabel, 'alForm', 'areaM2', rangeFloorId);
-                                  const formwork = getQuantityFromFloor(building, row.floorLabel, 'formwork', 'areaM2', rangeFloorId);
-                                  baseQuantity = gangForm + alForm + formwork;
-                                }
-                                
-                                return baseQuantity;
+                                const base = getQuantityFromFloor(building, row.floorLabel, 'gangForm', 'areaM2');
+                                return Math.max(0, base - getSpecialRowDeduction('gangForm'));
                               };
-                              
+
+                              const getAlFormQty = () => {
+                                if (row.isSpecialRow) return getSpecialRowQuantity('alForm');
+                                if (row.category === '버림' || row.category === '기초') {
+                                  return building.floorTrades.filter(ft => ft.tradeGroup === row.category)
+                                    .reduce((sum, t) => sum + (t.trades.alForm?.areaM2 || 0), 0);
+                                }
+                                if (row.category === '지하층(층고6.5m이상)') {
+                                  return getQuantityFromFloor(building, 'B1', 'alForm', 'areaM2')
+                                       + getQuantityFromFloor(building, 'B2', 'alForm', 'areaM2');
+                                }
+                                if (!row.floorLabel) return 0;
+                                const base = getQuantityFromFloor(building, row.floorLabel, 'alForm', 'areaM2');
+                                return Math.max(0, base - getSpecialRowDeduction('alForm'));
+                              };
+
+                              const getEuroFormQty = () => {
+                                if (row.isSpecialRow) return getSpecialRowQuantity('formwork');
+                                if (row.category === '버림' || row.category === '기초') {
+                                  return building.floorTrades.filter(ft => ft.tradeGroup === row.category)
+                                    .reduce((sum, t) => sum + (t.trades.euroForm?.areaM2 || 0), 0);
+                                }
+                                if (row.category === '지하층(층고6.5m이상)') {
+                                  return getQuantityFromFloor(building, 'B1', 'euroForm', 'areaM2')
+                                       + getQuantityFromFloor(building, 'B2', 'euroForm', 'areaM2');
+                                }
+                                if (!row.floorLabel) return 0;
+                                const base = getQuantityFromFloor(building, row.floorLabel, 'euroForm', 'areaM2');
+                                return Math.max(0, base - getSpecialRowDeduction('formwork'));
+                              };
+
+                              const getStripCleanQty = () => getEuroFormQty() * 2;
+
+                              const getFormworkQuantity = () => {
+                                return getGangFormQty() + getAlFormQty() + getEuroFormQty();
+                              };
+
                               const getRebarQuantity = () => {
                                 // 특수 행인 경우 저장된 수량 반환
                                 if (row.isSpecialRow) {
@@ -1549,8 +1633,12 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   });
                                   return total;
                                 }
+                                if (row.category === '지하층(층고6.5m이상)') {
+                                  return getQuantityFromFloor(building, 'B1', 'rebar', 'ton')
+                                       + getQuantityFromFloor(building, 'B2', 'rebar', 'ton');
+                                }
                                 if (!row.floorLabel) return 0;
-                                
+
                                 // 지하층인 경우 주차장과 3단 가시설 수량 제외
                                 let baseQuantity = 0;
                                 // 지하층 공정계획에서는 범위 층 처리가 필요 없음
@@ -1587,8 +1675,12 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   });
                                   return total;
                                 }
+                                if (row.category === '지하층(층고6.5m이상)') {
+                                  return getQuantityFromFloor(building, 'B1', 'concrete', 'volumeM3')
+                                       + getQuantityFromFloor(building, 'B2', 'concrete', 'volumeM3');
+                                }
                                 if (!row.floorLabel) return 0;
-                                
+
                                 // 지하층인 경우 주차장과 3단 가시설 수량 제외
                                 let baseQuantity = 0;
                                 // 지하층 공정계획에서는 범위 층 처리가 필요 없음
@@ -1613,7 +1705,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               return (
                                 <tr
                                   key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
-                                  className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-4 border-accent-500 shadow-sm' : ''}`}
+                                  className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 border-l-4 border-l-transparent ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-accent-500 shadow-sm' : ''}`}
                                   style={{ height: '32px' }}
                                 >
                                   {/* 첫 번째 열: 구분 항목 */}
@@ -1626,8 +1718,95 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     <div className="text-center font-normal">{getFloorNumberLabel()}</div>
                                   </td>
                                   
-                                  {/* 세 번째 열: 형틀 */}
-                                  <td className="px-1 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+                                  {/* 형틀 합계 */}
+                                  <td className="relative px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+                                    {row.isSpecialRow ? (
+                                      <div className="text-xs font-medium text-zinc-500">
+                                        {((getSpecialRowQuantity('gangForm') || 0) + (getSpecialRowQuantity('alForm') || 0) + (getSpecialRowQuantity('formwork') || 0)).toFixed(2)}
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'formworkTotal', maxFloorNumber) && (
+                                          <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                            {getCellReferenceForRow(row.category, row.floorLabel, 'formworkTotal', maxFloorNumber)}
+                                          </span>
+                                        )}
+                                        <div className="text-xs font-medium">
+                                          {getFormworkQuantity() > 0 ? getFormworkQuantity().toFixed(2) : '0.00'}
+                                        </div>
+                                      </>
+                                    )}
+                                  </td>
+                                  {/* 갱폼 */}
+                                  <td className="relative px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+                                    {row.isSpecialRow ? (
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={getSpecialRowQuantity('gangForm') || ''}
+                                        onChange={(e) => {
+                                          const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                          handleSpecialRowQuantityChange('gangForm', value);
+                                        }}
+                                        onBlur={(e) => {
+                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          handleSpecialRowQuantityChange('gangForm', value);
+                                        }}
+                                        className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        placeholder="0"
+                                        title="갱폼"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    ) : (
+                                      <>
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'gangForm', maxFloorNumber) && (
+                                          <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                            {getCellReferenceForRow(row.category, row.floorLabel, 'gangForm', maxFloorNumber)}
+                                          </span>
+                                        )}
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                          {getGangFormQty() > 0 ? getGangFormQty().toFixed(2) : '0.00'}
+                                        </div>
+                                      </>
+                                    )}
+                                  </td>
+                                  {/* 알폼 */}
+                                  <td className="relative px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+                                    {row.isSpecialRow ? (
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={getSpecialRowQuantity('alForm') || ''}
+                                        onChange={(e) => {
+                                          const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                                          handleSpecialRowQuantityChange('alForm', value);
+                                        }}
+                                        onBlur={(e) => {
+                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          handleSpecialRowQuantityChange('alForm', value);
+                                        }}
+                                        className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        placeholder="0"
+                                        title="알폼"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    ) : (
+                                      <>
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'alForm', maxFloorNumber) && (
+                                          <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                            {getCellReferenceForRow(row.category, row.floorLabel, 'alForm', maxFloorNumber)}
+                                          </span>
+                                        )}
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                          {getAlFormQty() > 0 ? getAlFormQty().toFixed(2) : '0.00'}
+                                        </div>
+                                      </>
+                                    )}
+                                  </td>
+                                  {/* 유로폼 */}
+                                  <td className="relative px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
                                     {row.isSpecialRow ? (
                                       <Input
                                         type="number"
@@ -1642,20 +1821,39 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
                                           handleSpecialRowQuantityChange('formwork', value);
                                         }}
-                                        className="flex justify-center items-center text-center w-16 h-5 text-xs font-normal px-1 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="형틀"
+                                        title="유로폼"
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
-                                      <div className="text-xs">
-                                        {getFormworkQuantity() > 0 ? getFormworkQuantity().toFixed(2) : '0.00'}
-                                      </div>
+                                      <>
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'euroForm', maxFloorNumber) && (
+                                          <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                            {getCellReferenceForRow(row.category, row.floorLabel, 'euroForm', maxFloorNumber)}
+                                          </span>
+                                        )}
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                          {getEuroFormQty() > 0 ? getEuroFormQty().toFixed(2) : '0.00'}
+                                        </div>
+                                      </>
                                     )}
                                   </td>
-                                  
-                                  {/* 네 번째 열: 철근 */}
-                                  <td className="px-1 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+
+                                  {/* 해체/정리 (유로폼 × 2, 자동계산) */}
+                                  <td className="relative px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+                                    {getCellReferenceForRow(row.category, row.floorLabel, 'stripClean', maxFloorNumber) && (
+                                      <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'stripClean', maxFloorNumber)}
+                                      </span>
+                                    )}
+                                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                      {getStripCleanQty() > 0 ? getStripCleanQty().toFixed(2) : '0.00'}
+                                    </div>
+                                  </td>
+
+                                  {/* 철근 */}
+                                  <td className="relative px-1 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
                                     {row.isSpecialRow ? (
                                       <Input
                                         type="number"
@@ -1670,19 +1868,26 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
                                           handleSpecialRowQuantityChange('rebar', value);
                                         }}
-                                        className="flex justify-center items-center text-center w-16 h-5 text-xs font-normal px-1 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
-                                      <div className="text-xs">
-                                        {getRebarQuantity() > 0 ? getRebarQuantity().toFixed(2) : '0.00'}
-                                      </div>
+                                      <>
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'rebar', maxFloorNumber) && (
+                                          <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                            {getCellReferenceForRow(row.category, row.floorLabel, 'rebar', maxFloorNumber)}
+                                          </span>
+                                        )}
+                                        <div className="text-xs">
+                                          {getRebarQuantity() > 0 ? getRebarQuantity().toFixed(2) : '0.00'}
+                                        </div>
+                                      </>
                                     )}
                                   </td>
-                                  
-                                  {/* 다섯 번째 열: 콘크리트 */}
-                                  <td className="px-1 py-0.5 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
+
+                                  {/* 콘크리트 */}
+                                  <td className="relative px-1 py-0.5 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
                                     {row.isSpecialRow ? (
                                       <Input
                                         type="number"
@@ -1697,14 +1902,21 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
                                           handleSpecialRowQuantityChange('concrete', value);
                                         }}
-                                        className="flex justify-center items-center text-center w-16 h-5 text-xs font-normal px-1 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                                        className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
-                                      <div className="text-xs">
-                                        {getConcreteQuantity() > 0 ? getConcreteQuantity().toFixed(2) : '0.00'}
-                                      </div>
+                                      <>
+                                        {getCellReferenceForRow(row.category, row.floorLabel, 'concrete', maxFloorNumber) && (
+                                          <span className="absolute top-0 left-0.5 pointer-events-none select-none text-[8px] font-mono leading-none text-blue-400/70 dark:text-blue-500/50" aria-hidden="true">
+                                            {getCellReferenceForRow(row.category, row.floorLabel, 'concrete', maxFloorNumber)}
+                                          </span>
+                                        )}
+                                        <div className="text-xs">
+                                          {getConcreteQuantity() > 0 ? getConcreteQuantity().toFixed(2) : '0.00'}
+                                        </div>
+                                      </>
                                     )}
                                   </td>
                                   
@@ -1802,7 +2014,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                     </div>
 
                     {/* 우측: 패널 카드 */}
-                    <div className="w-[400px] flex-shrink-0 rounded-lg shadow-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 overflow-hidden">
+                    <div className="w-[320px] flex-shrink-0 rounded-lg shadow-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 overflow-hidden">
                       {/* 패널 헤더 */}
                       <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
                         <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
@@ -1854,7 +2066,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           }
 
                           // 공정 타입과 모듈 결정
-                          const expandedProcessType = expandedRow?.floorLabel && expandedRow?.category === '주동 지하층'
+                          const expandedProcessType = expandedRow?.floorLabel && (expandedRow?.category === '주동 지하층' || expandedRow?.category === '지하주차장')
                             ? getProcessTypeForFloor(plan, expandedRow.category, targetFloorLabel || expandedRow.floorLabel)
                             : plan?.processes[expandedRow?.category || '버림']?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || '버림'] || '표준공정';
                           const expandedModule = expandedRow ? (getProcessModule(expandedRow.category, expandedProcessType) || null) : null;
@@ -1867,6 +2079,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             }
                             if (expandedRow.category === '주동 지하층' && expandedRow.floorLabel) {
                               return `주동 지하층 ${expandedRow.floorLabel}`;
+                            }
+                            if (expandedRow.category === '지하주차장') {
+                              return expandedRow.floorLabel || '지하주차장';
                             }
                             return expandedRow.category;
                           };

@@ -8,7 +8,7 @@ import type { ProcessCategory } from '@/lib/types';
 
 interface ProcessModuleSectionProps {
   modules: ProcessModule[];
-  onOpenAdvancedModal?: (category: ProcessCategory) => void;
+  onOpenAdvancedModal?: (category: ProcessCategory, processType?: string) => void;
 }
 
 // ============================================
@@ -123,14 +123,14 @@ function getQuantityReferenceDescription(reference: string): string {
 }
 
 // 탭 ID 타입 확장 (지하층 변형 탭 추가)
-type TabId = ProcessCategory | '지하층(층고6.5m이상)';
+type TabId = ProcessCategory;
 
 // 카테고리 탭 정의 - moduleId로 명시적 모듈 지정, processType은 fallback
 const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string; moduleId?: string }[] = [
   { id: '버림', label: '버림', category: '버림', moduleId: 'blinding-standard' },
   { id: '기초', label: '기초', category: '기초', moduleId: 'foundation-standard' },
   { id: '지하주차장', label: '지하주차장', category: '지하주차장', moduleId: 'parking-standard' },
-  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '주동 지하층', moduleId: 'basement-high-ceiling' },
+  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '지하층(층고6.5m이상)', moduleId: 'basement-high-ceiling' },
   { id: '주동 지하층', label: '주동 지하층', category: '주동 지하층', moduleId: 'basement-with-pit' },
   { id: '일반층', label: '일반층', category: '일반층' },
   { id: '셋팅층', label: '셋팅층', category: '셋팅층' },
@@ -139,11 +139,17 @@ const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; proc
   { id: '옥탑층', label: '옥탑층', category: '옥탑층' },
 ];
 
+// 사이클 정렬 순서 (서브탭 표시 순서)
+const CYCLE_ORDER: Record<string, number> = {
+  '표준공정': 0, '5일 사이클': 1, '6일 사이클': 2, '7일 사이클': 3, '8일 사이클': 4,
+};
+
 export function ProcessModuleSection({
   modules,
   onOpenAdvancedModal,
 }: ProcessModuleSectionProps) {
   const [activeTab, setActiveTab] = useState<TabId>('버림');
+  const [selectedCyclePerTab, setSelectedCyclePerTab] = useState<Record<string, string>>({});
 
   // ============================================
   // Internal Components
@@ -206,13 +212,20 @@ export function ProcessModuleSection({
         return m.name === currentTab.processType;
       }
 
-      // processType이 없는 기본 탭에서는 '층고6.5m이상' 변형 제외
-      return m.name !== '층고6.5m이상';
-    });
+      return true;
+    }).sort((a, b) => (CYCLE_ORDER[a.name] ?? 99) - (CYCLE_ORDER[b.name] ?? 99));
   }, [modules, activeTab]);
 
-  // 표준공정 모듈 찾기 (첫 번째 것 사용)
-  const primaryModule = categoryModules[0];
+  // 선택된 사이클 모듈 (서브탭 선택 기반)
+  const primaryModule = useMemo(() => {
+    if (categoryModules.length === 0) return undefined;
+    const selectedId = selectedCyclePerTab[activeTab];
+    if (selectedId) {
+      const found = categoryModules.find(m => m.id === selectedId);
+      if (found) return found;
+    }
+    return categoryModules[0];
+  }, [categoryModules, selectedCyclePerTab, activeTab]);
 
   // 현재 탭의 실제 카테고리 가져오기 (고급 편집용)
   const currentCategory = useMemo(() => {
@@ -244,7 +257,7 @@ export function ProcessModuleSection({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onOpenAdvancedModal(currentCategory)}
+              onClick={() => onOpenAdvancedModal(currentCategory, primaryModule?.name)}
               className="gap-1"
             >
               <Settings className="w-3.5 h-3.5" />
@@ -272,6 +285,38 @@ export function ProcessModuleSection({
               </button>
             ))}
           </div>
+
+          {/* 공정타입 서브탭 (항상 표시) */}
+          {categoryModules.length === 1 ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100/50 dark:bg-zinc-800/30 border-b border-zinc-200 dark:border-zinc-700">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 shrink-0">공정타입:</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-600 text-white shadow-sm">
+                표준공정
+              </span>
+            </div>
+          ) : categoryModules.length > 1 ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100/50 dark:bg-zinc-800/30 border-b border-zinc-200 dark:border-zinc-700">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 shrink-0">공정타입:</span>
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                {categoryModules.map((m) => {
+                  const isSelected = primaryModule?.id === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedCyclePerTab(prev => ({ ...prev, [activeTab]: m.id }))}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                        isSelected
+                          ? 'bg-violet-600 text-white shadow-sm'
+                          : 'bg-white dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:text-violet-700 dark:hover:text-violet-300 border border-zinc-200 dark:border-zinc-600'
+                      }`}
+                    >
+                      {m.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {/* 모듈 테이블 */}
           <div className="overflow-x-auto">

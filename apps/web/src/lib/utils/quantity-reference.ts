@@ -13,13 +13,13 @@ import { logger } from './logger';
 export function getQuantityFromBuilding(
   building: Building,
   category: string, // '버림', '기초', '주동 지하층' 등
-  field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
+  field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string // 'areaM2', 'ton', 'volumeM3' 등
 ): number {
   // 구분에 맞는 FloorTrade 찾기
   const trade = building.floorTrades.find(ft => ft.tradeGroup === category);
   if (!trade) return 0;
-  
+
   const tradeData = trade.trades[field];
   if (!tradeData) return 0;
   
@@ -32,7 +32,7 @@ export function getQuantityFromBuilding(
 export function getQuantityWithRatio(
   building: Building,
   category: string,
-  field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
+  field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string,
   ratio: number // 0.45, 0.55, 0.95 등
 ): number {
@@ -85,7 +85,7 @@ function normalizeFloorLabel(label: string): string {
 export function getQuantityFromFloor(
   building: Building,
   floorLabel: string, // '1F', '2F', 'B1', '코어1-3F' 등 또는 범위 형식 기준층의 floor.id
-  field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete',
+  field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string,
   rangeFloorId?: string // 범위 형식 기준층의 floor.id (선택적)
 ): number {
@@ -281,13 +281,14 @@ export function getQuantityByReference(
     const [, col] = combinedMatch;
 
     // Map column to field and subField
-    const fieldMap: Record<string, { field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete'; subField: string }> = {
+    const fieldMap: Record<string, { field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete'; subField: string }> = {
       B: { field: 'gangForm', subField: 'areaM2' },
       C: { field: 'alForm', subField: 'areaM2' },
       D: { field: 'formwork', subField: 'areaM2' },
       E: { field: 'stripClean', subField: 'areaM2' },
       F: { field: 'rebar', subField: 'ton' },
       G: { field: 'concrete', subField: 'volumeM3' },
+      U: { field: 'euroForm', subField: 'areaM2' },
     };
 
     const mapping = fieldMap[col];
@@ -324,10 +325,10 @@ export function getQuantityByReference(
     return 0;
   }
 
-  // 열에 따른 필드 결정 (수정: B=갱폼, C=알폼, D=형틀, E=해체/정리, F=철근, G=콘크리트)
-  let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
+  // 열에 따른 필드 결정 (B=갱폼, C=알폼, D=형틀, E=해체/정리, F=철근, G=콘크리트, U=유로폼)
+  let field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete' | null = null;
   let subField = '';
-  
+
   switch (col) {
     case 'B':
       field = 'gangForm';
@@ -352,6 +353,10 @@ export function getQuantityByReference(
     case 'G':
       field = 'concrete';
       subField = 'volumeM3';
+      break;
+    case 'U':
+      field = 'euroForm';
+      subField = 'areaM2';
       break;
   }
   

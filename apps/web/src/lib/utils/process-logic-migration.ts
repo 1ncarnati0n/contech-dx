@@ -20,6 +20,7 @@ function getEquipmentBaseByCategory(modules: ProcessModule[]): Record<ProcessCat
     '버림': 650,
     '기초': 650,
     '주동 지하층': 500,
+    '지하층(층고6.5m이상)': 500,
     '셋팅층': 400,
     '기준층': 320,
     '최상층': 230,
