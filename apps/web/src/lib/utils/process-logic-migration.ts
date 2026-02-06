@@ -7,6 +7,7 @@
 import type { ProcessLogicPreset, ProcessCategory } from '@/lib/types';
 import type { ProcessModule } from '@/lib/data/process-modules';
 import { BUILT_IN_FORMULAS } from '@/lib/data/built-in-formulas';
+import { logger } from '@/lib/utils/logger';
 
 const LEGACY_STORAGE_KEY_PREFIX = 'contech-process-logic-';
 const BACKUP_STORAGE_KEY_PREFIX = 'contech-process-logic-backup-';
@@ -75,7 +76,7 @@ function setMigrated(projectId: string): void {
       localStorage.setItem(MIGRATED_FLAG_KEY, JSON.stringify(parsed));
     }
   } catch (error) {
-    console.error('Failed to set migration flag:', error);
+    logger.error('Failed to set migration flag:', error);
   }
 }
 
@@ -147,7 +148,7 @@ export function migrateToPreset(projectId: string): {
     // 마이그레이션 완료 플래그 설정
     setMigrated(projectId);
 
-    console.log(`[Migration] 프로젝트 ${projectId} 데이터 마이그레이션 완료`);
+    logger.info(`[Migration] 프로젝트 ${projectId} 데이터 마이그레이션 완료`);
 
     return {
       success: true,
@@ -155,7 +156,7 @@ export function migrateToPreset(projectId: string): {
       message: 'Migration completed successfully',
     };
   } catch (error) {
-    console.error('[Migration] Failed to migrate legacy data:', error);
+    logger.error('[Migration] Failed to migrate legacy data:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -195,11 +196,11 @@ export function migrateAllProjects(): {
       }
     }
 
-    console.log(`[Migration] 일괄 마이그레이션 완료: ${migrated.length}개 성공, ${failed.length}개 실패`);
+    logger.info(`[Migration] 일괄 마이그레이션 완료: ${migrated.length}개 성공, ${failed.length}개 실패`);
 
     return { migrated, failed };
   } catch (error) {
-    console.error('[Migration] Failed to migrate all projects:', error);
+    logger.error('[Migration] Failed to migrate all projects:', error);
     return { migrated, failed };
   }
 }
@@ -218,7 +219,7 @@ export function restoreBackup(projectId: string): boolean {
     const backup = localStorage.getItem(backupKey);
 
     if (!backup) {
-      console.warn(`[Migration] No backup found for project ${projectId}`);
+      logger.warn(`[Migration] No backup found for project ${projectId}`);
       return false;
     }
 
@@ -233,10 +234,10 @@ export function restoreBackup(projectId: string): boolean {
       localStorage.setItem(MIGRATED_FLAG_KEY, JSON.stringify(updated));
     }
 
-    console.log(`[Migration] 백업 복원 완료: ${projectId}`);
+    logger.info(`[Migration] 백업 복원 완료: ${projectId}`);
     return true;
   } catch (error) {
-    console.error('[Migration] Failed to restore backup:', error);
+    logger.error('[Migration] Failed to restore backup:', error);
     return false;
   }
 }

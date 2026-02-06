@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/utils/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '@/lib/constants';
 import type { Message, ChatSession } from './types';
@@ -46,7 +47,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
         parsed.sort((a: ChatSession, b: ChatSession) => b.updatedAt - a.updatedAt);
         setSessions(parsed);
       } catch (e) {
-        console.error('Failed to parse sessions', e);
+        logger.error('Failed to parse sessions', e);
         setSessions([]);
       }
     }
@@ -68,7 +69,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
         }));
         setMessages(parsed);
       } catch (e) {
-        console.error('Failed to parse messages', e);
+        logger.error('Failed to parse messages', e);
         setMessages([]);
       }
     } else {

@@ -340,10 +340,10 @@ export function ProcessModuleSection({
                       순작업일
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
-                      간접일
+                      간접작업일
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
-                      간접작업
+                      간접작업명
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700 min-w-[280px]">
                       산정기준

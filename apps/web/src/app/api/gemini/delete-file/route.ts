@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geminiStoreRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 
 export async function DELETE(request: NextRequest) {
   // 인증 확인
@@ -12,7 +13,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!storeName || !fileName) {
       return NextResponse.json(
-        { error: '스토어 이름과 파일 이름을 입력해주세요.' },
+        { success: false, error: '스토어 이름과 파일 이름을 입력해주세요.' },
         { status: 400 }
       );
     }
@@ -20,7 +21,7 @@ export async function DELETE(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API 키가 설정되지 않았습니다.' },
+        { success: false, error: 'Gemini API 키가 설정되지 않았습니다.' },
         { status: 500 }
       );
     }
@@ -44,10 +45,10 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error deleting file:', error);
+    logger.error('Error deleting file:', error);
     const errorMessage = error instanceof Error ? error.message : '파일 삭제 중 오류가 발생했습니다.';
     return NextResponse.json(
-      { error: errorMessage },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

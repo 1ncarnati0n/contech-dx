@@ -7,6 +7,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
+import { logger } from '@/lib/utils/logger';
 import type {
   DataService,
   GanttData,
@@ -77,7 +78,7 @@ interface GanttDependencyRow {
  */
 function parseLocalDate(dateStr: string | null | undefined): Date {
   if (!dateStr) {
-    console.warn('[parseLocalDate] Empty date string, using current date');
+    logger.warn('[parseLocalDate] Empty date string, using current date');
     return new Date();
   }
 
@@ -86,14 +87,14 @@ function parseLocalDate(dateStr: string | null | undefined): Date {
   const parts = datePart.split('-');
 
   if (parts.length !== 3) {
-    console.warn('[parseLocalDate] Invalid date format:', dateStr);
+    logger.warn('[parseLocalDate] Invalid date format:', dateStr);
     return new Date();
   }
 
   const [year, month, day] = parts.map(Number);
 
   if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    console.warn('[parseLocalDate] Invalid date numbers:', dateStr);
+    logger.warn('[parseLocalDate] Invalid date numbers:', dateStr);
     return new Date();
   }
 
@@ -223,7 +224,7 @@ export class SupabaseGanttDataService implements DataService {
 
   private log(...args: unknown[]) {
     if (this.debug) {
-      console.log('[SupabaseGanttDataService]', ...args);
+      logger.debug('[SupabaseGanttDataService]', ...args);
     }
   }
 
@@ -240,7 +241,7 @@ export class SupabaseGanttDataService implements DataService {
       .order('sort_order', { ascending: true });
 
     if (error) {
-      console.error('Failed to load tasks:', error);
+      logger.error('Failed to load tasks:', error);
       throw error;
     }
 
@@ -250,7 +251,7 @@ export class SupabaseGanttDataService implements DataService {
       try {
         return rowToTask(row);
       } catch (e) {
-        console.error(`Failed to parse task at index ${index}:`, row, e);
+        logger.error(`Failed to parse task at index ${index}:`, row, e);
         return null;
       }
     }).filter((t): t is ConstructionTask => t !== null);
@@ -265,8 +266,8 @@ export class SupabaseGanttDataService implements DataService {
     // 안전 장치: 빈 배열로 저장하려고 하면 경고 후 중단
     // (실수로 데이터를 삭제하는 것을 방지)
     if (tasks.length === 0) {
-      console.warn('[saveTasks] Attempted to save empty tasks array. Skipping to prevent data loss.');
-      console.warn('[saveTasks] If you really want to delete all tasks, use a dedicated delete method.');
+      logger.warn('[saveTasks] Attempted to save empty tasks array. Skipping to prevent data loss.');
+      logger.warn('[saveTasks] If you really want to delete all tasks, use a dedicated delete method.');
       return;
     }
 
@@ -287,7 +288,7 @@ export class SupabaseGanttDataService implements DataService {
       .select('id');
 
     if (deleteError) {
-      console.error('Failed to delete existing tasks:', {
+      logger.error('Failed to delete existing tasks:', {
         message: deleteError.message,
         code: deleteError.code,
         details: deleteError.details,
@@ -305,7 +306,7 @@ export class SupabaseGanttDataService implements DataService {
       .select();
 
     if (insertError) {
-      console.error('Failed to insert tasks:', {
+      logger.error('Failed to insert tasks:', {
         message: insertError.message,
         code: insertError.code,
         details: insertError.details,
@@ -360,7 +361,7 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to update task:', error.message, error.code, error.details, error.hint);
+      logger.error('Failed to update task:', error.message, error.code, error.details, error.hint);
       return null;
     }
 
@@ -375,7 +376,7 @@ export class SupabaseGanttDataService implements DataService {
     // Phase 2: 인증 상태 사전 검증
     const { data: { user }, error: authError } = await this.supabase.auth.getUser();
     if (authError) {
-      console.error('[createTask] Auth error:', {
+      logger.error('[createTask] Auth error:', {
         message: authError.message,
         code: authError.code,
         status: authError.status,
@@ -383,7 +384,7 @@ export class SupabaseGanttDataService implements DataService {
       throw new Error(`Authentication error: ${authError.message}`);
     }
     if (!user) {
-      console.error('[createTask] No authenticated user session');
+      logger.error('[createTask] No authenticated user session');
       throw new Error('Authentication required: No user session. Please log in again.');
     }
     this.log('createTask auth verified:', { userId: user.id, email: user.email });
@@ -409,34 +410,31 @@ export class SupabaseGanttDataService implements DataService {
     if (error) {
       // Phase 1: 향상된 에러 디버깅
       // Next.js 에러 오버레이는 중첩 객체를 표시 못함 → 문자열로 출력
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('[createTask] ❌ TASK CREATION FAILED');
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log(`[createTask] error.message: "${error.message}"`);
-      console.log(`[createTask] error.code: "${error.code}"`);
-      console.log(`[createTask] error.details: "${error.details}"`);
-      console.log(`[createTask] error.hint: "${error.hint}"`);
-      console.log(`[createTask] error type: ${error.constructor?.name}`);
-      console.log(`[createTask] error keys: ${Object.keys(error).join(', ') || '(none)'}`);
-      console.log(`[createTask] error own props: ${Object.getOwnPropertyNames(error).join(', ') || '(none)'}`);
+      logger.error('═══════════════════════════════════════════════════════════');
+      logger.error('[createTask] TASK CREATION FAILED');
+      logger.error('═══════════════════════════════════════════════════════════');
+      logger.error(`[createTask] error.message: "${error.message}"`);
+      logger.error(`[createTask] error.code: "${error.code}"`);
+      logger.error(`[createTask] error.details: "${error.details}"`);
+      logger.error(`[createTask] error.hint: "${error.hint}"`);
+      logger.error(`[createTask] error type: ${error.constructor?.name}`);
+      logger.error(`[createTask] error keys: ${Object.keys(error).join(', ') || '(none)'}`);
+      logger.error(`[createTask] error own props: ${Object.getOwnPropertyNames(error).join(', ') || '(none)'}`);
 
       // 전체 에러 객체를 문자열로 덤프
       try {
-        console.log('[createTask] Full error (JSON):', JSON.stringify(error, null, 2));
+        logger.error('[createTask] Full error (JSON):', JSON.stringify(error, null, 2));
       } catch {
-        console.log('[createTask] Full error (cannot stringify):', String(error));
+        logger.error('[createTask] Full error (cannot stringify):', String(error));
       }
-
-      // console.dir로 전체 객체 탐색 (브라우저 콘솔에서만 유효)
-      console.dir(error, { depth: 5 });
 
       // 에러 발생 시 인증 상태 재확인
       const { data: { user: currentUser } } = await this.supabase.auth.getUser();
-      console.log(`[createTask] Auth state - userId: ${currentUser?.id}, email: ${currentUser?.email}, hasUser: ${!!currentUser}`);
+      logger.error(`[createTask] Auth state - userId: ${currentUser?.id}, email: ${currentUser?.email}, hasUser: ${!!currentUser}`);
 
       // 전송 시도한 데이터
-      console.log(`[createTask] Failed row - projectId: ${row.project_id}, taskId: ${row.id}, name: ${row.name}`);
-      console.log('═══════════════════════════════════════════════════════════');
+      logger.error(`[createTask] Failed row - projectId: ${row.project_id}, taskId: ${row.id}, name: ${row.name}`);
+      logger.error('═══════════════════════════════════════════════════════════');
 
       throw error;
     }
@@ -454,7 +452,7 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (error) {
-      console.error('Failed to delete task:', error);
+      logger.error('Failed to delete task:', error);
       return false;
     }
 
@@ -475,7 +473,7 @@ export class SupabaseGanttDataService implements DataService {
       .order('date', { ascending: true });
 
     if (error) {
-      console.error('Failed to load milestones:', error);
+      logger.error('Failed to load milestones:', error);
       throw error;
     }
 
@@ -491,7 +489,7 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (deleteError) {
-      console.error('Failed to delete existing milestones:', {
+      logger.error('Failed to delete existing milestones:', {
         message: deleteError.message,
         code: deleteError.code,
         details: deleteError.details,
@@ -514,7 +512,7 @@ export class SupabaseGanttDataService implements DataService {
       .select();
 
     if (insertError) {
-      console.error('Failed to insert milestones:', {
+      logger.error('Failed to insert milestones:', {
         message: insertError.message,
         code: insertError.code,
         details: insertError.details,
@@ -554,7 +552,7 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('Failed to update milestone:', error.message, error.code, error.details, error.hint);
+      logger.error('Failed to update milestone:', error.message, error.code, error.details, error.hint);
       return null;
     }
 
@@ -568,7 +566,7 @@ export class SupabaseGanttDataService implements DataService {
     const { data: { user }, error: authError } = await this.supabase.auth.getUser();
     if (authError || !user) {
       const msg = authError?.message || 'No user session';
-      console.error('[createMilestone] Auth check failed:', msg);
+      logger.error('[createMilestone] Auth check failed:', msg);
       throw new Error(`Authentication required: ${msg}`);
     }
 
@@ -583,7 +581,7 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('[createMilestone] Failed:', {
+      logger.error('[createMilestone] Failed:', {
         message: error.message,
         code: error.code,
         details: error.details,
@@ -606,7 +604,7 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (error) {
-      console.error('Failed to delete milestone:', error);
+      logger.error('Failed to delete milestone:', error);
       return false;
     }
 
@@ -626,7 +624,7 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (error) {
-      console.error('Failed to load dependencies:', error);
+      logger.error('Failed to load dependencies:', error);
       throw error;
     }
 
@@ -642,7 +640,7 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (deleteError) {
-      console.error('Failed to delete existing dependencies:', {
+      logger.error('Failed to delete existing dependencies:', {
         message: deleteError.message,
         code: deleteError.code,
         details: deleteError.details,
@@ -665,7 +663,7 @@ export class SupabaseGanttDataService implements DataService {
       .select();
 
     if (insertError) {
-      console.error('Failed to insert dependencies:', {
+      logger.error('Failed to insert dependencies:', {
         message: insertError.message,
         code: insertError.code,
         details: insertError.details,
@@ -687,7 +685,7 @@ export class SupabaseGanttDataService implements DataService {
     const { data: { user }, error: authError } = await this.supabase.auth.getUser();
     if (authError || !user) {
       const msg = authError?.message || 'No user session';
-      console.error('[createDependency] Auth check failed:', msg);
+      logger.error('[createDependency] Auth check failed:', msg);
       throw new Error(`Authentication required: ${msg}`);
     }
 
@@ -700,7 +698,7 @@ export class SupabaseGanttDataService implements DataService {
       .single();
 
     if (error) {
-      console.error('[createDependency] Failed:', {
+      logger.error('[createDependency] Failed:', {
         message: error.message,
         code: error.code,
         details: error.details,
@@ -723,7 +721,7 @@ export class SupabaseGanttDataService implements DataService {
       .eq('project_id', this.projectId);
 
     if (error) {
-      console.error('Failed to delete dependency:', error);
+      logger.error('Failed to delete dependency:', error);
       return false;
     }
 
@@ -758,6 +756,36 @@ export class SupabaseGanttDataService implements DataService {
 
     // Tasks 저장 후 Dependencies 저장 (FK 제약 조건 충족)
     await this.saveDependencies(data.dependencies);
+  }
+
+  // ============================================
+  // Append (공정계획 → 간트차트 추가용)
+  // ============================================
+
+  /**
+   * 기존 태스크 뒤에 새 태스크를 추가 (append)
+   * sort_order를 기존 max + 1부터 할당
+   */
+  async appendTasks(newTasks: ConstructionTask[]): Promise<ConstructionTask[]> {
+    this.log('appendTasks', newTasks.length);
+
+    if (newTasks.length === 0) {
+      this.log('appendTasks: no tasks to append');
+      return [];
+    }
+
+    // 기존 태스크 로드
+    const existingTasks = await this.loadTasks();
+    this.log('appendTasks existing count:', existingTasks.length);
+
+    // 합치기
+    const mergedTasks = [...existingTasks, ...newTasks];
+
+    // 저장 (saveTasks는 sort_order를 index 기반으로 할당)
+    await this.saveTasks(mergedTasks);
+    this.log('appendTasks merged count:', mergedTasks.length);
+
+    return mergedTasks;
   }
 
   // ============================================

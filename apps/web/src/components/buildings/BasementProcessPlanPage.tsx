@@ -1,7 +1,8 @@
 'use client';
 
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
+import { SaveStatusBar } from './SaveStatusBar';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
@@ -21,21 +22,8 @@ import {
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
-import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
+import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
 import { logger } from '@/lib/utils/logger';
-import { throttle } from 'es-toolkit';
-
-// 🚀 PERFORMANCE FIX: localStorage 저장 throttling (30-50ms 개선)
-// 빈번한 저장으로 인한 메인 스레드 블로킹 방지
-const saveToLocalStorageThrottled = throttle((key: string, value: any) => {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      logger.error('Failed to save to localStorage:', error);
-    }
-  }
-}, 500); // 500ms throttle
 
 interface Props {
   projectId: string;
@@ -79,6 +67,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
+  const [dirtyBuildings, setDirtyBuildings] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
 
   // 🔥 Stage 1 Optimization: Helper functions for efficient Map updates
   const updateProcessPlan = useCallback((buildingId: string, updatedPlan: BuildingProcessPlan) => {
@@ -97,6 +87,70 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     });
   }, []);
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
+
+  // dirty 마킹 헬퍼
+  const markDirty = useCallback((buildingId: string) => {
+    setDirtyBuildings(prev => {
+      const next = new Set(prev);
+      next.add(buildingId);
+      return next;
+    });
+  }, []);
+
+  // 명시적 저장 함수
+  const saveToLocalStorage = useCallback((buildingId: string) => {
+    const storageKey = `contech_process_plan_${buildingId}`;
+    const currentPlan = processPlans.get(buildingId);
+    if (!currentPlan) return;
+
+    setIsSaving(true);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(currentPlan));
+      setDirtyBuildings(prev => {
+        const next = new Set(prev);
+        next.delete(buildingId);
+        return next;
+      });
+      toast.success('공정계획이 저장되었습니다.');
+    } catch (error) {
+      toast.error('저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [processPlans]);
+
+  // 변경사항 취소 함수 — localStorage에서 재로드
+  const discardChanges = useCallback((buildingId: string) => {
+    if (!confirm('변경사항을 취소하시겠습니까?')) return;
+
+    const storageKey = `contech_process_plan_${buildingId}`;
+    try {
+      const storedJson = localStorage.getItem(storageKey);
+      if (storedJson) {
+        const restoredPlan = JSON.parse(storedJson) as BuildingProcessPlan;
+        updateProcessPlan(buildingId, restoredPlan);
+      }
+      setDirtyBuildings(prev => {
+        const next = new Set(prev);
+        next.delete(buildingId);
+        return next;
+      });
+    } catch (error) {
+      toast.error('복원에 실패했습니다.');
+    }
+  }, [updateProcessPlan]);
+
+  // 페이지 이탈 경고
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (dirtyBuildings.size > 0) {
+        e.preventDefault();
+        e.returnValue = '저장하지 않은 변경사항이 있습니다.';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [dirtyBuildings]);
 
   // 지하층 공정계획에서는 기준층을 사용하지 않음 (BuildingProcessPlanPage에서 처리)
 
@@ -471,6 +525,31 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     return total;
   };
 
+  // 합계 간접작업일 계산 - 모든 공정 카테고리의 간접작업일 합계
+  const calculateTotalIndirectDays = (processes: BuildingProcessPlan['processes'], building?: Building): number => {
+    let total = 0;
+    PROCESS_CATEGORIES.forEach(category => {
+      if (category === '주동 지하층' && building) {
+        const basementFloors = getBasementFloors.get(building.id) || [];
+        basementFloors.forEach(floor => {
+          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
+          const module = getProcessModule(category, floorProcessType);
+          if (module) {
+            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
+          }
+        });
+      } else {
+        // 버림, 기초: 모듈 전체 간접작업일
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
+        const module = getProcessModule(category, processType);
+        if (module) {
+          total += calculateModuleIndirectDays(module);
+        }
+      }
+    });
+    return total;
+  };
+
   // 지하층 각 층별 일수 계산 (통합 유틸 사용)
   const calculateBasementFloorDays = (
     building: Building,
@@ -635,10 +714,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
     setProcessPlans(new Map(processPlans.set(buildingId, updatedPlan)));
 
-    // localStorage에 저장 (throttled)
-    const storageKey = `contech_process_plan_${buildingId}`;
-    saveToLocalStorageThrottled(storageKey, updatedPlan);
-  }, [buildings, processPlans, getBasementFloors]);
+    // dirty 마킹 (명시적 저장으로 변경)
+    markDirty(buildingId);
+  }, [buildings, processPlans, getBasementFloors, markDirty]);
 
   // 동별 주요정보 계산 (Building.meta에서 가져오기)
   const getBuildingInfo = (building: Building) => {
@@ -829,9 +907,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                   };
 
                   updateProcessPlan(building.id, updatedPlan);
-
-                  const storageKey = `contech_process_plan_${building.id}`;
-                  saveToLocalStorageThrottled(storageKey, updatedPlan);
+                  markDirty(building.id);
                 };
 
                 return (
@@ -904,6 +980,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           />
                           <span className="text-sm text-zinc-600 dark:text-zinc-400">일</span>
                         </div>
+                        <div className="ml-auto">
+                          <SaveStatusBar
+                            hasUnsavedChanges={dirtyBuildings.has(building.id)}
+                            isSaving={isSaving}
+                            onSave={() => saveToLocalStorage(building.id)}
+                            onDiscard={() => discardChanges(building.id)}
+                          />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -934,62 +1018,58 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                         {/* 해체/정리 */}<col style={{ width: '52px' }} />
                         {/* 철근 */}<col style={{ width: '54px' }} />
                         {/* 콘크리트 */}<col style={{ width: '58px' }} />
-                        {/* 일수 */}<col style={{ width: '64px' }} />
                         {/* 공정타입 */}<col style={{ width: '90px' }} />
                         {/* 세부공정 */}<col style={{ width: '56px' }} />
                       </colgroup>
-                      <thead>
+                      <thead className="bg-zinc-50 dark:bg-zinc-900/50">
                         {/* 상단 헤더 행 */}
-                        <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800" style={{ height: '24px' }}>
-                          <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <tr className="border-b border-zinc-200 dark:border-zinc-800" style={{ height: '24px' }}>
+                          <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             구분
                           </th>
-                          <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             층수
                           </th>
-                          <th colSpan={4} className="px-1 py-0.5 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          <th colSpan={4} className="px-1 py-0.5 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
                             형틀
                           </th>
-                          <th rowSpan={2} className="px-0.5 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
+                          <th rowSpan={2} className="px-0.5 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
                             해체/<br />정리
                           </th>
-                          <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             철근
                           </th>
-                          <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             콘크리트
                           </th>
                           {processColumns.length > 0 && (
                             <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                순작업일수
-                              </th>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 공정타입
                               </th>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 세부공정
                               </th>
                             </Fragment>
                           )}
                         </tr>
                         {/* 하단 서브헤더 행: 형틀 세분화 */}
-                        <tr className="bg-zinc-50 dark:bg-zinc-900 border-b-2 border-zinc-200 dark:border-zinc-800" style={{ height: '20px' }}>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                        <tr className="border-b border-zinc-200 dark:border-zinc-800" style={{ height: '20px' }}>
+                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
                             합계
                           </th>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
                             갱폼
                           </th>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
                             알폼
                           </th>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
+                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
                             유로폼
                           </th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-800">
                         {(() => {
                           const building = activeBuilding;
                           const plan = processPlans.get(building.id);
@@ -1043,10 +1123,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   };
 
                                   updateProcessPlan(building.id, updatedPlan); // 🔥 Stage 1: Use helper function
-
-                                  // localStorage에 저장 (throttled)
-                                  const storageKey = `contech_process_plan_${building.id}`;
-                                  saveToLocalStorageThrottled(storageKey, updatedPlan);
+                                  markDirty(building.id);
                                 };
 
                                 // 특수 행 필드별 최대 가용물량 계산 (주동 지하층 base - 다른 특수 행 합계)
@@ -1230,7 +1307,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                       {/* 첫 번째 열: 구분 항목 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
                                       {!row.isSecondHighCeiling && (
                                         <td
-                                          className={`px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}
+                                          className={`px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}
                                           style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                                           {...(row.isFirstHighCeiling ? { rowSpan: 2 } : {})}
                                         >
@@ -1239,7 +1316,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                       )}
 
                                       {/* 두 번째 열: 층수 - 항상 렌더링 (B1/B2 각각 표시) */}
-                                      <td className={`px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`} style={{ ...(isMultiLineRow ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
+                                      <td className={`px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`} style={{ ...(isMultiLineRow ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
                                         <div className="text-center font-normal">{row.floorLabel?.match(/^(B\d+)/)?.[1] || ''}</div>
                                       </td>
 
@@ -1374,39 +1451,6 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                         />
                                       </td>
 
-                                      {/* 순작업일수 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
-                                      {!row.isSecondHighCeiling && (
-                                        <td
-                                          className={`px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}
-                                          style={{ height: '24px' }}
-                                          {...(row.isFirstHighCeiling ? { rowSpan: 2 } : {})}
-                                        >
-                                          {(() => {
-                                            if (!isRowActive) {
-                                              return (
-                                                <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600">
-                                                  -
-                                                </div>
-                                              );
-                                            }
-                                            // 6.5m이상 B1 행: B1+B2 합산 물량으로 일수 계산
-                                            if (row.isFirstHighCeiling) {
-                                              return (
-                                                <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
-                                                  {calculateCombinedHighCeilingDays()}
-                                                </div>
-                                              );
-                                            }
-                                            // 그 외 특수 행 (주차장 등)
-                                            return (
-                                              <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
-                                                {calculateNormalSpecialRowDays()}
-                                              </div>
-                                            );
-                                          })()}
-                                        </td>
-                                      )}
-
                                       {/* 공정타입 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
                                       {!row.isSecondHighCeiling && (
                                         <td
@@ -1478,6 +1522,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
                                 // 일수 계산 - 세부공정의 순작업일 합계
                                 let days = 0;
+                                let indirectDays = 0;
+                                let totalDays = 0;
                                 if (!module || !module.items || module.items.length === 0) {
                                   // 모듈이 없으면 기존 방식 사용
                                   if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
@@ -1485,13 +1531,26 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   } else if (row.category === '주동 지하층' && row.floorLabel) {
                                     days = calculateBasementFloorDays(building, row.category, processType, row.floorLabel);
                                   }
+                                  // fallback에서도 간접작업일 계산
+                                  if (module) {
+                                    if (row.floorLabel && (row.category === '주동 지하층')) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(module, row.category, row.floorLabel);
+                                    } else {
+                                      indirectDays = calculateModuleIndirectDays(module);
+                                    }
+                                  }
+                                  // days는 이미 totalDays(직접+간접)이므로 순작업일수 = days - indirectDays
+                                  totalDays = days;
+                                  days = days - indirectDays;
                                 } else {
                                   // 세부공정의 순작업일 합계 계산 (오버라이드된 값 고려)
                                   let sumDirectDays = 0;
+                                  let sumIndirectDays = 0;
 
                                   // 버림, 기초, 지하층(층고6.5m이상)은 floorLabel 없이 전체 항목 계산
                                   if (row.category === '버림' || row.category === '기초' || row.category === '지하층(층고6.5m이상)') {
                                     module.items.forEach(item => {
+                                      sumIndirectDays += item.indirectDays;
                                       // 오버라이드된 순작업일 확인
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
@@ -1539,6 +1598,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     const floorItems = module.items.filter(item => item.floorLabel === baseFloorLabel);
 
                                     floorItems.forEach(item => {
+                                      sumIndirectDays += item.indirectDays;
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
 
@@ -1574,6 +1634,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     });
 
                                     floorItems.forEach(item => {
+                                      sumIndirectDays += item.indirectDays;
                                       // 오버라이드된 순작업일 확인
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
@@ -1632,6 +1693,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   }
 
                                   days = Math.floor(sumDirectDays);
+                                  indirectDays = Math.ceil(sumIndirectDays);
+                                  totalDays = days + indirectDays;
                                 }
 
                                 // 확장 상태 확인
@@ -1706,10 +1769,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   };
 
                                   updateProcessPlan(building.id, updatedPlan); // 🔥 Stage 1: Use helper function
-
-                                  // localStorage에 저장 (throttled)
-                                  const storageKey = `contech_process_plan_${building.id}`;
-                                  saveToLocalStorageThrottled(storageKey, updatedPlan);
+                                  markDirty(building.id);
                                 };
 
                                 // 특수 행 필드별 최대 가용물량 계산 (Path B용)
@@ -1900,12 +1960,12 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                     style={{ height: '32px' }}
                                   >
                                     {/* 첫 번째 열: 구분 항목 */}
-                                    <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: row.isSpecialRow ? 'auto' : '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <td className="px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: row.isSpecialRow ? 'auto' : '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       <div className="text-center">{getCategoryLabel()}</div>
                                     </td>
 
                                     {/* 두 번째 열: 층수 */}
-                                    <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: row.isSpecialRow ? 'auto' : '24px', width: '115px', ...(row.floorLabel?.includes('3단 가시설 적용부') ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
+                                    <td className="px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: row.isSpecialRow ? 'auto' : '24px', width: '115px', ...(row.floorLabel?.includes('3단 가시설 적용부') ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
                                       <div className="text-center font-normal">{getFloorNumberLabel()}</div>
                                     </td>
 
@@ -2123,13 +2183,6 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                       )}
                                     </td>
 
-                                    {/* 여섯 번째 열: 일수 */}
-                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
-                                      <div className="w-full px-1 py-0.5 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
-                                        {days}
-                                      </div>
-                                    </td>
-
                                     {/* 일곱 번째 열: 셀렉트박스 */}
                                     <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '32px' }}>
                                       {/* 일반 지하층 행은 항상 표준공정 드롭다운 표시 */}
@@ -2181,7 +2234,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               {/* 합계 행 - 첫 번째 공정 열의 첫 번째 칸에만 표시 */}
                               <tr className="border-t-2 border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800" style={{ height: '24px' }}>
                                 {/* 구분 항목 열 */}
-                                <td className="px-2 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
+                                <td className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
                                   합계
                                 </td>
                                 {/* 층수 열 */}
@@ -2202,10 +2255,6 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 <td className="px-1 py-1 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
                                 {processColumns.length > 0 && (
                                   <>
-                                    {/* 순작업일수 열에 합계 표시 */}
-                                    <td className="px-1 py-1 text-center text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      {plan ? calculateTotalDays(plan.processes, building) : 0}
-                                    </td>
                                     {/* 공정타입 열 (빈칸) */}
                                     <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
                                     {/* 세부공정 열 (빈칸) */}

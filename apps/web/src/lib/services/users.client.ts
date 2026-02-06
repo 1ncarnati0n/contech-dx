@@ -10,6 +10,7 @@ import {
   withOptionalAuth,
   type ServiceResult,
 } from '@/lib/supabase/withAuth';
+import { logger } from '@/lib/utils/logger';
 import type { UserRole, Profile } from '@/lib/types';
 
 /**
@@ -25,7 +26,7 @@ export async function getAllUsersClient(): Promise<Profile[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching users:', error);
+      logger.error('Error fetching users:', error);
       return { data: [], error: null };
     }
 
@@ -116,7 +117,7 @@ export async function promoteCurrentUserToAdmin(): Promise<{
 
     return { success: true, user: data.data?.user || data.user, error: null };
   } catch (error) {
-    console.error('권한 업데이트 중 오류:', error);
+    logger.error('권한 업데이트 중 오류:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',

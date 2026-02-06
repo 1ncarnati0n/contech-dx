@@ -6,12 +6,13 @@ import { Users } from 'lucide-react';
 import type { Building } from '@/lib/types';
 import { getBuildingsForOverview } from '@/lib/services/buildings';
 import { getQuantityFromFloor } from '@/lib/utils/quantity-reference';
-import { 
-  calculateTotalWorkers, 
+import {
+  calculateTotalWorkers,
   calculateDailyInputWorkers,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
 } from '@/lib/utils/process-calculation';
+import { logger } from '@/lib/utils/logger';
 
 interface Props {
   projectId: string;
@@ -45,7 +46,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
         const data = await getBuildingsForOverview(projectId);
         setBuildings(data);
       } catch (error) {
-        console.error('Failed to load buildings:', error);
+        logger.error('Failed to load buildings:', error);
       } finally {
         setIsLoading(false);
       }

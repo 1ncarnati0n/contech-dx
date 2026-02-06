@@ -163,7 +163,11 @@ async function validateFile(file: File): Promise<{ valid: boolean; error?: strin
   }
 
   // 5. 확장자와 MIME 타입 일치 검증
-  const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+  const parts = file.name.split('.');
+  if (parts.length < 2) {
+    return { valid: false, error: `파일 확장자가 없습니다: ${file.name}` };
+  }
+  const fileExtension = '.' + parts.pop()!.toLowerCase();
   if (!fileTypeConfig.extensions.includes(fileExtension)) {
     logger.warn('MIME 타입과 확장자 불일치', { fileName: file.name, mimeType: file.type, extension: fileExtension });
     return { valid: false, error: `파일 확장자가 MIME 타입과 일치하지 않습니다: ${file.name}` };
@@ -253,7 +257,7 @@ export async function POST(request: NextRequest) {
 
     if (!storeName) {
       return NextResponse.json(
-        { error: '스토어를 선택해주세요.' },
+        { success: false, error: '스토어를 선택해주세요.' },
         { status: 400 }
       );
     }
@@ -261,7 +265,7 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API 키가 설정되지 않았습니다.' },
+        { success: false, error: 'Gemini API 키가 설정되지 않았습니다.' },
         { status: 500 }
       );
     }

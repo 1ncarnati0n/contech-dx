@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { createSupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
+import { createSupabaseGanttDataService, SupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
+import { getBuildings } from '@/lib/services/buildings';
+import { getProject } from '@/lib/services/projects';
+import { convertProcessPlansToGanttTasks } from '@/lib/utils/process-to-gantt-converter';
+import type { Building, BuildingProcessPlan } from '@/lib/types';
 import { toast } from 'sonner';
 import {
   Loader2,
@@ -13,8 +17,10 @@ import {
   Workflow,
   Link2,
   Undo2,
+  Upload,
 } from 'lucide-react';
 import type { ConstructionTask, Milestone, GroupDependency } from 'sa-gantt-lib';
+import { logger } from '@/lib/utils/logger';
 
 interface GanttChartPageProps {
   projectId: string;
@@ -62,6 +68,7 @@ function FeatureItem({ icon, text }: FeatureItemProps) {
 
 export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<ConstructionTask[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -73,29 +80,30 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
     [projectId]
   );
 
+  // 간트차트 데이터 로드 함수
+  const loadGanttData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await dataService.loadAll();
+      setTasks(data.tasks);
+      setMilestones(data.milestones);
+      setDependencies(data.dependencies);
+    } catch (err) {
+      logger.error('Failed to load gantt data:', err);
+      setError('간트차트 데이터를 불러오는데 실패했습니다.');
+      toast.error('데이터 로드 실패', {
+        description: '간트차트 데이터를 불러오는데 실패했습니다.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataService]);
+
   // 초기 데이터 로드
   useEffect(() => {
-    async function loadData() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await dataService.loadAll();
-        setTasks(data.tasks);
-        setMilestones(data.milestones);
-        setDependencies(data.dependencies);
-      } catch (err) {
-        console.error('Failed to load gantt data:', err);
-        setError('간트차트 데이터를 불러오는데 실패했습니다.');
-        toast.error('데이터 로드 실패', {
-          description: '간트차트 데이터를 불러오는데 실패했습니다.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-  }, [dataService]);
+    loadGanttData();
+  }, [loadGanttData]);
 
   // 요약 통계 계산
   const stats = useMemo(() => {
@@ -153,6 +161,94 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
   const handleOpenFullscreen = useCallback(() => {
     window.open(`/projects/${projectNumber}/gantt`, '_blank', 'noopener,noreferrer');
   }, [projectNumber]);
+
+  // 공정계획에서 가져오기 핸들러
+  const handleImportFromProcessPlan = useCallback(async () => {
+    try {
+      // 1. 동 목록 로드
+      const buildings = await getBuildings(projectId);
+      if (buildings.length === 0) {
+        toast.error('등록된 동이 없습니다. 먼저 동을 추가해주세요.');
+        return;
+      }
+
+      // 2. 각 동의 localStorage에서 공정계획 로드
+      const processPlans = new Map<string, BuildingProcessPlan>();
+      for (const building of buildings) {
+        const storageKey = `contech_process_plan_${building.id}`;
+        const storedJson = localStorage.getItem(storageKey);
+        if (storedJson) {
+          try {
+            const plan = JSON.parse(storedJson) as BuildingProcessPlan;
+            if (plan.totalDays > 0) {
+              processPlans.set(building.id, plan);
+            }
+          } catch {
+            // 파싱 실패한 항목은 건너뜀
+          }
+        }
+      }
+
+      if (processPlans.size === 0) {
+        toast.error('가져올 공정계획이 없습니다. 먼저 공정계획을 작성해주세요.');
+        return;
+      }
+
+      // 3. 프로젝트 시작일 가져오기
+      const project = await getProject(projectId);
+      if (!project) {
+        toast.error('프로젝트 정보를 불러올 수 없습니다.');
+        return;
+      }
+
+      const projectStartDate = new Date(project.start_date + 'T00:00:00');
+
+      // 4. 변환 미리보기 (태스크 수 계산)
+      const { summary } = convertProcessPlansToGanttTasks({
+        buildings,
+        processPlans,
+        projectStartDate,
+      });
+
+      // 5. 확인 다이얼로그
+      const buildingSummary = Object.entries(summary.taskCountByBuilding)
+        .map(([name, count]) => `  ${name}: ${count}개`)
+        .join('\n');
+
+      const confirmed = window.confirm(
+        `공정계획에서 가져오기\n\n` +
+        `대상 동: ${summary.buildingCount}개\n` +
+        `생성될 태스크: ${summary.totalTaskCount}개\n` +
+        `프로젝트 시작일: ${project.start_date}\n\n` +
+        `동별 태스크 수:\n${buildingSummary}\n\n` +
+        `기존 간트차트 데이터에 추가됩니다. 계속하시겠습니까?`
+      );
+
+      if (!confirmed) return;
+
+      setIsImporting(true);
+
+      // 6. 실제 변환 + 저장
+      const { tasks: newTasks } = convertProcessPlansToGanttTasks({
+        buildings,
+        processPlans,
+        projectStartDate,
+      });
+
+      const service = new SupabaseGanttDataService(projectId);
+      await service.appendTasks(newTasks);
+
+      toast.success(`${summary.totalTaskCount}개 태스크가 간트차트에 추가되었습니다.`);
+
+      // 7. 간트차트 데이터 리로드 (stats 업데이트)
+      await loadGanttData();
+    } catch (error) {
+      logger.error('Import from process plan failed:', error);
+      toast.error('공정계획 가져오기에 실패했습니다.');
+    } finally {
+      setIsImporting(false);
+    }
+  }, [projectId, loadGanttData]);
 
   // 날짜 포맷팅 헬퍼
   const formatShortDate = (date: Date | null) => {
@@ -239,13 +335,23 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
             </p>
           </div>
 
-          <button
-            onClick={handleOpenFullscreen}
-            className="flex items-center gap-2 px-8 py-3 bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
-          >
-            <Rocket className="w-5 h-5" />
-            간트앱 열기
-          </button>
+          <div className="flex flex-row items-center gap-3">
+            <button
+              onClick={handleOpenFullscreen}
+              className="flex items-center gap-2 px-8 py-3 bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            >
+              <Rocket className="w-5 h-5" />
+              간트앱 열기
+            </button>
+            <button
+              onClick={handleImportFromProcessPlan}
+              disabled={isImporting}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-5 h-5" />
+              {isImporting ? '가져오는 중...' : '공정계획에서 가져오기'}
+            </button>
+          </div>
 
           {/* 기능 안내 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 w-full max-w-2xl">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPageChatbotConfig } from '@/lib/data/global-chatbot-config';
 import { geminiModelRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 import type { PageType } from '@/lib/hooks/usePageContext';
 
 /**
@@ -357,7 +358,7 @@ export async function POST(request: NextRequest) {
       pageType,
     });
   } catch (error) {
-    console.error('Error in global-chat:', error);
+    logger.error('Error in global-chat:', error);
     const chatbotError = classifyError(error);
     return NextResponse.json({ success: false, error: chatbotError }, { status: 500 });
   }

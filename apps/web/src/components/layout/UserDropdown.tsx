@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -68,7 +69,7 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
       router.push('/');
       router.refresh();
     } catch (error) {
-      console.error('Logout failed', error);
+      logger.error('Logout failed', error);
       alert('로그아웃 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

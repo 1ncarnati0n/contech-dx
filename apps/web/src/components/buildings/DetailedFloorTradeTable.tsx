@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { SaveStatusBar } from './SaveStatusBar';
 import { ClipboardPaste, Construction } from 'lucide-react';
 import type { Building, Floor, FloorTrade, TradeData } from '@/lib/types';
 import { saveFloorTrade } from '@/lib/services/buildings';
 import { setTradeValueByPath, getTradeValue } from '@/lib/utils/tradeDataHelpers';
 import { createSpecialFloorId } from '@/lib/utils/floorIdUtils';
+import { logger } from '@/lib/utils/logger';
 import { toast } from 'sonner';
 
 interface Props {
@@ -25,6 +27,8 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   const [floors, setFloors] = useState<Floor[]>(building.floors);
   const [trades, setTrades] = useState<Map<string, FloorTrade>>(new Map());
   const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [originalTrades, setOriginalTrades] = useState<Map<string, FloorTrade>>(new Map());
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [selectionStart, setSelectionStart] = useState<{ row: number; col: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -32,7 +36,6 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
   const [recentlyPastedCells, setRecentlyPastedCells] = useState<Set<string>>(new Set());
   const isDraggingTextRef = useRef(false);
   const selectionStartRef = useRef<{ row: number; col: number } | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSavesRef = useRef<Map<string, FloorTrade>>(new Map()); // 저장 대기 중인 trade 객체들
 
   useEffect(() => {
@@ -43,6 +46,8 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       tradesMap.set(key, trade);
     });
     setTrades(tradesMap);
+    setOriginalTrades(new Map(tradesMap));
+    setHasUnsavedChanges(false);
     // 층이 변경되면 선택 초기화
     setSelectedCells(new Set());
     setSelectionStart(null);
@@ -645,12 +650,6 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       return;
     }
 
-    // 기존 타이머 취소
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-    }
-
     // 저장 대기 중인 모든 trade를 즉시 저장
     const savesToProcess = new Map(pendingSavesRef.current);
     pendingSavesRef.current.clear();
@@ -672,22 +671,84 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
           })
         );
         await Promise.all(promises);
+        setOriginalTrades(new Map(trades));
+        setHasUnsavedChanges(false);
         await onUpdate(); // 저장 후 업데이트
       }
     } catch (error) {
-      console.error('Flush save failed:', error);
+      logger.error('Flush save failed:', error);
       throw error; // 에러를 상위로 전달
     } finally {
       setIsSaving(false);
     }
   };
 
+  // 명시적 저장 함수
+  const saveChanges = async (): Promise<void> => {
+    if (pendingSavesRef.current.size === 0) {
+      toast.info('저장할 변경사항이 없습니다.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const tradesToSave = Array.from(pendingSavesRef.current.values()).filter(
+        trade => !trade.floorId.startsWith('dummy-')
+      );
+
+      if (tradesToSave.length > 0) {
+        const promises = tradesToSave.map(trade =>
+          saveFloorTrade(building.id, building.projectId, {
+            floorId: trade.floorId,
+            tradeGroup: trade.tradeGroup,
+            trades: trade.trades,
+          })
+        );
+        await Promise.all(promises);
+
+        pendingSavesRef.current.clear();
+        setOriginalTrades(new Map(trades));
+        setHasUnsavedChanges(false);
+        toast.success(`${tradesToSave.length}개 항목 저장 완료`);
+        await onUpdate();
+      }
+    } catch (error) {
+      logger.error('Save failed:', error);
+      toast.error('저장 실패. 다시 시도해주세요.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 변경사항 취소 함수
+  const discardChanges = () => {
+    if (confirm('변경사항을 취소하시겠습니까?')) {
+      setTrades(new Map(originalTrades));
+      pendingSavesRef.current.clear();
+      setHasUnsavedChanges(false);
+    }
+  };
+
   // useImperativeHandle로 함수 노출
   useImperativeHandle(ref, () => ({
     flushPendingSaves,
+    saveChanges,
+    hasUnsavedChanges: () => hasUnsavedChanges,
   }));
 
-  // 자동 저장 함수 (디바운싱 적용)
+  // 페이지 이탈 경고
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '저장하지 않은 변경사항이 있습니다.';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // 변경사항 대기열에 추가 (저장은 명시적으로)
   const autoSave = (tradeKey: string, trade: FloorTrade) => {
     // 더미 층 ID는 저장하지 않음 (실제 층만 저장)
     if (trade.floorId.startsWith('dummy-')) {
@@ -699,47 +760,9 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       pendingSavesRef.current = new Map();
     }
 
-    // 저장 대기 목록에 추가 (trade 객체를 직접 저장)
+    // 저장 대기 목록에 추가
     pendingSavesRef.current.set(tradeKey, trade);
-
-    // 기존 타이머 취소
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // 500ms 후 저장 (디바운싱)
-    saveTimeoutRef.current = setTimeout(async () => {
-      const savesToProcess = new Map(pendingSavesRef.current);
-      pendingSavesRef.current.clear();
-
-      if (savesToProcess.size === 0) return;
-
-    setIsSaving(true);
-    try {
-        // 저장할 trade 객체들을 배열로 변환
-        const tradesToSave = Array.from(savesToProcess.values()).filter(
-          trade => !trade.floorId.startsWith('dummy-')
-        );
-
-        // 저장 실행
-        if (tradesToSave.length > 0) {
-          const promises = tradesToSave.map(trade =>
-            saveFloorTrade(building.id, building.projectId, {
-              floorId: trade.floorId,
-              tradeGroup: trade.tradeGroup,
-              trades: trade.trades,
-            })
-          );
-      await Promise.all(promises);
-      onUpdate();
-        }
-    } catch (error) {
-        console.error('Auto-save failed:', error);
-        toast.error('자동 저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
-    }, 500);
+    setHasUnsavedChanges(true);
   };
 
   // 형틀 합계 계산 함수
@@ -913,7 +936,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       }
     } catch (error) {
       toast.error('붙여넣기에 실패했습니다.');
-      console.error('Paste error:', error);
+      logger.error('Paste error:', error);
     }
   };
 
@@ -947,11 +970,12 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>층별 물량 입력</CardTitle>
-          {isSaving && (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              저장 중...
-            </span>
-          )}
+          <SaveStatusBar
+            hasUnsavedChanges={hasUnsavedChanges}
+            isSaving={isSaving}
+            onSave={saveChanges}
+            onDiscard={discardChanges}
+          />
         </div>
       </CardHeader>
       {/* 준비중 안내 */}

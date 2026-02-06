@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/Tooltip';
 import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory, ProcessModuleHistoryItem } from '@/lib/types';
-import { History, Info, GripVertical } from 'lucide-react';
+import { History, Info, GripVertical, Calculator, Truck, Lock } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -44,6 +44,69 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { logger } from '@/lib/utils/logger';
+
+// ============================================
+// 계산 방식 판별 유틸 (ProcessModuleSection.tsx와 동일)
+// ============================================
+
+type CalculationMethod = 'fixed' | 'quantity-based' | 'equipment-based';
+
+function getCalculationMethod(item: ProcessItem): CalculationMethod {
+  if (item.directWorkDays !== undefined && item.directWorkDays > 0) {
+    return 'fixed';
+  }
+  if (item.equipmentCalculationBase !== undefined &&
+      item.equipmentWorkersPerUnit !== undefined) {
+    return 'equipment-based';
+  }
+  return 'quantity-based';
+}
+
+function getCalculationMethodConfig(method: CalculationMethod) {
+  const configs = {
+    fixed: {
+      variant: 'info' as const,
+      icon: Lock,
+      label: '일수고정',
+    },
+    'quantity-based': {
+      variant: 'success' as const,
+      icon: Calculator,
+      label: '물량계산',
+    },
+    'equipment-based': {
+      variant: 'warning' as const,
+      icon: Truck,
+      label: '장비기반',
+    },
+  };
+  return configs[method];
+}
+
+function getCalculationSteps(method: CalculationMethod, item: ProcessItem): string[] {
+  switch (method) {
+    case 'fixed':
+      return [
+        '1. 순작업일: 고정값 사용',
+        '2. 총투입인원 = CEILING(수량 / 인당생산성)',
+        '3. 1일투입인원 = ROUNDUP(총투입인원 / 순작업일)',
+      ];
+    case 'equipment-based':
+      return [
+        '1. 장비대수 = CEILING(MIN(최대값, 수량/대당타설량))',
+        `2. 1일투입인원 = 장비대수 × ${item.equipmentWorkersPerUnit || 4}명`,
+        '3. 순작업일 = ROUND(수량 / (인당생산성 × 1일투입인원))',
+        '4. 총투입인원 = 1일투입인원 × 순작업일',
+      ];
+    case 'quantity-based':
+      return [
+        '1. 총투입인원 = CEILING(수량 / 인당생산성)',
+        '2. 1일투입인원 = CEILING(총투입인원 / 장비대수)',
+        '3. 순작업일 = ROUND(수량 / (인당생산성 × 1일투입인원))',
+      ];
+  }
+}
 
 interface ProcessModuleEditModalProps {
   open: boolean;
@@ -61,7 +124,7 @@ type EditableField = 'dailyProductivity' | 'directWorkDays' | 'indirectDays' | '
 const FIELD_LABELS: Record<EditableField, string> = {
   dailyProductivity: '인당생산성',
   directWorkDays: '순작업일',
-  indirectDays: '간접일',
+  indirectDays: '간접작업일',
   equipmentWorkersPerUnit: '장비당인원',
   quantityReference: '물량참조',
 };
@@ -175,9 +238,30 @@ function SortableRow({
       </td>
       <td className="px-2 py-2 align-middle">
         {item.directWorkDays === undefined ? (
-          <Badge variant="secondary" className="text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-            계산
-          </Badge>
+          (() => {
+            const method = getCalculationMethod(item);
+            const config = getCalculationMethodConfig(method);
+            const steps = getCalculationSteps(method, item);
+            const IconComponent = config.icon;
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-flex">
+                    <Badge variant={config.variant} className="text-xs cursor-help gap-1">
+                      <IconComponent className="w-3 h-3" />
+                      {config.label}
+                    </Badge>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-xs font-semibold mb-1">계산 단계:</p>
+                  {steps.map((step, idx) => (
+                    <p key={idx} className="text-xs text-zinc-600 dark:text-zinc-400">{step}</p>
+                  ))}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })()
         ) : (
           <Input
             type="number"
@@ -328,7 +412,7 @@ export function ProcessModuleEditModal({
           setHistory(parsed.slice(0, 10)); // 최근 10개
         }
       } catch (error) {
-        console.error('Failed to load process module history:', error);
+        logger.error('Failed to load process module history:', error);
       }
     }
   }, [open, modules, activeCategory, equipmentBaseForCategory, historyStorageKey]);
@@ -359,7 +443,7 @@ export function ProcessModuleEditModal({
       localStorage.setItem(historyStorageKey, JSON.stringify(updated));
       setHistory(updated);
     } catch (error) {
-      console.error('Failed to save process module history:', error);
+      logger.error('Failed to save process module history:', error);
     }
   };
 
@@ -598,7 +682,7 @@ export function ProcessModuleEditModal({
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">공정타입</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">인당생산성</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">순작업일</th>
-                          <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">간접일</th>
+                          <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">간접작업일</th>
                           <th className="px-2 py-3 text-center text-xs font-semibold text-zinc-700 dark:text-zinc-200">
                             대당타설량
                             <Tooltip>

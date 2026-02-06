@@ -19,6 +19,7 @@ import { migrateToPreset } from '@/lib/utils/process-logic-migration';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import type { Profile, ProcessCategory, EquipmentBaseHistoryItem } from '@/lib/types';
 import { isProcessModuleArray } from '@/lib/types';
+import { logger } from '@/lib/utils/logger';
 
 interface ProcessLogicPageProps {
   projectId: string;
@@ -185,7 +186,7 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
         updateModules(preset.modules);
         toast.success(`프리셋 "${preset.name}"이(가) 적용되었습니다.`);
       } else {
-        console.error('Invalid preset modules format:', preset.modules);
+        logger.error('Invalid preset modules format:', preset.modules);
         toast.error('프리셋 형식이 올바르지 않습니다.');
       }
     } else {

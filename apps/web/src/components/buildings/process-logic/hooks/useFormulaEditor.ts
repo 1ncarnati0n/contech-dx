@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { CalculationFormula, FormulaVariable } from '@/lib/types';
 import { BUILT_IN_FORMULAS } from '@/lib/data/built-in-formulas';
+import { logger } from '@/lib/utils/logger';
 
 const STORAGE_FORMULAS_PREFIX = 'contech-process-formulas-';
 
@@ -51,7 +52,7 @@ export function useFormulaEditor({ projectId }: UseFormulaEditorOptions): UseFor
       }
       setIsLoading(false);
     } catch (error) {
-      console.error('Failed to load custom formulas:', error);
+      logger.error('Failed to load custom formulas:', error);
       setIsLoading(false);
     }
   }, [storageKey]);
@@ -65,7 +66,7 @@ export function useFormulaEditor({ projectId }: UseFormulaEditorOptions): UseFor
         localStorage.setItem(storageKey, JSON.stringify(formulas));
         setCustomFormulas(formulas);
       } catch (error) {
-        console.error('Failed to save custom formulas:', error);
+        logger.error('Failed to save custom formulas:', error);
       }
     },
     [storageKey]

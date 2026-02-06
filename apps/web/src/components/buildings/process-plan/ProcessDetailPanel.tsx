@@ -249,6 +249,12 @@ export function ProcessDetailPanel({
 
   const directWorkDaysSum = calculateDirectWorkDaysSum();
 
+  // 간접작업일 합계 계산
+  const indirectDaysSum = Math.ceil(
+    filteredItems.reduce((sum, item) => sum + item.indirectDays, 0)
+  );
+  const totalWorkDaysSum = directWorkDaysSum + indirectDaysSum;
+
   // 카테고리 표시 이름 생성
   const getCategoryDisplayName = (): string => {
     if (expandedRow.category === '버림' || expandedRow.category === '기초') {
@@ -296,10 +302,22 @@ export function ProcessDetailPanel({
         className
       )}
     >
-      {/* 순작업일 합계 표시 */}
-      {directWorkDaysSum > 0 && (
-        <div className="mb-4 text-sm text-accent-600 dark:text-accent-400 font-medium">
-          순작업일 합계: {directWorkDaysSum}일
+      {/* 작업일 합계 표시 */}
+      {(directWorkDaysSum > 0 || indirectDaysSum > 0) && (
+        <div className="mb-4 space-y-1">
+          <div className="text-sm text-accent-600 dark:text-accent-400 font-medium">
+            순작업일 합계: {directWorkDaysSum}일
+          </div>
+          {indirectDaysSum > 0 && (
+            <div className="text-sm text-zinc-500 dark:text-zinc-400">
+              간접작업일 합계: {indirectDaysSum}일
+            </div>
+          )}
+          {indirectDaysSum > 0 && (
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white">
+              총작업일수: {totalWorkDaysSum}일
+            </div>
+          )}
         </div>
       )}
 

@@ -180,6 +180,57 @@ export function calculateModuleWorkDaysForFloor(
   return Math.floor(totalDays);
 }
 
+/**
+ * 층별 공정 모듈의 간접작업일 합계 계산
+ *
+ * calculateModuleWorkDaysForFloor와 동일한 필터링 로직을 사용하되,
+ * directWorkDays 대신 indirectDays만 합산합니다.
+ *
+ * @param module - 공정 모듈
+ * @param category - 공정 구분
+ * @param floorLabel - 대상 층 (예: "B1", "3F", "옥탑1")
+ * @returns 해당 층의 간접작업일 합계
+ */
+export function calculateModuleIndirectDaysForFloor(
+  module: ProcessModule,
+  category: ProcessCategory,
+  floorLabel: string
+): number {
+  if (!module || module.items.length === 0) return 0;
+
+  const items = filterItemsForFloor(module.items, category, floorLabel);
+  let totalIndirectDays = 0;
+
+  for (const item of items) {
+    totalIndirectDays += item.indirectDays;
+  }
+
+  return Math.ceil(totalIndirectDays);
+}
+
+/**
+ * 공정 모듈의 간접작업일 합계 계산 (non-floor 버전)
+ *
+ * 버림/기초 등 floorLabel이 없는 카테고리용.
+ * 전체 module.items의 indirectDays를 합산합니다.
+ *
+ * @param module - 공정 모듈
+ * @returns 간접작업일 합계
+ */
+export function calculateModuleIndirectDays(
+  module: ProcessModule
+): number {
+  if (!module || module.items.length === 0) return 0;
+
+  let totalIndirectDays = 0;
+
+  for (const item of module.items) {
+    totalIndirectDays += item.indirectDays;
+  }
+
+  return Math.ceil(totalIndirectDays);
+}
+
 /** 카테고리별 항목 필터링 */
 function filterItemsForFloor(
   items: ProcessModule['items'],
