@@ -174,18 +174,24 @@ function SortableRow({
         />
       </td>
       <td className="px-2 py-2 align-middle">
-        <Input
-          type="number"
-          value={getFieldValue(item, 'directWorkDays')}
-          onChange={(e) => handleFieldChange(item.moduleId, item.id, 'directWorkDays', e.target.value)}
-          className={`
-            w-20 px-2 py-1.5 h-auto text-right text-sm
-            focus:ring-2 focus:ring-blue-500 focus:border-transparent
-            ${fieldErrors[`${item.id}-directWorkDays`] ? 'border-red-500 dark:border-red-400 focus:ring-red-500' : ''}
-          `}
-          placeholder="0"
-          title={fieldErrors[`${item.id}-directWorkDays`]}
-        />
+        {item.directWorkDays === undefined ? (
+          <Badge variant="secondary" className="text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            계산
+          </Badge>
+        ) : (
+          <Input
+            type="number"
+            value={getFieldValue(item, 'directWorkDays')}
+            onChange={(e) => handleFieldChange(item.moduleId, item.id, 'directWorkDays', e.target.value)}
+            className={`
+              w-20 px-2 py-1.5 h-auto text-right text-sm
+              focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              ${fieldErrors[`${item.id}-directWorkDays`] ? 'border-red-500 dark:border-red-400 focus:ring-red-500' : ''}
+            `}
+            placeholder="0"
+            title={fieldErrors[`${item.id}-directWorkDays`]}
+          />
+        )}
       </td>
       <td className="px-2 py-2 align-middle">
         <Input

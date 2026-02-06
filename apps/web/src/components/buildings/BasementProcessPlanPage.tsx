@@ -62,6 +62,18 @@ const DEFAULT_PROCESS_TYPES: Partial<Record<ProcessCategory, ProcessType>> = {
   '지하주차장': '표준공정',
 };
 
+// 특수 행 필드 → floorTrade 필드 매핑 (getQuantityFromFloor 호출용)
+const SPECIAL_FIELD_TO_TRADE: Record<
+  'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete',
+  { tradeField: 'gangForm' | 'alForm' | 'euroForm' | 'rebar' | 'concrete'; subField: string }
+> = {
+  gangForm:  { tradeField: 'gangForm',  subField: 'areaM2' },
+  alForm:    { tradeField: 'alForm',    subField: 'areaM2' },
+  formwork:  { tradeField: 'euroForm',  subField: 'areaM2' },   // UI: formwork → data: euroForm
+  rebar:     { tradeField: 'rebar',     subField: 'ton' },
+  concrete:  { tradeField: 'concrete',  subField: 'volumeM3' },
+};
+
 export function BasementProcessPlanPage({ projectId }: Props) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
@@ -317,9 +329,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
 
-    // 주동 지하층/지하주차장의 경우 층별로 저장
-    if ((category === '주동 지하층' || category === '지하주차장') && floorLabel) {
-      // 주차장이나 통합 지하층(6.5m 이상)인 경우, 해당 지하층의 공정타입도 함께 업데이트
+    // 주동 지하층/지하주차장/지하층(6.5m이상)의 경우 층별로 저장
+    if ((category === '주동 지하층' || category === '지하주차장' || category === '지하층(층고6.5m이상)') && floorLabel) {
+      // 주차장이나 6.5m이상인 경우, 해당 지하층의 공정타입도 함께 업데이트
       let targetFloorLabel = floorLabel;
       const parkingMatch = floorLabel.match(/^(B\d+)\s+주차장/);
       const consolidatedMatch = floorLabel.match(/^B1\+B2\s+통합/);
@@ -410,8 +422,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     const categoryProcess = plan.processes[category];
     if (!categoryProcess) return DEFAULT_PROCESS_TYPES[category] || '표준공정';
     
-    // 지하층/지하주차장의 경우 층별 processType 확인
-    if ((category === '주동 지하층' || category === '지하주차장') && categoryProcess.floors) {
+    // 지하층/지하주차장/6.5m이상의 경우 층별 processType 확인
+    if ((category === '주동 지하층' || category === '지하주차장' || category === '지하층(층고6.5m이상)') && categoryProcess.floors) {
       if (categoryProcess.floors[floorLabel]) {
         return categoryProcess.floors[floorLabel].processType;
       }
@@ -419,6 +431,19 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     
     // 기본 processType 반환
     return categoryProcess.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
+  };
+
+  // 특수 행(주차장, 6.5m이상) 활성화 여부 체크 - 물량이 하나라도 0보다 크면 활성화
+  const isSpecialRowActive = (buildingId: string, floorLabel: string): boolean => {
+    const plan = processPlans.get(buildingId);
+    const quantities = plan?.specialRowQuantities?.[floorLabel];
+    if (!quantities) return false;
+    return Object.values(quantities).some(v => v !== undefined && v > 0);
+  };
+
+  // 지하층(6.5m이상) 활성화 여부 체크 - B1/B2 합산 물량이 0보다 크면 활성화
+  const isHighCeilingActive = (buildingId: string): boolean => {
+    return isSpecialRowActive(buildingId, 'B1 6.5m이상') || isSpecialRowActive(buildingId, 'B2 6.5m이상');
   };
 
   // 합계일수 계산 - 모든 공정 카테고리의 일수 합계
@@ -495,17 +520,18 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
 
-    // 주차장이나 3단 가시설인지 확인
+    // 주차장이나 3단 가시설, 6.5m이상인지 확인
     const isParking = floorLabel.includes('주차장');
     const isFacility = floorLabel.includes('3단 가시설 적용부');
-    const isSpecialRow = isParking || isFacility;
+    const isHighCeiling = floorLabel.includes('6.5m이상');
+    const isSpecialRow = isParking || isFacility || isHighCeiling;
 
     // floorLabel에서 지하층 정보 추출
     const floorMatch = floorLabel.match(/^(B\d+)/);
     const targetFloorLabel = isSpecialRow && floorMatch ? floorMatch[1] : floorLabel;
 
     // processType 결정
-    const processType = floorLabel && (category === '주동 지하층' || category === '지하주차장')
+    const processType = floorLabel && (category === '주동 지하층' || category === '지하주차장' || category === '지하층(층고6.5m이상)')
       ? getProcessTypeForFloor(currentPlan, category, targetFloorLabel || floorLabel)
       : currentPlan?.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
     const module = getProcessModule(category, processType);
@@ -533,7 +559,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
             }
           }
         });
-      } else if ((category === '주동 지하층' || category === '지하주차장') && floorLabel) {
+      } else if ((category === '주동 지하층' || category === '지하주차장' || category === '지하층(층고6.5m이상)') && floorLabel) {
         const floorItems = module.items.filter(moduleItem => moduleItem.floorLabel === targetFloorLabel);
         floorItems.forEach(moduleItem => {
           const moduleItemKey = `${category}-${floorLabel}-${moduleItem.id}`;
@@ -681,6 +707,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
       rowIndex: number;
       isSpecialRow?: boolean; // 주차장, 3단 가시설 적용부 구분용
       isConsolidatedBasement?: boolean; // B1+B2 통합 지하층 플래그
+      isFirstHighCeiling?: boolean;   // B1 6.5m이상 (rowSpan 셀 포함)
+      isSecondHighCeiling?: boolean;  // B2 6.5m이상 (rowSpan 셀 생략)
     }> = [];
     
     let rowIndex = 0;
@@ -720,13 +748,25 @@ export function BasementProcessPlanPage({ projectId }: Props) {
         rowIndex: rowIndex++
       });
 
-      // B1 직후에 지하층(6.5m이상) 삽입 (B1과 B2 사이에 위치)
+      // B1 직후에 지하층(6.5m이상) B1/B2 입력 행 삽입 (special row 방식)
       if (cleanLabel === 'B1' && activeBuilding.meta?.floorCount?.hasHighCeilingEquipmentRoom) {
         const hasB2 = basementFloors.some(f => f.floorLabel === 'B2' || f.floorLabel.includes('B2'));
         if (hasB2) {
+          // B1 6.5m이상 입력 행 (rowSpan=2로 구분/일수/공정타입/세부공정 통합)
           rows.push({
-            category: '지하층(층고6.5m이상)',
+            category: '지하층(층고6.5m이상)' as ProcessCategory,
             rowIndex: rowIndex++,
+            isSpecialRow: true,
+            floorLabel: 'B1 6.5m이상',
+            isFirstHighCeiling: true,
+          });
+          // B2 6.5m이상 입력 행 (rowSpan 병합으로 구분/일수/공정타입/세부공정 생략)
+          rows.push({
+            category: '지하층(층고6.5m이상)' as ProcessCategory,
+            rowIndex: rowIndex++,
+            isSpecialRow: true,
+            floorLabel: 'B2 6.5m이상',
+            isSecondHighCeiling: true,
           });
         }
       }
@@ -1006,10 +1046,37 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const storageKey = `contech_process_plan_${building.id}`;
                                 saveToLocalStorageThrottled(storageKey, updatedPlan);
                               };
-                              
-                              // 특수 행(주차장, 3단 가시설 적용부)은 일수 계산 건너뛰기
+
+                              // 특수 행 필드별 최대 가용물량 계산 (주동 지하층 base - 다른 특수 행 합계)
+                              const getMaxAvailableForSpecialRow = (
+                                field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete'
+                              ): number => {
+                                if (!row.isSpecialRow || !row.floorLabel) return Infinity;
+                                const baseFloor = row.floorLabel.match(/^(B\d+)/)?.[1];
+                                if (!baseFloor) return Infinity;
+
+                                const { tradeField, subField } = SPECIAL_FIELD_TO_TRADE[field];
+                                const baseQty = getQuantityFromFloor(building, baseFloor, tradeField, subField);
+
+                                const currentKey = row.floorLabel;
+                                const otherKeys = [
+                                  `${baseFloor} 주차장`,
+                                  `${baseFloor} 3단 가시설 적용부`,
+                                  `${baseFloor} 6.5m이상`,
+                                ].filter(k => k !== currentKey);
+
+                                let otherSum = 0;
+                                const plan = processPlans.get(building.id);
+                                otherKeys.forEach(k => {
+                                  otherSum += plan?.specialRowQuantities?.[k]?.[field] || 0;
+                                });
+
+                                return Math.max(0, baseQty - otherSum);
+                              };
+
+                              // 특수 행(주차장, 3단 가시설 적용부, 6.5m이상)은 일수 계산 건너뛰기
                               if (row.isSpecialRow) {
-                                // 특수 행(주차장)은 해당 지하층의 표준공정 적용
+                                // 특수 행은 해당 지하층의 표준공정 적용
                                 let processType: ProcessType;
                                 if (row.floorLabel) {
                                   const floorMatch = row.floorLabel.match(/^(B\d+)/);
@@ -1023,38 +1090,159 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category] || '표준공정';
                                 }
                                 const module = getProcessModule(row.category, processType);
-                                
-                                // 확장 상태 확인
-                                const expandKey = row.floorLabel 
-                                  ? `${row.category}-${row.floorLabel}`
-                                  : row.category;
+
+                                // 확장 상태 확인 - 6.5m이상은 B1/B2 통합 expandKey 사용
+                                const expandKey = (row.isFirstHighCeiling || row.isSecondHighCeiling)
+                                  ? `${row.category}-합산`
+                                  : row.floorLabel
+                                    ? `${row.category}-${row.floorLabel}`
+                                    : row.category;
                                 const isExpanded = isDetailExpanded.has(expandKey);
-                                
+
                                 const isMultiLineRow = false;
-                                
+
+                                // 비활성 상태 체크 - 6.5m이상은 B1/B2 합산 판정
+                                const isRowActive = (row.isFirstHighCeiling || row.isSecondHighCeiling)
+                                  ? isHighCeilingActive(building.id)
+                                  : row.floorLabel ? isSpecialRowActive(building.id, row.floorLabel) : false;
+
                                 // 구분 항목 표시
                                 const getCategoryLabelLocal = () => {
+                                  if (row.category === '지하층(층고6.5m이상)') return '지하층(6.5m이상)';
                                   return row.category;
                                 };
-                                
+
+                                // B1+B2 합산 물량으로 순작업일 계산하는 헬퍼 (B1 행의 rowSpan 일수 셀에서 사용)
+                                const calculateCombinedHighCeilingDays = () => {
+                                  if (!module || !module.items.length) return 0;
+                                  let sumDirectDays = 0;
+                                  const b1Qty = plan?.specialRowQuantities?.['B1 6.5m이상'] || {};
+                                  const b2Qty = plan?.specialRowQuantities?.['B2 6.5m이상'] || {};
+                                  // B1+B2 합산 물량
+                                  const combinedQty = {
+                                    gangForm: (b1Qty.gangForm || 0) + (b2Qty.gangForm || 0),
+                                    alForm: (b1Qty.alForm || 0) + (b2Qty.alForm || 0),
+                                    formwork: (b1Qty.formwork || 0) + (b2Qty.formwork || 0),
+                                    rebar: (b1Qty.rebar || 0) + (b2Qty.rebar || 0),
+                                    concrete: (b1Qty.concrete || 0) + (b2Qty.concrete || 0),
+                                  };
+                                  // B1의 항목으로 일수 계산 (B1 기준 모듈 사용)
+                                  const floorItems = module.items.filter(item => item.floorLabel === 'B1');
+                                  floorItems.forEach(item => {
+                                    const itemKey = `${row.category}-B1 6.5m이상-${item.id}`;
+                                    const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
+                                    if (overriddenDays !== undefined) {
+                                      sumDirectDays += overriddenDays;
+                                      return;
+                                    }
+                                    let directWorkDays = 0;
+                                    let quantity = 0;
+                                    if (item.quantityReference) {
+                                      const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
+                                      if (refMatch) {
+                                        const [, col] = refMatch;
+                                        const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
+                                        if (col === 'B') quantity = combinedQty.gangForm * ratio;
+                                        else if (col === 'C') quantity = combinedQty.alForm * ratio;
+                                        else if (col === 'D') quantity = combinedQty.formwork * ratio;
+                                        else if (col === 'F') quantity = combinedQty.rebar * ratio;
+                                        else if (col === 'G') quantity = combinedQty.concrete * ratio;
+                                      }
+                                    }
+                                    if (item.directWorkDays !== undefined) {
+                                      directWorkDays = item.directWorkDays;
+                                      sumDirectDays += directWorkDays;
+                                    } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
+                                      if (quantity > 0 && item.dailyProductivity > 0) {
+                                        const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase);
+                                        const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
+                                        if (dailyInputWorkers > 0) {
+                                          directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+                                          sumDirectDays += directWorkDays;
+                                        }
+                                      }
+                                    } else if (item.quantityReference && item.dailyProductivity > 0) {
+                                      if (quantity > 0) {
+                                        const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
+                                        const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
+                                        directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+                                        sumDirectDays += directWorkDays;
+                                      }
+                                    }
+                                  });
+                                  return Math.floor(sumDirectDays);
+                                };
+
+                                // 비-6.5m이상 특수 행의 순작업일 합계 계산 (주차장 등)
+                                const calculateNormalSpecialRowDays = () => {
+                                  if (!module || !module.items.length || !row.floorLabel) return 0;
+                                  let sumDirectDays = 0;
+                                  const specialKey = row.floorLabel;
+                                  const specialQuantities = plan?.specialRowQuantities?.[specialKey] || {};
+                                  const floorMatch = row.floorLabel.match(/^(B\d+)/);
+                                  const targetFloorLabel = floorMatch ? floorMatch[1] : row.floorLabel;
+                                  const floorItems = module.items.filter(item => item.floorLabel === targetFloorLabel);
+                                  floorItems.forEach(item => {
+                                    const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
+                                    const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
+                                    if (overriddenDays !== undefined) { sumDirectDays += overriddenDays; return; }
+                                    let directWorkDays = 0;
+                                    let quantity = 0;
+                                    if (item.quantityReference) {
+                                      const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
+                                      if (refMatch) {
+                                        const [, col] = refMatch;
+                                        const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
+                                        if (col === 'B') quantity = (specialQuantities.gangForm || 0) * ratio;
+                                        else if (col === 'C') quantity = (specialQuantities.alForm || 0) * ratio;
+                                        else if (col === 'D') quantity = (specialQuantities.formwork || 0) * ratio;
+                                        else if (col === 'F') quantity = (specialQuantities.rebar || 0) * ratio;
+                                        else if (col === 'G') quantity = (specialQuantities.concrete || 0) * ratio;
+                                      }
+                                    }
+                                    if (item.directWorkDays !== undefined) { directWorkDays = item.directWorkDays; sumDirectDays += directWorkDays; }
+                                    else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
+                                      if (quantity > 0 && item.dailyProductivity > 0) {
+                                        const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase);
+                                        const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
+                                        if (dailyInputWorkers > 0) { directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers); sumDirectDays += directWorkDays; }
+                                      }
+                                    } else if (item.quantityReference && item.dailyProductivity > 0) {
+                                      if (quantity > 0) {
+                                        const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
+                                        const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
+                                        directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+                                        sumDirectDays += directWorkDays;
+                                      }
+                                    }
+                                  });
+                                  return Math.floor(sumDirectDays);
+                                };
+
                                 return (
                                   <tr
                                     key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
                                     className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 border-l-4 border-l-transparent ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-accent-500 shadow-sm' : ''}`}
                                     style={{ height: '32px' }}
                                   >
-                                    {/* 첫 번째 열: 구분 항목 */}
-                                    <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                      <div className="text-center">{getCategoryLabelLocal()}</div>
-                                    </td>
-                                    
-                                    {/* 두 번째 열: 층수 */}
-                                    <td className="px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ ...(isMultiLineRow ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
+                                    {/* 첫 번째 열: 구분 항목 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
+                                    {!row.isSecondHighCeiling && (
+                                      <td
+                                        className={`px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}
+                                        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                        {...(row.isFirstHighCeiling ? { rowSpan: 2 } : {})}
+                                      >
+                                        <div className="text-center">{getCategoryLabelLocal()}</div>
+                                      </td>
+                                    )}
+
+                                    {/* 두 번째 열: 층수 - 항상 렌더링 (B1/B2 각각 표시) */}
+                                    <td className={`px-2 py-1 text-xs font-semibold text-zinc-900 dark:text-white border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`} style={{ ...(isMultiLineRow ? {} : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
                                       <div className="text-center font-normal">{row.floorLabel?.match(/^(B\d+)/)?.[1] || ''}</div>
                                     </td>
-                                    
+
                                     {/* 형틀 합계 (읽기전용 - 갱폼+알폼+유로폼) */}
-                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                    <td className={`px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}>
                                       <div className="text-xs font-medium text-zinc-500">
                                         {((getSpecialRowQuantityLocal('gangForm') || 0) + (getSpecialRowQuantityLocal('alForm') || 0) + (getSpecialRowQuantityLocal('formwork') || 0)).toFixed(2)}
                                       </div>
@@ -1071,12 +1259,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('gangForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('gangForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('gangForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="갱폼"
+                                        title={`갱폼 (최대: ${getMaxAvailableForSpecialRow('gangForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1092,12 +1282,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('alForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('alForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('alForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="알폼"
+                                        title={`알폼 (최대: ${getMaxAvailableForSpecialRow('alForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
@@ -1113,18 +1305,20 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('formwork', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('formwork');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('formwork', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="유로폼"
+                                        title={`유로폼 (최대: ${getMaxAvailableForSpecialRow('formwork').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
 
-                                    {/* 해체/정리 (유로폼 × 2, 자동계산) */}
-                                    <td className="px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle">
+                                    {/* 해체/정리 (유로폼 × 2, 자동계산) - 비활성 시 회색 */}
+                                    <td className={`px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}>
                                       <div className="text-xs text-zinc-500 dark:text-zinc-400">
                                         {((getSpecialRowQuantityLocal('formwork') || 0) * 2).toFixed(2)}
                                       </div>
@@ -1142,16 +1336,19 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('rebar', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('rebar');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('rebar', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`철근 (최대: ${getMaxAvailableForSpecialRow('rebar').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
-                                    
-                                    {/* 다섯 번째 열: 콘크리트 */}
+
+                                    {/* 콘크리트 */}
                                     <td className="px-1 py-0.5 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle">
                                       <Input
                                         type="number"
@@ -1163,147 +1360,104 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChangeLocal('concrete', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRow('concrete');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChangeLocal('concrete', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`콘크리트 (최대: ${getMaxAvailableForSpecialRow('concrete').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     </td>
-                                    
-                                    {/* 여섯 번째 열: 일수 */}
-                                    <td className="px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      {(() => {
-                                        // 주차장과 3단 가시설의 순작업일 합계 계산
-                                        if (module && module.items.length > 0 && row.floorLabel) {
-                                          let sumDirectDays = 0;
-                                          const specialKey = row.floorLabel;
-                                          const specialQuantities = plan?.specialRowQuantities?.[specialKey] || {};
-                                          
-                                          // floorLabel에서 지하층 정보 추출 (예: "B1 주차장" -> "B1")
-                                          const floorMatch = row.floorLabel.match(/^(B\d+)/);
-                                          const targetFloorLabel = floorMatch ? floorMatch[1] : row.floorLabel;
-                                          
-                                          // 해당 층의 항목만 필터링
-                                          const floorItems = module.items.filter(item => {
-                                            return item.floorLabel === targetFloorLabel;
-                                          });
-                                          
-                                          floorItems.forEach(item => {
-                                            // 오버라이드된 순작업일 확인
-                                            const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
-                                            const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
-                                            
-                                            if (overriddenDays !== undefined) {
-                                              sumDirectDays += overriddenDays;
-                                              return;
-                                            }
-                                            
-                                            let directWorkDays = 0;
-                                            let quantity = 0;
-                                            
-                                            // specialRowQuantities에서 수량 가져오기
-                                            if (item.quantityReference) {
-                                              const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                              if (refMatch) {
-                                                const [, col] = refMatch;
-                                                const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                                
-                                                // specialRowQuantities에서 해당 필드의 수량 가져오기
-                                                if (col === 'B') {
-                                                  quantity = (specialQuantities.gangForm || 0) * ratio;
-                                                } else if (col === 'C') {
-                                                  quantity = (specialQuantities.alForm || 0) * ratio;
-                                                } else if (col === 'D') {
-                                                  quantity = (specialQuantities.formwork || 0) * ratio;
-                                                } else if (col === 'F') {
-                                                  quantity = (specialQuantities.rebar || 0) * ratio;
-                                                } else if (col === 'G') {
-                                                  quantity = (specialQuantities.concrete || 0) * ratio;
-                                                }
-                                              }
-                                            }
-                                            
-                                            if (item.directWorkDays !== undefined) {
-                                              directWorkDays = item.directWorkDays;
-                                              sumDirectDays += directWorkDays;
-                                            } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
-                                              if (quantity > 0 && item.dailyProductivity > 0) {
-                                                const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase);
-                                                const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-                                                if (dailyInputWorkers > 0) {
-                                                  directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                  sumDirectDays += directWorkDays;
-                                                }
-                                              }
-                                            } else if (item.quantityReference && item.dailyProductivity > 0) {
-                                              if (quantity > 0) {
-                                                const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-                                                const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-                                                directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-                                                sumDirectDays += directWorkDays;
-                                              }
-                                            }
-                                          });
-                                          
+
+                                    {/* 순작업일수 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
+                                    {!row.isSecondHighCeiling && (
+                                      <td
+                                        className={`px-1 py-1 text-center border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}
+                                        style={{ height: '24px' }}
+                                        {...(row.isFirstHighCeiling ? { rowSpan: 2 } : {})}
+                                      >
+                                        {(() => {
+                                          if (!isRowActive) {
+                                            return (
+                                              <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600">
+                                                -
+                                              </div>
+                                            );
+                                          }
+                                          // 6.5m이상 B1 행: B1+B2 합산 물량으로 일수 계산
+                                          if (row.isFirstHighCeiling) {
+                                            return (
+                                              <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
+                                                {calculateCombinedHighCeilingDays()}
+                                              </div>
+                                            );
+                                          }
+                                          // 그 외 특수 행 (주차장 등)
                                           return (
                                             <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
-                                              {Math.floor(sumDirectDays)}
+                                              {calculateNormalSpecialRowDays()}
                                             </div>
                                           );
-                                        }
-                                        
-                                        return (
-                                          <div className="w-full px-2 py-1 text-xs text-center border border-zinc-300 dark:border-zinc-700 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white">
-                                            0
-                                          </div>
-                                        );
-                                      })()}
-                                    </td>
-                                    
-                                    {/* 일곱 번째 열: 셀렉트박스 */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      <select
-                                        value={processType}
-                                        onChange={(e) => {
-                                          handleProcessTypeChange(building.id, row.category, e.target.value as ProcessType, row.floorLabel);
-                                        }}
-                                        className="w-full px-1 py-0.5 text-xs border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                        })()}
+                                      </td>
+                                    )}
+
+                                    {/* 공정타입 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
+                                    {!row.isSecondHighCeiling && (
+                                      <td
+                                        className={`px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}
+                                        style={{ height: '24px' }}
+                                        {...(row.isFirstHighCeiling ? { rowSpan: 2 } : {})}
                                       >
-                                        {(PROCESS_TYPE_OPTIONS[row.category] || []).map(option => (
-                                          <option key={option} value={option}>
-                                            {option}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </td>
-                                    
-                                    {/* 여덟 번째 열: 세부공정 버튼 */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      {module && module.items.length > 0 && (
-                                        <button
-                                          onClick={() => {
-                                            const expanded = expandedModules.get(building.id) || new Set<string>();
-                                            const newExpanded = new Set<string>();
-                                            // 다른 행의 확장 상태를 모두 제거하고 현재 행만 확장
-                                            if (!expanded.has(expandKey)) {
-                                              newExpanded.add(expandKey);
-                                            }
-                                            // 이미 확장된 경우 닫기 (newExpanded는 빈 Set이므로 아무것도 표시되지 않음)
-                                            setExpandedModules(new Map(expandedModules.set(building.id, newExpanded)));
+                                        <select
+                                          value={processType}
+                                          onChange={(e) => {
+                                            handleProcessTypeChange(building.id, row.category, e.target.value as ProcessType, row.floorLabel);
                                           }}
-                                          className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded mx-auto block"
-                                          title="세부공정 보기/숨기기"
+                                          disabled={!isRowActive}
+                                          className="w-full px-1 py-0.5 text-xs border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                          {isExpanded ? (
-                                            <ChevronUp className="w-4 h-4" />
-                                          ) : (
-                                            <ChevronDown className="w-4 h-4" />
-                                          )}
-                                        </button>
-                                      )}
-                                    </td>
+                                          {(PROCESS_TYPE_OPTIONS[row.category] || []).map(option => (
+                                            <option key={option} value={option}>
+                                              {option}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                    )}
+
+                                    {/* 세부공정 버튼 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
+                                    {!row.isSecondHighCeiling && (
+                                      <td
+                                        className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle"
+                                        style={{ height: '24px' }}
+                                        {...(row.isFirstHighCeiling ? { rowSpan: 2 } : {})}
+                                      >
+                                        {isRowActive && module && module.items.length > 0 && (
+                                          <button
+                                            onClick={() => {
+                                              const expanded = expandedModules.get(building.id) || new Set<string>();
+                                              const newExpanded = new Set<string>();
+                                              if (!expanded.has(expandKey)) {
+                                                newExpanded.add(expandKey);
+                                              }
+                                              setExpandedModules(new Map(expandedModules.set(building.id, newExpanded)));
+                                            }}
+                                            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded mx-auto block"
+                                            title="세부공정 보기/숨기기"
+                                          >
+                                            {isExpanded ? (
+                                              <ChevronUp className="w-4 h-4" />
+                                            ) : (
+                                              <ChevronDown className="w-4 h-4" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </td>
+                                    )}
                                   </tr>
                                 );
                               }
@@ -1311,9 +1465,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                               // 지하층 공정계획에서는 버림, 기초, 지하층만 처리
                               const effectiveCategory = row.category;
 
-                              // processType 결정 (주동 지하층/지하주차장은 층별, 나머지는 카테고리별)
+                              // processType 결정 (주동 지하층/지하주차장/6.5m이상은 층별, 나머지는 카테고리별)
                               let processType: ProcessType;
-                              if (row.floorLabel && (row.category === '주동 지하층' || row.category === '지하주차장')) {
+                              if (row.floorLabel && (row.category === '주동 지하층' || row.category === '지하주차장' || row.category === '지하층(층고6.5m이상)')) {
                                 processType = getProcessTypeForFloor(plan, row.category, row.floorLabel);
                               } else {
                                 processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category] || '표준공정';
@@ -1555,16 +1709,45 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const storageKey = `contech_process_plan_${building.id}`;
                                 saveToLocalStorageThrottled(storageKey, updatedPlan);
                               };
-                              
+
+                              // 특수 행 필드별 최대 가용물량 계산 (Path B용)
+                              const getMaxAvailableForSpecialRowB = (
+                                field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete'
+                              ): number => {
+                                if (!row.isSpecialRow || !row.floorLabel) return Infinity;
+                                const baseFloor = row.floorLabel.match(/^(B\d+)/)?.[1];
+                                if (!baseFloor) return Infinity;
+
+                                const { tradeField, subField } = SPECIAL_FIELD_TO_TRADE[field];
+                                const baseQty = getQuantityFromFloor(building, baseFloor, tradeField, subField);
+
+                                const currentKey = row.floorLabel;
+                                const otherKeys = [
+                                  `${baseFloor} 주차장`,
+                                  `${baseFloor} 3단 가시설 적용부`,
+                                  `${baseFloor} 6.5m이상`,
+                                ].filter(k => k !== currentKey);
+
+                                let otherSum = 0;
+                                const plan = processPlans.get(building.id);
+                                otherKeys.forEach(k => {
+                                  otherSum += plan?.specialRowQuantities?.[k]?.[field] || 0;
+                                });
+
+                                return Math.max(0, baseQty - otherSum);
+                              };
+
                               // 물량 데이터 가져오기 - 특수 행 수량 차감을 위한 공통 헬퍼
                               const getSpecialRowDeduction = (field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete') => {
                                 if (row.category !== '주동 지하층' || !row.floorLabel || row.isSpecialRow) return 0;
                                 const plan = processPlans.get(building.id);
                                 const parkingKey = `${row.floorLabel} 주차장`;
                                 const facilityKey = `${row.floorLabel} 3단 가시설 적용부`;
+                                const highCeilingKey = `${row.floorLabel} 6.5m이상`;
                                 const parkingQty = plan?.specialRowQuantities?.[parkingKey] || {};
                                 const facilityQty = plan?.specialRowQuantities?.[facilityKey] || {};
-                                return (parkingQty[field] || 0) + (facilityQty[field] || 0);
+                                const highCeilingQty = plan?.specialRowQuantities?.[highCeilingKey] || {};
+                                return (parkingQty[field] || 0) + (facilityQty[field] || 0) + (highCeilingQty[field] || 0);
                               };
 
                               const getGangFormQty = () => {
@@ -1645,21 +1828,24 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const rangeFloorId = undefined;
                                 baseQuantity = getQuantityFromFloor(building, row.floorLabel, 'rebar', 'ton', rangeFloorId);
                                 
-                                // 같은 지하층의 주차장과 3단 가시설 수량 제외
+                                // 같은 지하층의 주차장, 3단 가시설, 6.5m이상 수량 제외
                                 if (row.category === '주동 지하층' && row.floorLabel && !row.isSpecialRow) {
                                   const plan = processPlans.get(building.id);
                                   const parkingKey = `${row.floorLabel} 주차장`;
                                   const facilityKey = `${row.floorLabel} 3단 가시설 적용부`;
+                                  const highCeilingKey = `${row.floorLabel} 6.5m이상`;
                                   const parkingQty = plan?.specialRowQuantities?.[parkingKey] || {};
                                   const facilityQty = plan?.specialRowQuantities?.[facilityKey] || {};
+                                  const highCeilingQty = plan?.specialRowQuantities?.[highCeilingKey] || {};
                                   const parkingRebar = parkingQty.rebar || 0;
                                   const facilityRebar = facilityQty.rebar || 0;
-                                  baseQuantity = Math.max(0, baseQuantity - parkingRebar - facilityRebar);
+                                  const highCeilingRebar = highCeilingQty.rebar || 0;
+                                  baseQuantity = Math.max(0, baseQuantity - parkingRebar - facilityRebar - highCeilingRebar);
                                 }
-                                
+
                                 return baseQuantity;
                               };
-                              
+
                               const getConcreteQuantity = () => {
                                 // 특수 행인 경우 저장된 수량 반환
                                 if (row.isSpecialRow) {
@@ -1687,18 +1873,21 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const rangeFloorId = undefined;
                                 baseQuantity = getQuantityFromFloor(building, row.floorLabel, 'concrete', 'volumeM3', rangeFloorId);
                                 
-                                // 같은 지하층의 주차장과 3단 가시설 수량 제외
+                                // 같은 지하층의 주차장, 3단 가시설, 6.5m이상 수량 제외
                                 if (row.category === '주동 지하층' && row.floorLabel && !row.isSpecialRow) {
                                   const plan = processPlans.get(building.id);
                                   const parkingKey = `${row.floorLabel} 주차장`;
                                   const facilityKey = `${row.floorLabel} 3단 가시설 적용부`;
+                                  const highCeilingKey = `${row.floorLabel} 6.5m이상`;
                                   const parkingQty = plan?.specialRowQuantities?.[parkingKey] || {};
                                   const facilityQty = plan?.specialRowQuantities?.[facilityKey] || {};
+                                  const highCeilingQty = plan?.specialRowQuantities?.[highCeilingKey] || {};
                                   const parkingConcrete = parkingQty.concrete || 0;
                                   const facilityConcrete = facilityQty.concrete || 0;
-                                  baseQuantity = Math.max(0, baseQuantity - parkingConcrete - facilityConcrete);
+                                  const highCeilingConcrete = highCeilingQty.concrete || 0;
+                                  baseQuantity = Math.max(0, baseQuantity - parkingConcrete - facilityConcrete - highCeilingConcrete);
                                 }
-                                
+
                                 return baseQuantity;
                               };
                               
@@ -1750,12 +1939,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('gangForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('gangForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('gangForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="갱폼"
+                                        title={`갱폼 (최대: ${getMaxAvailableForSpecialRowB('gangForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1784,12 +1975,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('alForm', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('alForm');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('alForm', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="알폼"
+                                        title={`알폼 (최대: ${getMaxAvailableForSpecialRowB('alForm').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1818,12 +2011,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('formwork', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('formwork');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('formwork', value);
                                         }}
                                         className="flex justify-center items-center text-center w-11 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
-                                        title="유로폼"
+                                        title={`유로폼 (최대: ${getMaxAvailableForSpecialRowB('formwork').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1865,11 +2060,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('rebar', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('rebar');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('rebar', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`철근 (최대: ${getMaxAvailableForSpecialRowB('rebar').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -1899,11 +2097,14 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           handleSpecialRowQuantityChange('concrete', value);
                                         }}
                                         onBlur={(e) => {
-                                          const value = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const parsed = e.target.value === '' ? null : Math.max(0, parseFloat(e.target.value) || 0);
+                                          const max = getMaxAvailableForSpecialRowB('concrete');
+                                          const value = parsed !== null ? Math.min(parsed, max) : null;
                                           handleSpecialRowQuantityChange('concrete', value);
                                         }}
                                         className="flex justify-center items-center text-center w-12 h-5 text-xs font-normal px-0.5 py-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                                         placeholder="0"
+                                        title={`콘크리트 (최대: ${getMaxAvailableForSpecialRowB('concrete').toFixed(2)})`}
                                         onClick={(e) => e.stopPropagation()}
                                       />
                                     ) : (
@@ -2030,13 +2231,15 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           const plan = processPlans.get(building!.id);
                           const isDetailExpanded = expandedModules.get(building!.id) || new Set<string>();
 
-                          // 확장된 행 찾기
+                          // 확장된 행 찾기 - 6.5m이상은 통합 expandKey 사용
                           const expandedRow = processRows.find((col) => {
-                            const expandKey = col.floorLabel
-                              ? `${col.category}-${col.floorLabel}`
-                              : col.category === '기준층'
-                                ? '기준층-세부공정'
-                                : col.category;
+                            const expandKey = (col.isFirstHighCeiling || col.isSecondHighCeiling)
+                              ? `${col.category}-합산`
+                              : col.floorLabel
+                                ? `${col.category}-${col.floorLabel}`
+                                : col.category === '기준층'
+                                  ? '기준층-세부공정'
+                                  : col.category;
                             return isDetailExpanded.has(expandKey);
                           });
 
@@ -2052,10 +2255,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             );
                           }
 
-                          // 주차장/3단 가시설 특수 행 처리
+                          // 주차장/3단 가시설/6.5m이상 특수 행 처리
                           const isParking = expandedRow?.floorLabel?.includes('주차장');
                           const isFacility = expandedRow?.floorLabel?.includes('3단 가시설 적용부');
-                          const isSpecialRow = isParking || isFacility;
+                          const isHighCeiling = expandedRow?.floorLabel?.includes('6.5m이상');
+                          const isSpecialRow = isParking || isFacility || isHighCeiling;
 
                           let targetFloorLabel = expandedRow?.floorLabel;
                           if (isSpecialRow && expandedRow?.floorLabel) {
@@ -2066,7 +2270,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           }
 
                           // 공정 타입과 모듈 결정
-                          const expandedProcessType = expandedRow?.floorLabel && (expandedRow?.category === '주동 지하층' || expandedRow?.category === '지하주차장')
+                          const expandedProcessType = expandedRow?.floorLabel && (expandedRow?.category === '주동 지하층' || expandedRow?.category === '지하주차장' || expandedRow?.category === '지하층(층고6.5m이상)')
                             ? getProcessTypeForFloor(plan, expandedRow.category, targetFloorLabel || expandedRow.floorLabel)
                             : plan?.processes[expandedRow?.category || '버림']?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || '버림'] || '표준공정';
                           const expandedModule = expandedRow ? (getProcessModule(expandedRow.category, expandedProcessType) || null) : null;
@@ -2079,6 +2283,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             }
                             if (expandedRow.category === '주동 지하층' && expandedRow.floorLabel) {
                               return `주동 지하층 ${expandedRow.floorLabel}`;
+                            }
+                            if (expandedRow.category === '지하층(층고6.5m이상)') {
+                              return '지하층(6.5m이상) B1+B2';
                             }
                             if (expandedRow.category === '지하주차장') {
                               return expandedRow.floorLabel || '지하주차장';
@@ -2100,7 +2307,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 </p>
                               </div>
 
-                              {/* ProcessDetailPanel 본문 */}
+                              {/* ProcessDetailPanel 본문 - 6.5m이상은 B1+B2 합산 specialRowQuantities 전달 */}
                               <ProcessDetailPanel
                                 building={building!}
                                 expandedRow={expandedRow || null}
@@ -2108,7 +2315,22 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 plan={plan}
                                 processRows={processRows}
                                 onDirectWorkDaysChange={(itemKey, value) => handleItemDirectWorkDaysChange(building!.id, itemKey, value)}
-                                specialRowQuantities={plan?.specialRowQuantities}
+                                specialRowQuantities={(() => {
+                                  if (!isHighCeiling || !plan?.specialRowQuantities) return plan?.specialRowQuantities;
+                                  // B1+B2 합산 물량을 B1 키로 통합
+                                  const b1Qty = plan.specialRowQuantities['B1 6.5m이상'] || {};
+                                  const b2Qty = plan.specialRowQuantities['B2 6.5m이상'] || {};
+                                  return {
+                                    ...plan.specialRowQuantities,
+                                    ['B1 6.5m이상']: {
+                                      gangForm: (b1Qty.gangForm || 0) + (b2Qty.gangForm || 0),
+                                      alForm: (b1Qty.alForm || 0) + (b2Qty.alForm || 0),
+                                      formwork: (b1Qty.formwork || 0) + (b2Qty.formwork || 0),
+                                      rebar: (b1Qty.rebar || 0) + (b2Qty.rebar || 0),
+                                      concrete: (b1Qty.concrete || 0) + (b2Qty.concrete || 0),
+                                    },
+                                  };
+                                })()}
                               />
                             </div>
                           );
