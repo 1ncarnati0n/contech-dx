@@ -263,7 +263,15 @@ export function getQuantityByReference(
   // 복합 참조 처리 (예: E14+E16)
   if (reference.includes('+')) {
     const parts = reference.split('+').map(p => p.trim());
-    return parts.reduce((sum, part) => sum + getQuantityByReference(building, part), 0);
+    const result = parts.reduce((sum, part) => {
+      const partValue = getQuantityByReference(building, part);
+      if (isNaN(partValue)) {
+        logger.warn('[getQuantityByReference] NaN in composite reference part', { reference, part });
+        return sum;
+      }
+      return sum + partValue;
+    }, 0);
+    return result;
   }
 
   // Handle combined B1+B2 references (for basement-high-ceiling module)
@@ -303,7 +311,19 @@ export function getQuantityByReference(
   const [, col, row, ratioStr] = match;
   const rowNum = parseInt(row, 10);
   const ratio = ratioStr ? parseFloat(ratioStr) : 1;
-  
+
+  // 행 번호 범위 검증 (유효 범위: 6~28)
+  if (rowNum < 6 || rowNum > 28) {
+    logger.warn('[getQuantityByReference] Row out of range', { reference, rowNum });
+    return 0;
+  }
+
+  // 비율 값 검증
+  if (isNaN(ratio) || ratio < 0) {
+    logger.warn('[getQuantityByReference] Invalid ratio', { reference, ratio });
+    return 0;
+  }
+
   // 열에 따른 필드 결정 (수정: B=갱폼, C=알폼, D=형틀, E=해체/정리, F=철근, G=콘크리트)
   let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
   let subField = '';

@@ -20,7 +20,7 @@ import {
   calculateDailyInputWorkersByEquipment,
   calculateDailyInputWorkersByWorkDays,
 } from '@/lib/utils/process-calculation';
-import { calculateModuleWorkDays } from '@/lib/utils/process-days-calculator'; // 🎯 Stage 2 Task 5: Unified calculation
+import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
 import {
   getCategoryLabel,
   getFloorNumberLabel,
@@ -125,7 +125,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   const floorTradesHash = useMemo(() => {
     return buildings
       .flatMap(b => b.floorTrades || [])
-      .map(ft => `${ft.id}-${ft.tradeGroup}`)
+      .map(ft => `${ft.id}-${ft.tradeGroup}-${JSON.stringify(ft.trades)}`)
       .join('|');
   }, [buildings]);
 
@@ -449,7 +449,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     return total;
   };
 
-  // 지하층 각 층별 일수 계산
+  // 지하층 각 층별 일수 계산 (통합 유틸 사용)
   const calculateBasementFloorDays = (
     building: Building,
     category: ProcessCategory,
@@ -458,45 +458,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   ): number => {
     const module = getProcessModule(category, processType);
     if (!module || !module.items.length) return 0;
-
-    let sumDays = 0;
-    
-    // 해당 층의 항목만 필터링
-    const floorItems = module.items.filter(item => item.floorLabel === floorLabel);
-    
-    floorItems.forEach(item => {
-      let directWorkDays = 0;
-      
-      // directWorkDays가 고정값인 경우
-      if (item.directWorkDays !== undefined) {
-        directWorkDays = item.directWorkDays;
-        sumDays += directWorkDays;
-      } 
-      // 장비기반 계산인 경우
-      else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
-        const quantity = getQuantityByReference(building, item.quantityReference);
-        if (quantity > 0 && item.dailyProductivity > 0) {
-          const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase);
-          const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
-          if (dailyInputWorkers > 0) {
-            directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-            sumDays += directWorkDays;
-          }
-        }
-      }
-      // 계산식이 필요한 경우
-      else if (item.quantityReference && item.dailyProductivity > 0) {
-        const quantity = getQuantityByReference(building, item.quantityReference);
-        if (quantity > 0) {
-          const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
-          const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
-          directWorkDays = calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
-          sumDays += directWorkDays;
-        }
-      }
-    });
-    
-    return Math.floor(sumDays);
+    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
   };
 
   // 지하층 공정계획에서는 옥탑층 일수 계산 함수를 사용하지 않음 (BuildingProcessPlanPage에서 처리)
