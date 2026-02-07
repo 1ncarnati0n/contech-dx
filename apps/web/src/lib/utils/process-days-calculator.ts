@@ -1,6 +1,8 @@
 import type { Building, ProcessCategory } from '@/lib/types';
 import type { ProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from './quantity-reference';
+import { resolveProcessQuantity } from './process-quantity-resolver';
+import { parseLegacyReference } from './quantity-reference-migration';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
@@ -47,6 +49,10 @@ export function calculateModuleWorkDays(
   for (const item of module.items) {
     let directWorkDays = 0;
 
+    // 물량 해석: quantityRef(신규) 우선, 없으면 parseLegacyReference로 변환
+    const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, category);
+    const quantity = ref ? resolveProcessQuantity(building, ref) : 0;
+
     // 1. Fixed work days (highest priority)
     if (item.directWorkDays !== undefined) {
       directWorkDays = item.directWorkDays;
@@ -55,9 +61,8 @@ export function calculateModuleWorkDays(
     else if (
       item.equipmentCalculationBase !== undefined &&
       item.equipmentWorkersPerUnit !== undefined &&
-      item.quantityReference
+      (item.quantityRef || item.quantityReference)
     ) {
-      const quantity = getQuantityByReference(building, item.quantityReference);
       if (quantity > 0 && item.dailyProductivity > 0) {
         const maxPumpCarCount = building.meta?.pumpCarCount || 2;
         const equipmentCount = calculateEquipmentCount(
@@ -79,8 +84,7 @@ export function calculateModuleWorkDays(
       }
     }
     // 3. Quantity-based calculation (standard case)
-    else if (item.quantityReference && item.dailyProductivity > 0) {
-      const quantity = getQuantityByReference(building, item.quantityReference);
+    else if ((item.quantityRef || item.quantityReference) && item.dailyProductivity > 0) {
       if (quantity > 0) {
         const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
         const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
@@ -259,13 +263,19 @@ function filterItemsForFloor(
   return items;
 }
 
-/** 카테고리별 층 물량 해석 */
+/** 카테고리별 층 물량 해석 (통합 resolver 사용) */
 function resolveFloorQuantity(
   building: Building,
   item: ProcessModule['items'][0],
   category: ProcessCategory,
   floorLabel: string
 ): number {
+  // quantityRef(신규)가 있으면 통합 resolver 사용
+  if (item.quantityRef) {
+    return resolveProcessQuantity(building, item.quantityRef, floorLabel);
+  }
+
+  // 레거시 fallback: quantityReference 기반 해석 (기존 로직 유지)
   if (!item.quantityReference) return 0;
 
   // 주동 지하층: quantityReference 그대로 사용

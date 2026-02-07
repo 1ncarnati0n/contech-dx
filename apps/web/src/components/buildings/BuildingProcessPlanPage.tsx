@@ -10,6 +10,7 @@ import { Calendar, ChevronDown, ChevronUp, Building2, Info } from 'lucide-react'
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
+import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
 import { getCellReferenceForRow } from '@/lib/utils/process-cell-reference';
 import {
   calculateTotalWorkers,
@@ -1227,14 +1228,15 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
             const [, col] = refMatch;
             const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
 
+            const tradeMapping = TRADE_FIELD_MAP[col];
             if (expandedRow.category === '주동 지하층' && expandedRow.floorLabel) {
-              quantity = getQuantityFromFloor(building, expandedRow.floorLabel,
-                col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
-                col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3') * ratio;
+              if (tradeMapping) {
+                quantity = getQuantityFromFloor(building, expandedRow.floorLabel, tradeMapping.tradeField, tradeMapping.subField) * ratio;
+              }
             } else if ((expandedRow.category === '옥탑층' || isExpandedNormalFloor) && expandedRow.floorLabel) {
-              const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete' as const;
-              const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
-              quantity = getQuantityFromFloor(building, expandedRow.floorLabel, field, subField) * ratio;
+              if (tradeMapping) {
+                quantity = getQuantityFromFloor(building, expandedRow.floorLabel, tradeMapping.tradeField, tradeMapping.subField) * ratio;
+              }
             } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
               const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
               if (floorMatch) {
@@ -1244,10 +1246,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                 quantity = getQuantityByReference(building, newReference);
               }
             } else if (expandedRow.category === '기준층' && calculationFloorLabel) {
-              const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete' as const;
-              const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
-              const rangeFloorId = expandedRow.floor?.floorLabel?.includes('~') ? expandedRow.floor.id : undefined;
-              quantity = getQuantityFromFloor(building, calculationFloorLabel, field, subField, rangeFloorId) * ratio;
+              if (tradeMapping) {
+                const rangeFloorId = expandedRow.floor?.floorLabel?.includes('~') ? expandedRow.floor.id : undefined;
+                quantity = getQuantityFromFloor(building, calculationFloorLabel, tradeMapping.tradeField, tradeMapping.subField, rangeFloorId) * ratio;
+              }
             } else {
               quantity = getQuantityByReference(building, moduleItem.quantityReference);
             }
@@ -1702,26 +1704,17 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                         if (refMatch && row.floorLabel) {
                                           const [, col] = refMatch;
 
+                                          const colMapping = TRADE_FIELD_MAP[col];
                                           if (row.category === '주동 지하층') {
                                             // 지하층은 floorLabel 그대로 사용 (B1, B2 등)
-                                            quantity = getQuantityFromFloor(building, row.floorLabel,
-                                              col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
-                                              col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3');
+                                            if (colMapping) {
+                                              quantity = getQuantityFromFloor(building, row.floorLabel, colMapping.tradeField, colMapping.subField);
+                                            }
                                           } else if (row.category === '옥탑층') {
                                             // 옥탑층은 물량입력 데이터에서 직접 가져오기
                                             const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                            let field: 'gangForm' | 'alForm' | 'formwork' | 'stripClean' | 'rebar' | 'concrete' | null = null;
-                                            let subField = '';
-                                            switch (col) {
-                                              case 'B': field = 'gangForm'; subField = 'areaM2'; break;
-                                              case 'C': field = 'alForm'; subField = 'areaM2'; break;
-                                              case 'D': field = 'formwork'; subField = 'areaM2'; break;
-                                              case 'E': field = 'stripClean'; subField = 'areaM2'; break;
-                                              case 'F': field = 'rebar'; subField = 'ton'; break;
-                                              case 'G': field = 'concrete'; subField = 'volumeM3'; break;
-                                            }
-                                            if (field && row.floorLabel) {
-                                              quantity = getQuantityFromFloor(building, row.floorLabel, field, subField) * ratio;
+                                            if (colMapping && row.floorLabel) {
+                                              quantity = getQuantityFromFloor(building, row.floorLabel, colMapping.tradeField, colMapping.subField) * ratio;
                                             }
                                           } else if (isNormalFloor && row.floorLabel) {
                                             // 일반층의 경우 1F, 2F 형식이므로 행 번호 조정

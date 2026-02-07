@@ -12,6 +12,7 @@ import { ProcessDetailPanel } from './process-plan/ProcessDetailPanel';
 import { BuildingInfoHeader, ProcessTableHeader } from './process-plan'; // 🎯 Stage 2 Task 5: New components
 import { getProcessModule } from '@/lib/data/process-modules';
 import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
+import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
 import { getCellReferenceForRow } from '@/lib/utils/process-cell-reference';
 import {
   calculateTotalWorkers,
@@ -679,9 +680,10 @@ export function BasementProcessPlanPage({ projectId }: Props) {
               const colMatch = moduleItem.quantityReference.match(/^([A-Z])/);
               if (colMatch) {
                 const col = colMatch[0];
-                quantity = getQuantityFromFloor(building, floorLabel,
-                  col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete',
-                  col === 'F' ? 'ton' : col === 'G' ? 'volumeM3' : 'areaM2');
+                const colMapping = TRADE_FIELD_MAP[col];
+                if (colMapping) {
+                  quantity = getQuantityFromFloor(building, floorLabel, colMapping.tradeField, colMapping.subField);
+                }
               }
             }
 

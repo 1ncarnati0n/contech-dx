@@ -8,6 +8,15 @@
 
 export { TRADE_GROUPS, type TradeGroup, SPECIAL_FLOOR_GROUPS, type SpecialFloorGroup } from './utils/floorIdUtils';
 
+// 공정모듈 물량참조 타입
+export type {
+  TradeFieldKey,
+  TradeSubFieldKey,
+  QuantitySourceType,
+  SemanticQuantityReference,
+} from './types/process-quantity';
+export { TRADE_FIELD_MAP, TRADE_FIELD_TO_COLUMN } from './types/process-quantity';
+
 // ============================================
 // 기본 타입
 // ============================================

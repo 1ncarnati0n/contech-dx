@@ -4,6 +4,7 @@
  */
 
 import type { ProcessCategory, ProcessType } from '@/lib/types';
+import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
 
 /**
  * 세부공종 항목
@@ -12,7 +13,8 @@ export interface ProcessItem {
   id: string;
   workItem: string; // 직영공사 적용 항목 (예: "1.버림틀설치")
   unit: string; // 단위 (㎡, ㎥, TON 등)
-  quantityReference?: string; // 물량 참조 패턴 (예: "D6", "G6", "F7*0.45")
+  quantityReference?: string; // 레거시 물량 참조 (유지, 예: "D6", "G6", "F7*0.45")
+  quantityRef?: SemanticQuantityReference; // 의미론적 물량 참조 (우선 사용)
   dailyProductivity: number; // 인당 1일 작업량
   calculationBasis?: string; // 산정 기준
   equipmentName?: string; // 투입장비명
@@ -61,6 +63,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '버림틀설치',
         unit: '㎡',
         quantityReference: 'D6', // 동,층별물량표!D6 (형틀)
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'category', tradeGroup: '버림' },
         dailyProductivity: 10,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -72,6 +75,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '버림타설',
         unit: '㎥',
         quantityReference: 'G6', // 동,층별물량표!G6 (콘크리트)
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'category', tradeGroup: '버림' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*4명 /버림부분',
         equipmentName: '콘크리트 펌프차',
@@ -108,6 +112,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '기초철근조립',
         unit: 'ton',
         quantityReference: 'F7', // 동,층별물량표!F7 (철근)
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 1, sourceType: 'category', tradeGroup: '기초' },
         dailyProductivity: 1.1,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -120,6 +125,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '끊어치기 작업',
         unit: '㎡',
         quantityReference: 'D7', // 동,층별물량표!D7 (형틀)
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'category', tradeGroup: '기초' },
         dailyProductivity: 10,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -132,6 +138,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '기초타설',
         unit: '㎥',
         quantityReference: 'G7', // 동,층별물량표!G7 (콘크리트)
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'category', tradeGroup: '기초' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*5명 /기초부분',
         equipmentName: '콘크리트 펌프차',
@@ -168,6 +175,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '갱폼 설치',
         unit: '㎡',
         quantityReference: 'B11*0.45', // 동,층별물량표!B11*0.45 (갱폼, 1층)
+        quantityRef: { tradeField: 'gangForm', subField: 'areaM2', ratio: 0.45, sourceType: 'floor' },
         dailyProductivity: 30,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -180,6 +188,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F11*0.5', // 동,층별물량표!F11*0.5
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -192,6 +201,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '알폼 조립',
         unit: '㎡',
         quantityReference: 'C11*0.55', // 동,층별물량표!C11*0.55 (알폼, 1층)
+        quantityRef: { tradeField: 'alForm', subField: 'areaM2', ratio: 0.55, sourceType: 'floor' },
         dailyProductivity: 30,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -204,6 +214,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F11*0.5', // 동,층별물량표!F11*0.5
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -216,6 +227,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G11', // 동,층별물량표!G11 (콘크리트, 1층)
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*6명 /셋팅층',
         equipmentName: '콘크리트 펌프차',
@@ -252,6 +264,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '갱폼 설치',
         unit: '㎡',
         quantityReference: 'B14*0.45',
+        quantityRef: { tradeField: 'gangForm', subField: 'areaM2', ratio: 0.45, sourceType: 'floor' },
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -264,6 +277,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F14*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -276,6 +290,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '알폼 조립',
         unit: '㎡',
         quantityReference: 'C14*0.55',
+        quantityRef: { tradeField: 'alForm', subField: 'areaM2', ratio: 0.55, sourceType: 'floor' },
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -288,6 +303,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F14*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -300,6 +316,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G14',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*6명 /기준층',
         equipmentName: '콘크리트 펌프차',
@@ -335,6 +352,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F26*0.5', // 동,층별물량표!F26*0.5 (옥탑1층 철근)
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -347,6 +365,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '유로폼 설치',
         unit: '㎡',
         quantityReference: 'D26', // 동,층별물량표!D26 (PH1층 형틀)
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -359,6 +378,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F26*0.5', // 동,층별물량표!F26*0.5
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.6,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -371,6 +391,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G26', // 동,층별물량표!G26 (PH1층 콘크리트)
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*4명 /최상층',
         equipmentName: '콘크리트 펌프차',
@@ -386,6 +407,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D26',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 50,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -423,6 +445,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F8*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -436,6 +459,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '지하2층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D8*0.95',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.95, sourceType: 'floor' },
         dailyProductivity: 11,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -449,6 +473,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F8*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -462,6 +487,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '마감작업',
         unit: '㎡',
         quantityReference: 'D8*0.05',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.05, sourceType: 'floor' },
         dailyProductivity: 11,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -475,6 +501,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G8',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*5명',
         equipmentName: '콘크리트 펌프차',
@@ -490,6 +517,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D8',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 50,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -514,6 +542,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -527,6 +556,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '지하1층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D9*0.95',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.95, sourceType: 'floor' },
         dailyProductivity: 9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -540,6 +570,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -553,6 +584,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '마감작업',
         unit: '㎡',
         quantityReference: 'D9*0.05',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.05, sourceType: 'floor' },
         dailyProductivity: 10,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -566,6 +598,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G9',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*5명',
         equipmentName: '콘크리트 펌프차',
@@ -581,6 +614,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D9',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 50,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -617,6 +651,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: 'ton',
         dailyProductivity: 0.8,
         quantityReference: 'F_B1B2_COMBINED', // B1+B2 합산 벽 철근량
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 5,
@@ -632,6 +667,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         dailyProductivity: 20.0,
         directWorkDays: 6,
         quantityReference: 'C_B1B2_COMBINED', // 특수 계산 - 바닥 면적 기반
+        quantityRef: { tradeField: 'alForm', subField: 'areaM2', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         calculationBasis: '일수고정',
         equipmentCount: 1,
         indirectDays: 0,
@@ -643,6 +679,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: '㎡',
         dailyProductivity: 11.0,
         quantityReference: 'D_B1B2_COMBINED', // B1+B2 합산 형틀 면적
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 17,
@@ -656,6 +693,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: 'ton',
         dailyProductivity: 0.8,
         quantityReference: 'F_B1B2_COMBINED', // B1+B2 합산 슬라브 철근량
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 5,
@@ -669,6 +707,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: '㎡',
         dailyProductivity: 11,
         quantityReference: 'D_B1B2_COMBINED', // B1+B2 합산 마감 면적
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 2,
@@ -687,6 +726,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         equipmentWorkersPerUnit: 5,
         equipmentCount: 1,
         quantityReference: 'G_B1B2_COMBINED',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         indirectDays: 3,
         indirectWorkItem: '양생',
         // floorLabel 없음
@@ -697,6 +737,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         unit: '㎡',
         dailyProductivity: 50.0,
         quantityReference: 'D_B1B2_COMBINED', // B1+B2 합산 거푸집 면적
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'combined', combineFloors: ['B1', 'B2'] },
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 16,
@@ -731,6 +772,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F8*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -744,6 +786,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '지하2층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D8*0.95',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.95, sourceType: 'floor' },
         dailyProductivity: 11,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -757,6 +800,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F8*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -770,6 +814,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '마감작업',
         unit: '㎡',
         quantityReference: 'D8*0.05',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.05, sourceType: 'floor' },
         dailyProductivity: 11,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -783,6 +828,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G8',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*5명 /지하층부분',
         equipmentName: '콘크리트 펌프차',
@@ -798,6 +844,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D8',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 50,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -823,6 +870,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.3',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.3, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -836,6 +884,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '지하1층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D9*0.65',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.65, sourceType: 'floor' },
         dailyProductivity: 9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -849,6 +898,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.3',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.3, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -862,6 +912,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '마감작업',
         unit: '㎡',
         quantityReference: 'D9*0.05',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.05, sourceType: 'floor' },
         dailyProductivity: 10,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -875,6 +926,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G9*0.6',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 0.6, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*5명 /지하층부분',
         equipmentName: '콘크리트 펌프차',
@@ -892,6 +944,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.2',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.2, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -905,6 +958,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '피트층 거푸집 설치',
         unit: '㎡',
         quantityReference: 'D9*0.3',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 0.3, sourceType: 'floor' },
         dailyProductivity: 10,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -918,6 +972,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F9*0.2',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.2, sourceType: 'floor' },
         dailyProductivity: 0.7,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -931,6 +986,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '피트층 타설',
         unit: '㎥',
         quantityReference: 'G9*0.4',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 0.4, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*5명 /지하층부분',
         equipmentName: '콘크리트 펌프차',
@@ -946,6 +1002,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '거푸집 해체/정리',
         unit: '㎡',
         quantityReference: 'D9',
+        quantityRef: { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 50,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -1056,6 +1113,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '갱폼 설치',
         unit: '㎡',
         quantityReference: 'B14*0.45',
+        quantityRef: { tradeField: 'gangForm', subField: 'areaM2', ratio: 0.45, sourceType: 'floor' },
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -1068,6 +1126,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '벽 철근조립',
         unit: 'ton',
         quantityReference: 'F14*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.8,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -1080,6 +1139,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '알폼 조립',
         unit: '㎡',
         quantityReference: 'C14*0.55',
+        quantityRef: { tradeField: 'alForm', subField: 'areaM2', ratio: 0.55, sourceType: 'floor' },
         dailyProductivity: 60,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -1092,6 +1152,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '보슬라브 철근조립',
         unit: 'ton',
         quantityReference: 'F14*0.5',
+        quantityRef: { tradeField: 'rebar', subField: 'ton', ratio: 0.5, sourceType: 'floor' },
         dailyProductivity: 0.9,
         calculationBasis: '일수고정',
         equipmentCount: 1,
@@ -1104,6 +1165,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         workItem: '타설',
         unit: '㎥',
         quantityReference: 'G14',
+        quantityRef: { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' },
         dailyProductivity: 130,
         calculationBasis: '장비대수*6명 /최상층',
         equipmentName: '콘크리트 펌프차',
