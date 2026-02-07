@@ -21,12 +21,14 @@ import { getQuantityValue } from './tradeDataHelpers';
  * @param building - 동 정보 (floors, floorTrades 포함)
  * @param ref - 의미론적 물량 참조
  * @param floorLabel - 층 라벨 (sourceType='floor'일 때 필수)
+ * @param rangeFloorId - 범위 형식 기준층의 floor.id (예: "2~14F 기준층"에서 개별 층 조회 시)
  * @returns 해석된 물량 (ratio 적용 후)
  */
 export function resolveProcessQuantity(
   building: Building,
   ref: SemanticQuantityReference,
-  floorLabel?: string
+  floorLabel?: string,
+  rangeFloorId?: string
 ): number {
   let baseQuantity = 0;
 
@@ -36,7 +38,7 @@ export function resolveProcessQuantity(
       break;
 
     case 'floor':
-      baseQuantity = resolveByFloor(building, ref, floorLabel);
+      baseQuantity = resolveByFloor(building, ref, floorLabel, rangeFloorId);
       break;
 
     case 'combined':
@@ -77,7 +79,8 @@ function resolveByCategory(
 function resolveByFloor(
   building: Building,
   ref: SemanticQuantityReference,
-  floorLabel?: string
+  floorLabel?: string,
+  rangeFloorId?: string
 ): number {
   if (!floorLabel) return 0;
 
@@ -85,7 +88,8 @@ function resolveByFloor(
     building,
     floorLabel,
     ref.tradeField,
-    ref.subField
+    ref.subField,
+    rangeFloorId
   );
 }
 

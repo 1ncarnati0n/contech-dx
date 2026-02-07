@@ -14,7 +14,7 @@ export interface FormulaStep {
   variables?: Array<{
     name: string;
     value: number | string;
-    source?: string; // 데이터 출처 (예: "물량입력표 D6")
+    source?: string; // 데이터 출처 (예: "버림 (형틀)", "3F (철근)")
   }>;
   result?: {
     value: number | string;

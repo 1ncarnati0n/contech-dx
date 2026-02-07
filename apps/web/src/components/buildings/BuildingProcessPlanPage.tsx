@@ -9,8 +9,9 @@ import { toast } from 'sonner';
 import { Calendar, ChevronDown, ChevronUp, Building2, Info } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
-import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
-import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
+import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
+import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
+
 import { getCellReferenceForRow } from '@/lib/utils/process-cell-reference';
 import {
   calculateTotalWorkers,
@@ -33,7 +34,7 @@ interface Props {
 }
 
 // 공정 구분 목록 (지상층만 - 지하층, 기초, 버림은 별도 탭에서 관리)
-const PROCESS_CATEGORIES: ProcessCategory[] = ['셋팅층', '기준층', '옥탑층'];
+const PROCESS_CATEGORIES: ProcessCategory[] = ['일반층', '셋팅층', '기준층', '옥탑층'];
 
 // 공정 타입 옵션 (구분별로 다름)
 const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
@@ -235,13 +236,13 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     return map;
   }, [buildings]);
 
-  // 셋팅층 및 일반층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반
+  // 셋팅층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반
   const getSettingFloors = useMemo(() => {
     const map = new Map<string, Floor[]>();
     buildings.forEach(building => {
-      // 동기본정보 페이지의 층설정 데이터(building.floors)에서 셋팅층과 일반층 추출
+      // 동기본정보 페이지의 층설정 데이터(building.floors)에서 셋팅층만 추출
       const settingFloors = building.floors
-        .filter(f => f.floorClass === '셋팅층' || f.floorClass === '일반층')
+        .filter(f => f.floorClass === '셋팅층')
         .map(floor => {
           // 코어 정보 제거 (예: "코어1-1F" -> "1F")
           let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
@@ -252,6 +253,27 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         })
         .sort((a, b) => a.floorNumber - b.floorNumber); // 1층, 2층 순서
       map.set(building.id, settingFloors);
+    });
+    return map;
+  }, [buildings]);
+
+  // 일반층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반
+  const getNormalFloors = useMemo(() => {
+    const map = new Map<string, Floor[]>();
+    buildings.forEach(building => {
+      // 동기본정보 페이지의 층설정 데이터(building.floors)에서 일반층만 추출
+      const normalFloors = building.floors
+        .filter(f => f.floorClass === '일반층')
+        .map(floor => {
+          // 코어 정보 제거 (예: "코어1-1F" -> "1F")
+          let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+          return {
+            ...floor,
+            floorLabel: cleanLabel,
+          };
+        })
+        .sort((a, b) => a.floorNumber - b.floorNumber);
+      map.set(building.id, normalFloors);
     });
     return map;
   }, [buildings]);
@@ -481,8 +503,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     const building = buildings.find(b => b.id === buildingId);
     if (!building) return;
 
-    // 지하층나 옥탑층의 경우 층별로 저장
-    if ((category === '주동 지하층' || category === '옥탑층') && floorLabel) {
+    // 지하층나 옥탑층, 일반층의 경우 층별로 저장
+    if ((category === '주동 지하층' || category === '옥탑층' || category === '일반층') && floorLabel) {
       const updatedPlan = {
         ...plan,
         processes: {
@@ -543,8 +565,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     const categoryProcess = plan.processes[category];
     if (!categoryProcess) return DEFAULT_PROCESS_TYPES[category];
 
-    // 지하층나 옥탑층의 경우 층별 processType 확인
-    if ((category === '주동 지하층' || category === '옥탑층') && categoryProcess.floors) {
+    // 지하층나 옥탑층, 일반층의 경우 층별 processType 확인
+    if ((category === '주동 지하층' || category === '옥탑층' || category === '일반층') && categoryProcess.floors) {
       if (categoryProcess.floors[floorLabel]) {
         return categoryProcess.floors[floorLabel].processType;
       }
@@ -583,6 +605,13 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
           const floorDays = calculateSettingFloorDays(building, category, processType, floor.floorLabel);
           total += floorDays;
         });
+      } else if (category === '일반층' && building) {
+        // 일반층은 각 층별 일수를 합산
+        const normalFloors = getNormalFloors.get(building.id) || [];
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+        normalFloors.forEach(floor => {
+          total += calculateNormalFloorDays(building, category, processType, floor.floorLabel);
+        });
       } else {
         const days = processes[category]?.days;
         if (days !== undefined && days !== null && !isNaN(days)) {
@@ -619,15 +648,18 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         const settingFloors = getSettingFloors.get(building.id) || [];
         const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
         settingFloors.forEach(floor => {
-          const module = getProcessModule(
-            floor.floorClass === '일반층' ? '옥탑층' : category,
-            floor.floorClass === '일반층'
-              ? (processes['옥탑층']?.floors?.[floor.floorLabel]?.processType || processes['옥탑층']?.processType || DEFAULT_PROCESS_TYPES['옥탑층'])
-              : processType
-          );
+          const module = getProcessModule(category, processType);
           if (module) {
-            const effectiveCat = floor.floorClass === '일반층' ? '옥탑층' as ProcessCategory : category;
-            total += calculateModuleIndirectDaysForFloor(module, effectiveCat, floor.floorLabel);
+            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
+          }
+        });
+      } else if (category === '일반층' && building) {
+        const normalFloors = getNormalFloors.get(building.id) || [];
+        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
+        normalFloors.forEach(floor => {
+          const module = getProcessModule(category, processType);
+          if (module) {
+            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
           }
         });
       } else {
@@ -679,6 +711,18 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
   // 셋팅층 각 층별 일수 계산 (통합 유틸 사용)
   const calculateSettingFloorDays = (
+    building: Building,
+    category: ProcessCategory,
+    processType: ProcessType,
+    floorLabel: string
+  ): number => {
+    const module = getProcessModule(category, processType);
+    if (!module || !module.items.length) return 0;
+    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
+  };
+
+  // 일반층 각 층별 일수 계산 (통합 유틸 사용)
+  const calculateNormalFloorDays = (
     building: Building,
     category: ProcessCategory,
     processType: ProcessType,
@@ -947,7 +991,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       // 역순으로 추가
       settingAndNormalFloors.reverse().forEach(({ floor, floorNum }) => {
         rows.push({
-          category: '셋팅층' as ProcessCategory,
+          category: (floor.floorClass === '일반층' ? '일반층' : '셋팅층') as ProcessCategory,
           floorLabel: `${floorNum}F`,
           floor: floor,
           floorClass: floor.floorClass,
@@ -1055,7 +1099,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       // 역순으로 추가
       settingAndNormalFloors.reverse().forEach(({ floor, floorNum }) => {
         rows.push({
-          category: '셋팅층' as ProcessCategory,
+          category: (floor.floorClass === '일반층' ? '일반층' : '셋팅층') as ProcessCategory,
           floorLabel: `${floorNum}F`,
           floor: floor,
           floorClass: floor.floorClass,
@@ -1105,14 +1149,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       return isDetailExpanded.has(expandKey);
     });
 
-    // 일반층인 경우 옥탑층 공정을 사용
-    const isExpandedNormalFloor = expandedRow?.floorClass === '일반층';
-    const expandedEffectiveCategory = isExpandedNormalFloor ? '옥탑층' : (expandedRow?.category || categoryKey);
+    const expandedEffectiveCategory = expandedRow?.category || categoryKey;
 
-    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '주동 지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || isExpandedNormalFloor)
-      ? (isExpandedNormalFloor
-        ? getProcessTypeForFloor(plan, '옥탑층', expandedRow.floorLabel)
-        : getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel))
+    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '주동 지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || expandedRow.category === '일반층')
+      ? getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel)
       : plan?.processes[expandedRow?.category || categoryKey]?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || categoryKey];
     const colModule = getProcessModule(expandedEffectiveCategory, colProcessType);
 
@@ -1132,7 +1172,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         let quantity = 0;
 
         if (moduleItem.quantityReference) {
-          quantity = getQuantityByReference(building, moduleItem.quantityReference);
+          const ref = moduleItem.quantityRef ?? parseLegacyReference(moduleItem.quantityReference, expandedRow.category);
+          if (ref) {
+            quantity = resolveProcessQuantity(building, ref);
+          }
         }
 
         if (moduleItem.directWorkDays !== undefined) {
@@ -1172,7 +1215,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         if (expandedRow.category === 'PH층') {
           return !moduleItem.floorLabel || moduleItem.floorLabel === expandedRow.floorLabel;
         }
-        if (isExpandedNormalFloor) {
+        if (expandedRow.category === '일반층') {
           return moduleItem.floorLabel === expandedRow.floorLabel || !moduleItem.floorLabel;
         }
         if (expandedRow.category === '셋팅층') {
@@ -1223,38 +1266,12 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         let quantity = 0;
 
         if (moduleItem.quantityReference) {
-          const refMatch = moduleItem.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-          if (refMatch && expandedRow.floorLabel) {
-            const [, col] = refMatch;
-            const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-
-            const tradeMapping = TRADE_FIELD_MAP[col];
-            if (expandedRow.category === '주동 지하층' && expandedRow.floorLabel) {
-              if (tradeMapping) {
-                quantity = getQuantityFromFloor(building, expandedRow.floorLabel, tradeMapping.tradeField, tradeMapping.subField) * ratio;
-              }
-            } else if ((expandedRow.category === '옥탑층' || isExpandedNormalFloor) && expandedRow.floorLabel) {
-              if (tradeMapping) {
-                quantity = getQuantityFromFloor(building, expandedRow.floorLabel, tradeMapping.tradeField, tradeMapping.subField) * ratio;
-              }
-            } else if (expandedRow.category === '셋팅층' && expandedRow.floorLabel) {
-              const floorMatch = expandedRow.floorLabel.match(/(\d+)F/);
-              if (floorMatch) {
-                const floorNum = parseInt(floorMatch[1], 10);
-                const targetRowNum = floorNum + 10;
-                const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                quantity = getQuantityByReference(building, newReference);
-              }
-            } else if (expandedRow.category === '기준층' && calculationFloorLabel) {
-              if (tradeMapping) {
-                const rangeFloorId = expandedRow.floor?.floorLabel?.includes('~') ? expandedRow.floor.id : undefined;
-                quantity = getQuantityFromFloor(building, calculationFloorLabel, tradeMapping.tradeField, tradeMapping.subField, rangeFloorId) * ratio;
-              }
-            } else {
-              quantity = getQuantityByReference(building, moduleItem.quantityReference);
-            }
-          } else {
-            quantity = getQuantityByReference(building, moduleItem.quantityReference);
+          const ref = moduleItem.quantityRef ?? parseLegacyReference(moduleItem.quantityReference, expandedRow.category);
+          if (ref) {
+            const effectiveFloorLabel = expandedRow.category === '기준층' ? calculationFloorLabel : expandedRow.floorLabel;
+            const rangeFloorId = expandedRow.category === '기준층' && expandedRow.floor?.floorLabel?.includes('~')
+              ? expandedRow.floor.id : undefined;
+            quantity = resolveProcessQuantity(building, ref, effectiveFloorLabel, rangeFloorId);
           }
         }
 
@@ -1500,20 +1517,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                             <Fragment key={building.id}>
                               {/* 공정 구분 섹션 - 물량입력표와 동일한 순서로 행 표시 */}
                               {processRows.map((row, rowIdx) => {
-                                // 일반층인 경우 옥탑층의 표준공정을 사용
-                                const isNormalFloor = row.floorClass === '일반층';
-                                const effectiveCategory = isNormalFloor ? '옥탑층' : row.category;
-
-                                // processType 결정 (주동 지하층/옥탑층은 층별, 나머지는 카테고리별)
+                                // processType 결정 (주동 지하층/옥탑층/일반층은 층별, 나머지는 카테고리별)
                                 let processType: ProcessType;
-                                if (row.floorLabel && (row.category === '주동 지하층' || row.category === '옥탑층' || isNormalFloor)) {
-                                  processType = isNormalFloor
-                                    ? getProcessTypeForFloor(plan, '옥탑층', row.floorLabel)
-                                    : getProcessTypeForFloor(plan, row.category, row.floorLabel);
+                                if (row.floorLabel && (row.category === '주동 지하층' || row.category === '옥탑층' || row.category === '일반층')) {
+                                  processType = getProcessTypeForFloor(plan, row.category, row.floorLabel);
                                 } else {
                                   processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category];
                                 }
-                                const module = getProcessModule(effectiveCategory, processType);
+                                const module = getProcessModule(row.category, processType);
 
                                 // 일수 계산 - 세부공정의 순작업일 합계
                                 let days = 0;
@@ -1522,7 +1533,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                 if (!module || !module.items || module.items.length === 0) {
                                   // 모듈이 없으면 기존 방식 사용
                                   // fallback에서도 간접일 계산을 위해 모듈을 한번 더 조회
-                                  const fallbackModule = getProcessModule(effectiveCategory, processType);
+                                  const fallbackModule = getProcessModule(row.category, processType);
                                   if (row.category === '버림' || row.category === '기초') {
                                     days = plan?.processes[row.category]?.days || 0;
                                     if (fallbackModule) {
@@ -1534,16 +1545,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '셋팅층' && row.floorLabel) {
-                                    if (isNormalFloor) {
-                                      days = calculatePhFloorDays(building, '옥탑층', processType, row.floorLabel);
-                                      if (fallbackModule) {
-                                        indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, '옥탑층', row.floorLabel);
-                                      }
-                                    } else {
-                                      days = calculateSettingFloorDays(building, row.category, processType, row.floorLabel);
-                                      if (fallbackModule) {
-                                        indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
-                                      }
+                                    days = calculateSettingFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
+                                    }
+                                  } else if (row.category === '일반층' && row.floorLabel) {
+                                    days = calculateNormalFloorDays(building, row.category, processType, row.floorLabel);
+                                    if (fallbackModule) {
+                                      indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '기준층' && row.floorLabel) {
                                     days = calculateStandardFloorDays(building, row.category, processType, row.floorLabel);
@@ -1592,7 +1601,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       let quantity = 0;
 
                                       if (item.quantityReference) {
-                                        quantity = getQuantityByReference(building, item.quantityReference);
+                                        const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, row.category);
+                                        if (ref) {
+                                          quantity = resolveProcessQuantity(building, ref);
+                                        }
                                       }
 
                                       if (item.directWorkDays !== undefined) {
@@ -1621,7 +1633,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                     });
                                   }
                                   // 셋팅층, 일반층, 지하층, PH층, 옥탑층, 기준층 - 각 층별로 해당 층의 항목만 계산
-                                  else if (row.floorLabel && (row.category === '셋팅층' || row.category === '주동 지하층' || row.category === 'PH층' || row.category === '옥탑층' || row.category === '기준층' || row.category === '최상층' || isNormalFloor)) {
+                                  else if (row.floorLabel && (row.category === '셋팅층' || row.category === '일반층' || row.category === '주동 지하층' || row.category === 'PH층' || row.category === '옥탑층' || row.category === '기준층' || row.category === '최상층')) {
                                     // 해당 층의 항목만 필터링
                                     const floorItems = module.items.filter(item => {
                                       // 지하층의 경우 item.floorLabel과 row.floorLabel이 일치해야 함
@@ -1651,8 +1663,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       if (row.category === '최상층') {
                                         return item.floorLabel === row.floorLabel || !item.floorLabel;
                                       }
-                                      // 일반층은 PH층 로직 사용
-                                      if (isNormalFloor) {
+                                      // 일반층
+                                      if (row.category === '일반층') {
                                         return item.floorLabel === row.floorLabel || !item.floorLabel;
                                       }
                                       // 셋팅층의 경우 floorLabel이 "1F", "2F" 형식이므로 항목의 floorLabel과 일치하거나 없으면 포함
@@ -1698,79 +1710,15 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       let directWorkDays = 0;
                                       let quantity = 0;
 
-                                      // 수량 참조를 층별로 조정
                                       if (item.quantityReference) {
-                                        const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-                                        if (refMatch && row.floorLabel) {
-                                          const [, col] = refMatch;
-
-                                          const colMapping = TRADE_FIELD_MAP[col];
-                                          if (row.category === '주동 지하층') {
-                                            // 지하층은 floorLabel 그대로 사용 (B1, B2 등)
-                                            if (colMapping) {
-                                              quantity = getQuantityFromFloor(building, row.floorLabel, colMapping.tradeField, colMapping.subField);
-                                            }
-                                          } else if (row.category === '옥탑층') {
-                                            // 옥탑층은 물량입력 데이터에서 직접 가져오기
-                                            const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-                                            if (colMapping && row.floorLabel) {
-                                              quantity = getQuantityFromFloor(building, row.floorLabel, colMapping.tradeField, colMapping.subField) * ratio;
-                                            }
-                                          } else if (isNormalFloor && row.floorLabel) {
-                                            // 일반층의 경우 1F, 2F 형식이므로 행 번호 조정
-                                            const floorMatch = row.floorLabel.match(/(\d+)F/);
-                                            if (floorMatch) {
-                                              const floorNum = parseInt(floorMatch[1], 10);
-                                              const targetRowNum = floorNum + 10;
-                                              const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                              quantity = getQuantityByReference(building, newReference);
-                                            } else {
-                                              quantity = getQuantityByReference(building, item.quantityReference);
-                                            }
-                                          } else if (row.category === '셋팅층' && row.floorLabel) {
-                                            // 셋팅층은 행 번호 조정 (1층 = 행 11, 2층 = 행 12, ...)
-                                            const floorMatch = row.floorLabel.match(/(\d+)F/);
-                                            if (floorMatch) {
-                                              const floorNum = parseInt(floorMatch[1], 10);
-                                              const targetRowNum = floorNum + 10;
-                                              const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                              quantity = getQuantityByReference(building, newReference);
-                                            } else {
-                                              quantity = getQuantityByReference(building, item.quantityReference);
-                                            }
-                                          } else if (row.category === '최상층') {
-                                            // 최상층은 자신의 층 수량 직접 사용 (기준층처럼 공유하지 않음)
-                                            const floorMatch = row.floorLabel.match(/(\d+)F/);
-                                            if (floorMatch) {
-                                              const floorNum = parseInt(floorMatch[1], 10);
-                                              const targetRowNum = floorNum + 10;
-                                              const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                              quantity = getQuantityByReference(building, newReference);
-                                            } else {
-                                              quantity = getQuantityByReference(building, item.quantityReference);
-                                            }
-                                          } else if (row.category === '기준층') {
-                                            // 기준층은 첫 번째 기준층의 수량을 사용하여 합계 계산 (모든 기준층 행에 공통 적용)
-                                            const firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
-                                            const calculationFloorLabel = firstStandardFloor?.floorLabel || row.floorLabel;
-                                            if (calculationFloorLabel) {
-                                              const floorMatch = calculationFloorLabel.match(/(\d+)F/);
-                                              if (floorMatch) {
-                                                const floorNum = parseInt(floorMatch[1], 10);
-                                                const targetRowNum = floorNum + 10;
-                                                const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-                                                quantity = getQuantityByReference(building, newReference);
-                                              } else {
-                                                quantity = getQuantityByReference(building, item.quantityReference);
-                                              }
-                                            } else {
-                                              quantity = getQuantityByReference(building, item.quantityReference);
-                                            }
-                                          } else {
-                                            quantity = getQuantityByReference(building, item.quantityReference);
-                                          }
-                                        } else {
-                                          quantity = getQuantityByReference(building, item.quantityReference);
+                                        const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, row.category);
+                                        if (ref) {
+                                          const effectiveFloorLabel = row.category === '기준층'
+                                            ? (processRows.find(r => r.category === '기준층' && r.floorLabel)?.floorLabel || row.floorLabel)
+                                            : row.floorLabel;
+                                          const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
+                                            ? row.floor.id : undefined;
+                                          quantity = resolveProcessQuantity(building, ref, effectiveFloorLabel, rangeFloorId);
                                         }
                                       }
 
@@ -1877,86 +1825,27 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   return { quantityFloorLabel, rangeFloorId };
                                 };
 
-                                const getGangFormQty = () => {
+                                const resolveQty = (tradeField: string, subField: string) => {
                                   if (row.category === '버림' || row.category === '기초') {
-                                    return building.floorTrades.filter(ft => ft.tradeGroup === row.category)
-                                      .reduce((sum, t) => sum + (t.trades.gangForm?.areaM2 || 0), 0);
+                                    return resolveProcessQuantity(building, {
+                                      tradeField: tradeField as any, subField: subField as any, ratio: 1,
+                                      sourceType: 'category', tradeGroup: row.category,
+                                    });
                                   }
                                   const p = resolveParams();
-                                  return p ? getQuantityFromFloor(building, p.quantityFloorLabel, 'gangForm', 'areaM2', p.rangeFloorId) : 0;
+                                  if (!p) return 0;
+                                  return resolveProcessQuantity(building, {
+                                    tradeField: tradeField as any, subField: subField as any, ratio: 1, sourceType: 'floor',
+                                  }, p.quantityFloorLabel, p.rangeFloorId);
                                 };
 
-                                const getAlFormQty = () => {
-                                  if (row.category === '버림' || row.category === '기초') {
-                                    return building.floorTrades.filter(ft => ft.tradeGroup === row.category)
-                                      .reduce((sum, t) => sum + (t.trades.alForm?.areaM2 || 0), 0);
-                                  }
-                                  const p = resolveParams();
-                                  return p ? getQuantityFromFloor(building, p.quantityFloorLabel, 'alForm', 'areaM2', p.rangeFloorId) : 0;
-                                };
-
-                                const getEuroFormQty = () => {
-                                  if (row.category === '버림' || row.category === '기초') {
-                                    return building.floorTrades.filter(ft => ft.tradeGroup === row.category)
-                                      .reduce((sum, t) => sum + (t.trades.euroForm?.areaM2 || 0), 0);
-                                  }
-                                  const p = resolveParams();
-                                  return p ? getQuantityFromFloor(building, p.quantityFloorLabel, 'euroForm', 'areaM2', p.rangeFloorId) : 0;
-                                };
-
+                                const getGangFormQty = () => resolveQty('gangForm', 'areaM2');
+                                const getAlFormQty = () => resolveQty('alForm', 'areaM2');
+                                const getEuroFormQty = () => resolveQty('euroForm', 'areaM2');
                                 const getStripCleanQty = () => getEuroFormQty() * 2;
-
-                                const getFormworkQuantity = () => {
-                                  return getGangFormQty() + getAlFormQty() + getEuroFormQty();
-                                };
-
-                                const getRebarQuantity = () => {
-                                  // 버림, 기초는 tradeGroup으로 가져오기
-                                  if (row.category === '버림' || row.category === '기초') {
-                                    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-                                    let total = 0;
-                                    trades.forEach(trade => {
-                                      total += trade.trades.rebar?.ton || 0;
-                                    });
-                                    return total;
-                                  }
-                                  if (!row.floorLabel) return 0;
-                                  // 기준층 범위 형식인 경우 row.floor.id를 rangeFloorId로 전달하여 정확한 범위 찾기
-                                  const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
-                                    ? row.floor.id
-                                    : undefined;
-
-                                  // 옥탑층인 경우 원본 floorLabel 사용 (PH1, PH2, PH3 형식)
-                                  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
-                                    ? row.floor.floorLabel.replace(/코어\d+-/, '') // 코어 정보 제거
-                                    : row.floorLabel;
-
-                                  return getQuantityFromFloor(building, quantityFloorLabel, 'rebar', 'ton', rangeFloorId);
-                                };
-
-                                const getConcreteQuantity = () => {
-                                  // 버림, 기초는 tradeGroup으로 가져오기
-                                  if (row.category === '버림' || row.category === '기초') {
-                                    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-                                    let total = 0;
-                                    trades.forEach(trade => {
-                                      total += trade.trades.concrete?.volumeM3 || 0;
-                                    });
-                                    return total;
-                                  }
-                                  if (!row.floorLabel) return 0;
-                                  // 기준층 범위 형식인 경우 row.floor.id를 rangeFloorId로 전달하여 정확한 범위 찾기
-                                  const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
-                                    ? row.floor.id
-                                    : undefined;
-
-                                  // 옥탑층인 경우 원본 floorLabel 사용 (PH1, PH2, PH3 형식)
-                                  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
-                                    ? row.floor.floorLabel.replace(/코어\d+-/, '') // 코어 정보 제거
-                                    : row.floorLabel;
-
-                                  return getQuantityFromFloor(building, quantityFloorLabel, 'concrete', 'volumeM3', rangeFloorId);
-                                };
+                                const getFormworkQuantity = () => getGangFormQty() + getAlFormQty() + getEuroFormQty();
+                                const getRebarQuantity = () => resolveQty('rebar', 'ton');
+                                const getConcreteQuantity = () => resolveQty('concrete', 'volumeM3');
 
                                 return (
                                   <tr
@@ -2062,12 +1951,12 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                         value={processType}
                                         onChange={(e) => {
                                           // 일반층인 경우 옥탑층 카테고리로 저장
-                                          const targetCategory = isNormalFloor ? '옥탑층' : row.category;
+                                          const targetCategory = row.category;
                                           handleProcessTypeChange(building.id, targetCategory, e.target.value as ProcessType, row.floorLabel);
                                         }}
                                         className="w-full px-1 py-0.5 text-xs border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
-                                        {(PROCESS_TYPE_OPTIONS[effectiveCategory] || []).map(option => (
+                                        {(PROCESS_TYPE_OPTIONS[row.category] || []).map(option => (
                                           <option key={option} value={option}>
                                             {option}
                                           </option>

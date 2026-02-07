@@ -14,7 +14,7 @@
  */
 
 import type { Building, ProcessCategory, Floor } from '@/lib/types';
-import { getQuantityFromFloor } from '@/lib/utils/quantity-reference';
+import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
 
 /**
  * ProcessRow type definition
@@ -103,25 +103,21 @@ function resolveFloorParams(row: ProcessRow): { quantityFloorLabel: string; rang
  * 형틀 합계 물량 계산 (갱폼 + 알폼 + 유로폼)
  */
 export function getFormworkQuantity(row: ProcessRow, building: Building): number {
-  // 버림, 기초는 tradeGroup으로 가져오기
   if (row.category === '버림' || row.category === '기초') {
-    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-    let total = 0;
-    trades.forEach(trade => {
-      const gangForm = trade.trades.gangForm?.areaM2 || 0;
-      const alForm = trade.trades.alForm?.areaM2 || 0;
-      const euroForm = trade.trades.euroForm?.areaM2 || 0;
-      total += gangForm + alForm + euroForm;
-    });
-    return total;
+    const catRef = { subField: 'areaM2' as const, ratio: 1, sourceType: 'category' as const, tradeGroup: row.category };
+    const gangForm = resolveProcessQuantity(building, { ...catRef, tradeField: 'gangForm' });
+    const alForm = resolveProcessQuantity(building, { ...catRef, tradeField: 'alForm' });
+    const euroForm = resolveProcessQuantity(building, { ...catRef, tradeField: 'euroForm' });
+    return gangForm + alForm + euroForm;
   }
 
   const params = resolveFloorParams(row);
   if (!params) return 0;
 
-  const gangForm = getQuantityFromFloor(building, params.quantityFloorLabel, 'gangForm', 'areaM2', params.rangeFloorId);
-  const alForm = getQuantityFromFloor(building, params.quantityFloorLabel, 'alForm', 'areaM2', params.rangeFloorId);
-  const euroForm = getQuantityFromFloor(building, params.quantityFloorLabel, 'euroForm', 'areaM2', params.rangeFloorId);
+  const floorRef = { subField: 'areaM2' as const, ratio: 1, sourceType: 'floor' as const };
+  const gangForm = resolveProcessQuantity(building, { ...floorRef, tradeField: 'gangForm' }, params.quantityFloorLabel, params.rangeFloorId);
+  const alForm = resolveProcessQuantity(building, { ...floorRef, tradeField: 'alForm' }, params.quantityFloorLabel, params.rangeFloorId);
+  const euroForm = resolveProcessQuantity(building, { ...floorRef, tradeField: 'euroForm' }, params.quantityFloorLabel, params.rangeFloorId);
 
   return gangForm + alForm + euroForm;
 }
@@ -131,18 +127,18 @@ export function getFormworkQuantity(row: ProcessRow, building: Building): number
  */
 export function getGangFormQuantity(row: ProcessRow, building: Building): number {
   if (row.category === '버림' || row.category === '기초') {
-    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-    let total = 0;
-    trades.forEach(trade => {
-      total += trade.trades.gangForm?.areaM2 || 0;
+    return resolveProcessQuantity(building, {
+      tradeField: 'gangForm', subField: 'areaM2', ratio: 1,
+      sourceType: 'category', tradeGroup: row.category,
     });
-    return total;
   }
 
   const params = resolveFloorParams(row);
   if (!params) return 0;
 
-  return getQuantityFromFloor(building, params.quantityFloorLabel, 'gangForm', 'areaM2', params.rangeFloorId);
+  return resolveProcessQuantity(building, {
+    tradeField: 'gangForm', subField: 'areaM2', ratio: 1, sourceType: 'floor',
+  }, params.quantityFloorLabel, params.rangeFloorId);
 }
 
 /**
@@ -150,18 +146,18 @@ export function getGangFormQuantity(row: ProcessRow, building: Building): number
  */
 export function getAlFormQuantity(row: ProcessRow, building: Building): number {
   if (row.category === '버림' || row.category === '기초') {
-    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-    let total = 0;
-    trades.forEach(trade => {
-      total += trade.trades.alForm?.areaM2 || 0;
+    return resolveProcessQuantity(building, {
+      tradeField: 'alForm', subField: 'areaM2', ratio: 1,
+      sourceType: 'category', tradeGroup: row.category,
     });
-    return total;
   }
 
   const params = resolveFloorParams(row);
   if (!params) return 0;
 
-  return getQuantityFromFloor(building, params.quantityFloorLabel, 'alForm', 'areaM2', params.rangeFloorId);
+  return resolveProcessQuantity(building, {
+    tradeField: 'alForm', subField: 'areaM2', ratio: 1, sourceType: 'floor',
+  }, params.quantityFloorLabel, params.rangeFloorId);
 }
 
 /**
@@ -169,18 +165,18 @@ export function getAlFormQuantity(row: ProcessRow, building: Building): number {
  */
 export function getEuroFormQuantity(row: ProcessRow, building: Building): number {
   if (row.category === '버림' || row.category === '기초') {
-    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-    let total = 0;
-    trades.forEach(trade => {
-      total += trade.trades.euroForm?.areaM2 || 0;
+    return resolveProcessQuantity(building, {
+      tradeField: 'euroForm', subField: 'areaM2', ratio: 1,
+      sourceType: 'category', tradeGroup: row.category,
     });
-    return total;
   }
 
   const params = resolveFloorParams(row);
   if (!params) return 0;
 
-  return getQuantityFromFloor(building, params.quantityFloorLabel, 'euroForm', 'areaM2', params.rangeFloorId);
+  return resolveProcessQuantity(building, {
+    tradeField: 'euroForm', subField: 'areaM2', ratio: 1, sourceType: 'floor',
+  }, params.quantityFloorLabel, params.rangeFloorId);
 }
 
 /**
@@ -194,38 +190,36 @@ export function getStripCleanQuantity(row: ProcessRow, building: Building): numb
  * 철근 물량 계산
  */
 export function getRebarQuantity(row: ProcessRow, building: Building): number {
-  // 버림, 기초는 tradeGroup으로 가져오기
   if (row.category === '버림' || row.category === '기초') {
-    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-    let total = 0;
-    trades.forEach(trade => {
-      total += trade.trades.rebar?.ton || 0;
+    return resolveProcessQuantity(building, {
+      tradeField: 'rebar', subField: 'ton', ratio: 1,
+      sourceType: 'category', tradeGroup: row.category,
     });
-    return total;
   }
 
   const params = resolveFloorParams(row);
   if (!params) return 0;
 
-  return getQuantityFromFloor(building, params.quantityFloorLabel, 'rebar', 'ton', params.rangeFloorId);
+  return resolveProcessQuantity(building, {
+    tradeField: 'rebar', subField: 'ton', ratio: 1, sourceType: 'floor',
+  }, params.quantityFloorLabel, params.rangeFloorId);
 }
 
 /**
  * 콘크리트 물량 계산
  */
 export function getConcreteQuantity(row: ProcessRow, building: Building): number {
-  // 버림, 기초는 tradeGroup으로 가져오기
   if (row.category === '버림' || row.category === '기초') {
-    const trades = building.floorTrades.filter(ft => ft.tradeGroup === row.category);
-    let total = 0;
-    trades.forEach(trade => {
-      total += trade.trades.concrete?.volumeM3 || 0;
+    return resolveProcessQuantity(building, {
+      tradeField: 'concrete', subField: 'volumeM3', ratio: 1,
+      sourceType: 'category', tradeGroup: row.category,
     });
-    return total;
   }
 
   const params = resolveFloorParams(row);
   if (!params) return 0;
 
-  return getQuantityFromFloor(building, params.quantityFloorLabel, 'concrete', 'volumeM3', params.rangeFloorId);
+  return resolveProcessQuantity(building, {
+    tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor',
+  }, params.quantityFloorLabel, params.rangeFloorId);
 }

@@ -5,6 +5,7 @@ import { Layers, Info, Lock, Calculator, Truck, Settings } from 'lucide-react';
 import { Card, Button, Badge, Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui';
 import { PROCESS_MODULES, type ProcessModule, type ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory } from '@/lib/types';
+import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
 
 interface ProcessModuleSectionProps {
   modules: ProcessModule[];
@@ -84,42 +85,75 @@ function getCalculationSteps(method: CalculationMethod, item: ProcessItem): stri
   }
 }
 
-/**
- * 물량 참조 표시 변환
- */
-function getQuantityReferenceLabel(reference: string): string {
-  return reference.replace('*', '×');
-}
+/** 공종 필드 → 한국어 이름 */
+const TRADE_FIELD_NAMES: Record<string, string> = {
+  gangForm: '갱폼', alForm: '알폼', formwork: '형틀',
+  euroForm: '유로폼', stripClean: '해체/정리', rebar: '철근', concrete: '콘크리트',
+};
+
+/** 서브필드 → 단위 */
+const SUB_FIELD_UNITS: Record<string, string> = {
+  areaM2: '㎡', ton: 'ton', volumeM3: '㎥',
+};
 
 /**
- * 물량 참조 상세 설명
+ * 시맨틱 참조 기반 뱃지/툴팁 생성. 레거시 참조 폴백 포함.
  */
-function getQuantityReferenceDescription(reference: string): string {
-  const match = reference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-  if (!match) return reference;
+function getSemanticReferenceDisplay(
+  quantityRef?: SemanticQuantityReference,
+  legacyRef?: string
+): { badge: string; tooltip: string } {
+  // 1. quantityRef 우선
+  if (quantityRef) {
+    const fieldName = TRADE_FIELD_NAMES[quantityRef.tradeField] || quantityRef.tradeField;
+    const unit = SUB_FIELD_UNITS[quantityRef.subField] || '';
+    const ratioStr = quantityRef.ratio !== 1 ? ` ×${quantityRef.ratio}` : '';
 
-  const [, col, row, ratio] = match;
-  const rowNum = parseInt(row, 10);
+    if (quantityRef.sourceType === 'category' && quantityRef.tradeGroup) {
+      return {
+        badge: `${quantityRef.tradeGroup} ${fieldName}`,
+        tooltip: `공종 참조: ${quantityRef.tradeGroup} ${fieldName}(${unit})${ratioStr}`,
+      };
+    }
+    if (quantityRef.sourceType === 'combined' && quantityRef.combineFloors) {
+      return {
+        badge: `${quantityRef.combineFloors.join('+')} ${fieldName}`,
+        tooltip: `공종 참조: ${quantityRef.combineFloors.join('+')} 합산 ${fieldName}(${unit})${ratioStr}`,
+      };
+    }
+    return {
+      badge: `${fieldName}`,
+      tooltip: `공종 참조: ${fieldName}(${unit})${ratioStr}`,
+    };
+  }
 
-  const columnNames: Record<string, string> = {
-    B: '갱폼', C: '알폼', D: '형틀',
-    E: '해체/정리', F: '철근', G: '콘크리트',
-  };
+  // 2. 레거시 파싱 폴백
+  if (legacyRef) {
+    const match = legacyRef.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
+    if (match) {
+      const [, col, row, ratio] = match;
+      const rowNum = parseInt(row, 10);
+      const colNames: Record<string, string> = { B: '갱폼', C: '알폼', D: '형틀', E: '해체/정리', F: '철근', G: '콘크리트' };
+      let rowName = '';
+      if (rowNum === 6) rowName = '버림';
+      else if (rowNum === 7) rowName = '기초';
+      else if (rowNum === 8) rowName = 'B2';
+      else if (rowNum === 9) rowName = 'B1';
+      else if (rowNum >= 11 && rowNum <= 25) rowName = `${rowNum - 10}F`;
+      else if (rowNum === 26) rowName = 'PH1';
+      else if (rowNum === 27) rowName = 'PH2';
+      else if (rowNum === 28) rowName = 'PH3';
+      const colName = colNames[col] || col;
+      const ratioStr = ratio ? ` ×${ratio}` : '';
+      const prefix = rowName ? `${rowName} ` : '';
+      return {
+        badge: `${prefix}${colName}`,
+        tooltip: `공종 참조: ${prefix}${colName}${ratioStr}`,
+      };
+    }
+  }
 
-  let rowName = '';
-  if (rowNum === 6) rowName = '버림';
-  else if (rowNum === 7) rowName = '기초';
-  else if (rowNum === 8) rowName = 'B2';
-  else if (rowNum === 9) rowName = 'B1';
-  else if (rowNum >= 11 && rowNum <= 25) rowName = `${rowNum - 10}F`;
-  else if (rowNum === 26) rowName = 'PH1';
-  else if (rowNum === 27) rowName = 'PH2';
-  else if (rowNum === 28) rowName = 'PH3';
-
-  const colName = columnNames[col] || col;
-  const ratioStr = ratio ? ` × ${ratio}` : '';
-
-  return `물량입력표 ${col}${row} (${rowName} ${colName})${ratioStr}`;
+  return { badge: legacyRef || '-', tooltip: legacyRef || '-' };
 }
 
 // 탭 ID 타입 확장 (지하층 변형 탭 추가)
@@ -173,19 +207,18 @@ export function ProcessModuleSection({
   /**
    * 물량 참조 뱃지 컴포넌트
    */
-  function QuantityReferenceBadge({ reference }: { reference: string }) {
-    const label = getQuantityReferenceLabel(reference);
-    const description = getQuantityReferenceDescription(reference);
+  function QuantityReferenceBadge({ item }: { item: ProcessItem }) {
+    const { badge, tooltip } = getSemanticReferenceDisplay(item.quantityRef, item.quantityReference);
 
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <Badge variant="secondary" className="text-xs cursor-help">
-            {label} 참조
+            {badge} 참조
           </Badge>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
-          <p className="text-xs">{description}</p>
+          <p className="text-xs">{tooltip}</p>
         </TooltipContent>
       </Tooltip>
     );
@@ -396,8 +429,8 @@ export function ProcessModuleSection({
                           <CalculationMethodBadge method={getCalculationMethod(item)} />
 
                           {/* 물량 참조 뱃지 (있을 경우만) */}
-                          {item.quantityReference && (
-                            <QuantityReferenceBadge reference={item.quantityReference} />
+                          {(item.quantityRef || item.quantityReference) && (
+                            <QuantityReferenceBadge item={item} />
                           )}
 
                           {/* 정보 아이콘 + 툴팁 */}

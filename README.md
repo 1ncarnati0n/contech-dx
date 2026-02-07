@@ -48,6 +48,7 @@ contech-dx/
 ### 공정계획
 - **공정로직**: 계산 공식, 공정 모듈, 사이클 정의
 - **공정계획 수립**: 일수고정/물량기반/장비기반 3가지 계산 방식
+- **물량 해석**: SemanticQuantityReference 기반 통합 물량 해석 시스템
 - **지상층/지하층** 개별 공정 계획
 - **AI 챗봇**: Gemini API 기반 공정계획 질의응답
 
@@ -90,11 +91,12 @@ components/
 
 lib/
 ├── types.ts            # 타입 정의 (Single Source of Truth)
+├── types/              # 도메인 타입 (SemanticQuantityReference 등)
 ├── services/           # 비즈니스 로직 (buildings, projects, gantt 등)
 ├── supabase/           # Supabase 클라이언트 (client/server)
 ├── hooks/              # 커스텀 훅
-├── utils/              # 유틸리티 (logger, formatters 등)
-└── data/               # 정적 데이터 (공정 템플릿)
+├── utils/              # 유틸리티 (물량해석, 공정계산, logger 등)
+└── data/               # 정적 데이터 (공정 모듈, 템플릿)
 ```
 
 ## Environment Variables
