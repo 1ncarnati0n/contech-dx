@@ -233,6 +233,14 @@ export function getQuantityFromFloor(
 
   const tradeData = trade.trades[field];
   if (!tradeData) {
+    // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: euroForm × 2
+    if (field === 'stripClean' && subField === 'areaM2') {
+      const euroFormData = trade.trades['euroForm'];
+      if (euroFormData) {
+        return getQuantityValue(euroFormData, 'areaM2') * 2;
+      }
+    }
+
     logger.debug('[getQuantityFromFloor] Trade field not found', {
       floorLabel,
       field,

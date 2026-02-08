@@ -66,6 +66,12 @@ function resolveByCategory(
     const tradeData = trade.trades[ref.tradeField];
     if (tradeData) {
       total += getQuantityValue(tradeData, ref.subField);
+    } else if (ref.tradeField === 'stripClean' && ref.subField === 'areaM2') {
+      // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: euroForm × 2
+      const euroFormData = trade.trades['euroForm'];
+      if (euroFormData) {
+        total += getQuantityValue(euroFormData, 'areaM2') * 2;
+      }
     }
   }
 

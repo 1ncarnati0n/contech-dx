@@ -29,6 +29,7 @@ function createTestBuilding(overrides?: Partial<Building>): Building {
         tradeGroup: '버림',
         trades: {
           formwork: { areaM2: 100, productivity: 0, workers: 0, cost: 0 },
+          euroForm: { areaM2: 80, productivity: 0, workers: 0, cost: 0 },
           concrete: { volumeM3: 50, equipmentCount: 1, productivityM3: 0, workers: 0, cost: 0 },
         },
       },
@@ -76,13 +77,13 @@ function createTestBuilding(overrides?: Partial<Building>): Building {
 
 describe('resolveProcessQuantity', () => {
   describe('sourceType: category', () => {
-    it('should resolve blinding formwork quantity', () => {
+    it('should resolve blinding euroForm quantity', () => {
       const building = createTestBuilding();
       const ref: SemanticQuantityReference = {
-        tradeField: 'formwork', subField: 'areaM2', ratio: 1,
+        tradeField: 'euroForm', subField: 'areaM2', ratio: 1,
         sourceType: 'category', tradeGroup: '버림',
       };
-      expect(resolveProcessQuantity(building, ref)).toBe(100);
+      expect(resolveProcessQuantity(building, ref)).toBe(80);
     });
 
     it('should resolve foundation rebar with ratio', () => {
