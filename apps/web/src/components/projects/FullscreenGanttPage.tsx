@@ -90,7 +90,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
   // Supabase DataService 생성
   const dataService = useMemo(
-    () => createSupabaseGanttDataService(projectId, { debug: true }),
+    () => createSupabaseGanttDataService(projectId),
     [projectId]
   );
 
@@ -439,6 +439,8 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   // 태스크 순서 변경 핸들러
   const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
     try {
+      let reorderedTasks: ConstructionTask[] | null = null;
+
       setAppState(prev => {
         const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
         if (taskIndex === -1) return prev;
@@ -453,15 +455,18 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
         newTasks.splice(adjustedIndex, 0, task);
 
+        reorderedTasks = newTasks;
         return { ...prev, tasks: newTasks };
       });
 
-      // TODO: Supabase에 순서 정보 저장 (order 컬럼 필요 시)
+      if (reorderedTasks) {
+        await dataService.saveTasks(reorderedTasks);
+      }
     } catch (error) {
       logger.error('Failed to reorder task:', error);
       toast.error('순서 변경 실패');
     }
-  }, [setAppState]);
+  }, [setAppState, dataService]);
 
   // 태스크 이동 핸들러 (그룹 간 이동 지원)
   const handleTaskMove = useCallback(async (

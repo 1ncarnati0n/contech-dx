@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ProcessLogicPreset, CalculationFormula, ProcessCategory } from '@/lib/types';
 import type { ProcessModule } from '@/lib/data/process-modules';
+import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/utils/logger';
 
 const STORAGE_PRESETS_KEY = 'contech-process-presets';
@@ -46,8 +47,16 @@ export function usePresetManager({
   const [presets, setPresets] = useState<ProcessLogicPreset[]>([]);
   const [activePresetId, setActivePresetIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string>('user');
 
   const activePresetStorageKey = `${STORAGE_ACTIVE_PRESET_PREFIX}${projectId}`;
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.email ?? user.id);
+    });
+  }, []);
 
   // 프리셋 ID 생성
   const generatePresetId = useCallback(() => {
@@ -215,10 +224,10 @@ export function usePresetManager({
         modules: currentModules,
         formulas: currentFormulas,
         equipmentBases: currentEquipmentBases,
-        createdBy: 'user', // TODO: 실제 사용자 정보로 교체
+        createdBy: userId,
       });
     },
-    [projectId, currentModules, currentFormulas, currentEquipmentBases, createPreset]
+    [projectId, currentModules, currentFormulas, currentEquipmentBases, createPreset, userId]
   );
 
   return {
