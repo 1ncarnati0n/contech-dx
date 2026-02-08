@@ -180,10 +180,10 @@ export function getEuroFormQuantity(row: ProcessRow, building: Building): number
 }
 
 /**
- * 해체/정리 물량 계산 (유로폼 × 2)
+ * 해체/정리 물량 계산 (형틀합계 × 2)
  */
 export function getStripCleanQuantity(row: ProcessRow, building: Building): number {
-  return getEuroFormQuantity(row, building) * 2;
+  return getFormworkQuantity(row, building) * 2;
 }
 
 /**

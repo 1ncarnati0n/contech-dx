@@ -288,6 +288,18 @@ describe('Type Safety', () => {
         expect(getQuantityByReference(building, 'D6')).toBe(50);
       });
 
+      it('Row 6: should get 버림 euroForm area (U6)', () => {
+        const building = createTestBuilding({
+          floors: [
+            { id: 'floor-disposal', floorLabel: '버림', floorNumber: -1, floorClass: '버림', levelType: '지상' }
+          ],
+          floorTrades: [
+            { id: 'ft-1', floorId: 'floor-disposal', buildingId: 'test', tradeGroup: '버림', trades: { euroForm: { areaM2: 35 } } }
+          ]
+        });
+        expect(getQuantityByReference(building, 'U6')).toBe(35);
+      });
+
       it('Row 7: should get 기초 concrete volume (G7)', () => {
         const building = createTestBuilding({
           floors: [

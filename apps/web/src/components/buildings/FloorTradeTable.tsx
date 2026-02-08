@@ -474,7 +474,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
               {getCellAddress(6, rowIndex, rows)}
             </span>
           )}
-          {fv((trade.euroForm?.areaM2 || 0) * 2)}
+          {fv(((trade.gangForm?.areaM2 || 0) + (trade.alForm?.areaM2 || 0) + (trade.euroForm?.areaM2 || 0)) * 2)}
         </td>
         <TradeInputCell {...cellProps(7, trade.rebar?.ton ?? null, 'rebar.ton')} />
         <TradeInputCell {...cellProps(8, trade.concrete?.volumeM3 ?? null, 'concrete.volumeM3')} />
@@ -488,7 +488,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         <p className="font-medium mb-1">※ 산식 안내</p>
         <ul className="space-y-0.5 ml-3">
           <li>• 형틀 합계 = 갱폼(M²) + 알폼(M²) + 유로폼(M²)</li>
-          <li>• 해체/정리 = 유로폼(M²) × 2</li>
+          <li>• 해체/정리 = 형틀합계(M²) × 2</li>
         </ul>
       </div>
       <CardHeader>
@@ -538,7 +538,7 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(gangFormSum)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(alFormSum)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(euroFormSum)}</td>
-                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">{fv(euroFormSum * 2)}</td>
+                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">{fv((gangFormSum + alFormSum + euroFormSum) * 2)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(calculateSummary('rebar.ton'))}</td>
                       <td className="px-1 py-0.5 text-xs text-center w-16">{fv(calculateSummary('concrete.volumeM3'))}</td>
                     </tr>

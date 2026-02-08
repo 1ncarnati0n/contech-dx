@@ -8,6 +8,7 @@ import { ProcessItemCard } from './ProcessItemCard';
 import { useProcessCalculation } from './hooks/useProcessCalculation';
 import type { Building, ProcessCategory, BuildingProcessPlan, Floor } from '@/lib/types';
 import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
+import { getSpecialRowDeductions, type DeductionFields } from '@/lib/utils/process-quantity-resolver';
 
 interface ProcessRowData {
   category: ProcessCategory;
@@ -59,6 +60,7 @@ function ProcessItemWithCalculation({
   onDirectWorkDaysChange,
   isSpecialRow,
   specialRowQuantities,
+  quantityDeductions,
 }: {
   building: Building;
   item: ProcessItem;
@@ -70,6 +72,7 @@ function ProcessItemWithCalculation({
   onDirectWorkDaysChange: (value: number | null) => void;
   isSpecialRow?: boolean;
   specialRowQuantities?: SpecialRowQuantities;
+  quantityDeductions?: DeductionFields;
 }) {
   const calculationResult = useProcessCalculation({
     building,
@@ -80,6 +83,7 @@ function ProcessItemWithCalculation({
     floor,
     isSpecialRow,
     specialRowQuantities,
+    quantityDeductions,
   });
 
   return (
@@ -143,10 +147,11 @@ export function ProcessDetailPanel({
     );
   }
 
-  // 특수 행(주차장, 3단 가시설) 여부 확인
+  // 특수 행(주차장, 3단 가시설, 6.5m이상) 여부 확인
   const isParking = expandedRow.floorLabel?.includes('주차장') ?? false;
   const isFacility = expandedRow.floorLabel?.includes('3단 가시설 적용부') ?? false;
-  const isSpecialRow = isParking || isFacility;
+  const isHighCeiling = expandedRow.floorLabel?.includes('6.5m이상') ?? false;
+  const isSpecialRow = isParking || isFacility || isHighCeiling;
 
   // 특수 행인 경우 해당 지하층의 floorLabel 추출 (예: "B1 주차장" -> "B1")
   let targetFloorLabel = expandedRow.floorLabel;
@@ -342,6 +347,11 @@ export function ProcessDetailPanel({
             overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
           }
 
+          // 주동 지하층 일반 행(특수 행 아님)인 경우 차감 적용
+          const deductions = (expandedRow.category === '주동 지하층' && !isSpecialRow && expandedRow.floorLabel)
+            ? getSpecialRowDeductions(specialRowQuantities, expandedRow.floorLabel)
+            : undefined;
+
           return (
             <div
               key={item.id}
@@ -359,6 +369,7 @@ export function ProcessDetailPanel({
                 onDirectWorkDaysChange={(value) => onDirectWorkDaysChange(itemKey, value)}
                 isSpecialRow={isSpecialRow}
                 specialRowQuantities={currentSpecialRowQuantities}
+                quantityDeductions={deductions}
               />
             </div>
           );

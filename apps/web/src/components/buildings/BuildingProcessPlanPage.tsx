@@ -1842,7 +1842,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                 const getGangFormQty = () => resolveQty('gangForm', 'areaM2');
                                 const getAlFormQty = () => resolveQty('alForm', 'areaM2');
                                 const getEuroFormQty = () => resolveQty('euroForm', 'areaM2');
-                                const getStripCleanQty = () => getEuroFormQty() * 2;
+                                const getStripCleanQty = () => (getGangFormQty() + getAlFormQty() + getEuroFormQty()) * 2;
                                 const getFormworkQuantity = () => getGangFormQty() + getAlFormQty() + getEuroFormQty();
                                 const getRebarQuantity = () => resolveQty('rebar', 'ton');
                                 const getConcreteQuantity = () => resolveQty('concrete', 'volumeM3');

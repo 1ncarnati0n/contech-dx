@@ -20,13 +20,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/Card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Badge } from '@/components/ui/Badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/Tooltip';
 import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
-import type { ProcessCategory, ProcessModuleHistoryItem } from '@/lib/types';
-import { History, Info, GripVertical, Calculator, Truck, Lock } from 'lucide-react';
+import type { ProcessCategory } from '@/lib/types';
+import { Info, GripVertical, Calculator, Truck, Lock } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -44,7 +44,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { logger } from '@/lib/utils/logger';
+
 
 // ============================================
 // 계산 방식 판별 유틸 (ProcessModuleSection.tsx와 동일)
@@ -120,14 +120,6 @@ interface ProcessModuleEditModalProps {
 }
 
 type EditableField = 'dailyProductivity' | 'directWorkDays' | 'indirectDays' | 'equipmentWorkersPerUnit' | 'quantityReference';
-
-const FIELD_LABELS: Record<EditableField, string> = {
-  dailyProductivity: '인당생산성',
-  directWorkDays: '순작업일',
-  indirectDays: '간접작업일',
-  equipmentWorkersPerUnit: '장비당인원',
-  quantityReference: '물량참조',
-};
 
 // Sortable Row 컴포넌트
 interface SortableRowProps {
@@ -340,7 +332,7 @@ function SortableRow({
 /**
  * 공정모듈 고급 편집 모달
  *
- * 5개 필드를 개별 편집할 수 있으며, 변경 이력 기능을 제공합니다.
+ * 5개 필드를 개별 편집할 수 있습니다.
  * equipmentCalculationBase는 프리셋 참조 값으로 읽기 전용입니다.
  */
 export function ProcessModuleEditModal({
@@ -354,28 +346,7 @@ export function ProcessModuleEditModal({
   equipmentBaseForCategory,
 }: ProcessModuleEditModalProps) {
   const [editValues, setEditValues] = useState<ProcessModule[]>([]);
-  const [history, setHistory] = useState<ProcessModuleHistoryItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'edit' | 'history'>('edit');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const historyStorageKey = `contech-process-module-history-${projectId}`;
-
-  // 상대 시간 포맷 함수
-  const formatRelativeTime = (timestamp: string): string => {
-    const now = new Date();
-    const past = new Date(timestamp);
-    const diffMs = now.getTime() - past.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return '방금 전';
-    if (diffMins < 60) return `${diffMins}분 전`;
-    if (diffHours < 24) return `${diffHours}시간 전`;
-    if (diffDays < 7) return `${diffDays}일 전`;
-
-    return new Date(timestamp).toLocaleDateString('ko-KR');
-  };
 
   // 모달이 열릴 때 modules 복사 및 equipmentCalculationBase 동기화
   useEffect(() => {
@@ -401,21 +372,7 @@ export function ProcessModuleEditModal({
     });
 
     setEditValues(syncedModules);
-    setActiveTab('edit');
-
-    // 히스토리 로드
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(historyStorageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored) as ProcessModuleHistoryItem[];
-          setHistory(parsed.slice(0, 10)); // 최근 10개
-        }
-      } catch (error) {
-        logger.error('Failed to load process module history:', error);
-      }
-    }
-  }, [open, modules, activeCategory, equipmentBaseForCategory, historyStorageKey]);
+  }, [open, modules, activeCategory, equipmentBaseForCategory]);
 
   // 현재 카테고리의 모듈 필터링 (공정타입 선택 시 해당 타입만)
   const filteredModules = useMemo(() => {
@@ -430,22 +387,6 @@ export function ProcessModuleEditModal({
   const filteredItems = useMemo(() => {
     return filteredModules.flatMap(m => m.items.map(item => ({ ...item, moduleId: m.id, moduleName: m.name })));
   }, [filteredModules]);
-
-  // 히스토리 저장
-  const saveHistory = (changes: ProcessModuleHistoryItem[]) => {
-    if (typeof window === 'undefined' || changes.length === 0) return;
-
-    try {
-      const stored = localStorage.getItem(historyStorageKey);
-      const existing = stored ? (JSON.parse(stored) as ProcessModuleHistoryItem[]) : [];
-      const updated = [...changes, ...existing].slice(0, 10); // 최대 10개 유지
-
-      localStorage.setItem(historyStorageKey, JSON.stringify(updated));
-      setHistory(updated);
-    } catch (error) {
-      logger.error('Failed to save process module history:', error);
-    }
-  };
 
   // 개별 필드 변경
   const handleFieldChange = (moduleId: string, itemId: string, field: EditableField, value: string) => {
@@ -529,51 +470,9 @@ export function ProcessModuleEditModal({
 
   // 저장
   const handleSave = () => {
-    const changes: ProcessModuleHistoryItem[] = [];
-
-    // 원본과 비교하여 변경사항 추출
-    modules.forEach((originalModule) => {
-      if (originalModule.category !== activeCategory) return;
-      const editedModule = editValues.find(m => m.id === originalModule.id);
-      if (!editedModule) return;
-
-      originalModule.items.forEach((originalItem) => {
-        const editedItem = editedModule.items.find(i => i.id === originalItem.id);
-        if (!editedItem) return;
-
-        // 5개 필드 검사 (equipmentCalculationBase 제외 - 프리셋 참조)
-        const fields: EditableField[] = [
-          'dailyProductivity',
-          'directWorkDays',
-          'indirectDays',
-          'equipmentWorkersPerUnit',
-          'quantityReference',
-        ];
-
-        fields.forEach(field => {
-          const originalValue = originalItem[field];
-          const editedValue = editedItem[field];
-
-          if (originalValue !== editedValue) {
-            changes.push({
-              timestamp: new Date().toISOString(),
-              category: originalModule.category,
-              itemId: originalItem.id,
-              itemName: originalItem.workItem,
-              field,
-              previousValue: originalValue,
-              newValue: editedValue,
-              changedBy: 'user',
-            });
-          }
-        });
-      });
-    });
-
-    if (changes.length > 0) {
-      saveHistory(changes);
+    if (changedItemIds.size > 0) {
       onSave(editValues);
-      toast.success(`${changes.length}개 필드가 변경되었습니다.`);
+      toast.success(`${changedItemIds.size}개 항목이 변경되었습니다.`);
     } else {
       toast.info('변경된 항목이 없습니다.');
     }
@@ -638,22 +537,12 @@ export function ProcessModuleEditModal({
             {activeProcessType && activeProcessType !== '표준공정' && ` (${activeProcessType})`}
           </DialogTitle>
           <DialogDescription>
-            5개 필드를 개별 편집하고 변경 이력을 관리합니다. (인당생산성, 순작업일, 간접일, 장비당인원, 물량참조)
+            5개 필드를 개별 편집합니다. (인당생산성, 순작업일, 간접일, 장비당인원, 물량참조)
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'edit' | 'history')} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="edit">편집</TabsTrigger>
-            <TabsTrigger value="history">
-              <History className="w-4 h-4 mr-1" />
-              변경 이력
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="edit" className="flex-1 overflow-y-auto mt-4 space-y-4">
-            {/* 개별 편집 섹션 */}
-            <Card>
+        <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+          <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -723,53 +612,7 @@ export function ProcessModuleEditModal({
                 </DndContext>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="history" className="flex-1 overflow-y-auto mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">최근 변경 이력</CardTitle>
-                <CardDescription>
-                  최근 10개의 변경 내역을 표시합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {history.length === 0 ? (
-                  <p className="text-center text-zinc-500 py-4">
-                    변경 이력이 없습니다.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {history.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-zinc-50 rounded-lg text-sm gap-2"
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium">
-                            [{item.category}] {item.itemName}
-                          </div>
-                          <div className="text-xs text-zinc-500">
-                            {FIELD_LABELS[item.field as EditableField] || '대당타설량'} • {formatRelativeTime(item.timestamp)}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 sm:justify-end">
-                          <span className="text-zinc-600 truncate max-w-[120px]" title={String(item.previousValue ?? '-')}>
-                            {item.previousValue ?? '-'}
-                          </span>
-                          <span className="text-zinc-400">→</span>
-                          <span className="font-medium text-blue-600 truncate max-w-[120px]" title={String(item.newValue ?? '-')}>
-                            {item.newValue ?? '-'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        </div>
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={handleCancel}>
