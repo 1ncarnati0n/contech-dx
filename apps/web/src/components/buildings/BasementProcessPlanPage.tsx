@@ -238,6 +238,55 @@ export function BasementProcessPlanPage({ projectId }: Props) {
           });
         }
       });
+
+      // 특수 카테고리 자동 계산 및 plan.processes에 저장
+      (['지하주차장', '지하층(층고6.5m이상)'] as ProcessCategory[]).forEach(specialCat => {
+        const plan = processPlans.get(building.id);
+        if (!plan) return;
+
+        const processType = plan.processes[specialCat]?.processType
+          || DEFAULT_PROCESS_TYPES[specialCat] || '표준공정';
+        const module = getProcessModule(specialCat, processType);
+        if (!module || !module.items.length) return;
+
+        let computedDays = 0;
+        if (specialCat === '지하주차장') {
+          // 각 지하층별 주차장 일수 합산
+          const basementFloors = getBasementFloors.get(building.id) || [];
+          basementFloors.forEach(floor => {
+            computedDays += calculateModuleWorkDaysForFloor(
+              building, module, specialCat, floor.floorLabel
+            );
+          });
+        } else {
+          // 지하층(층고6.5m이상): 전체 모듈 일수
+          computedDays = calculateModuleWorkDays(building, module, specialCat);
+        }
+
+        const finalDays = Math.floor(computedDays);
+        const currentDays = plan.processes[specialCat]?.days || 0;
+
+        if (finalDays !== currentDays && finalDays > 0) {
+          setProcessPlans(prevPlans => {
+            const prevPlan = prevPlans.get(building.id);
+            if (!prevPlan) return prevPlans;
+            const updatedPlan = {
+              ...prevPlan,
+              processes: {
+                ...prevPlan.processes,
+                [specialCat]: {
+                  ...(prevPlan.processes[specialCat] || {}),
+                  days: finalDays,
+                  processType,
+                },
+              },
+            };
+            const newPlans = new Map(prevPlans);
+            newPlans.set(building.id, updatedPlan);
+            return newPlans;
+          });
+        }
+      });
     });
   }, [
     floorTradesHash, // 🔥 Stage 1: Use memoized hash instead of JSON.stringify

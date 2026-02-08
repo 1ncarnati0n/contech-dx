@@ -85,11 +85,12 @@ export interface TaskData {
     workOnSundays?: boolean;          // 기본 false (일요일 휴무), true면 작업
     workOnHolidays?: boolean;         // 기본 false (공휴일 휴무), true면 작업
 
-    // 산출 근거 (Phase 2: 자동 계산용)
-    quantity?: number;                // 수량
-    unit?: string;                    // 단위 (㎥, 본, ton, ㎡ 등)
-    dailyOutput?: number;             // 1일 작업량
-    crew?: number;                    // 작업조 수
+    // 산출 근거 (Production Basis)
+    quantity?: number;                // 수량 (물량)
+    unit?: string;                    // 단위 (㎡, ㎥, TON 등)
+    dailyOutput?: number;             // 인당생산성 (1인 1일 시공량)
+    crew?: number;                    // 1일 투입인원
+    totalWorkers?: number;            // 총투입인원 (netWorkDays × crew)
 }
 
 // ============================================

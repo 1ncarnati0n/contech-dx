@@ -236,13 +236,13 @@ export function calculateModuleIndirectDays(
 }
 
 /** 카테고리별 항목 필터링 */
-function filterItemsForFloor(
+export function filterItemsForFloor(
   items: ProcessModule['items'],
   category: ProcessCategory,
   floorLabel: string
 ): ProcessModule['items'] {
-  if (category === '주동 지하층') {
-    // 지하층: floorLabel 일치 항목만
+  if (category === '주동 지하층' || category === '지하주차장') {
+    // 지하층/지하주차장: floorLabel 일치 항목만
     return items.filter(item => item.floorLabel === floorLabel);
   }
 
@@ -264,7 +264,7 @@ function filterItemsForFloor(
 }
 
 /** 카테고리별 층 물량 해석 (통합 resolver 사용) */
-function resolveFloorQuantity(
+export function resolveFloorQuantity(
   building: Building,
   item: ProcessModule['items'][0],
   category: ProcessCategory,

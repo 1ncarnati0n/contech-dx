@@ -5,6 +5,9 @@
  * 기존 간트차트 데이터에 추가(append)할 수 있는 형식을 생성합니다.
  *
  * 계층구조: BLOCK (동) → CP (카테고리) → GROUP (층) → TASK (항목)
+ *
+ * 핵심: floorDetails.items가 없으면 on-the-fly로 항목별 물량/일수/인원을 계산합니다.
+ * Building + ProcessModule 데이터에서 직접 계산하므로 미리 저장할 필요 없음.
  */
 
 import { addDays } from 'date-fns';
@@ -27,7 +30,15 @@ import type {
   FloorProcessDetails,
 } from '@/lib/types';
 import { getProcessModule } from '@/lib/data/process-modules';
-import type { ProcessItem } from '@/lib/data/process-modules';
+import type { ProcessItem, ProcessModule } from '@/lib/data/process-modules';
+import { filterItemsForFloor, resolveFloorQuantity } from './process-days-calculator';
+import {
+  calculateTotalWorkers,
+  calculateDailyInputWorkers,
+  calculateWorkDaysWithRounding,
+  calculateEquipmentCount,
+  calculateDailyInputWorkersByEquipment,
+} from './process-calculation';
 
 // ============================================
 // 타입 정의
@@ -50,16 +61,28 @@ export interface ConversionResult {
   };
 }
 
+/** computeFloorItems가 반환하는 항목 데이터 */
+interface ComputedFloorItem {
+  itemId: string;
+  workItem: string;
+  quantity: number;
+  directWorkDays: number;
+  dailyInputWorkers: number;
+}
+
 // ============================================
 // 상수
 // ============================================
 
-/** 카테고리 시공 순서 (버림 → 기초 → 지하 → ... → 옥탑) */
-const CATEGORY_ORDER: ProcessCategory[] = [
+/** 카테고리 시공 순서 (버림 → 기초 → 지하 → 지하주차장 → ... → 옥탑) */
+export const CATEGORY_ORDER: ProcessCategory[] = [
   '버림',
   '기초',
   '주동 지하층',
+  '지하층(층고6.5m이상)',
+  '지하주차장',
   '셋팅층',
+  '일반층',
   '기준층',
   '최상층',
   'PH층',
@@ -164,8 +187,20 @@ function convertBuildingPlan(
   let currentDate = new Date(structureStartDate);
 
   for (const category of CATEGORY_ORDER) {
-    const processInfo = plan.processes[category];
-    if (!processInfo) continue;
+    let processInfo = plan.processes[category];
+    if (!processInfo) {
+      if (category === '지하층(층고6.5m이상)') {
+        // 층 라벨이 ['']이라 일반 감지 불가 → building 메타데이터로 감지
+        if (!building.meta?.floorCount?.hasHighCeilingEquipmentRoom) continue;
+      } else {
+        // 동에 해당 카테고리의 층이 있으면 기본 processInfo로 폴백
+        const floorLabels = getFloorLabelsForCategory(building, category);
+        const hasFloors = floorLabels.length > 0
+          && !(floorLabels.length === 1 && floorLabels[0] === '');
+        if (!hasFloors) continue;
+      }
+      processInfo = { days: 0, processType: '표준공정' as ProcessType };
+    }
 
     const cpResult = convertCategory(
       building,
@@ -233,14 +268,18 @@ function convertCategory(
   };
   tasks.push(cpTask);
 
-  // floorDetails가 있는 카테고리 → GROUP + TASK 생성
-  if (processInfo.floorDetails && Object.keys(processInfo.floorDetails).length > 0) {
-    const floorLabels = getSortedFloorLabels(processInfo.floorDetails, building);
+  // 층 목록 결정:
+  // 1순위: floorDetails에 items가 있으면 기존 로직 (하위호환)
+  // 2순위: 없으면 building.floors에서 on-the-fly 계산
+  const floorLabels = (processInfo.floorDetails && hasFloorItems(processInfo.floorDetails))
+    ? getSortedFloorLabels(processInfo.floorDetails, building)
+    : getFloorLabelsForCategory(building, category);
+
+  if (floorLabels.length > 0) {
     let floorStartDate = new Date(startDate);
 
     for (const floorLabel of floorLabels) {
-      const floorDetail = processInfo.floorDetails[floorLabel];
-      if (!floorDetail || !floorDetail.items || floorDetail.items.length === 0) continue;
+      const floorDetail = processInfo.floorDetails?.[floorLabel];
 
       const groupResult = convertFloorGroup(
         building,
@@ -248,7 +287,7 @@ function convertCategory(
         category,
         processInfo,
         floorLabel,
-        floorDetail,
+        floorDetail || null,
         cpId,
         floorStartDate,
         holidays,
@@ -261,8 +300,6 @@ function convertCategory(
       }
     }
   }
-  // floorDetails 없이 days만 있는 카테고리 → CP만 생성 (TASK 없이)
-  // CP의 workDaysTotal은 이미 설정됨
 
   // CP 날짜 업데이트
   const childTasks = tasks.filter((t) => t.parentId === cpId);
@@ -294,7 +331,7 @@ function convertFloorGroup(
   category: ProcessCategory,
   processInfo: NonNullable<BuildingProcessPlan['processes'][ProcessCategory]>,
   floorLabel: string,
-  floorDetail: FloorProcessDetails,
+  floorDetail: FloorProcessDetails | null,
   cpId: string,
   startDate: Date,
   holidays: Date[],
@@ -322,7 +359,16 @@ function convertFloorGroup(
   const floorProcessType = getFloorProcessType(plan, category, processInfo, floorLabel);
   const module = getProcessModule(category, floorProcessType);
 
-  if (!module || !floorDetail.items) {
+  if (!module) {
+    return { tasks, endDate: startDate };
+  }
+
+  // floorDetail.items가 있으면 기존 데이터, 없으면 on-the-fly 계산
+  const items = (floorDetail?.items && floorDetail.items.length > 0)
+    ? floorDetail.items
+    : computeFloorItems(building, module, plan, category, floorLabel);
+
+  if (!items || items.length === 0) {
     return { tasks, endDate: startDate };
   }
 
@@ -330,7 +376,7 @@ function convertFloorGroup(
   const taskEndDate = scheduleTasksSequentially(
     tasks,
     groupId,
-    floorDetail,
+    items,
     module.items,
     plan,
     category,
@@ -353,6 +399,167 @@ function convertFloorGroup(
 }
 
 // ============================================
+// On-the-fly 항목 계산
+// ============================================
+
+/**
+ * 한 층의 세부공정 항목들을 on-the-fly로 계산
+ *
+ * process-days-calculator.ts의 calculateModuleWorkDaysForFloor와 동일한 로직이지만,
+ * 합산 대신 개별 항목 데이터를 반환합니다.
+ */
+function computeFloorItems(
+  building: Building,
+  module: ProcessModule,
+  plan: BuildingProcessPlan,
+  category: ProcessCategory,
+  floorLabel: string
+): ComputedFloorItem[] {
+  const results: ComputedFloorItem[] = [];
+
+  // 카테고리별 항목 필터링 (process-days-calculator에서 재사용)
+  const filteredItems = filterItemsForFloor(module.items, category, floorLabel);
+  const maxPumpCarCount = building.meta?.pumpCarCount || 2;
+
+  for (const item of filteredItems) {
+    let directWorkDays = 0;
+    let dailyInputWorkers = 0;
+
+    // 층별 물량 해석 (process-days-calculator에서 재사용)
+    const quantity = resolveFloorQuantity(building, item, category, floorLabel);
+
+    // 3-way 계산 로직 (process-days-calculator.ts:136-181 동일)
+    if (item.directWorkDays !== undefined) {
+      // 1. 고정일수 항목
+      directWorkDays = item.directWorkDays;
+      dailyInputWorkers = 1;
+    } else if (
+      item.equipmentCalculationBase !== undefined &&
+      item.equipmentWorkersPerUnit !== undefined &&
+      (item.quantityRef || item.quantityReference)
+    ) {
+      // 2. 장비기반 계산
+      if (quantity > 0 && item.dailyProductivity > 0) {
+        const equipCount = calculateEquipmentCount(
+          quantity,
+          item.equipmentCalculationBase,
+          maxPumpCarCount
+        );
+        dailyInputWorkers = calculateDailyInputWorkersByEquipment(
+          equipCount,
+          item.equipmentWorkersPerUnit
+        );
+        if (dailyInputWorkers > 0) {
+          directWorkDays = calculateWorkDaysWithRounding(
+            quantity,
+            item.dailyProductivity,
+            dailyInputWorkers
+          );
+        }
+      }
+    } else if (
+      (item.quantityRef || item.quantityReference) &&
+      item.dailyProductivity > 0
+    ) {
+      // 3. 수량기반 계산
+      if (quantity > 0) {
+        const totalWkrs = calculateTotalWorkers(quantity, item.dailyProductivity);
+        dailyInputWorkers = calculateDailyInputWorkers(totalWkrs, item.equipmentCount);
+        directWorkDays = calculateWorkDaysWithRounding(
+          quantity,
+          item.dailyProductivity,
+          dailyInputWorkers
+        );
+      }
+    }
+
+    // 오버라이드 적용
+    const overrideKey = `${category}-${floorLabel}-${item.id}`;
+    directWorkDays = plan.itemDirectWorkDaysOverrides?.[overrideKey] ?? directWorkDays;
+
+    // directWorkDays가 0이면 스킵 (물량 없는 항목)
+    if (directWorkDays <= 0 && quantity <= 0) continue;
+
+    results.push({
+      itemId: item.id,
+      workItem: item.workItem,
+      quantity,
+      directWorkDays,
+      dailyInputWorkers,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * building.floors에서 카테고리별 층 목록 추출 (floorDetails 없이)
+ */
+export function getFloorLabelsForCategory(
+  building: Building,
+  category: ProcessCategory
+): string[] {
+  switch (category) {
+    case '버림':
+    case '기초':
+      return ['']; // 층 구분 없음, 단일 그룹
+
+    case '주동 지하층':
+      return building.floors
+        .filter(f => f.floorClass === '지하층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    case '지하층(층고6.5m이상)':
+      return [''];
+
+    case '지하주차장':
+      return building.floors
+        .filter(f => f.floorClass === '지하층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    case '셋팅층':
+      return building.floors
+        .filter(f => f.floorClass === '셋팅층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    case '기준층':
+      return building.floors
+        .filter(f => f.floorClass === '기준층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    case '일반층':
+      return building.floors
+        .filter(f => f.floorClass === '일반층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    case '최상층':
+      return building.floors
+        .filter(f => f.floorClass === '최상층')
+        .map(f => f.floorLabel);
+
+    case 'PH층':
+      return building.floors
+        .filter(f => f.floorClass === 'PH층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    case '옥탑층':
+      return building.floors
+        .filter(f => f.floorClass === '옥탑층')
+        .sort((a, b) => a.floorNumber - b.floorNumber)
+        .map(f => f.floorLabel);
+
+    default:
+      return [];
+  }
+}
+
+// ============================================
 // 순차 스케줄링 (TASK 날짜 계산)
 // ============================================
 
@@ -362,23 +569,11 @@ function convertFloorGroup(
  * 각 항목은 이전 항목의 종료일 + 1일부터 시작하며,
  * 간접작업일(양생, 검측 등)은 달력일(calendar days)로,
  * 순작업일(순수 시공)은 작업일(working days, 공휴일 제외)로 계산합니다.
- *
- * @param tasks - 생성된 태스크를 push할 배열
- * @param groupId - 부모 GROUP의 ID
- * @param floorDetail - 층별 공정 상세 (items 배열 포함)
- * @param moduleItems - ProcessModule의 items 배열 (indirectDays, unit 등)
- * @param plan - 해당 동의 공정계획 (오버라이드 조회용)
- * @param category - 공정 카테고리 (예: '기준층')
- * @param floorLabel - 층 라벨 (예: '3F')
- * @param startDate - 이 GROUP의 시작일
- * @param holidays - 공휴일 배열
- * @param calendarSettings - 캘린더 설정 (토/일/공휴일 작업 여부)
- * @returns 마지막 TASK의 종료일 (또는 null)
  */
 function scheduleTasksSequentially(
   tasks: ConstructionTask[],
   groupId: string,
-  floorDetail: FloorProcessDetails,
+  items: FloorProcessDetails['items'] | ComputedFloorItem[],
   moduleItems: ProcessItem[],
   plan: BuildingProcessPlan,
   category: ProcessCategory,
@@ -387,16 +582,16 @@ function scheduleTasksSequentially(
   holidays: Date[],
   calendarSettings: CalendarSettings
 ): Date | null {
-  if (!floorDetail.items || floorDetail.items.length === 0) return null;
+  if (!items || items.length === 0) return null;
 
   let currentDate = new Date(startDate);
   let lastEndDate: Date | null = null;
 
-  for (const item of floorDetail.items) {
+  for (const item of items) {
     // 모듈에서 해당 항목의 메타 정보 조회 (indirectDays, unit 등)
     const moduleItem = moduleItems.find((mi) => mi.id === item.itemId);
 
-    // 순작업일: floorDetail의 directWorkDays (오버라이드 포함)
+    // 순작업일: item의 directWorkDays (오버라이드 포함)
     const overrideKey = `${category}-${floorLabel}-${item.itemId}`;
     const netWorkDays =
       plan.itemDirectWorkDaysOverrides?.[overrideKey] ?? item.directWorkDays;
@@ -405,9 +600,10 @@ function scheduleTasksSequentially(
     const indirectDaysPost = moduleItem?.indirectDays ?? 0;
     const indirectWorkNamePost = moduleItem?.indirectWorkItem || undefined;
 
-    // TaskData 구성
+    // TaskData 구성 (totalWorkers 포함)
+    const ceiledNetWorkDays = Math.ceil(netWorkDays);
     const taskData: TaskData = {
-      netWorkDays: Math.ceil(netWorkDays),
+      netWorkDays: ceiledNetWorkDays,
       indirectWorkDaysPre: 0,
       indirectWorkDaysPost: Math.ceil(indirectDaysPost),
       indirectWorkNamePost,
@@ -415,6 +611,7 @@ function scheduleTasksSequentially(
       unit: moduleItem?.unit,
       dailyOutput: moduleItem?.dailyProductivity,
       crew: item.dailyInputWorkers,
+      totalWorkers: ceiledNetWorkDays * item.dailyInputWorkers,
     };
 
     // 날짜 계산: 간접(post)은 달력일, 순작업은 작업일
@@ -465,6 +662,17 @@ function scheduleTasksSequentially(
 // ============================================
 // 유틸리티 함수
 // ============================================
+
+/**
+ * floorDetails에 items가 하나라도 있는지 확인
+ */
+function hasFloorItems(
+  floorDetails: Record<string, FloorProcessDetails>
+): boolean {
+  return Object.values(floorDetails).some(
+    (fd) => fd.items && fd.items.length > 0
+  );
+}
 
 /**
  * 층 라벨을 floorNumber 기준 오름차순 정렬
