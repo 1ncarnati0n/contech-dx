@@ -48,6 +48,7 @@ contech-dx/
 ### 공정계획
 - **공정로직**: 계산 공식, 공정 모듈, 사이클 정의
 - **공정계획 수립**: 일수고정/물량기반/장비기반 3가지 계산 방식
+- **물량 해석**: SemanticQuantityReference 기반 통합 물량 해석 시스템
 - **지상층/지하층** 개별 공정 계획
 - **AI 챗봇**: Gemini API 기반 공정계획 질의응답
 
@@ -90,11 +91,12 @@ components/
 
 lib/
 ├── types.ts            # 타입 정의 (Single Source of Truth)
+├── types/              # 도메인 타입 (SemanticQuantityReference 등)
 ├── services/           # 비즈니스 로직 (buildings, projects, gantt 등)
 ├── supabase/           # Supabase 클라이언트 (client/server)
 ├── hooks/              # 커스텀 훅
-├── utils/              # 유틸리티 (logger, formatters 등)
-└── data/               # 정적 데이터 (공정 템플릿)
+├── utils/              # 유틸리티 (물량해석, 공정계산, logger 등)
+└── data/               # 정적 데이터 (공정 모듈, 템플릿)
 ```
 
 ## Environment Variables
@@ -123,6 +125,42 @@ npm -w sa-gantt-lib run <script>    # gantt 라이브러리
 npm run lint                        # 전체 lint
 npm run clean                       # node_modules 정리
 ```
+
+## Code Review (2025-02)
+
+### 리팩토링 요약
+
+| 대상 파일 | Before | After | 감소율 |
+|-----------|--------|-------|--------|
+| `FloorTradeTable.tsx` | 1,977줄 | 595줄 | -70% |
+| `DetailedFloorTradeTable.tsx` | 2,001줄 | 559줄 | -72% |
+
+### 추출된 공유 모듈
+
+**커스텀 훅 (6개):**
+- `useProcessPlanState` — 공정계획 공유 상태 (save/discard/markDirty)
+- `useBuildingOperations` — 동 CRUD (load/delete/reorder/rename)
+- `useProcessTypeChange` — 공정타입 변경 핸들러
+- `useTradeTableState` — 물량테이블 공유 상태 + building 동기화
+- `useCellSelection` — 드래그 선택 + 붙여넣기 인프라
+- `useTradeOperations` — 물량 CRUD (getTrade/updateTrade/save/discard)
+
+**공유 컴포넌트 (1개):**
+- `TradeInputCell` — Excel 스타일 수식 지원 입력 셀 (=수식, localStorage 수식 저장, 한국어 숫자 포맷)
+
+### 접근성(A11y) 개선
+- 테이블 `<caption>`, `scope="col"` / `scope="colgroup"` 속성 추가
+- `TradeInputCell` Input에 `aria-label` 추가 (셀 주소 + 필드명)
+- `window.confirm()` → `ConfirmDialog` 컴포넌트 교체 (스크린리더 호환)
+
+### 테스트 추가 (3개 파일, 71개 테스트)
+- `floorIdUtils.test.ts` — 층 ID 유틸리티 (special/dummy/ranged/UUID)
+- `tradeDataHelpers.test.ts` — 물량 데이터 접근/변형 헬퍼
+- `calculateFormula.test.ts` — 수식 평가 및 보안 검증
+
+### ESLint 설정 정비
+- `eslint-plugin-react-compiler` 추가 (React Compiler 호환성)
+- `no-console: warn` 규칙 추가 (logger 유틸 사용 유도)
 
 ## Changelog
 

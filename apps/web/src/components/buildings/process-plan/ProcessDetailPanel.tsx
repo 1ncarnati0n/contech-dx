@@ -143,9 +143,6 @@ export function ProcessDetailPanel({
     );
   }
 
-  // 일반층 여부 확인
-  const isNormalFloor = expandedRow.floorClass === '일반층';
-
   // 특수 행(주차장, 3단 가시설) 여부 확인
   const isParking = expandedRow.floorLabel?.includes('주차장') ?? false;
   const isFacility = expandedRow.floorLabel?.includes('3단 가시설 적용부') ?? false;
@@ -197,7 +194,7 @@ export function ProcessDetailPanel({
       }
       return item.floorLabel === expandedRow.floorLabel;
     }
-    if (isNormalFloor) {
+    if (expandedRow.category === '일반층') {
       return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
     }
     if (expandedRow.category === '셋팅층') {
@@ -278,10 +275,10 @@ export function ProcessDetailPanel({
       return `옥탑층 ${displayLabel}층`;
     }
     if (expandedRow.category === '셋팅층') {
-      if (isNormalFloor) {
-        return `일반층 ${expandedRow.floorLabel}`;
-      }
       return `셋팅층 ${expandedRow.floorLabel}`;
+    }
+    if (expandedRow.category === '일반층') {
+      return `일반층 ${expandedRow.floorLabel}`;
     }
     if (expandedRow.category === '기준층') {
       return `기준층 ${expandedRow.floorLabel}`;

@@ -16,7 +16,8 @@
 6. [연결 구조 (Web ↔ Library)](#6-연결-구조-web--library)
 7. [빌드 & 배포 파이프라인](#7-빌드--배포-파이프라인)
 8. [주요 아키텍처 패턴](#8-주요-아키텍처-패턴)
-9. [대형 파일 목록 (리팩토링 후보)](#9-대형-파일-목록-리팩토링-후보)
+9. [물량 해석 시스템 (Quantity Resolution)](#9-물량-해석-시스템-quantity-resolution)
+10. [대형 파일 목록 (리팩토링 후보)](#10-대형-파일-목록-리팩토링-후보)
 
 ---
 
@@ -581,7 +582,105 @@ lib/services/
 
 ---
 
-## 9. 대형 파일 목록 (리팩토링 후보)
+## 9. 물량 해석 시스템 (Quantity Resolution)
+
+### 9.1 개요
+
+공정계획에서 각 세부공종의 **수량(물량)**을 산출하는 시스템입니다. 건물의 층별/공종별 물량 입력 데이터를 기반으로, 공정 모듈이 참조하는 수량을 자동으로 해석합니다.
+
+**Strangler Fig 패턴**으로 마이그레이션: 새로운 `resolveProcessQuantity`가 레거시 함수를 내부적으로 래핑하여 점진적 전환을 지원합니다.
+
+### 9.2 아키텍처 레이어
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  UI 디스플레이 레이어                                          │
+│  BuildingProcessPlanPage / BasementProcessPlanPage           │
+│  DailyWorkerInputDashboard / process-row-helpers             │
+│                                                              │
+│  ↓ resolveProcessQuantity(building, ref, floorLabel?)        │
+├─────────────────────────────────────────────────────────────┤
+│  계산 레이어                                                  │
+│  process-days-calculator.ts / useProcessCalculation.ts       │
+│                                                              │
+│  ↓ resolveProcessQuantity(building, ref, floorLabel?)        │
+├─────────────────────────────────────────────────────────────┤
+│  통합 해석기 (Resolver)                                       │
+│  process-quantity-resolver.ts                                │
+│  ┌──────────────┬──────────────┬──────────────┐             │
+│  │ resolveBy    │ resolveBy    │ resolveBy    │             │
+│  │ Category     │ Floor        │ Combined     │             │
+│  └──────┬───────┴──────┬───────┴──────┬───────┘             │
+│         ↓              ↓              ↓                      │
+├─────────────────────────────────────────────────────────────┤
+│  레거시 데이터 접근 (내부 전용)                                 │
+│  quantity-reference.ts                                       │
+│  getQuantityByReference() / getQuantityFromFloor()           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 9.3 타입 시스템
+
+```typescript
+// lib/types/process-quantity.ts
+
+interface SemanticQuantityReference {
+  tradeField: string;    // 'gangForm' | 'alForm' | 'formwork' | ...
+  subField: string;      // 'areaM2' | 'ton' | 'volumeM3'
+  ratio: number;         // 배율 (기본 1, stripClean은 2)
+  sourceType: string;    // 'category' | 'floor' | 'combined'
+  tradeGroup?: string;   // '버림' | '기초' (category용)
+  combineFloors?: string[]; // ['B1', 'B2'] (combined용)
+}
+
+// 컬럼→공종 매핑 (레거시 Excel 참조 변환용)
+const TRADE_FIELD_MAP: Record<string, string> = {
+  B: 'gangForm', C: 'alForm', D: 'formwork',
+  E: 'stripClean', F: 'rebar', G: 'concrete', U: 'euroForm',
+};
+```
+
+### 9.4 해석 전략 (Strategy)
+
+| sourceType | 해석 전략 | 예시 |
+|-----------|----------|------|
+| `category` | 버림/기초 floorTrades에서 tradeGroup으로 조회 | 버림 갱폼 면적 |
+| `floor` | 특정 층 floorLabel로 조회 | 3F 철근 톤수 |
+| `combined` | 여러 층 합산 | B1+B2 콘크리트 |
+
+### 9.5 마이그레이션 브릿지
+
+```typescript
+// quantity-reference-migration.ts
+parseLegacyReference(reference: string, category: ProcessCategory)
+  → SemanticQuantityReference | null
+
+// 변환 예시:
+// 'D6'     → { tradeField: 'formwork', subField: 'areaM2', sourceType: 'floor' }
+// 'F7*0.45' → { tradeField: 'rebar', subField: 'ton', ratio: 0.45, sourceType: 'floor' }
+// 'F_B1B2_COMBINED' → { tradeField: 'rebar', sourceType: 'combined', combineFloors: ['B1','B2'] }
+```
+
+### 9.6 파일 구조
+
+```
+lib/
+├── types/
+│   └── process-quantity.ts          # SemanticQuantityReference 타입, TRADE_FIELD_MAP
+├── utils/
+│   ├── process-quantity-resolver.ts # 통합 해석기 (단일 진입점)
+│   ├── quantity-reference-migration.ts # 레거시 → 시맨틱 변환 브릿지
+│   ├── quantity-reference.ts        # 레거시 데이터 접근 (내부 전용)
+│   ├── process-calculation.ts       # 인원/일수/장비 계산 공식
+│   ├── process-days-calculator.ts   # 공정일수 계산 엔진
+│   └── process-row-helpers.ts       # UI 행별 물량 조회 헬퍼
+└── data/
+    └── process-modules.ts           # 공정 모듈 정의 (quantityRef 포함)
+```
+
+---
+
+## 10. 대형 파일 목록 (리팩토링 후보)
 
 > 500 LOC 이상의 파일. 단일 책임 원칙(SRP) 관점에서 분리를 검토할 수 있습니다.
 

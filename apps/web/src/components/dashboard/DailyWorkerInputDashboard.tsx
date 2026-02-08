@@ -5,7 +5,7 @@ import { Card } from '@/components/ui';
 import { Users } from 'lucide-react';
 import type { Building } from '@/lib/types';
 import { getBuildingsForOverview } from '@/lib/services/buildings';
-import { getQuantityFromFloor } from '@/lib/utils/quantity-reference';
+import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
@@ -97,7 +97,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
       building.floors.forEach(floor => {
         if (floor.levelType === '지상' || floor.levelType === '지하') {
           const floorLabel = floor.floorLabel.replace(/코어\d+-/, '');
-          totalGangFormArea += getQuantityFromFloor(building, floorLabel, 'gangForm', 'areaM2') || 0;
+          totalGangFormArea += resolveProcessQuantity(building, { tradeField: 'gangForm', subField: 'areaM2', ratio: 1, sourceType: 'floor' }, floorLabel) || 0;
         }
       });
       
@@ -121,7 +121,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
       building.floors.forEach(floor => {
         if (floor.levelType === '지상' || floor.levelType === '지하') {
           const floorLabel = floor.floorLabel.replace(/코어\d+-/, '');
-          totalAlFormArea += getQuantityFromFloor(building, floorLabel, 'alForm', 'areaM2') || 0;
+          totalAlFormArea += resolveProcessQuantity(building, { tradeField: 'alForm', subField: 'areaM2', ratio: 1, sourceType: 'floor' }, floorLabel) || 0;
         }
       });
       
@@ -144,7 +144,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
       building.floors.forEach(floor => {
         if (floor.levelType === '지상' || floor.levelType === '지하') {
           const floorLabel = floor.floorLabel.replace(/코어\d+-/, '');
-          totalFormworkArea += getQuantityFromFloor(building, floorLabel, 'formwork', 'areaM2') || 0;
+          totalFormworkArea += resolveProcessQuantity(building, { tradeField: 'formwork', subField: 'areaM2', ratio: 1, sourceType: 'floor' }, floorLabel) || 0;
         }
       });
       
@@ -167,7 +167,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
       building.floors.forEach(floor => {
         if (floor.levelType === '지상' || floor.levelType === '지하') {
           const floorLabel = floor.floorLabel.replace(/코어\d+-/, '');
-          totalRebarTon += getQuantityFromFloor(building, floorLabel, 'rebar', 'ton') || 0;
+          totalRebarTon += resolveProcessQuantity(building, { tradeField: 'rebar', subField: 'ton', ratio: 1, sourceType: 'floor' }, floorLabel) || 0;
         }
       });
       
@@ -190,7 +190,7 @@ export function DailyWorkerInputDashboard({ projectId }: Props) {
       building.floors.forEach(floor => {
         if (floor.levelType === '지상' || floor.levelType === '지하') {
           const floorLabel = floor.floorLabel.replace(/코어\d+-/, '');
-          totalConcreteVolume += getQuantityFromFloor(building, floorLabel, 'concrete', 'volumeM3') || 0;
+          totalConcreteVolume += resolveProcessQuantity(building, { tradeField: 'concrete', subField: 'volumeM3', ratio: 1, sourceType: 'floor' }, floorLabel) || 0;
         }
       });
       

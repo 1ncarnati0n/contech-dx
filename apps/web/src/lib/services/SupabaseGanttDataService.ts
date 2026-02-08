@@ -218,8 +218,7 @@ export class SupabaseGanttDataService implements DataService {
 
   constructor(projectId: string, options?: { debug?: boolean }) {
     this.projectId = projectId;
-    // TODO: 디버깅 완료 후 false로 변경
-    this.debug = options?.debug ?? true;
+    this.debug = options?.debug ?? false;
   }
 
   private log(...args: unknown[]) {

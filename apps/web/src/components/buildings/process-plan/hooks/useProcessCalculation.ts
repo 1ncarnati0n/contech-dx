@@ -2,7 +2,9 @@ import { useMemo } from 'react';
 import type { Building, ProcessCategory, ProcessType } from '@/lib/types';
 import type { ProcessItem } from '@/lib/data/process-modules';
 import type { FormulaStep, CalculationResult } from '../FormulaDisplay';
-import { getQuantityByReference, getQuantityFromFloor } from '@/lib/utils/quantity-reference';
+import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
+import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
+import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
@@ -12,58 +14,48 @@ import {
   calculateDailyInputWorkersByWorkDays,
   calculateTotalWorkDays,
 } from '@/lib/utils/process-calculation';
+import { getCellReferenceForRow, type ColumnType } from '@/lib/utils/process-cell-reference';
+
+/** 공종 필드 → 한국어 이름 */
+const TRADE_FIELD_NAMES: Record<string, string> = {
+  gangForm: '갱폼',
+  alForm: '알폼',
+  formwork: '형틀',
+  euroForm: '유로폼',
+  stripClean: '해체/정리',
+  rebar: '철근',
+  concrete: '콘크리트',
+};
+
+/** tradeField → ColumnType 변환 (formwork → formworkTotal, 나머지는 동일) */
+function toColumnType(tradeField: string): ColumnType | null {
+  if (tradeField === 'formwork') return 'formworkTotal';
+  const valid: ColumnType[] = ['gangForm', 'alForm', 'euroForm', 'stripClean', 'rebar', 'concrete'];
+  return valid.includes(tradeField as ColumnType) ? (tradeField as ColumnType) : null;
+}
 
 /**
- * 물량 참조 패턴에서 데이터 출처 설명을 생성합니다.
+ * SemanticQuantityReference 기반으로 데이터 출처 설명을 생성합니다.
  */
-function getQuantitySourceDescription(reference: string): string {
-  // Handle combined B1+B2 references
-  const combinedMatch = reference.match(/^([A-Z])_B1B2_COMBINED$/);
-  if (combinedMatch) {
-    const col = combinedMatch[1];
-    const columnNames: Record<string, string> = {
-      B: '갱폼',
-      C: '알폼',
-      D: '형틀',
-      E: '해체/정리',
-      F: '철근',
-      G: '콘크리트',
-    };
-    const colName = columnNames[col] || col;
-    return `B1+B2 합산 (${colName})`;
+function getQuantitySourceDescriptionFromRef(
+  ref: { tradeField: string; ratio: number; sourceType: string; tradeGroup?: string; combineFloors?: string[] },
+  floorLabel?: string,
+  cellAddress?: string
+): string {
+  const fieldName = TRADE_FIELD_NAMES[ref.tradeField] || ref.tradeField;
+  const ratioStr = ref.ratio !== 1 ? ` × ${ref.ratio}` : '';
+  const cellStr = cellAddress ? ` [${cellAddress}]` : '';
+
+  if (ref.sourceType === 'category' && ref.tradeGroup) {
+    return `${ref.tradeGroup} (${fieldName})${ratioStr}${cellStr}`;
   }
-
-  const match = reference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-  if (!match) return reference;
-
-  const [, col, row, ratio] = match;
-  const rowNum = parseInt(row, 10);
-
-  // 열 이름 매핑
-  const columnNames: Record<string, string> = {
-    B: '갱폼',
-    C: '알폼',
-    D: '형틀',
-    E: '해체/정리',
-    F: '철근',
-    G: '콘크리트',
-  };
-
-  // 행 이름 매핑
-  let rowName = '';
-  if (rowNum === 6) rowName = '버림';
-  else if (rowNum === 7) rowName = '기초';
-  else if (rowNum === 8) rowName = 'B2';
-  else if (rowNum === 9) rowName = 'B1';
-  else if (rowNum >= 11 && rowNum <= 25) rowName = `${rowNum - 10}F`;
-  else if (rowNum === 26) rowName = 'PH1';
-  else if (rowNum === 27) rowName = 'PH2';
-  else if (rowNum === 28) rowName = 'PH3';
-
-  const colName = columnNames[col] || col;
-  const ratioStr = ratio ? ` × ${ratio}` : '';
-
-  return `물량입력표 ${col}${row} (${rowName} ${colName})${ratioStr}`;
+  if (ref.sourceType === 'combined' && ref.combineFloors) {
+    return `${ref.combineFloors.join('+')} 합산 (${fieldName})${ratioStr}${cellStr}`;
+  }
+  if (floorLabel) {
+    return `${floorLabel} (${fieldName})${ratioStr}${cellStr}`;
+  }
+  return `(${fieldName})${ratioStr}${cellStr}`;
 }
 
 interface UseProcessCalculationParams {
@@ -107,76 +99,48 @@ export function useProcessCalculation({
     let quantity = 0;
     let quantitySource = '';
 
+    // 옥탑층 셀 주소 계산을 위한 최대 지상층 번호
+    const maxFloorNumber = building.floors
+      ? (() => {
+          const aboveGroundFloors = building.floors
+            .filter(f => f.levelType === '지상' && f.floorClass !== '옥탑층')
+            .map(f => {
+              const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F/);
+              if (rangeMatch) return parseInt(rangeMatch[2], 10);
+              const match = f.floorLabel.match(/(\d+)F/);
+              return match ? parseInt(match[1], 10) : f.floorNumber;
+            });
+          return aboveGroundFloors.length > 0 ? Math.max(...aboveGroundFloors) : undefined;
+        })()
+      : undefined;
+
     if (item.quantityReference) {
-      quantitySource = getQuantitySourceDescription(item.quantityReference);
+      // SemanticQuantityReference 획득: quantityRef 우선, 없으면 레거시 참조 파싱
+      const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, category);
 
-      // 카테고리별 수량 가져오기 로직
-      if (category === '주동 지하층' && floorLabel) {
-        const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-        if (refMatch) {
-          const [, col] = refMatch;
-          const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-
-          // 특수 행(주차장, 3단 가시설)인 경우 specialRowQuantities에서 수량 가져오기
-          if (isSpecialRow && specialRowQuantities) {
-            if (col === 'B') {
-              quantity = (specialRowQuantities.gangForm || 0) * ratio;
-            } else if (col === 'C') {
-              quantity = (specialRowQuantities.alForm || 0) * ratio;
-            } else if (col === 'D') {
-              quantity = (specialRowQuantities.formwork || 0) * ratio;
-            } else if (col === 'E') {
-              quantity = (specialRowQuantities.stripClean || 0) * ratio;
-            } else if (col === 'F') {
-              quantity = (specialRowQuantities.rebar || 0) * ratio;
-            } else if (col === 'G') {
-              quantity = (specialRowQuantities.concrete || 0) * ratio;
-            }
-            quantitySource = `특수행 수량 (${col === 'F' ? '철근' : col === 'G' ? '콘크리트' : '형틀'})${ratio !== 1 ? ` × ${ratio}` : ''}`;
-          } else {
-            // 일반 지하층인 경우 기존 로직 사용
-            const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete';
-            const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
-            quantity = getQuantityFromFloor(building, floorLabel, field, subField) * ratio;
-            quantitySource = `물량입력표 ${floorLabel} (${col === 'F' ? '철근' : col === 'G' ? '콘크리트' : '형틀'})${ratio !== 1 ? ` × ${ratio}` : ''}`;
-          }
-        }
-      } else if ((category === '옥탑층' || category === 'PH층') && floorLabel) {
-        const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-        if (refMatch) {
-          const [, col] = refMatch;
-          const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
-          const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete';
-          const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
-          quantity = getQuantityFromFloor(building, floorLabel, field, subField) * ratio;
-          quantitySource = `물량입력표 ${floorLabel} (${col === 'F' ? '철근' : col === 'G' ? '콘크리트' : '형틀'})${ratio !== 1 ? ` × ${ratio}` : ''}`;
-        }
-      } else if (category === '기준층' && floorLabel) {
-        const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-        if (refMatch) {
-          const [, col] = refMatch;
-          const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
+      if (ref) {
+        // 특수 행(주차장, 3단 가시설)인 경우 specialRowQuantities에서 수량 가져오기
+        if (isSpecialRow && specialRowQuantities) {
+          const specialQty = (specialRowQuantities as Record<string, number | undefined>)[ref.tradeField];
+          quantity = (specialQty || 0) * ref.ratio;
+          const fieldName = TRADE_FIELD_NAMES[ref.tradeField] || ref.tradeField;
+          quantitySource = `특수행 수량 (${fieldName})${ref.ratio !== 1 ? ` × ${ref.ratio}` : ''}`;
+        } else {
+          // 일반 물량 해석: resolveProcessQuantity로 통합
           const rangeFloorId = floor?.floorLabel?.includes('~') ? floor.id : undefined;
-          const field = col === 'B' ? 'gangForm' : col === 'C' ? 'alForm' : col === 'D' ? 'formwork' : col === 'E' ? 'stripClean' : col === 'F' ? 'rebar' : 'concrete';
-          const subField = col === 'B' || col === 'C' || col === 'D' || col === 'E' ? 'areaM2' : col === 'F' ? 'ton' : 'volumeM3';
-          quantity = getQuantityFromFloor(building, floorLabel, field, subField, rangeFloorId) * ratio;
-          quantitySource = `물량입력표 ${floorLabel} (${col === 'F' ? '철근' : col === 'G' ? '콘크리트' : '형틀'})${ratio !== 1 ? ` × ${ratio}` : ''}`;
+          quantity = resolveProcessQuantity(building, ref, floorLabel, rangeFloorId);
+
+          // 셀 주소 생성
+          const colType = toColumnType(ref.tradeField);
+          const baseCellAddr = colType
+            ? getCellReferenceForRow(category, ref.sourceType === 'category' ? undefined : floorLabel, colType, maxFloorNumber)
+            : null;
+          const cellAddress = baseCellAddr
+            ? (ref.ratio !== 1 ? `${baseCellAddr}*${ref.ratio}` : baseCellAddr)
+            : undefined;
+
+          quantitySource = getQuantitySourceDescriptionFromRef(ref, floorLabel, cellAddress ?? undefined);
         }
-      } else if (category === '셋팅층' && floorLabel) {
-        const refMatch = item.quantityReference.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
-        if (refMatch) {
-          const [, col] = refMatch;
-          const floorMatch = floorLabel.match(/(\d+)F/);
-          if (floorMatch) {
-            const floorNum = parseInt(floorMatch[1], 10);
-            const targetRowNum = floorNum + 10;
-            const newReference = `${col}${targetRowNum}${refMatch[3] ? `*${refMatch[3]}` : ''}`;
-            quantity = getQuantityByReference(building, newReference);
-            quantitySource = getQuantitySourceDescription(newReference);
-          }
-        }
-      } else {
-        quantity = getQuantityByReference(building, item.quantityReference);
       }
 
       // 수량 참조 단계
