@@ -87,7 +87,8 @@ export function getQuantityFromFloor(
   floorLabel: string, // '1F', '2F', 'B1', '코어1-3F' 등 또는 범위 형식 기준층의 floor.id
   field: 'gangForm' | 'alForm' | 'formwork' | 'euroForm' | 'stripClean' | 'rebar' | 'concrete',
   subField: string,
-  rangeFloorId?: string // 범위 형식 기준층의 floor.id (선택적)
+  rangeFloorId?: string, // 범위 형식 기준층의 floor.id (선택적)
+  tradeGroup?: string // 특정 tradeGroup의 데이터만 조회 (예: '주동 지하층')
 ): number {
   // rangeFloorId가 제공된 경우 (기준층 범위 형식), 범위 기준층을 우선 처리
   let rangeFloor: typeof building.floors[0] | null = null;
@@ -191,31 +192,45 @@ export function getQuantityFromFloor(
     : ['아파트', '옥탑층', 'PH층']; // 기타: '아파트' 우선
 
   // 정확한 floorId로 직접 조회 (개별 데이터 저장 방식)
-  // 우선순위대로 trade 조회
   let trade: FloorTrade | undefined;
-  for (const tg of tradeGroupPriority) {
+
+  if (tradeGroup) {
+    // tradeGroup이 명시된 경우: 해당 tradeGroup만 조회
     trade = building.floorTrades.find(ft =>
-      ft.floorId === primaryTargetFloorId && ft.tradeGroup === tg
+      ft.floorId === primaryTargetFloorId && ft.tradeGroup === tradeGroup
     );
-    if (trade) break;
-  }
-
-  // 찾지 못하면 tradeGroup 무시하고 floorId만으로 조회
-  if (!trade) {
-    trade = building.floorTrades.find(ft => ft.floorId === primaryTargetFloorId);
-  }
-
-  // 개별 층 ID로 trade를 찾지 못하고 범위 기반 individualFloorId가 있으면 fallback (tradeGroup 우선순위 적용)
-  if (!trade && primaryTargetFloorId === floor?.id && individualFloorId) {
+  } else {
+    // 기존 우선순위 로직 유지
     for (const tg of tradeGroupPriority) {
       trade = building.floorTrades.find(ft =>
-        ft.floorId === individualFloorId && ft.tradeGroup === tg
+        ft.floorId === primaryTargetFloorId && ft.tradeGroup === tg
       );
       if (trade) break;
     }
 
+    // 찾지 못하면 tradeGroup 무시하고 floorId만으로 조회
     if (!trade) {
-      trade = building.floorTrades.find(ft => ft.floorId === individualFloorId);
+      trade = building.floorTrades.find(ft => ft.floorId === primaryTargetFloorId);
+    }
+  }
+
+  // 개별 층 ID로 trade를 찾지 못하고 범위 기반 individualFloorId가 있으면 fallback
+  if (!trade && primaryTargetFloorId === floor?.id && individualFloorId) {
+    if (tradeGroup) {
+      trade = building.floorTrades.find(ft =>
+        ft.floorId === individualFloorId && ft.tradeGroup === tradeGroup
+      );
+    } else {
+      for (const tg of tradeGroupPriority) {
+        trade = building.floorTrades.find(ft =>
+          ft.floorId === individualFloorId && ft.tradeGroup === tg
+        );
+        if (trade) break;
+      }
+
+      if (!trade) {
+        trade = building.floorTrades.find(ft => ft.floorId === individualFloorId);
+      }
     }
   }
 
@@ -233,11 +248,14 @@ export function getQuantityFromFloor(
 
   const tradeData = trade.trades[field];
   if (!tradeData) {
-    // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: euroForm × 2
+    // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: 형틀합계(gangForm + alForm + euroForm) × 2
     if (field === 'stripClean' && subField === 'areaM2') {
-      const euroFormData = trade.trades['euroForm'];
-      if (euroFormData) {
-        return getQuantityValue(euroFormData, 'areaM2') * 2;
+      const gangForm = getQuantityValue(trade.trades['gangForm'] || {}, 'areaM2');
+      const alForm = getQuantityValue(trade.trades['alForm'] || {}, 'areaM2');
+      const euroForm = getQuantityValue(trade.trades['euroForm'] || {}, 'areaM2');
+      const formworkTotal = gangForm + alForm + euroForm;
+      if (formworkTotal > 0) {
+        return formworkTotal * 2;
       }
     }
 
@@ -625,6 +643,15 @@ export function getQuantityByReference(
       const tradeData = trade.trades[field];
       if (tradeData) {
         quantity += getQuantityValue(tradeData, subField);
+      } else if (field === 'stripClean' && subField === 'areaM2') {
+        // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: 형틀합계(gangForm + alForm + euroForm) × 2
+        const gangForm = getQuantityValue(trade.trades['gangForm'] || {}, 'areaM2');
+        const alForm = getQuantityValue(trade.trades['alForm'] || {}, 'areaM2');
+        const euroForm = getQuantityValue(trade.trades['euroForm'] || {}, 'areaM2');
+        const formworkTotal = gangForm + alForm + euroForm;
+        if (formworkTotal > 0) {
+          quantity += formworkTotal * 2;
+        }
       }
     });
   }

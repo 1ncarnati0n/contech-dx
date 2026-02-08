@@ -67,15 +67,118 @@ function resolveByCategory(
     if (tradeData) {
       total += getQuantityValue(tradeData, ref.subField);
     } else if (ref.tradeField === 'stripClean' && ref.subField === 'areaM2') {
-      // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: euroForm × 2
-      const euroFormData = trade.trades['euroForm'];
-      if (euroFormData) {
-        total += getQuantityValue(euroFormData, 'areaM2') * 2;
+      // stripClean(해체/정리)은 DB에 저장되지 않는 파생값: 형틀합계(gangForm + alForm + euroForm) × 2
+      const gangForm = getQuantityValue(trade.trades['gangForm'] || {}, 'areaM2');
+      const alForm = getQuantityValue(trade.trades['alForm'] || {}, 'areaM2');
+      const euroForm = getQuantityValue(trade.trades['euroForm'] || {}, 'areaM2');
+      const formworkTotal = gangForm + alForm + euroForm;
+      if (formworkTotal > 0) {
+        total += formworkTotal * 2;
       }
     }
   }
 
   return total;
+}
+
+/** 차감 필드 타입 */
+export interface DeductionFields {
+  gangForm: number;
+  alForm: number;
+  formwork: number;
+  rebar: number;
+  concrete: number;
+}
+
+/**
+ * 특수 행(주차장/가시설/6.5m이상) 차감 합계 계산
+ *
+ * 주동 지하층의 전체 물량에서 차감할 특수 행 물량을 합산합니다.
+ */
+export function getSpecialRowDeductions(
+  specialRowQuantities: Record<string, Record<string, number>> | undefined,
+  floorLabel: string
+): DeductionFields {
+  const zero: DeductionFields = { gangForm: 0, alForm: 0, formwork: 0, rebar: 0, concrete: 0 };
+  if (!specialRowQuantities) return zero;
+
+  const keys = [
+    `${floorLabel} 주차장`,
+    `${floorLabel} 3단 가시설 적용부`,
+    `${floorLabel} 6.5m이상`,
+  ];
+
+  const result: DeductionFields = { gangForm: 0, alForm: 0, formwork: 0, rebar: 0, concrete: 0 };
+  for (const key of keys) {
+    const qty = specialRowQuantities[key];
+    if (!qty) continue;
+    result.gangForm += qty.gangForm || 0;
+    result.alForm += qty.alForm || 0;
+    result.formwork += qty.formwork || 0;
+    result.rebar += qty.rebar || 0;
+    result.concrete += qty.concrete || 0;
+  }
+
+  return result;
+}
+
+/**
+ * 차감 적용된 물량 해석: base(ratio=1) - deduction → ×ratio
+ *
+ * tradeField에 따라 적절한 deduction 필드를 매핑:
+ * - euroForm → deductions.formwork
+ * - stripClean → (gangForm + alForm + formwork) * 2
+ * - formwork → gangForm + alForm + formwork
+ * - 나머지 → 동일 키
+ */
+export function resolveWithDeduction(
+  building: Building,
+  ref: SemanticQuantityReference,
+  floorLabel: string,
+  deductions: DeductionFields,
+  rangeFloorId?: string
+): number {
+  const baseRef = { ...ref, ratio: 1 };
+  let baseQuantity = 0;
+
+  switch (baseRef.sourceType) {
+    case 'category':
+      baseQuantity = resolveByCategory(building, baseRef);
+      break;
+    case 'floor':
+      baseQuantity = resolveByFloor(building, baseRef, floorLabel, rangeFloorId);
+      break;
+    case 'combined':
+      baseQuantity = resolveByCombined(building, baseRef);
+      break;
+  }
+
+  let deduction = 0;
+  switch (ref.tradeField) {
+    case 'euroForm':
+      deduction = deductions.formwork;
+      break;
+    case 'stripClean':
+      deduction = (deductions.gangForm + deductions.alForm + deductions.formwork) * 2;
+      break;
+    case 'formwork':
+      deduction = deductions.gangForm + deductions.alForm + deductions.formwork;
+      break;
+    case 'gangForm':
+      deduction = deductions.gangForm;
+      break;
+    case 'alForm':
+      deduction = deductions.alForm;
+      break;
+    case 'rebar':
+      deduction = deductions.rebar;
+      break;
+    case 'concrete':
+      deduction = deductions.concrete;
+      break;
+  }
+
+  return Math.max(0, baseQuantity - deduction) * ref.ratio;
 }
 
 /**
@@ -95,7 +198,8 @@ function resolveByFloor(
     floorLabel,
     ref.tradeField,
     ref.subField,
-    rangeFloorId
+    rangeFloorId,
+    ref.tradeGroup
   );
 }
 
@@ -115,7 +219,9 @@ function resolveByCombined(
       building,
       floor,
       ref.tradeField,
-      ref.subField
+      ref.subField,
+      undefined,
+      ref.tradeGroup
     );
   }
 

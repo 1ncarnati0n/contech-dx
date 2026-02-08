@@ -11,7 +11,7 @@ import { BuildingTabs } from './BuildingTabs';
 import { ProcessDetailPanel } from './process-plan/ProcessDetailPanel';
 import { BuildingInfoHeader, ProcessTableHeader } from './process-plan'; // 🎯 Stage 2 Task 5: New components
 import { getProcessModule } from '@/lib/data/process-modules';
-import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
+import { resolveProcessQuantity, getSpecialRowDeductions, resolveWithDeduction } from '@/lib/utils/process-quantity-resolver';
 import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
 
 import { getCellReferenceForRow } from '@/lib/utils/process-cell-reference';
@@ -1209,7 +1209,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
                                           if (col === 'B') quantity = combinedQty.gangForm * ratio;
                                           else if (col === 'C') quantity = combinedQty.alForm * ratio;
-                                          else if (col === 'D') quantity = combinedQty.formwork * ratio;
+                                          else if (col === 'D') quantity = (combinedQty.gangForm + combinedQty.alForm + combinedQty.formwork) * ratio;
+                                          else if (col === 'E') quantity = (combinedQty.gangForm + combinedQty.alForm + combinedQty.formwork) * 2 * ratio;
                                           else if (col === 'F') quantity = combinedQty.rebar * ratio;
                                           else if (col === 'G') quantity = combinedQty.concrete * ratio;
                                         }
@@ -1260,7 +1261,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           const ratio = refMatch[3] ? parseFloat(refMatch[3]) : 1;
                                           if (col === 'B') quantity = (specialQuantities.gangForm || 0) * ratio;
                                           else if (col === 'C') quantity = (specialQuantities.alForm || 0) * ratio;
-                                          else if (col === 'D') quantity = (specialQuantities.formwork || 0) * ratio;
+                                          else if (col === 'D') quantity = ((specialQuantities.gangForm || 0) + (specialQuantities.alForm || 0) + (specialQuantities.formwork || 0)) * ratio;
+                                          else if (col === 'E') quantity = ((specialQuantities.gangForm || 0) + (specialQuantities.alForm || 0) + (specialQuantities.formwork || 0)) * 2 * ratio;
                                           else if (col === 'F') quantity = (specialQuantities.rebar || 0) * ratio;
                                           else if (col === 'G') quantity = (specialQuantities.concrete || 0) * ratio;
                                         }
@@ -1382,10 +1384,10 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                         />
                                       </td>
 
-                                      {/* 해체/정리 (유로폼 × 2, 자동계산) - 비활성 시 회색 */}
+                                      {/* 해체/정리 (형틀합계 × 2, 자동계산) - 비활성 시 회색 */}
                                       <td className={`px-0.5 py-0.5 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle ${!isRowActive ? 'opacity-40' : ''}`}>
                                         <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                                          {((getSpecialRowQuantityLocal('formwork') || 0) * 2).toFixed(2)}
+                                          {(((getSpecialRowQuantityLocal('gangForm') || 0) + (getSpecialRowQuantityLocal('alForm') || 0) + (getSpecialRowQuantityLocal('formwork') || 0)) * 2).toFixed(2)}
                                         </div>
                                       </td>
 
@@ -1615,9 +1617,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   }
                                   // 지하층 공정계획에서는 지하층만 처리
                                   else if (row.floorLabel && row.category === '주동 지하층') {
+                                    // 특수 행 차감 합계 계산
+                                    const deductions = getSpecialRowDeductions(plan?.specialRowQuantities, row.floorLabel!);
+
                                     // 해당 층의 항목만 필터링
                                     const floorItems = module.items.filter(item => {
-                                      // 지하층의 경우 item.floorLabel과 row.floorLabel이 일치해야 함
                                       return item.floorLabel === row.floorLabel;
                                     });
 
@@ -1628,7 +1632,6 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
 
                                       if (overriddenDays !== undefined) {
-                                        // 오버라이드된 값 사용
                                         sumDirectDays += overriddenDays;
                                         return;
                                       }
@@ -1636,11 +1639,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                       let directWorkDays = 0;
                                       let quantity = 0;
 
-                                      // 수량 참조를 층별로 조정
+                                      // 수량 참조를 층별로 조정 (차감 적용)
                                       if (item.quantityReference) {
                                         const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, row.category);
                                         if (ref) {
-                                          quantity = resolveProcessQuantity(building, ref, row.floorLabel);
+                                          quantity = resolveWithDeduction(building, ref, row.floorLabel!, deductions);
                                         }
                                       }
 
@@ -1777,18 +1780,10 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   return Math.max(0, baseQty - otherSum);
                                 };
 
-                                // 물량 데이터 가져오기 - 특수 행 수량 차감을 위한 공통 헬퍼
-                                const getSpecialRowDeduction = (field: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete') => {
-                                  if (row.category !== '주동 지하층' || !row.floorLabel || row.isSpecialRow) return 0;
-                                  const plan = processPlans.get(building.id);
-                                  const parkingKey = `${row.floorLabel} 주차장`;
-                                  const facilityKey = `${row.floorLabel} 3단 가시설 적용부`;
-                                  const highCeilingKey = `${row.floorLabel} 6.5m이상`;
-                                  const parkingQty = plan?.specialRowQuantities?.[parkingKey] || {};
-                                  const facilityQty = plan?.specialRowQuantities?.[facilityKey] || {};
-                                  const highCeilingQty = plan?.specialRowQuantities?.[highCeilingKey] || {};
-                                  return (parkingQty[field] || 0) + (facilityQty[field] || 0) + (highCeilingQty[field] || 0);
-                                };
+                                // 물량 데이터 가져오기 - 특수 행 수량 차감 (공유 유틸리티 사용)
+                                const rowDeductions = (row.category === '주동 지하층' && row.floorLabel && !row.isSpecialRow)
+                                  ? getSpecialRowDeductions(plan?.specialRowQuantities, row.floorLabel)
+                                  : undefined;
 
                                 const resolveBasementQty = (
                                   tradeField: string, subField: string, specialField: 'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete'
@@ -1810,13 +1805,13 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                   const base = resolveProcessQuantity(building, {
                                     tradeField: tradeField as any, subField: subField as any, ratio: 1, sourceType: 'floor',
                                   }, row.floorLabel);
-                                  return Math.max(0, base - getSpecialRowDeduction(specialField));
+                                  return Math.max(0, base - (rowDeductions?.[specialField] || 0));
                                 };
 
                                 const getGangFormQty = () => resolveBasementQty('gangForm', 'areaM2', 'gangForm');
                                 const getAlFormQty = () => resolveBasementQty('alForm', 'areaM2', 'alForm');
                                 const getEuroFormQty = () => resolveBasementQty('euroForm', 'areaM2', 'formwork');
-                                const getStripCleanQty = () => getEuroFormQty() * 2;
+                                const getStripCleanQty = () => (getGangFormQty() + getAlFormQty() + getEuroFormQty()) * 2;
                                 const getFormworkQuantity = () => getGangFormQty() + getAlFormQty() + getEuroFormQty();
                                 const getRebarQuantity = () => resolveBasementQty('rebar', 'ton', 'rebar');
                                 const getConcreteQuantity = () => resolveBasementQty('concrete', 'volumeM3', 'concrete');

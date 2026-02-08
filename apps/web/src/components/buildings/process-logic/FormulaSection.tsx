@@ -1,17 +1,10 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, Calculator, Info, Edit, Save, X, Settings } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronDown, ChevronRight, Calculator, Info, Settings } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import type { ProcessModule } from '@/lib/data/process-modules';
-import type { ProcessCategory, ProcessLogicPreset } from '@/lib/types';
+import type { ProcessCategory } from '@/lib/types';
 
 interface Formula {
   id: string;
@@ -23,13 +16,7 @@ interface Formula {
 
 interface FormulaSectionProps {
   modules?: ProcessModule[];
-
-  // 프리셋 관련 props
-  presets?: ProcessLogicPreset[];
-  activePresetId?: string | null;
-  onPresetChange?: (presetId: string) => void;
   onSettingsClick?: () => void;
-  isLoadingPresets?: boolean;
 }
 
 // UI 라벨과 실제 ProcessCategory 간의 매핑
@@ -168,11 +155,7 @@ function getDefaultValueForCategory(category: ProcessCategory): number {
 
 export function FormulaSection({
   modules = [],
-  presets,
-  activePresetId,
-  onPresetChange,
   onSettingsClick,
-  isLoadingPresets,
 }: FormulaSectionProps) {
   const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
 
@@ -236,48 +219,6 @@ export function FormulaSection({
           </Button>
         )}
       </div>
-
-      {/* 프리셋 선택 영역 */}
-      {presets && onPresetChange && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 bg-zinc-50 dark:bg-zinc-800/30">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              프리셋:
-            </label>
-
-            <Select
-              value={activePresetId || ''}
-              onValueChange={onPresetChange}
-              disabled={isLoadingPresets}
-            >
-              <SelectTrigger className="w-80">
-                <SelectValue placeholder="프리셋 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {presets.length === 0 ? (
-                  <div className="px-2 py-1.5 text-sm text-zinc-500">
-                    저장된 프리셋이 없습니다
-                  </div>
-                ) : (
-                  presets.map((preset) => (
-                    <SelectItem key={preset.id} value={preset.id}>
-                      <div className="flex items-center gap-2">
-                        <span>{preset.name}</span>
-                        {preset.isDefault && (
-                          <span className="text-xs text-zinc-500">(기본)</span>
-                        )}
-                        {!preset.projectId && (
-                          <span className="text-xs text-blue-600 dark:text-blue-400">(공통)</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
 
       {/* 섹션 콘텐츠 */}
       <div className="border-t border-zinc-200 dark:border-zinc-700">

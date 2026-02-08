@@ -408,7 +408,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         <TradeInputCell {...cellProps(5, trade.euroForm?.areaM2 ?? null, 'euroForm.areaM2')} />
         {/* 해체/정리 (읽기전용) */}
         <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">
-          {fv((trade.euroForm?.areaM2 || 0) * 2)}
+          {fv(((trade.gangForm?.areaM2 || 0) + (trade.alForm?.areaM2 || 0) + (trade.euroForm?.areaM2 || 0)) * 2)}
         </td>
         {/* 철근 합계 (읽기전용 - 물량입력 값) */}
         <td className={`px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16 ${toleranceClass(rebarInput, calculateRebarTotal(trade))}`}>
@@ -432,7 +432,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         <p className="font-medium mb-1">※ 산식 안내</p>
         <ul className="space-y-0.5 ml-3">
           <li>• 형틀 합계 = 갱폼(M²) + 알폼(M²) + 유로폼(M²)</li>
-          <li>• 해체/정리 = 유로폼(M²) × 2</li>
+          <li>• 해체/정리 = 형틀합계(M²) × 2</li>
           <li>• 철근 합계 = 각 층 철근(TON)의 합계</li>
           <li>• 콘크리트 합계 = 각 층 콘크리트(M³)의 합계</li>
         </ul>
@@ -498,7 +498,7 @@ export const DetailedFloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(gangFormSum)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(alFormSum)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(euroFormSum)}</td>
-                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">{fv(euroFormSum * 2)}</td>
+                      <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">{fv((gangFormSum + alFormSum + euroFormSum) * 2)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 w-16">{fv(rebarWallSum + rebarBeamSlabSum)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(rebarWallSum)}</td>
                       <td className="px-1 py-0.5 text-xs text-center border-r border-slate-200 dark:border-slate-800 w-16">{fv(rebarBeamSlabSum)}</td>

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Building, ProcessCategory, ProcessType } from '@/lib/types';
 import type { ProcessItem } from '@/lib/data/process-modules';
 import type { FormulaStep, CalculationResult } from '../FormulaDisplay';
-import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
+import { resolveProcessQuantity, resolveWithDeduction, type DeductionFields } from '@/lib/utils/process-quantity-resolver';
 import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
 import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
 import {
@@ -76,6 +76,8 @@ interface UseProcessCalculationParams {
     rebar?: number;
     concrete?: number;
   };
+  /** 주동 지하층용: 주차장/가시설/6.5m이상 차감 합계 */
+  quantityDeductions?: DeductionFields;
 }
 
 /**
@@ -90,6 +92,7 @@ export function useProcessCalculation({
   floor,
   isSpecialRow,
   specialRowQuantities,
+  quantityDeductions,
 }: UseProcessCalculationParams): CalculationResult {
   return useMemo(() => {
     const formulaSteps: FormulaStep[] = [];
@@ -121,14 +124,34 @@ export function useProcessCalculation({
       if (ref) {
         // 특수 행(주차장, 3단 가시설)인 경우 specialRowQuantities에서 수량 가져오기
         if (isSpecialRow && specialRowQuantities) {
-          const specialQty = (specialRowQuantities as Record<string, number | undefined>)[ref.tradeField];
-          quantity = (specialQty || 0) * ref.ratio;
+          let specialQty: number;
+          const gf = specialRowQuantities.gangForm || 0;
+          const af = specialRowQuantities.alForm || 0;
+          const fw = specialRowQuantities.formwork || 0;
+
+          if (ref.tradeField === 'formwork') {
+            // D 컬럼: 형틀 합계 = 갱폼 + 알폼 + 유로폼
+            specialQty = gf + af + fw;
+          } else if (ref.tradeField === 'stripClean') {
+            // E 컬럼: 해체/정리 = (갱폼 + 알폼 + 유로폼) × 2
+            specialQty = (gf + af + fw) * 2;
+          } else {
+            const fieldKey = ref.tradeField === 'euroForm' ? 'formwork' : ref.tradeField;
+            specialQty = (specialRowQuantities as Record<string, number | undefined>)[fieldKey] || 0;
+          }
+
+          quantity = specialQty * ref.ratio;
           const fieldName = TRADE_FIELD_NAMES[ref.tradeField] || ref.tradeField;
           quantitySource = `특수행 수량 (${fieldName})${ref.ratio !== 1 ? ` × ${ref.ratio}` : ''}`;
         } else {
-          // 일반 물량 해석: resolveProcessQuantity로 통합
+          // 일반 물량 해석
           const rangeFloorId = floor?.floorLabel?.includes('~') ? floor.id : undefined;
-          quantity = resolveProcessQuantity(building, ref, floorLabel, rangeFloorId);
+          if (quantityDeductions) {
+            // 주동 지하층: 특수 행 차감 적용
+            quantity = resolveWithDeduction(building, ref, floorLabel!, quantityDeductions, rangeFloorId);
+          } else {
+            quantity = resolveProcessQuantity(building, ref, floorLabel, rangeFloorId);
+          }
 
           // 셀 주소 생성
           const colType = toColumnType(ref.tradeField);
@@ -379,5 +402,5 @@ export function useProcessCalculation({
       equipmentCount,
       formulaSteps,
     };
-  }, [building, item, category, floorLabel, overriddenDirectWorkDays, floor, isSpecialRow, specialRowQuantities]);
+  }, [building, item, category, floorLabel, overriddenDirectWorkDays, floor, isSpecialRow, specialRowQuantities, quantityDeductions]);
 }
