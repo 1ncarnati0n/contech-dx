@@ -88,6 +88,10 @@ export function useGanttVirtualization({
         }
         const task = tasks[index];
 
+        // BLOCK: 항상 30px
+        if (task.type === 'BLOCK') {
+            return ROW_HEIGHT;
+        }
         // CP: 항상 30px
         if (task.type === 'CP') {
             return ROW_HEIGHT;

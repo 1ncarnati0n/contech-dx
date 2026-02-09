@@ -10,6 +10,9 @@ CHECK (role IN ('admin', 'main_user', 'vip_user', 'user'));
 -- profiles 테이블에 추가 정보 컬럼
 ALTER TABLE profiles
 ADD COLUMN IF NOT EXISTS display_name TEXT,
+ADD COLUMN IF NOT EXISTS position TEXT,
+ADD COLUMN IF NOT EXISTS affiliation TEXT,
+ADD COLUMN IF NOT EXISTS department TEXT,
 ADD COLUMN IF NOT EXISTS avatar_url TEXT,
 ADD COLUMN IF NOT EXISTS bio TEXT,
 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
@@ -60,12 +63,17 @@ CREATE POLICY "Admins can delete any profile"
     (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
   );
 
--- 회원가입 시 기본 role을 'user'로 설정하는 트리거 수정
+-- 회원가입 시 기본 role을 'user'로 설정하고 display_name을 가입 이름으로 초기화
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, role)
-  VALUES (NEW.id, NEW.email, 'user')
+  INSERT INTO public.profiles (id, email, role, display_name)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    'user',
+    COALESCE(NEW.raw_user_meta_data->>'display_name', NULL)
+  )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;

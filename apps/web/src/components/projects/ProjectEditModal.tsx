@@ -77,7 +77,6 @@ export function ProjectEditModal({ project, isOpen, onClose, onUpdate }: Props) 
     }, [project, isOpen, form]);
 
     const onSubmit = async (data: ProjectFormValues) => {
-        logger.debug('Submitting project update:', data);
         try {
             // 빈 문자열을 undefined로, NaN을 undefined로 변환
             const formattedData = {

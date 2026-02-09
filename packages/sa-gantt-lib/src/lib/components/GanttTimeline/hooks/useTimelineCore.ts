@@ -122,6 +122,7 @@ export interface TimelineDragHandlers {
     getGroupDragDeltaDays: (groupId: string) => number;
     getTaskGroupDragDeltaDays: (taskId: string) => number;
     getTaskDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
+    getBlockGhostInfo: () => { blockId: string; ghostDeltaDays: number } | null;
 
     // Group Connection
     groupConnectingFrom: GroupConnectingState | null;
@@ -331,6 +332,7 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
         getGroupDragDeltaDays,
         getTaskGroupDragDeltaDays,
         getTaskDragInfo,
+        getBlockGhostInfo,
     } = useGroupDrag({
         pixelsPerDay,
         allTasks: allTasks || tasks,
@@ -445,6 +447,7 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             getGroupDragDeltaDays,
             getTaskGroupDragDeltaDays,
             getTaskDragInfo,
+            getBlockGhostInfo,
             // Group Connection
             groupConnectingFrom,
             hoveredGroupEdge,

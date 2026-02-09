@@ -169,6 +169,16 @@ export default async function AdminUsersPage() {
                         <span className="text-xs text-slate-500 dark:text-slate-400">
                           {user.display_name || '이름 없음'}
                         </span>
+                        {user.position && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                            {user.position}
+                          </span>
+                        )}
+                        {(user.affiliation || user.department) && (
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            {[user.affiliation, user.department].filter(Boolean).join(' / ')}
+                          </span>
+                        )}
                         <span className="text-[10px] text-slate-400 font-mono bg-slate-100 dark:bg-slate-900 px-1 rounded">
                           {user.id.substring(0, 8)}
                         </span>

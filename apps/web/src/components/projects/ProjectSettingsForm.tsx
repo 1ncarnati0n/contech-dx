@@ -37,7 +37,7 @@ type ProjectSettingsFormValues = z.infer<typeof projectSettingsSchema>;
 interface ProjectSettingsFormProps {
   project: Project;
   canEdit: boolean;
-  onUpdate: () => void;
+  onUpdate: (updated: Project) => void;
 }
 
 export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSettingsFormProps) {
@@ -113,7 +113,7 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
         end_date: saved.end_date ? saved.end_date.split('T')[0] : '',
         status: saved.status,
       });
-      onUpdate();
+      onUpdate(saved);
     } catch (error) {
       logger.error('Save failed:', error);
       toast.error('저장 실패', {

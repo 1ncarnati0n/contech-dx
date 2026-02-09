@@ -83,8 +83,6 @@ export function ProjectCreateModal({
 
   const onSubmit = useCallback(async (data: ProjectFormData) => {
     try {
-      logger.debug('Creating project:', { name: data.name, status: data.status });
-
       // 빈 문자열을 undefined로 변환
       const projectData = {
         ...data,
@@ -96,8 +94,6 @@ export function ProjectCreateModal({
       };
 
       const newProject = await createProject(projectData);
-
-      logger.info('Project created:', newProject.id);
 
       form.reset();
       onClose();

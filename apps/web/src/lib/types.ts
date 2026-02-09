@@ -72,6 +72,9 @@ export interface Profile {
   email: string;
   role: UserRole;
   display_name?: string | null;
+  position?: string | null;
+  affiliation?: string | null;
+  department?: string | null;
   avatar_url?: string | null;
   bio?: string | null;
   created_at: string;

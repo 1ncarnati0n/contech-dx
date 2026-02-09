@@ -242,12 +242,6 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     setSaveStatus('saving');
 
     try {
-      logger.debug('[handleSave] Saving data:', {
-        tasks: tasks.length,
-        milestones: milestones.length,
-        dependencies: groupDependencies.length,
-      });
-
       await dataService.saveAll({
         tasks,
         milestones,
@@ -584,8 +578,6 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       const createdGroup = await dataService.createTask(newGroup as ConstructionTask);
       const newGroupId = createdGroup.id;
 
-      logger.debug('[handleTaskGroup] Created group with ID:', newGroupId);
-
       // 선택된 태스크들의 parentId를 새 그룹으로 업데이트 (DB)
       await Promise.all(
         taskIds.map(taskId =>
@@ -647,17 +639,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         isExpanded: true,  // 기본값 추가
       };
 
-      logger.debug('[handleTaskBlockify] Creating block with data:', {
-        ...newBlock,
-        startDate: newBlock.startDate?.toString(),
-        endDate: newBlock.endDate?.toString(),
-      });
-
       // DB에 블럭 생성
       const createdBlock = await dataService.createTask(newBlock as ConstructionTask);
       const newBlockId = createdBlock.id;
-
-      logger.debug('[handleTaskBlockify] Created block with ID:', newBlockId);
 
       // 선택된 CP들의 parentId를 새 블럭으로 업데이트 (DB)
       await Promise.all(
@@ -712,12 +696,6 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       // 그룹의 자식들 찾기
       const children = tasks.filter(t => t.parentId === groupId);
-
-      logger.debug('[handleTaskUngroup] Ungrouping:', {
-        groupId,
-        groupParentId: group.parentId,
-        childrenCount: children.length,
-      });
 
       // 자식들의 parentId를 그룹의 parentId로 업데이트 (DB)
       if (children.length > 0) {
@@ -862,8 +840,8 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   }, [dataService, setAppState]);
 
   // 뷰 전환 핸들러
-  const handleViewChange = useCallback((view: ViewMode, activeCPId?: string) => {
-    logger.debug('View changed:', view, activeCPId);
+  const handleViewChange = useCallback((_view: ViewMode, _activeCPId?: string) => {
+    // no-op: reserved for future view change handling
   }, []);
 
   // 창 닫기 핸들러

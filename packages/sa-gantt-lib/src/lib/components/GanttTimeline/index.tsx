@@ -172,6 +172,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
             getGroupDragDeltaDays,
             getTaskGroupDragDeltaDays,
             getTaskDragInfo,
+            getBlockGhostInfo,
             // Group Connection
             groupConnectingFrom,
             hoveredGroupEdge: _hoveredGroupEdge,
@@ -393,6 +394,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             onGroupDependencyCreate={!!onGroupDependencyCreate}
                             handleGroupEdgeClick={handleGroupEdgeClick}
                             handleGroupEdgeHover={handleGroupEdgeHover}
+                            getBlockGhostInfo={getBlockGhostInfo}
                             offsetY={0}
                         />
 
@@ -596,6 +598,7 @@ export const GanttTimeline = forwardRef<HTMLDivElement, GanttTimelineProps>(
                             onGroupDependencyCreate={!!onGroupDependencyCreate}
                             handleGroupEdgeClick={handleGroupEdgeClick}
                             handleGroupEdgeHover={handleGroupEdgeHover}
+                            getBlockGhostInfo={getBlockGhostInfo}
                             offsetY={MILESTONE_LANE_HEIGHT}
                         />
 
