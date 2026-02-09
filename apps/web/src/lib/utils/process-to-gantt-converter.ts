@@ -81,13 +81,20 @@ export const CATEGORY_ORDER: ProcessCategory[] = [
   '주동 지하층',
   '지하층(층고6.5m이상)',
   '지하주차장',
-  '셋팅층',
   '일반층',
+  '셋팅층',
   '기준층',
   '최상층',
   'PH층',
   '옥탑층',
 ];
+
+/** 동일 시작일로 병렬 배치되는 지하 카테고리 */
+const PARALLEL_UNDERGROUND_CATEGORIES = new Set<ProcessCategory>([
+  '주동 지하층',
+  '지하층(층고6.5m이상)',
+  '지하주차장',
+]);
 
 const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   workOnSaturdays: true,
@@ -185,6 +192,8 @@ function convertBuildingPlan(
 
   // 각 카테고리별 CP/GROUP/TASK 생성
   let currentDate = new Date(structureStartDate);
+  let parallelStartDate: Date | null = null;
+  let parallelEndDates: Date[] = [];
 
   for (const category of CATEGORY_ORDER) {
     let processInfo = plan.processes[category];
@@ -202,22 +211,57 @@ function convertBuildingPlan(
       processInfo = { days: 0, processType: '표준공정' as ProcessType };
     }
 
-    const cpResult = convertCategory(
-      building,
-      plan,
-      category,
-      processInfo,
-      blockId,
-      currentDate,
-      holidays,
-      calendarSettings
-    );
+    if (PARALLEL_UNDERGROUND_CATEGORIES.has(category)) {
+      // 병렬 지하 카테고리: 동일 시작일 사용
+      if (!parallelStartDate) {
+        parallelStartDate = new Date(currentDate);
+      }
 
-    if (cpResult.tasks.length > 0) {
-      tasks.push(...cpResult.tasks);
-      // 다음 카테고리는 이전 카테고리 종료일 + 1일부터 시작
-      if (cpResult.endDate) {
-        currentDate = addDays(cpResult.endDate, 1);
+      const cpResult = convertCategory(
+        building,
+        plan,
+        category,
+        processInfo,
+        blockId,
+        parallelStartDate,
+        holidays,
+        calendarSettings
+      );
+
+      if (cpResult.tasks.length > 0) {
+        tasks.push(...cpResult.tasks);
+        if (cpResult.endDate) {
+          parallelEndDates.push(cpResult.endDate);
+        }
+      }
+      // currentDate 업데이트 안 함 (병렬이므로)
+    } else {
+      // 병렬 그룹 직후 → 최대 종료일로 currentDate 갱신
+      if (parallelEndDates.length > 0) {
+        const maxEndDate = new Date(
+          Math.max(...parallelEndDates.map(d => d.getTime()))
+        );
+        currentDate = addDays(maxEndDate, 1);
+        parallelEndDates = [];
+        parallelStartDate = null;
+      }
+
+      const cpResult = convertCategory(
+        building,
+        plan,
+        category,
+        processInfo,
+        blockId,
+        currentDate,
+        holidays,
+        calendarSettings
+      );
+
+      if (cpResult.tasks.length > 0) {
+        tasks.push(...cpResult.tasks);
+        if (cpResult.endDate) {
+          currentDate = addDays(cpResult.endDate, 1);
+        }
       }
     }
   }
@@ -269,11 +313,20 @@ function convertCategory(
   tasks.push(cpTask);
 
   // 층 목록 결정:
-  // 1순위: floorDetails에 items가 있으면 기존 로직 (하위호환)
-  // 2순위: 없으면 building.floors에서 on-the-fly 계산
-  const floorLabels = (processInfo.floorDetails && hasFloorItems(processInfo.floorDetails))
-    ? getSortedFloorLabels(processInfo.floorDetails, building)
-    : getFloorLabelsForCategory(building, category);
+  // floorDetails + building.floors 병합하여 모든 층이 GROUP으로 나오도록 보장
+  const buildingFloorLabels = getFloorLabelsForCategory(building, category);
+  let floorLabels: string[];
+
+  if (processInfo.floorDetails && hasFloorItems(processInfo.floorDetails)) {
+    // building.floors + floorDetails 키 병합 → 모든 층 포함
+    const detailLabels = Object.keys(processInfo.floorDetails);
+    const merged = new Set([...buildingFloorLabels, ...detailLabels]);
+    floorLabels = [...merged].sort(
+      (a, b) => getFloorSortNumber(a, building) - getFloorSortNumber(b, building)
+    );
+  } else {
+    floorLabels = buildingFloorLabels;
+  }
 
   if (floorLabels.length > 0) {
     let floorStartDate = new Date(startDate);
@@ -346,7 +399,7 @@ function convertFloorGroup(
     parentId: cpId,
     wbsLevel: 2,
     type: 'GROUP',
-    name: floorLabel,
+    name: floorLabel || category,
     startDate: new Date(startDate),
     endDate: new Date(startDate),
     group: { progress: 0 },
@@ -493,6 +546,48 @@ function computeFloorItems(
 }
 
 /**
+ * 범위 형식 층 라벨(예: "7~11F 기준층")을 개별 라벨(["7F","8F",...,"11F"])로 분해
+ * 개별 라벨(예: "6F")은 그대로 통과
+ */
+function expandFloorLabels(labels: string[]): string[] {
+  const result: string[] = [];
+  const seen = new Set<number>();
+
+  for (const label of labels) {
+    const cleanLabel = label.replace(/코어\d+-/, '');
+    const rangeMatch = cleanLabel.match(/(\d+)~(\d+)F/);
+
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1], 10);
+      const end = parseInt(rangeMatch[2], 10);
+      for (let i = start; i <= end; i++) {
+        if (!seen.has(i)) {
+          seen.add(i);
+          result.push(`${i}F`);
+        }
+      }
+    } else {
+      const numMatch = cleanLabel.match(/(\d+)F/);
+      if (numMatch) {
+        const num = parseInt(numMatch[1], 10);
+        if (!seen.has(num)) {
+          seen.add(num);
+          result.push(`${num}F`);
+        }
+      } else {
+        result.push(label);
+      }
+    }
+  }
+
+  return result.sort((a, b) => {
+    const na = parseInt(a) || 0;
+    const nb = parseInt(b) || 0;
+    return na - nb;
+  });
+}
+
+/**
  * building.floors에서 카테고리별 층 목록 추출 (floorDetails 없이)
  */
 export function getFloorLabelsForCategory(
@@ -520,39 +615,52 @@ export function getFloorLabelsForCategory(
         .map(f => f.floorLabel);
 
     case '셋팅층':
-      return building.floors
-        .filter(f => f.floorClass === '셋팅층')
-        .sort((a, b) => a.floorNumber - b.floorNumber)
-        .map(f => f.floorLabel);
+      return expandFloorLabels(
+        building.floors
+          .filter(f => f.floorClass === '셋팅층')
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .map(f => f.floorLabel)
+      );
 
     case '기준층':
-      return building.floors
-        .filter(f => f.floorClass === '기준층')
-        .sort((a, b) => a.floorNumber - b.floorNumber)
-        .map(f => f.floorLabel);
+      return expandFloorLabels(
+        building.floors
+          .filter(f => f.floorClass === '기준층')
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .map(f => f.floorLabel)
+      );
 
     case '일반층':
-      return building.floors
-        .filter(f => f.floorClass === '일반층')
-        .sort((a, b) => a.floorNumber - b.floorNumber)
-        .map(f => f.floorLabel);
+      return expandFloorLabels(
+        building.floors
+          .filter(f => f.floorClass === '일반층')
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .map(f => f.floorLabel)
+      );
 
     case '최상층':
-      return building.floors
-        .filter(f => f.floorClass === '최상층')
-        .map(f => f.floorLabel);
+      return expandFloorLabels(
+        building.floors
+          .filter(f => f.floorClass === '최상층')
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .map(f => f.floorLabel)
+      );
 
     case 'PH층':
-      return building.floors
-        .filter(f => f.floorClass === 'PH층')
-        .sort((a, b) => a.floorNumber - b.floorNumber)
-        .map(f => f.floorLabel);
+      return expandFloorLabels(
+        building.floors
+          .filter(f => f.floorClass === 'PH층')
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .map(f => f.floorLabel)
+      );
 
     case '옥탑층':
-      return building.floors
-        .filter(f => f.floorClass === '옥탑층')
-        .sort((a, b) => a.floorNumber - b.floorNumber)
-        .map(f => f.floorLabel);
+      return expandFloorLabels(
+        building.floors
+          .filter(f => f.floorClass === '옥탑층')
+          .sort((a, b) => a.floorNumber - b.floorNumber)
+          .map(f => f.floorLabel)
+      );
 
     default:
       return [];
