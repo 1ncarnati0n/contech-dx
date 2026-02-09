@@ -11,7 +11,7 @@ import { ProjectCreateModal } from './ProjectCreateModal';
 import type { Project, ProjectStatus } from '@/lib/types';
 import { getProjects } from '@/lib/services/projects';
 import { useAsyncList } from '@/lib/hooks';
-import { logger, getStatusOptions } from '@/lib/utils/index';
+import { getStatusOptions } from '@/lib/utils/index';
 
 interface ProjectListProps {
   isAdmin?: boolean;
@@ -49,12 +49,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
     if (!projects) return [];
     let filtered = [...projects];
 
-    logger.debug('🔍 ProjectList Filter:', {
-      isAdmin,
-      totalProjects: projects.length,
-    });
-
-
     // 검색 필터
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -72,7 +66,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       filtered = filtered.filter((p) => p.status === statusFilter);
     }
 
-    logger.debug('  - Filtered projects:', filtered.length);
     return filtered;
   }, [projects, searchQuery, statusFilter, isAdmin]);
 

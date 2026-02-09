@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   Calendar,
   DollarSign,
@@ -24,13 +24,12 @@ import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { Card, TabLoadingSkeleton } from '@/components/ui';
 import type { Project, Profile } from '@/lib/types';
-import { getProject } from '@/lib/services/projects';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
 import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
-import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
+import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
 
 // 🚀 Stage 2: Lazy load heavy tabs (2,000+ lines) for better performance
 // Target: Initial bundle -40%, Tab switch 2000ms → 1200ms
@@ -145,7 +144,6 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 };
 
 export function ProjectDetailClient({ project: initialProject }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [project, setProject] = useState<Project>(initialProject);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
@@ -169,9 +167,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const handleTabChange = useCallback((tab: string) => {
     if (!isValidTab(tab)) return;
 
-    // 🚀 Performance measurement: Track tab switching times
-    const tabSwitchStart = performance.now();
-
     setActiveTab(tab);
 
     // ✅ Client-side URL update (no server request)
@@ -186,26 +181,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
       ? `${window.location.pathname}?${params.toString()}`
       : window.location.pathname;
     window.history.replaceState({}, '', newUrl);
-
-    // Measure tab switch performance after next render
-    requestAnimationFrame(() => {
-      const tabSwitchTime = performance.now() - tabSwitchStart;
-      const tabTitle = TAB_TITLES[tab] || tab;
-
-      logger.debug(`⚡ [Perf] Tab "${tabTitle}" (${tab}): ${tabSwitchTime.toFixed(2)}ms`);
-
-      // Performance thresholds based on tab complexity
-      const isHeavyTab = ['building_process_plan', 'basement_process_plan', 'detailed_quantity_input'].includes(tab);
-      const threshold = isHeavyTab ? 200 : 100;
-
-      if (tabSwitchTime < threshold) {
-        logger.debug(`✅ Excellent performance (< ${threshold}ms)`);
-      } else if (tabSwitchTime < threshold * 3) {
-        logger.debug(`⚠️ Good performance (< ${threshold * 3}ms)`);
-      } else {
-        logger.warn(`❌ Slow performance (> ${threshold * 3}ms) - optimization needed`);
-      }
-    });
   }, []); // ✅ No dependencies - pure client-side operation
 
   // 브라우저 뒤로가기/앞으로가기 시 탭 상태 동기화
@@ -287,20 +262,10 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     };
   }, []);
 
-  const handleProjectUpdate = useCallback(async () => {
-    try {
-      // 프로젝트 데이터 다시 로드
-      const updatedProject = await getProject(project.id);
-      if (updatedProject) {
-        setProject(updatedProject);
-        toast.success('프로젝트 정보가 업데이트되었습니다.');
-      }
-      router.refresh();
-    } catch (error) {
-      logger.error('Failed to reload project:', error);
-      router.refresh();
-    }
-  }, [project.id, router]);
+  const handleProjectUpdate = useCallback((updated: Project) => {
+    setProject(updated);
+    toast.success('프로젝트 정보가 업데이트되었습니다.');
+  }, []);
 
   return (
     <div className="fixed inset-0 top-16 flex bg-background overflow-hidden">

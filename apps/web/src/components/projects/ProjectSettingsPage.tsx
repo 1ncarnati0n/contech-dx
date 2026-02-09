@@ -12,7 +12,7 @@ import { logger } from '@/lib/utils/logger';
 
 interface ProjectSettingsPageProps {
   project: Project;
-  onUpdate: () => void;
+  onUpdate: (updated: Project) => void;
 }
 
 export function ProjectSettingsPage({ project, onUpdate }: ProjectSettingsPageProps) {
