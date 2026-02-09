@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useEffect } from 'react';
+import { addDays } from 'date-fns';
 import { collectDescendantTasks, calculateGroupDateRange } from '../../../utils/groupUtils';
 import {
     buildGroupDependencyGraph,
@@ -79,10 +80,110 @@ export const useGroupDrag = ({
     groupDependencies = [],
 }: UseGroupDragOptions) => {
     // ========================================
+    // 2단계 지연 계산 상수
+    // ========================================
+    const BLOCK_DEFERRED_CALC_DELAY_MS = 100;
+
+    // ========================================
     // 마지막 계산된 값 캐시 (불필요한 Map 재생성 방지)
     // ========================================
     const lastDeltaWorkingDaysRef = useRef<number>(0);
     const lastTaskDragInfoMapRef = useRef<Map<string, TaskDragInfo> | null>(null);
+
+    // ========================================
+    // 지연 계산 타이머 (BLOCK 드래그 Phase 2)
+    // ========================================
+    const deferredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ========================================
+    // 공통 헬퍼: 전체 하위 태스크 위치 계산
+    // (Phase 2 debounce + onEnd 동기 실행에서 공유)
+    // ========================================
+    const calculateFullChildPositions = useCallback((
+        state: EnhancedGroupDragState,
+        deltaWorkingDays: number,
+        deltaDays: number,
+    ) => {
+        if (!state.referenceTask) return null;
+
+        const taskMoveResults = calculateGroupTasksMoveWithCriticalPath(
+            state.referenceTask,
+            state.workingDaysOffsets,
+            state.affectedTasks,
+            deltaWorkingDays,
+            holidays,
+            calendarSettings
+        );
+
+        let hasChanges = false;
+        const updatedTaskDragInfoMap = new Map(state.taskDragInfoMap);
+
+        for (const [taskId, moveResult] of taskMoveResults) {
+            const originalInfo = state.taskDragInfoMap.get(taskId);
+            if (originalInfo) {
+                if (originalInfo.currentStartDate.getTime() !== moveResult.newStartDate.getTime() ||
+                    originalInfo.currentEndDate.getTime() !== moveResult.newEndDate.getTime()) {
+                    hasChanges = true;
+                    updatedTaskDragInfoMap.set(taskId, {
+                        ...originalInfo,
+                        currentStartDate: moveResult.newStartDate,
+                        currentEndDate: moveResult.newEndDate,
+                    });
+                }
+            }
+        }
+
+        // GROUP/CP/BLOCK 날짜 업데이트: 하위 TASK들의 min/max로 재계산
+        for (const task of state.affectedTasks) {
+            if (task.type === 'GROUP' || task.type === 'CP' || task.type === 'BLOCK') {
+                const originalInfo = state.taskDragInfoMap.get(task.id);
+                if (originalInfo) {
+                    const childTasks = state.affectedTasks.filter(
+                        t => t.type === 'TASK' && t.parentId === task.id
+                    );
+
+                    if (childTasks.length > 0) {
+                        let minStart = new Date(8640000000000000);
+                        let maxEnd = new Date(-8640000000000000);
+
+                        for (const child of childTasks) {
+                            const childInfo = updatedTaskDragInfoMap.get(child.id);
+                            if (childInfo) {
+                                if (childInfo.currentStartDate < minStart) {
+                                    minStart = childInfo.currentStartDate;
+                                }
+                                if (childInfo.currentEndDate > maxEnd) {
+                                    maxEnd = childInfo.currentEndDate;
+                                }
+                            }
+                        }
+
+                        if (minStart.getTime() !== 8640000000000000 &&
+                            maxEnd.getTime() !== -8640000000000000) {
+                            const currentGroupInfo = updatedTaskDragInfoMap.get(task.id);
+                            if (currentGroupInfo &&
+                                (currentGroupInfo.currentStartDate.getTime() !== minStart.getTime() ||
+                                 currentGroupInfo.currentEndDate.getTime() !== maxEnd.getTime())) {
+                                hasChanges = true;
+                                updatedTaskDragInfoMap.set(task.id, {
+                                    ...currentGroupInfo,
+                                    currentStartDate: minStart,
+                                    currentEndDate: maxEnd,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return {
+            hasChanges,
+            updatedTaskDragInfoMap: hasChanges ? updatedTaskDragInfoMap : state.taskDragInfoMap,
+            deltaWorkingDays,
+            deltaDays,
+        };
+    }, [holidays, calendarSettings]);
 
     // ========================================
     // 드래그 상태 관리
@@ -96,14 +197,75 @@ export const useGroupDrag = ({
         pendingState,
         clearPending,
     } = useDragState<EnhancedGroupDragState>({
-        // 드래그 중: 작업일 기준으로 크리티컬 패스 유지하며 이동
+        // 드래그 중: 2단계 지연 계산 (BLOCK) / 기존 방식 (비-BLOCK)
         onMove: (e, state) => {
             if (!onGroupDrag || !state.referenceTask) return;
 
             const deltaX = e.clientX - state.startX;
             const deltaDays = calculateDeltaDays(deltaX, pixelsPerDay);
 
-            // 픽셀 → 작업일 변환
+            // BLOCK 여부 판별
+            const draggedTask = state.affectedTasks.find(t => t.id === state.groupId);
+            const isBlock = draggedTask?.type === 'BLOCK';
+
+            // ================================================
+            // BLOCK 드래그: 2단계 지연 계산
+            // ================================================
+            if (isBlock) {
+                // Phase 1 — 즉시: BLOCK 자체만 addDays로 위치 업데이트
+                const blockInfo = state.taskDragInfoMap.get(state.groupId);
+                const blockOnlyMap = new Map<string, TaskDragInfo>();
+
+                if (blockInfo) {
+                    blockOnlyMap.set(state.groupId, {
+                        ...blockInfo,
+                        currentStartDate: addDays(blockInfo.originalStartDate, deltaDays),
+                        currentEndDate: addDays(blockInfo.originalEndDate, deltaDays),
+                    });
+                }
+
+                // 즉시 업데이트: BLOCK만 정밀, 하위는 currentDeltaDays fallback
+                scheduleUpdate({
+                    currentDeltaDays: deltaDays,
+                    taskDragInfoMap: blockOnlyMap,
+                });
+
+                // Phase 2 — 지연 (debounce): 마우스 정지 시 비싼 계산
+                if (deferredTimerRef.current !== null) {
+                    clearTimeout(deferredTimerRef.current);
+                }
+
+                deferredTimerRef.current = setTimeout(() => {
+                    deferredTimerRef.current = null;
+
+                    // 지연 계산 시점의 deltaWorkingDays 재계산
+                    const deferredDeltaWorkingDays = calculateDeltaWorkingDays(
+                        deltaX,
+                        pixelsPerDay,
+                        state.referenceTask!.startDate,
+                        holidays,
+                        calendarSettings
+                    );
+
+                    const result = calculateFullChildPositions(state, deferredDeltaWorkingDays, deltaDays);
+                    if (result) {
+                        lastDeltaWorkingDaysRef.current = deferredDeltaWorkingDays;
+                        lastTaskDragInfoMapRef.current = result.updatedTaskDragInfoMap;
+
+                        scheduleUpdate({
+                            currentDeltaDays: deltaDays,
+                            currentDeltaWorkingDays: deferredDeltaWorkingDays,
+                            taskDragInfoMap: result.updatedTaskDragInfoMap,
+                        });
+                    }
+                }, BLOCK_DEFERRED_CALC_DELAY_MS);
+
+                return;
+            }
+
+            // ================================================
+            // 비-BLOCK (GROUP/CP): 기존 매 프레임 계산 유지
+            // ================================================
             const deltaWorkingDays = calculateDeltaWorkingDays(
                 deltaX,
                 pixelsPerDay,
@@ -120,112 +282,80 @@ export const useGroupDrag = ({
                 return;
             }
 
-            // 크리티컬 패스 유지하며 각 task 이동 계산
-            const taskMoveResults = calculateGroupTasksMoveWithCriticalPath(
-                state.referenceTask,
-                state.workingDaysOffsets,
-                state.affectedTasks,
-                deltaWorkingDays,
-                holidays,
-                calendarSettings
-            );
+            const result = calculateFullChildPositions(state, deltaWorkingDays, deltaDays);
+            if (result) {
+                lastDeltaWorkingDaysRef.current = deltaWorkingDays;
+                lastTaskDragInfoMapRef.current = result.updatedTaskDragInfoMap;
 
-            // taskDragInfoMap 최적화 업데이트: 실제 변경이 있을 때만 새 Map 생성
-            let hasChanges = false;
-            const updatedTaskDragInfoMap = new Map(state.taskDragInfoMap);
-
-            for (const [taskId, moveResult] of taskMoveResults) {
-                const originalInfo = state.taskDragInfoMap.get(taskId);
-                if (originalInfo) {
-                    // 실제 날짜가 변경되었는지 확인
-                    if (originalInfo.currentStartDate.getTime() !== moveResult.newStartDate.getTime() ||
-                        originalInfo.currentEndDate.getTime() !== moveResult.newEndDate.getTime()) {
-                        hasChanges = true;
-                        updatedTaskDragInfoMap.set(taskId, {
-                            ...originalInfo,
-                            currentStartDate: moveResult.newStartDate,
-                            currentEndDate: moveResult.newEndDate,
-                        });
-                    }
-                }
+                scheduleUpdate({
+                    currentDeltaDays: deltaDays,
+                    currentDeltaWorkingDays: deltaWorkingDays,
+                    taskDragInfoMap: result.updatedTaskDragInfoMap,
+                });
             }
-
-            // GROUP/CP/BLOCK 날짜 업데이트: 하위 TASK들의 min/max로 재계산
-            for (const task of state.affectedTasks) {
-                if (task.type === 'GROUP' || task.type === 'CP' || task.type === 'BLOCK') {
-                    const originalInfo = state.taskDragInfoMap.get(task.id);
-                    if (originalInfo) {
-                        // 이 그룹의 직접 하위 TASK들 찾기
-                        const childTasks = state.affectedTasks.filter(
-                            t => t.type === 'TASK' && t.parentId === task.id
-                        );
-
-                        if (childTasks.length > 0) {
-                            let minStart = new Date(8640000000000000); // Max Date
-                            let maxEnd = new Date(-8640000000000000); // Min Date
-
-                            for (const child of childTasks) {
-                                const childInfo = updatedTaskDragInfoMap.get(child.id);
-                                if (childInfo) {
-                                    if (childInfo.currentStartDate < minStart) {
-                                        minStart = childInfo.currentStartDate;
-                                    }
-                                    if (childInfo.currentEndDate > maxEnd) {
-                                        maxEnd = childInfo.currentEndDate;
-                                    }
-                                }
-                            }
-
-                            // 유효한 날짜 범위가 있으면 업데이트
-                            if (minStart.getTime() !== 8640000000000000 &&
-                                maxEnd.getTime() !== -8640000000000000) {
-                                const currentGroupInfo = updatedTaskDragInfoMap.get(task.id);
-                                if (currentGroupInfo &&
-                                    (currentGroupInfo.currentStartDate.getTime() !== minStart.getTime() ||
-                                     currentGroupInfo.currentEndDate.getTime() !== maxEnd.getTime())) {
-                                    hasChanges = true;
-                                    updatedTaskDragInfoMap.set(task.id, {
-                                        ...currentGroupInfo,
-                                        currentStartDate: minStart,
-                                        currentEndDate: maxEnd,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 캐시 업데이트
-            lastDeltaWorkingDaysRef.current = deltaWorkingDays;
-            lastTaskDragInfoMapRef.current = hasChanges ? updatedTaskDragInfoMap : state.taskDragInfoMap;
-
-            // RAF 스케줄러로 배칭 업데이트
-            scheduleUpdate({
-                currentDeltaDays: deltaDays,
-                currentDeltaWorkingDays: deltaWorkingDays,
-                taskDragInfoMap: hasChanges ? updatedTaskDragInfoMap : state.taskDragInfoMap,
-            });
         },
-        // 드래그 완료: 작업일 단위 이동이 0이면 무시
+        // 드래그 완료: BLOCK은 동기 최종 계산, 비-BLOCK은 기존 방식
         onEnd: (state) => {
-            if (!onGroupDrag || state.currentDeltaWorkingDays === 0) return;
+            if (!onGroupDrag) return;
 
-            // taskDragInfoMap에서 최종 결과 추출
-            const taskUpdates = Array.from(state.taskDragInfoMap.entries()).map(
-                ([taskId, info]) => ({
-                    taskId,
-                    newStartDate: info.currentStartDate,
-                    newEndDate: info.currentEndDate,
-                })
-            );
+            // 지연 타이머 취소
+            if (deferredTimerRef.current !== null) {
+                clearTimeout(deferredTimerRef.current);
+                deferredTimerRef.current = null;
+            }
 
-            onGroupDrag({
-                groupId: state.groupId,
-                deltaDays: state.currentDeltaDays,
-                affectedTaskIds: state.affectedTasks.map(t => t.id),
-                taskUpdates,
-            });
+            const draggedTask = state.affectedTasks.find(t => t.id === state.groupId);
+            const isBlock = draggedTask?.type === 'BLOCK';
+
+            if (isBlock && state.referenceTask) {
+                // BLOCK: 동기적으로 최종 정밀 계산 실행
+                const deltaX_final = state.currentDeltaDays; // 마지막 deltaDays 기반
+                const deltaWorkingDays = calculateDeltaWorkingDays(
+                    deltaX_final * pixelsPerDay, // deltaDays → deltaX 복원
+                    pixelsPerDay,
+                    state.referenceTask.startDate,
+                    holidays,
+                    calendarSettings
+                );
+
+                if (deltaWorkingDays === 0) return;
+
+                const result = calculateFullChildPositions(state, deltaWorkingDays, state.currentDeltaDays);
+                if (!result) return;
+
+                const taskUpdates = Array.from(result.updatedTaskDragInfoMap.entries()).map(
+                    ([taskId, info]) => ({
+                        taskId,
+                        newStartDate: info.currentStartDate,
+                        newEndDate: info.currentEndDate,
+                    })
+                );
+
+                onGroupDrag({
+                    groupId: state.groupId,
+                    deltaDays: state.currentDeltaDays,
+                    affectedTaskIds: state.affectedTasks.map(t => t.id),
+                    taskUpdates,
+                });
+            } else {
+                // 비-BLOCK: 기존 방식 (이미 매 프레임 계산됨)
+                if (state.currentDeltaWorkingDays === 0) return;
+
+                const taskUpdates = Array.from(state.taskDragInfoMap.entries()).map(
+                    ([taskId, info]) => ({
+                        taskId,
+                        newStartDate: info.currentStartDate,
+                        newEndDate: info.currentEndDate,
+                    })
+                );
+
+                onGroupDrag({
+                    groupId: state.groupId,
+                    deltaDays: state.currentDeltaDays,
+                    affectedTaskIds: state.affectedTasks.map(t => t.id),
+                    taskUpdates,
+                });
+            }
         },
         cursor: 'grabbing',
         usePendingUpdate: true, // 드래그 완료 후 깜빡임 방지
@@ -270,6 +400,17 @@ export const useGroupDrag = ({
     }, [isPending, clearPending]);
 
     // ========================================
+    // 언마운트 시 지연 타이머 정리
+    // ========================================
+    useEffect(() => {
+        return () => {
+            if (deferredTimerRef.current !== null) {
+                clearTimeout(deferredTimerRef.current);
+            }
+        };
+    }, []);
+
+    // ========================================
     // 드래그 시작
     // ========================================
     const handleMouseDown = useCallback((
@@ -287,6 +428,12 @@ export const useGroupDrag = ({
         // 캐시 초기화
         lastDeltaWorkingDaysRef.current = 0;
         lastTaskDragInfoMapRef.current = null;
+
+        // 지연 타이머 초기화 (이전 드래그 잔여 타이머 방지)
+        if (deferredTimerRef.current !== null) {
+            clearTimeout(deferredTimerRef.current);
+            deferredTimerRef.current = null;
+        }
 
         // ========================================
         // 클러스터 수집: 연결된 그룹들 + 각 그룹의 하위 태스크

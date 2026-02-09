@@ -81,6 +81,9 @@ export const TaskBarsRenderer: React.FC<TaskAreaRendererProps> = React.memo(({
                             minDate={minDate}
                             pixelsPerDay={pixelsPerDay}
                             currentDeltaDays={getGroupDragDeltaDays(task.id)}
+                            isDraggable={!!onGroupDrag}
+                            groupDragInfo={getTaskDragInfo(task.id)}
+                            onDragStart={handleGroupBarMouseDown}
                             onToggle={onGroupToggle}
                             onClick={(e, blockId) => {
                                 selectTask(blockId, {
