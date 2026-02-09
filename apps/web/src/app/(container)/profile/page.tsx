@@ -11,10 +11,6 @@ export default async function ProfilePage() {
   const { user, profile } = await requireAuth();
 
   const supabase = await createClient();
-  
-  // 회원가입 시 등록한 이름과 직위 정보 가져오기
-  const signupName = user?.user_metadata?.display_name || user?.user_metadata?.name || null;
-  const signupPosition = user?.user_metadata?.position || null;
 
   // 사용자가 작성한 게시글 수
   const { count: postCount } = await supabase
@@ -28,6 +24,9 @@ export default async function ProfilePage() {
     .select('*', { count: 'exact', head: true })
     .eq('author_id', profile.id);
 
+  // 표시 이름: DB에 가입 시 이름이 자동 저장됨
+  const displayName = profile.display_name || '이름 없음';
+
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -37,8 +36,8 @@ export default async function ProfilePage() {
             {/* 프로필 이미지 */}
             <div className="flex justify-center mb-4">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                {profile.display_name
-                  ? profile.display_name.charAt(0).toUpperCase()
+                {displayName !== '이름 없음'
+                  ? displayName.charAt(0).toUpperCase()
                   : profile.email.charAt(0).toUpperCase()}
               </div>
             </div>
@@ -46,8 +45,13 @@ export default async function ProfilePage() {
             {/* 기본 정보 */}
             <div className="text-center mb-4">
               <h2 className="text-xl font-bold mb-1 text-slate-900 dark:text-white">
-                {profile.display_name || '이름 없음'}
+                {displayName}
               </h2>
+              {(profile.position || profile.affiliation || profile.department) && (
+                <p className="text-sm text-slate-500 dark:text-gray-400 mb-1">
+                  {[profile.affiliation, profile.department, profile.position].filter(Boolean).join(' · ')}
+                </p>
+              )}
               <p className="text-sm text-slate-600 dark:text-primary-400 mb-2">{profile.email}</p>
               <span
                 className={`inline-flex text-xs px-3 py-1 rounded-full border font-medium ${getRoleBadgeColor(
@@ -109,11 +113,7 @@ export default async function ProfilePage() {
         <div className="md:col-span-2">
           <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-6 border border-slate-200 dark:border-zinc-800">
             <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">프로필 편집</h2>
-            <ProfileEditForm 
-              profile={profile} 
-              signupName={signupName}
-              signupPosition={signupPosition}
-            />
+            <ProfileEditForm profile={profile} />
           </div>
         </div>
       </div>

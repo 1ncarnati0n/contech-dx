@@ -134,8 +134,8 @@
   --gantt-sunday-text: #F87171;
 
   /* 그룹/요약 바 */
-  --gantt-summary-bar: #6B7280;
-  --gantt-summary-progress: #9CA3AF;
+  --gantt-summary-bar: #D1D5DB;
+  --gantt-summary-progress: #E5E7EB;
 
   /* 앵커 포인트 */
   --gantt-anchor-fill: #1F2937;
@@ -203,8 +203,8 @@
     --gantt-holiday-text: #F87171;
     --gantt-sunday-text: #F87171;
     /* 그룹/요약 바 */
-    --gantt-summary-bar: #6B7280;
-    --gantt-summary-progress: #9CA3AF;
+    --gantt-summary-bar: #D1D5DB;
+    --gantt-summary-progress: #E5E7EB;
     /* 앵커 포인트 */
     --gantt-anchor-fill: #1F2937;
     --gantt-anchor-stroke: #6B7280;
