@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,14 +18,15 @@ import { toast } from 'sonner';
 import { updateProject } from '@/lib/services/projects';
 import type { Project, UpdateProjectDTO } from '@/lib/types';
 import { logger } from '@/lib/utils/logger';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { SaveStatusBar } from '@/components/buildings/SaveStatusBar';
+import { useState } from 'react';
 
 const projectSettingsSchema = z.object({
   name: z.string().min(1, '프로젝트명을 입력해주세요'),
   description: z.string().optional(),
   location: z.string().optional(),
   client: z.string().optional(),
-  contract_amount: z.number().positive('계약금액은 양수여야 합니다').optional().nullable(),
+  contract_amount: z.number().nonnegative('계약금액은 0 이상이어야 합니다').nullable().optional(),
   start_date: z.string().min(1, '시작일을 선택해주세요'),
   end_date: z.string().optional(),
   status: z.enum(['announcement', 'bidding', 'award', 'construction_start', 'completion']),
@@ -41,8 +42,6 @@ interface ProjectSettingsFormProps {
 
 export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSettingsFormProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const form = useForm<ProjectSettingsFormValues>({
     resolver: zodResolver(projectSettingsSchema),
@@ -58,6 +57,8 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     },
   });
 
+  const { isDirty } = form.formState;
+
   // Reset form when project changes
   useEffect(() => {
     form.reset({
@@ -72,89 +73,60 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     });
   }, [project, form]);
 
-  // Cleanup timeout on unmount
+  // Warn before leaving with unsaved changes
   useEffect(() => {
-    return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
       }
     };
-  }, [saveTimeout]);
 
-  const handleAutoSave = useCallback(
-    async (data: ProjectSettingsFormValues) => {
-      if (!canEdit) return;
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
-      // Clear any existing timeout
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-      }
+  const onSubmit = useCallback(async (data: ProjectSettingsFormValues) => {
+    setIsSaving(true);
+    try {
+      const formattedData: UpdateProjectDTO = {
+        name: data.name,
+        description: data.description?.trim() || undefined,
+        location: data.location?.trim() || undefined,
+        client: data.client?.trim() || undefined,
+        contract_amount:
+          data.contract_amount != null && !Number.isNaN(data.contract_amount)
+            ? data.contract_amount
+            : undefined,
+        start_date: data.start_date,
+        end_date: data.end_date?.trim() || undefined,
+        status: data.status,
+      };
 
-      // Set new timeout for debounced save
-      const timeout = setTimeout(async () => {
-        setIsSaving(true);
-        setSaveSuccess(false);
-
-        try {
-          // Format data before sending
-          const formattedData: UpdateProjectDTO = {
-            name: data.name,
-            description: data.description?.trim() || undefined,
-            location: data.location?.trim() || undefined,
-            client: data.client?.trim() || undefined,
-            contract_amount: data.contract_amount && !Number.isNaN(data.contract_amount)
-              ? data.contract_amount
-              : undefined,
-            start_date: data.start_date,
-            end_date: data.end_date?.trim() || undefined,
-            status: data.status,
-          };
-
-          await updateProject(project.id, formattedData);
-
-          setSaveSuccess(true);
-          onUpdate();
-
-          // Hide success indicator after 2 seconds
-          setTimeout(() => {
-            setSaveSuccess(false);
-          }, 2000);
-        } catch (error) {
-          logger.error('Auto-save failed:', error);
-          toast.error('저장 실패', {
-            description: error instanceof Error ? error.message : '다시 시도해주세요.',
-          });
-          // Revert to original values on error
-          form.reset({
-            name: project.name,
-            description: project.description || '',
-            location: project.location || '',
-            client: project.client || '',
-            contract_amount: project.contract_amount ?? null,
-            start_date: project.start_date.split('T')[0],
-            end_date: project.end_date ? project.end_date.split('T')[0] : '',
-            status: project.status,
-          });
-        } finally {
-          setIsSaving(false);
-        }
-      }, 500); // 500ms debounce
-
-      setSaveTimeout(timeout);
-    },
-    [canEdit, project, saveTimeout, onUpdate, form]
-  );
-
-  const handleFieldBlur = () => {
-    if (!canEdit) return;
-
-    const values = form.getValues();
-    const isValid = form.formState.isValid;
-
-    if (isValid) {
-      handleAutoSave(values);
+      const saved = await updateProject(project.id, formattedData);
+      form.reset({
+        name: saved.name,
+        description: saved.description || '',
+        location: saved.location || '',
+        client: saved.client || '',
+        contract_amount: saved.contract_amount ?? null,
+        start_date: saved.start_date.split('T')[0],
+        end_date: saved.end_date ? saved.end_date.split('T')[0] : '',
+        status: saved.status,
+      });
+      onUpdate();
+    } catch (error) {
+      logger.error('Save failed:', error);
+      toast.error('저장 실패', {
+        description: error instanceof Error ? error.message : '다시 시도해주세요.',
+      });
+    } finally {
+      setIsSaving(false);
     }
-  };
+  }, [project.id, form, onUpdate]);
+
+  const handleDiscard = useCallback(() => {
+    form.reset();
+  }, [form]);
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -186,22 +158,14 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
 
   return (
     <div className="space-y-6">
-      {/* Save indicator */}
+      {/* Save status bar */}
       {canEdit && (
-        <div className="flex items-center gap-2 text-sm">
-          {isSaving && (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-              <span className="text-zinc-600 dark:text-zinc-400">저장 중...</span>
-            </>
-          )}
-          {saveSuccess && (
-            <>
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
-              <span className="text-green-600 dark:text-green-400">저장됨</span>
-            </>
-          )}
-        </div>
+        <SaveStatusBar
+          hasUnsavedChanges={isDirty}
+          isSaving={isSaving}
+          onSave={form.handleSubmit(onSubmit)}
+          onDiscard={handleDiscard}
+        />
       )}
 
       <Form {...form}>
@@ -217,7 +181,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                     placeholder="프로젝트명 입력"
                     disabled={!canEdit}
                     {...field}
-                    onBlur={handleFieldBlur}
                   />
                 </FormControl>
                 <FormMessage />
@@ -237,7 +200,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                       className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus:ring-slate-300"
                       disabled={!canEdit}
                       {...field}
-                      onBlur={handleFieldBlur}
                     >
                       <option value="announcement">공모</option>
                       <option value="bidding">입찰</option>
@@ -271,7 +233,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                       disabled={!canEdit}
                       {...field}
                       value={field.value || ''}
-                      onBlur={handleFieldBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -292,7 +253,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                       {...field}
                       value={field.value ?? ''}
                       onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                      onBlur={handleFieldBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -313,7 +273,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                     disabled={!canEdit}
                     {...field}
                     value={field.value || ''}
-                    onBlur={handleFieldBlur}
                   />
                 </FormControl>
                 <FormMessage />
@@ -333,7 +292,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                       type="date"
                       disabled={!canEdit}
                       {...field}
-                      onBlur={handleFieldBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -352,7 +310,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                       disabled={!canEdit}
                       {...field}
                       value={field.value || ''}
-                      onBlur={handleFieldBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -374,7 +331,6 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
                     disabled={!canEdit}
                     {...field}
                     value={field.value || ''}
-                    onBlur={handleFieldBlur}
                   />
                 </FormControl>
                 <FormMessage />

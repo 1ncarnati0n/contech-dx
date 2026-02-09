@@ -69,24 +69,26 @@ export function ProjectDeleteModal({ project, isOpen, onClose }: ProjectDeleteMo
               프로젝트 삭제
             </DialogTitle>
           </div>
-          <DialogDescription className="pt-4 space-y-3">
-            <p className="font-semibold text-zinc-900 dark:text-white">
-              &quot;{project.name}&quot; 프로젝트를 삭제하시겠습니까?
-            </p>
-            <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-md text-sm">
-              <p className="font-medium mb-2 text-zinc-900 dark:text-white">
-                다음 데이터가 함께 삭제됩니다:
+          <DialogDescription asChild>
+            <div className="pt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="font-semibold text-zinc-900 dark:text-white">
+                &quot;{project.name}&quot; 프로젝트를 삭제하시겠습니까?
               </p>
-              <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
-                <li>• 모든 건물 및 층 정보</li>
-                <li>• 지하층/건물 공정 계획</li>
-                <li>• 프로젝트 팀 멤버 정보</li>
-                <li>• 간트 차트 데이터</li>
-              </ul>
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-md text-sm">
+                <p className="font-medium mb-2 text-zinc-900 dark:text-white">
+                  다음 데이터가 함께 삭제됩니다:
+                </p>
+                <ul className="space-y-1 text-zinc-600 dark:text-zinc-400">
+                  <li>• 모든 건물 및 층 정보</li>
+                  <li>• 지하층/건물 공정 계획</li>
+                  <li>• 프로젝트 팀 멤버 정보</li>
+                  <li>• 간트 차트 데이터</li>
+                </ul>
+              </div>
+              <p className="text-red-600 dark:text-red-400 font-medium">
+                ⚠️ 이 작업은 되돌릴 수 없습니다.
+              </p>
             </div>
-            <p className="text-red-600 dark:text-red-400 font-medium">
-              ⚠️ 이 작업은 되돌릴 수 없습니다.
-            </p>
           </DialogDescription>
         </DialogHeader>
 
