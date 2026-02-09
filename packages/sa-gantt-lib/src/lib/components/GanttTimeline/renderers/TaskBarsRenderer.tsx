@@ -1,10 +1,14 @@
 'use client';
 
 import React from 'react';
+import { addDays } from 'date-fns';
 import { GANTT_LAYOUT, GANTT_SUMMARY } from '../../../types';
+import { dateToX } from '../../../utils/dateUtils';
+import { calculateGroupDateRange } from '../../../utils/groupUtils';
 import { TaskBar } from '../TaskBar';
 import { GroupSummaryBar } from '../../GroupSummaryBar';
 import { BlockBar } from '../../BlockBar';
+import { DragGhost } from '../DragGhost';
 import type { TaskAreaRendererProps } from './types';
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
@@ -47,6 +51,7 @@ export const TaskBarsRenderer: React.FC<TaskAreaRendererProps> = React.memo(({
     onGroupDependencyCreate,
     handleGroupEdgeClick,
     handleGroupEdgeHover,
+    getBlockGhostInfo,
     offsetY = 0,
 }) => {
     return (
@@ -161,6 +166,36 @@ export const TaskBarsRenderer: React.FC<TaskAreaRendererProps> = React.memo(({
                     />
                 );
             })}
+
+            {/* BLOCK 고스트 바: 드래그 중 반투명 고스트로 이동 위치 표시 */}
+            {(() => {
+                const ghostInfo = getBlockGhostInfo?.();
+                if (!ghostInfo || ghostInfo.ghostDeltaDays === 0) return null;
+
+                const blockRowIndex = tasks.findIndex(t => t.id === ghostInfo.blockId);
+                const blockRow = rowData.find(r => r.index === blockRowIndex);
+                if (!blockRow) return null;
+
+                const block = tasks[blockRowIndex];
+                const dateRange = calculateGroupDateRange(block.id, allTasks);
+                if (!dateRange) return null;
+
+                const originalX = dateToX(dateRange.startDate, minDate, pixelsPerDay);
+                const ghostStartDate = addDays(dateRange.startDate, ghostInfo.ghostDeltaDays);
+                const currentX = dateToX(ghostStartDate, minDate, pixelsPerDay);
+                const width = dateRange.totalDays * pixelsPerDay;
+                const barY = blockRow.start + (blockRow.size - BAR_HEIGHT) / 2 + offsetY;
+
+                return (
+                    <DragGhost
+                        originalX={originalX}
+                        currentX={currentX}
+                        y={barY}
+                        width={width}
+                        height={12}
+                    />
+                );
+            })()}
         </>
     );
 });

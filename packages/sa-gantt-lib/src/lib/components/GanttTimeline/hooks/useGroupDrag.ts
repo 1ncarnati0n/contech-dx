@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useRef, useEffect } from 'react';
-import { addDays } from 'date-fns';
 import { collectDescendantTasks, calculateGroupDateRange } from '../../../utils/groupUtils';
 import {
     buildGroupDependencyGraph,
@@ -60,6 +59,8 @@ interface EnhancedGroupDragState {
     referenceTask: ConstructionTask | null;      // 기준 task (가장 빠른 시작일)
     workingDaysOffsets: Map<string, number>;     // 각 task의 작업일 오프셋
     currentDeltaWorkingDays: number;             // 현재 작업일 단위 이동량
+    // BLOCK 고스트 드래그 전용
+    ghostDeltaDays: number;                      // 고스트 바 이동량 (BLOCK 드래그 시)
 }
 
 // ============================================
@@ -79,11 +80,6 @@ export const useGroupDrag = ({
     onGroupDrag,
     groupDependencies = [],
 }: UseGroupDragOptions) => {
-    // ========================================
-    // 2단계 지연 계산 상수
-    // ========================================
-    const BLOCK_DEFERRED_CALC_DELAY_MS = 100;
-
     // ========================================
     // 마지막 계산된 값 캐시 (불필요한 Map 재생성 방지)
     // ========================================
@@ -209,57 +205,15 @@ export const useGroupDrag = ({
             const isBlock = draggedTask?.type === 'BLOCK';
 
             // ================================================
-            // BLOCK 드래그: 2단계 지연 계산
+            // BLOCK 드래그: 고스트 전용 (O(1) — taskDragInfoMap 변경 없음)
             // ================================================
             if (isBlock) {
-                // Phase 1 — 즉시: BLOCK 자체만 addDays로 위치 업데이트
-                const blockInfo = state.taskDragInfoMap.get(state.groupId);
-                const blockOnlyMap = new Map<string, TaskDragInfo>();
-
-                if (blockInfo) {
-                    blockOnlyMap.set(state.groupId, {
-                        ...blockInfo,
-                        currentStartDate: addDays(blockInfo.originalStartDate, deltaDays),
-                        currentEndDate: addDays(blockInfo.originalEndDate, deltaDays),
-                    });
-                }
-
-                // 즉시 업데이트: BLOCK만 정밀, 하위는 currentDeltaDays fallback
+                // ghostDeltaDays만 업데이트 → DragGhost 렌더에 사용
+                // taskDragInfoMap 미변경 → 하위 TaskBar re-render 없음
                 scheduleUpdate({
                     currentDeltaDays: deltaDays,
-                    taskDragInfoMap: blockOnlyMap,
+                    ghostDeltaDays: deltaDays,
                 });
-
-                // Phase 2 — 지연 (debounce): 마우스 정지 시 비싼 계산
-                if (deferredTimerRef.current !== null) {
-                    clearTimeout(deferredTimerRef.current);
-                }
-
-                deferredTimerRef.current = setTimeout(() => {
-                    deferredTimerRef.current = null;
-
-                    // 지연 계산 시점의 deltaWorkingDays 재계산
-                    const deferredDeltaWorkingDays = calculateDeltaWorkingDays(
-                        deltaX,
-                        pixelsPerDay,
-                        state.referenceTask!.startDate,
-                        holidays,
-                        calendarSettings
-                    );
-
-                    const result = calculateFullChildPositions(state, deferredDeltaWorkingDays, deltaDays);
-                    if (result) {
-                        lastDeltaWorkingDaysRef.current = deferredDeltaWorkingDays;
-                        lastTaskDragInfoMapRef.current = result.updatedTaskDragInfoMap;
-
-                        scheduleUpdate({
-                            currentDeltaDays: deltaDays,
-                            currentDeltaWorkingDays: deferredDeltaWorkingDays,
-                            taskDragInfoMap: result.updatedTaskDragInfoMap,
-                        });
-                    }
-                }, BLOCK_DEFERRED_CALC_DELAY_MS);
-
                 return;
             }
 
@@ -518,6 +472,7 @@ export const useGroupDrag = ({
             referenceTask,
             workingDaysOffsets,
             currentDeltaWorkingDays: 0,
+            ghostDeltaDays: 0,
         });
     }, [onGroupDrag, allTasks, holidays, calendarSettings, start, groupDependencies]);
 
@@ -573,11 +528,28 @@ export const useGroupDrag = ({
         return dragState.currentDeltaDays;
     }, [dragState]);
 
+    // ========================================
+    // BLOCK 고스트 정보 조회 (TaskBarsRenderer에서 DragGhost 렌더용)
+    // ========================================
+    const getBlockGhostInfo = useCallback((): {
+        blockId: string;
+        ghostDeltaDays: number;
+    } | null => {
+        if (!dragState) return null;
+        const draggedTask = dragState.affectedTasks.find(t => t.id === dragState.groupId);
+        if (draggedTask?.type !== 'BLOCK') return null;
+        return {
+            blockId: dragState.groupId,
+            ghostDeltaDays: dragState.ghostDeltaDays,
+        };
+    }, [dragState]);
+
     return {
         isDragging,
         handleGroupBarMouseDown: handleMouseDown,
         getGroupDragDeltaDays: getDragInfo,
         getTaskGroupDragDeltaDays: getTaskDragDeltaDays,
         getTaskDragInfo,  // 새 함수: 스냅된 시작일/종료일 포함
+        getBlockGhostInfo,  // BLOCK 고스트 드래그 정보
     };
 };
