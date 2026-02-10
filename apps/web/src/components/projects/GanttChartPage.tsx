@@ -17,6 +17,7 @@ import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/
 import { toast } from 'sonner';
 import {
   Loader2,
+  RefreshCw,
   ListTodo,
   Flag,
   CalendarDays,
@@ -84,11 +85,21 @@ const UNDERGROUND_CATEGORIES = new Set<ProcessCategory>([
 
 interface CategoryPreview {
   category: ProcessCategory;
-  days: number;
+  netDays: number;
+  indirectDays: number;
+  totalDays: number;
   processType: ProcessType;
   floorLabelsDisplay: string;
   group: 'underground' | 'aboveground';
 }
+
+interface CategoryDurationBreakdown {
+  netDays: number;
+  indirectDays: number;
+  totalDays: number;
+}
+
+type BuildingCategoryDurations = Map<string, Map<ProcessCategory, CategoryDurationBreakdown>>;
 
 /**
  * 층 라벨 배열을 연속 범위로 압축
@@ -141,9 +152,67 @@ function compressFloorLabels(labels: string[]): string {
   return parts.join(', ');
 }
 
+function aggregateCategoryDurations(tasks: ConstructionTask[]): BuildingCategoryDurations {
+  const taskMap = new Map<string, ConstructionTask>();
+  tasks.forEach((task) => taskMap.set(task.id, task));
+
+  const categorySet = new Set<ProcessCategory>(CATEGORY_ORDER);
+  const durationsByBuilding: BuildingCategoryDurations = new Map();
+
+  for (const task of tasks) {
+    if (task.type !== 'TASK' || !task.task) continue;
+
+    let currentParentId: string | null = task.parentId;
+    let cpTask: ConstructionTask | null = null;
+    let blockTask: ConstructionTask | null = null;
+
+    while (currentParentId) {
+      const parent = taskMap.get(currentParentId);
+      if (!parent) break;
+
+      if (!cpTask && parent.type === 'CP') {
+        cpTask = parent;
+      }
+      if (parent.type === 'BLOCK') {
+        blockTask = parent;
+        break;
+      }
+
+      currentParentId = parent.parentId;
+    }
+
+    if (!cpTask || !blockTask) continue;
+
+    const category = cpTask.name as ProcessCategory;
+    if (!categorySet.has(category)) continue;
+
+    const buildingName = blockTask.name;
+    const netDays = task.task.netWorkDays ?? 0;
+    const indirectDays =
+      (task.task.indirectWorkDaysPre ?? 0) +
+      (task.task.indirectWorkDaysPost ?? 0);
+
+    const categoryDurations = durationsByBuilding.get(buildingName) || new Map<ProcessCategory, CategoryDurationBreakdown>();
+    const current = categoryDurations.get(category) || {
+      netDays: 0,
+      indirectDays: 0,
+      totalDays: 0,
+    };
+
+    current.netDays += netDays;
+    current.indirectDays += indirectDays;
+    current.totalDays = current.netDays + current.indirectDays;
+    categoryDurations.set(category, current);
+    durationsByBuilding.set(buildingName, categoryDurations);
+  }
+
+  return durationsByBuilding;
+}
+
 export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [isRefreshingPreview, setIsRefreshingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<ConstructionTask[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -156,6 +225,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
     buildings: Building[];
     processPlans: Map<string, BuildingProcessPlan>;
     summary: ConversionResult['summary'];
+    categoryDurations: BuildingCategoryDurations;
   } | null>(null);
   const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
 
@@ -272,32 +342,63 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           const floorLabels = getImportFloorLabelsForCategory(building, plan, category);
           const hasFloors = floorLabels.length > 0
             && !(floorLabels.length === 1 && floorLabels[0] === '');
+
+          if (
+            (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
+            !hasFloors
+          ) {
+            continue;
+          }
+
           const allowSpecialFallback =
             (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
             hasFloors;
           if (!processInfo && !allowSpecialFallback) continue;
 
           const processType = processInfo?.processType || '표준공정';
-          const mod = getProcessModule(category, processType);
-          let days = processInfo?.days || 0;
+          const computed =
+            importPreview.categoryDurations
+              .get(building.buildingName)
+              ?.get(category);
 
-          // 저장된 days가 0이면 on-the-fly 계산 (특수행 카테고리는 processInfo.days 우선)
-          if (days === 0 && mod) {
-            if (
-              hasFloors &&
-              category !== '지하주차장' &&
-              category !== '지하층(층고6.5m이상)'
-            ) {
-              days = floorLabels.reduce((sum, fl) =>
-                sum + calculateModuleWorkDaysForFloor(building, mod, category, fl), 0);
-            } else if (!hasFloors) {
-              days = calculateModuleWorkDays(building, mod, category);
+          let netDays = computed?.netDays ?? 0;
+          let indirectDays = computed?.indirectDays ?? 0;
+          let totalDays = computed?.totalDays ?? 0;
+
+          // 변환 TASK가 없으면 기존 계산값으로 폴백 (버림/기초 등 예외 데이터 대응)
+          if (!computed) {
+            const mod = getProcessModule(category, processType);
+            let days = processInfo?.days || 0;
+
+            if (days === 0 && mod) {
+              if (
+                hasFloors &&
+                category !== '지하주차장' &&
+                category !== '지하층(층고6.5m이상)'
+              ) {
+                days = floorLabels.reduce((sum, fl) =>
+                  sum + calculateModuleWorkDaysForFloor(building, mod, category, fl), 0);
+              } else if (!hasFloors) {
+                days = calculateModuleWorkDays(building, mod, category);
+              }
             }
+
+            netDays = days;
+            indirectDays = 0;
+            totalDays = days;
           }
+
+          const mod = getProcessModule(category, processType);
+          if (!mod && totalDays === 0) continue;
 
           const displayLabels = compressFloorLabels(floorLabels.filter(l => l !== ''));
           categories.push({
-            category, days, processType, floorLabelsDisplay: displayLabels,
+            category,
+            netDays,
+            indirectDays,
+            totalDays,
+            processType,
+            floorLabelsDisplay: displayLabels,
             group: UNDERGROUND_CATEGORIES.has(category) ? 'underground' : 'aboveground',
           });
         }
@@ -315,9 +416,20 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
       });
   }, [importPreview, importStartDate]);
 
-  // 공정계획에서 가져오기 핸들러 (모달 오픈)
-  const handleImportFromProcessPlan = useCallback(async () => {
+  const loadImportPreview = useCallback(async (options?: {
+    openModal?: boolean;
+    preserveStartDate?: boolean;
+    notifyOnSuccess?: boolean;
+  }) => {
+    const {
+      openModal = false,
+      preserveStartDate = false,
+      notifyOnSuccess = false,
+    } = options || {};
+
     try {
+      setIsRefreshingPreview(true);
+
       // 1. 동 목록 로드
       const buildings = await getBuildings(projectId);
       if (buildings.length === 0) {
@@ -337,7 +449,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
               processPlans.set(building.id, plan);
             }
           } catch {
-            // 파싱 실패한 항목은 건너뜀
+            // 파싱 실패 항목은 건너뜀
           }
         }
       }
@@ -355,23 +467,45 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
       }
 
       // 4. 변환 미리보기 계산
-      const projectStartDate = new Date(project.start_date + 'T00:00:00');
-      const { summary } = convertProcessPlansToGanttTasks({
+      const defaultStartDate = project.start_date;
+      const effectiveStartDate = preserveStartDate && importStartDate
+        ? importStartDate
+        : defaultStartDate;
+      const projectStartDate = new Date(effectiveStartDate + 'T00:00:00');
+      const { tasks: convertedTasks, summary } = convertProcessPlansToGanttTasks({
         buildings,
         processPlans,
         projectStartDate,
       });
+      const categoryDurations = aggregateCategoryDurations(convertedTasks);
 
-      // 5. 모달 상태 설정 + 오픈
-      setImportStartDate(project.start_date);
-      setImportPreview({ buildings, processPlans, summary });
+      // 5. 상태 업데이트
+      setImportStartDate(effectiveStartDate);
+      setImportPreview({ buildings, processPlans, summary, categoryDurations });
       setExpandedBuildings(new Set(buildings.map(b => b.buildingName)));
-      setShowImportModal(true);
+      if (openModal) {
+        setShowImportModal(true);
+      }
+
+      if (notifyOnSuccess) {
+        toast.success('세부공정을 재생성하여 최신 공정계획을 불러왔습니다.');
+      }
     } catch (err) {
-      logger.error('Import preview failed:', err);
-      toast.error('공정계획 데이터를 불러오는데 실패했습니다.');
+      logger.error('Import preview reload failed:', err);
+      toast.error('최신 공정계획 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setIsRefreshingPreview(false);
     }
-  }, [projectId]);
+  }, [projectId, importStartDate]);
+
+  // 공정계획에서 가져오기 핸들러 (모달 오픈)
+  const handleImportFromProcessPlan = useCallback(async () => {
+    await loadImportPreview({
+      openModal: true,
+      preserveStartDate: false,
+      notifyOnSuccess: false,
+    });
+  }, [loadImportPreview]);
 
   // 가져오기 확인 핸들러 (실제 변환 + 저장)
   const handleConfirmImport = useCallback(async () => {
@@ -495,11 +629,11 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           <div className="flex flex-row items-center gap-3">
             <button
               onClick={handleImportFromProcessPlan}
-              disabled={isImporting}
+              disabled={isImporting || isRefreshingPreview}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
-              {isImporting ? '가져오는 중...' : '공정계획에서 가져오기'}
+              {isRefreshingPreview ? '불러오는 중...' : isImporting ? '가져오는 중...' : '공정계획에서 가져오기'}
             </button>
             <button
               onClick={handleOpenFullscreen}
@@ -536,7 +670,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           {/* 오버레이 */}
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => !isImporting && setShowImportModal(false)}
+            onClick={() => !isImporting && !isRefreshingPreview && setShowImportModal(false)}
           />
 
           {/* 모달 */}
@@ -547,9 +681,9 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
                 공정계획에서 가져오기
               </h2>
               <button
-                onClick={() => !isImporting && setShowImportModal(false)}
+                onClick={() => !isImporting && !isRefreshingPreview && setShowImportModal(false)}
                 className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                disabled={isImporting}
+                disabled={isImporting || isRefreshingPreview}
               >
                 <X className="w-5 h-5 text-zinc-500" />
               </button>
@@ -570,6 +704,30 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
                     className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void loadImportPreview({
+                      openModal: false,
+                      preserveStartDate: true,
+                      notifyOnSuccess: true,
+                    });
+                  }}
+                  disabled={isImporting || isRefreshingPreview}
+                  className="h-[42px] inline-flex items-center gap-2 px-3.5 rounded-lg border border-zinc-300 dark:border-zinc-600 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRefreshingPreview ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      재생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      세부공정 재생성
+                    </>
+                  )}
+                </button>
                 <div className="flex gap-3">
                   <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg px-4 py-2.5 text-center">
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">대상 동</p>
@@ -662,7 +820,10 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
                                       className="flex items-center text-xs text-zinc-700 dark:text-zinc-300 gap-2"
                                     >
                                       <span className="min-w-[100px] truncate">{cat.category}</span>
-                                      <span className="tabular-nums w-12 text-right">{cat.days}일</span>
+                                      <span className="tabular-nums w-14 text-right font-medium">{cat.totalDays}일</span>
+                                      <span className="tabular-nums w-20 text-right text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        순 {cat.netDays} / 간 {cat.indirectDays}
+                                      </span>
                                       <span className="text-zinc-500 dark:text-zinc-400 w-20 truncate">
                                         {cat.processType}
                                       </span>
@@ -693,7 +854,10 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
                                       className="flex items-center text-xs text-zinc-700 dark:text-zinc-300 gap-2"
                                     >
                                       <span className="min-w-[100px] truncate">{cat.category}</span>
-                                      <span className="tabular-nums w-12 text-right">{cat.days}일</span>
+                                      <span className="tabular-nums w-14 text-right font-medium">{cat.totalDays}일</span>
+                                      <span className="tabular-nums w-20 text-right text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        순 {cat.netDays} / 간 {cat.indirectDays}
+                                      </span>
                                       <span className="text-zinc-500 dark:text-zinc-400 w-20 truncate">
                                         {cat.processType}
                                       </span>
@@ -725,14 +889,14 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
             <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
               <button
                 onClick={() => setShowImportModal(false)}
-                disabled={isImporting}
+                disabled={isImporting || isRefreshingPreview}
                 className="px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handleConfirmImport}
-                disabled={isImporting || !importStartDate}
+                disabled={isImporting || isRefreshingPreview || !importStartDate}
                 className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isImporting ? (

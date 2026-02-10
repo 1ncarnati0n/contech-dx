@@ -142,7 +142,7 @@ npx eslint src
 
 ## Code Review Documentation
 
-코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다:
+코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다 (2026-02-10 정확성 교정 완료):
 
 | 문서 | 내용 |
 |------|------|
@@ -152,9 +152,10 @@ npx eslint src
 | [03-architecture-issues.md](docs/code-review-2026-02-10/03-architecture-issues.md) | 아키텍처 이슈 및 개선안 |
 | [04-refactoring-roadmap.md](docs/code-review-2026-02-10/04-refactoring-roadmap.md) | 우선순위 기반 리팩토링 로드맵 |
 | [05-implementation-guide.md](docs/code-review-2026-02-10/05-implementation-guide.md) | 구현 가이드 및 체크리스트 |
+| [06-process-to-gantt-converter-analysis.md](docs/code-review-2026-02-10/06-process-to-gantt-converter-analysis.md) | 공정→간트 컨버터 상세 분석 |
 
 ### 핵심 이슈 요약
 
 - 🔴 **Critical**: Supabase 인증 캐시 버그, Gemini API 오버플로우, 고복잡도 컴포넌트
-- 🟠 **High**: Props Drilling (sa-gantt-lib), 캐시 일관성, API 검증 불완전
-- 🟡 **Medium**: 테스트 커버리지 부족 (~9%), localStorage 데이터 분산
+- 🟠 **High**: Props Drilling 부분 해소 중 (GanttContext 168 LOC 도입됨), MemoryCache↔Realtime 캐시 미연동, API 검증 불완전
+- 🟡 **Medium**: 테스트 11개 파일 존재 (커버리지 확대 필요), localStorage 데이터 분산

@@ -210,10 +210,8 @@ function convertBuildingPlan(
 
   for (const category of CATEGORY_ORDER) {
     const categoryFloorLabels = getImportFloorLabelsForCategory(building, plan, category);
-    const hasSpecialRows = hasSpecialRowEntriesInPlan(plan);
 
     if (
-      hasSpecialRows &&
       (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
       categoryFloorLabels.length === 0
     ) {
@@ -229,7 +227,6 @@ function convertBuildingPlan(
     if (!processInfo) {
       // 특수행 기반 카테고리는 processInfo가 없어도 활성 행이 있으면 기본 타입으로 변환 허용
       const canUseSpecialRowFallback =
-        hasSpecialRows &&
         (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
         categoryFloorLabels.length > 0;
 
@@ -342,19 +339,20 @@ function convertCategory(
   tasks.push(cpTask);
 
   // 층 목록 결정:
-  // floorDetails + building.floors 병합하여 모든 층이 GROUP으로 나오도록 보장
-  let floorLabels: string[];
-
-  if (processInfo.floorDetails && hasFloorItems(processInfo.floorDetails)) {
-    // building.floors + floorDetails 키 병합 → 모든 층 포함
-    const detailLabels = Object.keys(processInfo.floorDetails);
-    const merged = new Set([...categoryFloorLabels, ...detailLabels]);
-    floorLabels = [...merged].sort(
+  // building.floors + floorDetails + floors(층별 타입 오버라이드) 병합
+  // 기준층 범위 라벨이 포함된 경우에도 개별 층으로 전개해 GROUP 누락/통합을 방지
+  const detailLabels = Object.keys(processInfo.floorDetails || {}).filter(Boolean);
+  const floorTypeLabels = Object.keys(processInfo.floors || {}).filter(Boolean);
+  const merged = new Set([
+    ...categoryFloorLabels,
+    ...expandFloorLabels(detailLabels),
+    ...expandFloorLabels(floorTypeLabels),
+  ]);
+  const floorLabels = merged.size > 0
+    ? [...merged].sort(
       (a, b) => getFloorSortNumber(a, building) - getFloorSortNumber(b, building)
-    );
-  } else {
-    floorLabels = categoryFloorLabels;
-  }
+    )
+    : categoryFloorLabels;
 
   if (floorLabels.length > 0) {
     let floorStartDate = new Date(startDate);
@@ -389,6 +387,30 @@ function convertCategory(
   } else if (processInfo.days > 0) {
     // GROUP/TASK가 없지만 days가 있는 경우 (버림, 기초 등)
     cpTask.endDate = addCalendarDays(startDate, processInfo.days);
+  }
+
+  // CP 일수는 항상 세부 TASK 합산(순작업일/간접작업일 분리)으로 정규화
+  const taskTotals = tasks
+    .filter((t) => t.type === 'TASK' && t.task)
+    .reduce(
+      (acc, t) => {
+        const net = t.task?.netWorkDays ?? 0;
+        const indirect =
+          (t.task?.indirectWorkDaysPre ?? 0) +
+          (t.task?.indirectWorkDaysPost ?? 0);
+        return {
+          netWorkDays: acc.netWorkDays + net,
+          indirectWorkDays: acc.indirectWorkDays + indirect,
+        };
+      },
+      { netWorkDays: 0, indirectWorkDays: 0 }
+    );
+
+  if (taskTotals.netWorkDays > 0 || taskTotals.indirectWorkDays > 0) {
+    cpTask.cp = {
+      workDaysTotal: taskTotals.netWorkDays,
+      nonWorkDaysTotal: taskTotals.indirectWorkDays,
+    };
   }
 
   return {
@@ -603,10 +625,51 @@ function computeFloorItems(
 function expandFloorLabels(labels: string[]): string[] {
   const result: string[] = [];
   const seen = new Set<number>();
+  const seenLabels = new Set<string>();
+
+  const pushUniqueLabel = (value: string) => {
+    if (seenLabels.has(value)) return;
+    seenLabels.add(value);
+    result.push(value);
+  };
 
   for (const label of labels) {
-    const cleanLabel = label.replace(/코어\d+-/, '');
-    const rangeMatch = cleanLabel.match(/(\d+)~(\d+)F/);
+    const cleanLabel = label.replace(/코어\d+-/, '').trim();
+    const normalizedLabel = cleanLabel.replace(/\s+/g, '');
+
+    if (!normalizedLabel) continue;
+
+    const basementMatch = normalizedLabel.match(/^B(\d+)$/i);
+    if (basementMatch) {
+      pushUniqueLabel(`B${basementMatch[1]}`);
+      continue;
+    }
+
+    const basementParkingMatch = normalizedLabel.match(/^B(\d+)(주차장)$/);
+    if (basementParkingMatch) {
+      pushUniqueLabel(`B${basementParkingMatch[1]} 주차장`);
+      continue;
+    }
+
+    const basementHighCeilingMatch = normalizedLabel.match(/^B(\d+)(6\.5m이상)$/i);
+    if (basementHighCeilingMatch) {
+      pushUniqueLabel(`B${basementHighCeilingMatch[1]} 6.5m이상`);
+      continue;
+    }
+
+    const phMatch = cleanLabel.match(/^PH(\d+)$/i);
+    if (phMatch) {
+      pushUniqueLabel(`옥탑${phMatch[1]}층`);
+      continue;
+    }
+
+    const rooftopMatch = cleanLabel.match(/^옥탑\s*(\d+)(층)?$/);
+    if (rooftopMatch) {
+      pushUniqueLabel(`옥탑${rooftopMatch[1]}층`);
+      continue;
+    }
+
+    const rangeMatch = normalizedLabel.match(/(\d+)\s*[~-]\s*(\d+)(?:F|층)/i);
 
     if (rangeMatch) {
       const start = parseInt(rangeMatch[1], 10);
@@ -618,15 +681,15 @@ function expandFloorLabels(labels: string[]): string[] {
         }
       }
     } else {
-      const numMatch = cleanLabel.match(/(\d+)F/);
+      const numMatch = normalizedLabel.match(/(\d+)(?:F|층)/i);
       if (numMatch) {
         const num = parseInt(numMatch[1], 10);
         if (!seen.has(num)) {
           seen.add(num);
-          result.push(`${num}F`);
+          pushUniqueLabel(`${num}F`);
         }
       } else {
-        result.push(label);
+        pushUniqueLabel(label);
       }
     }
   }
@@ -676,7 +739,7 @@ export function getFloorLabelsForCategory(
     case '기준층':
       return expandFloorLabels(
         building.floors
-          .filter(f => f.floorClass === '기준층')
+          .filter(f => f.floorClass === '기준층' || f.floorClass === '최상층')
           .sort((a, b) => a.floorNumber - b.floorNumber)
           .map(f => f.floorLabel)
       );
@@ -713,7 +776,7 @@ export function getFloorLabelsForCategory(
 /**
  * 실제 간트 변환용 층 라벨 목록:
  * - 지하 특수행(주차장, 6.5m 이상)은 specialRowQuantities의 활성 행만 반영
- * - 특수행이 전혀 없는 기존 데이터는 기존 floor 기반 라벨 로직으로 폴백
+ * - 최상층은 기준층에 통합하여 층별 태스크가 누락되지 않게 보장
  */
 export function getImportFloorLabelsForCategory(
   building: Building,
@@ -721,17 +784,31 @@ export function getImportFloorLabelsForCategory(
   category: ProcessCategory
 ): string[] {
   const baseLabels = getFloorLabelsForCategory(building, category);
-  const hasSpecialRowEntries = hasSpecialRowEntriesInPlan(plan);
+  const categoryProcess = plan.processes[category];
+  const detailFallbackLabels = categoryProcess?.floorDetails
+    ? expandFloorLabels(Object.keys(categoryProcess.floorDetails).filter(Boolean))
+    : [];
+  const floorTypeFallbackLabels = categoryProcess?.floors
+    ? expandFloorLabels(Object.keys(categoryProcess.floors).filter(Boolean))
+    : [];
+  const fallbackLabels = [...new Set([...detailFallbackLabels, ...floorTypeFallbackLabels])];
+  const resolvedBaseLabels = baseLabels.length > 0 ? baseLabels : fallbackLabels;
 
-  if (category === '지하주차장' && hasSpecialRowEntries) {
+  // 지하 특수 카테고리는 반드시 "할당된 물량"이 있는 행만 생성
+  if (category === '지하주차장') {
     return getActiveParkingRowLabels(plan);
   }
 
-  if (category === '지하층(층고6.5m이상)' && hasSpecialRowEntries) {
+  if (category === '지하층(층고6.5m이상)') {
     return hasActiveHighCeilingRows(plan) ? ['B1 6.5m이상'] : [];
   }
 
-  return baseLabels;
+  // 지상층 공정계획에서 최상층은 기준층에 포함되어 관리되므로 중복 생성 방지
+  if (category === '최상층' && plan.processes['기준층']) {
+    return [];
+  }
+
+  return resolvedBaseLabels;
 }
 
 // ============================================
@@ -776,17 +853,19 @@ function scheduleTasksSequentially(
     const indirectWorkNamePost = moduleItem?.indirectWorkItem || undefined;
 
     // TaskData 구성 (totalWorkers 포함)
-    const ceiledNetWorkDays = Math.ceil(netWorkDays);
+    // 소수점(예: 0.5일)은 보존하고 날짜 계산 단계에서만 캘린더 규칙에 따라 처리
+    const normalizedNetWorkDays = Math.max(0, Math.round(netWorkDays * 10) / 10);
+    const normalizedIndirectDaysPost = Math.max(0, Math.round(indirectDaysPost * 10) / 10);
     const taskData: TaskData = {
-      netWorkDays: ceiledNetWorkDays,
+      netWorkDays: normalizedNetWorkDays,
       indirectWorkDaysPre: 0,
-      indirectWorkDaysPost: Math.ceil(indirectDaysPost),
+      indirectWorkDaysPost: normalizedIndirectDaysPost,
       indirectWorkNamePost,
       quantity: item.quantity,
       unit: moduleItem?.unit,
       dailyOutput: moduleItem?.dailyProductivity,
       crew: item.dailyInputWorkers,
-      totalWorkers: ceiledNetWorkDays * item.dailyInputWorkers,
+      totalWorkers: normalizedNetWorkDays * item.dailyInputWorkers,
     };
 
     // 날짜 계산: 간접(post)은 달력일, 순작업은 작업일
@@ -839,17 +918,6 @@ function scheduleTasksSequentially(
 // ============================================
 
 /**
- * floorDetails에 items가 하나라도 있는지 확인
- */
-function hasFloorItems(
-  floorDetails: Record<string, FloorProcessDetails>
-): boolean {
-  return Object.values(floorDetails).some(
-    (fd) => fd.items && fd.items.length > 0
-  );
-}
-
-/**
  * 층 라벨에서 정렬용 숫자 추출
  */
 function getFloorSortNumber(label: string, building: Building): number {
@@ -861,10 +929,13 @@ function getFloorSortNumber(label: string, building: Building): number {
   if (floor) return floor.floorNumber;
 
   // 패턴 매칭 폴백
-  const basementMatch = label.match(/B(\d+)/);
+  const basementMatch = label.match(/B(\d+)/i);
   if (basementMatch) return -parseInt(basementMatch[1], 10);
 
-  const floorMatch = label.match(/(\d+)F/);
+  const rangeMatch = label.match(/(\d+)\s*[~-]\s*(\d+)(?:F|층)/i);
+  if (rangeMatch) return parseInt(rangeMatch[1], 10);
+
+  const floorMatch = label.match(/(\d+)(?:F|층)/i);
   if (floorMatch) return parseInt(floorMatch[1], 10);
 
   const phMatch = label.match(/(?:PH|옥탑)(\d+)/);
@@ -933,10 +1004,6 @@ function hasPositiveSpecialQuantity(values: SpecialRowQuantities | undefined): b
     const value = values[key as keyof SpecialRowQuantities] || 0;
     return value > 0;
   });
-}
-
-function hasSpecialRowEntriesInPlan(plan: BuildingProcessPlan): boolean {
-  return Object.keys(plan.specialRowQuantities || {}).length > 0;
 }
 
 function getActiveParkingRowLabels(plan: BuildingProcessPlan): string[] {

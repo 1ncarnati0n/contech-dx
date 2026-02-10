@@ -547,15 +547,14 @@ export class SupabaseGanttDataService implements DataService {
       .update(updateData)
       .eq('id', id)
       .eq('project_id', this.projectId)
-      .select()
-      .maybeSingle();
+      .select();
 
     if (error) {
       logger.error('Failed to update milestone:', error.message, error.code, error.details, error.hint);
       return null;
     }
 
-    if (!data) {
+    if (!data || data.length === 0) {
       logger.warn('[updateMilestone] No milestone row matched update condition:', {
         milestoneId: id,
         projectId: this.projectId,
@@ -563,7 +562,15 @@ export class SupabaseGanttDataService implements DataService {
       return null;
     }
 
-    return rowToMilestone(data);
+    if (data.length > 1) {
+      logger.warn('[updateMilestone] Multiple rows updated unexpectedly:', {
+        milestoneId: id,
+        projectId: this.projectId,
+        rowCount: data.length,
+      });
+    }
+
+    return rowToMilestone(data[0] as GanttMilestoneRow);
   }
 
   async createMilestone(milestone: Omit<Milestone, 'id'>): Promise<Milestone> {

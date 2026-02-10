@@ -246,10 +246,33 @@ function TableRow({ item }) {
 
 ## 6. 테스트 가이드
 
-### 6.1 단위 테스트 (유틸리티 함수)
+### 6.0 기존 테스트 현황
+
+현재 프로젝트에 **11개 테스트 파일**이 존재하며, 핵심 비즈니스 로직 위주로 테스트가 작성되어 있습니다.
+
+```
+apps/web/src/__tests__/
+├── components/
+│   └── Button.test.tsx                    # UI 컴포넌트 테스트
+└── utils/
+    ├── cache.test.ts                      # MemoryCache TTL 캐시 테스트
+    ├── calculateFormula.test.ts           # 수식 계산 테스트
+    ├── floorIdUtils.test.ts               # 층 ID 유틸 테스트
+    ├── process-calculation.test.ts        # 공정 계산 테스트
+    ├── process-days-calculator.test.ts    # 공정일 계산기 테스트
+    ├── process-quantity-resolver.test.ts  # 물량 해석 테스트
+    ├── process-to-gantt-converter.test.ts # 간트 변환기 테스트
+    ├── quantity-reference-migration.test.ts # 레거시 마이그레이션 테스트
+    ├── quantity-reference.test.ts         # 물량 참조 테스트
+    └── tradeDataHelpers.test.ts           # 공종 데이터 헬퍼 테스트
+```
+
+**분석**: 공정 계산, 물량 해석, 간트 변환 등 핵심 비즈니스 로직에 대한 테스트가 잘 갖춰져 있으며, MemoryCache 캐시 테스트도 포함됨. 컴포넌트 테스트는 Button 1건만 존재.
+
+### 6.1 단위 테스트 (프로젝트 실제 패턴 기반)
 
 ```typescript
-// __tests__/unit/utils/process-calculation.test.ts
+// 기존 패턴 참고: __tests__/utils/process-calculation.test.ts
 import {
   calculateTotalWorkers,
   calculateWorkDaysWithRounding,
@@ -270,6 +293,23 @@ describe('calculateTotalWorkers', () => {
       productivity: 0,
     });
     expect(result).toBe(0);
+  });
+});
+
+// 기존 패턴 참고: __tests__/utils/cache.test.ts
+import { MemoryCache, DEFAULT_TTL, SHORT_TTL } from '@/lib/services/cache';
+
+describe('MemoryCache', () => {
+  it('should return cached data within TTL', () => {
+    const cache = new MemoryCache<string>({ ttl: DEFAULT_TTL });
+    cache.set('key', 'value');
+    expect(cache.get('key')).toBe('value');
+  });
+
+  it('should return null for expired entries', () => {
+    const cache = new MemoryCache<string>({ ttl: 0 }); // 즉시 만료
+    cache.set('key', 'value');
+    expect(cache.get('key')).toBeNull();
   });
 });
 ```
@@ -478,8 +518,10 @@ npx supabase gen types typescript > src/lib/types/database.ts
 - [Next.js 16 Docs](https://nextjs.org/docs)
 - [Supabase Docs](https://supabase.com/docs)
 - [Zustand Docs](https://docs.pmnd.rs/zustand)
-- [React Query Docs](https://tanstack.com/query/latest)
+- [@tanstack/react-virtual Docs](https://tanstack.com/virtual/latest)
+- [date-fns Docs](https://date-fns.org/docs)
+- [06-process-to-gantt-converter-analysis.md](./06-process-to-gantt-converter-analysis.md) - 컨버터 분석
 
 ---
 
-*이 문서는 코드 분석 자동화 도구를 통해 생성되었습니다.*
+*이 문서는 코드 분석 자동화 도구를 통해 생성되었으며, 2026-02-10 정확성 교정이 완료되었습니다.*

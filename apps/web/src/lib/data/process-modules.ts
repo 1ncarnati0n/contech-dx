@@ -193,7 +193,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 2, // 고정값
-        indirectDays: 0,
+        indirectDays: 0.5,
         indirectWorkItem: '검측',
       },
       {
@@ -206,7 +206,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 4, // 고정값
-        indirectDays: 0,
+        indirectDays: 0.5,
         indirectWorkItem: '검측',
       },
       {
@@ -219,7 +219,7 @@ export const PROCESS_MODULES: ProcessModule[] = [
         calculationBasis: '일수고정',
         equipmentCount: 1,
         directWorkDays: 2, // 고정값
-        indirectDays: 0,
+        indirectDays: 0.5,
         indirectWorkItem: '검측',
       },
       {

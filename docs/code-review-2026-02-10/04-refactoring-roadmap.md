@@ -227,123 +227,85 @@ BasementProcessPlanPage.tsx (2,155 LOC)
 
 ---
 
-### 2.2 Props Drilling 해소 (sa-gantt-lib)
+### 2.2 GanttContext 범위 확장 (sa-gantt-lib)
 
 **우선순위**: 🟠 High
-**예상 공수**: 3-5일
-**대상**: `packages/sa-gantt-lib/src/lib/components/`
+**예상 공수**: 2-3일
+**대상**: `packages/sa-gantt-lib/src/lib/context/GanttContext.tsx` (168 LOC, 이미 존재)
 
-#### Context 도입 방안
+> **참고**: GanttContext는 이미 구현되어 있으며(168 LOC), 주요 데이터와 콜백을 자식 컴포넌트에 제공 중. 이 작업은 **기존 Context의 범위를 확장**하는 것.
+
+#### 확장 방안
 
 ```typescript
-// 1. GanttContext 정의
-// lib/contexts/GanttContext.tsx
-interface GanttContextValue {
-  // 데이터
-  tasks: ConstructionTask[];
-  milestones: Milestone[];
+// 현재: GanttContext.tsx (168 LOC) - 이미 구현됨
+// 확장 대상: 타임라인 설정, 줌 레벨, 사이드바 설정 등 추가
 
-  // 설정
-  config: GanttConfig;
+// 현재 GanttContext가 제공하는 것:
+// - tasks, milestones, config
+// - onTaskClick, onTaskUpdate, onTaskDragEnd
 
-  // 콜백
-  onTaskClick?: (taskId: string) => void;
-  onTaskUpdate?: (task: ConstructionTask) => void;
-  onTaskDragEnd?: (taskId: string, newDates: DateRange) => void;
+// 추가 예정:
+interface ExtendedGanttContextValue extends GanttContextValue {
+  // 타임라인 설정
+  timelineConfig: TimelineConfig;
+
+  // 줌 설정
+  zoomConfig: ZoomConfig;
+
+  // 사이드바 설정
+  sidebarConfig: SidebarConfig;
 }
 
-const GanttContext = createContext<GanttContextValue | null>(null);
-
-export function GanttProvider({
-  children,
-  ...props
-}: PropsWithChildren<GanttContextValue>) {
-  return (
-    <GanttContext.Provider value={props}>
-      {children}
-    </GanttContext.Provider>
-  );
-}
-
-export function useGanttContext() {
-  const context = useContext(GanttContext);
-  if (!context) {
-    throw new Error('useGanttContext must be used within GanttProvider');
-  }
-  return context;
-}
-
-// 2. 컴포넌트에서 사용
-// SAGanttChart.tsx (리팩토링 후)
-export function SAGanttChart(props: GanttProps) {
-  return (
-    <GanttProvider {...props}>
-      <GanttContainer />
-    </GanttProvider>
-  );
-}
-
-// TaskBar.tsx (리팩토링 후)
-export function TaskBar({ task }: { task: ConstructionTask }) {
-  const { onTaskClick, config } = useGanttContext();
-
-  return (
-    <div onClick={() => onTaskClick?.(task.id)}>
-      {/* ... */}
-    </div>
-  );
-}
+// 자식 컴포넌트에서 사용 (이미 이 패턴 사용 중)
+const { tasks, onTaskClick, config } = useGanttContext();
 ```
 
 #### 체크리스트
-- [ ] `GanttContext` 정의
-- [ ] `GanttProvider` 구현
-- [ ] 주요 컴포넌트 리팩토링
-- [ ] Props 제거 확인
+- [ ] 기존 `GanttContext`(168 LOC) 확장
+- [ ] 타임라인/줌/사이드바 설정 Context에 추가
+- [ ] 중간 컴포넌트의 불필요한 props 제거
+- [ ] Props 의존성 감소 확인
 - [ ] 라이브러리 빌드 테스트
 
 ---
 
-### 2.3 캐시 일관성 개선
+### 2.3 MemoryCache + Supabase Realtime 캐시 연동
 
 **우선순위**: 🟡 Medium
 **예상 공수**: 2-3일
-**대상**: `apps/web/src/lib/services/`
+**대상**: `apps/web/src/lib/services/cache.ts` (190 LOC) + 신규 Realtime 연동
 
-#### React Query 설정 표준화
+> **참고**: 프로젝트는 React Query를 사용하지 않음. 자체 구현한 `MemoryCache<T>` 클래스(TTL 기반)를 사용하며, 이를 Supabase Realtime과 연동하는 것이 목표.
+
+#### MemoryCache 현황 (cache.ts, 190 LOC)
 
 ```typescript
-// lib/query/queryClient.ts
-import { QueryClient } from '@tanstack/react-query';
+// 이미 구현된 MemoryCache 클래스 핵심 메서드:
+export class MemoryCache<T> {
+  get(key: string): T | null;          // TTL 확인 후 반환
+  set(key: string, data: T, ttl?: number): void;
+  getOrFetch(key: string, fetcher: () => Promise<T>, ttl?: number): Promise<T>;
+  invalidate(key: string): void;       // 단일 키 무효화
+  invalidateAll(): void;               // 전체 무효화
+  cleanup(): void;                     // 만료 엔트리 정리
+}
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,      // 5분
-      gcTime: 1000 * 60 * 30,        // 30분 (구 cacheTime)
-      refetchOnWindowFocus: false,
-      retry: (failureCount, error) => {
-        // 인증 에러는 재시도 안함
-        if (error instanceof AuthError) return false;
-        return failureCount < 3;
-      },
-    },
-    mutations: {
-      onError: (error) => {
-        handleError(error, 'mutation');
-      },
-    },
-  },
-});
+// 미리 정의된 인스턴스:
+export const projectsCache  = new MemoryCache<unknown>({ name: 'projects', ttl: DEFAULT_TTL });  // 5분
+export const profilesCache  = new MemoryCache<unknown>({ name: 'profiles', ttl: DEFAULT_TTL });  // 5분
+export const postsCache     = new MemoryCache<unknown>({ name: 'posts',    ttl: SHORT_TTL });    // 1분
 ```
 
-#### Supabase Realtime 연동
+#### Supabase Realtime 연동 방안
 
 ```typescript
-// lib/hooks/useRealtimeSync.ts
-export function useRealtimeSync(table: string, queryKey: string[]) {
-  const queryClient = useQueryClient();
-
+// lib/hooks/useRealtimeSync.ts (신규)
+export function useRealtimeCacheSync(
+  table: string,
+  cache: MemoryCache<unknown>,
+  onInvalidate?: () => void
+) {
   useEffect(() => {
     const supabase = createBrowserClient();
 
@@ -353,7 +315,8 @@ export function useRealtimeSync(table: string, queryKey: string[]) {
         'postgres_changes',
         { event: '*', schema: 'public', table },
         () => {
-          queryClient.invalidateQueries({ queryKey });
+          cache.invalidateAll();
+          onInvalidate?.();
         }
       )
       .subscribe();
@@ -361,13 +324,20 @@ export function useRealtimeSync(table: string, queryKey: string[]) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [table, queryKey]);
+  }, [table]);
 }
+
+// 사용 예시:
+useRealtimeCacheSync('projects', projectsCache, () => {
+  // 클라이언트 상태 갱신 트리거
+  refreshProjectList();
+});
 ```
 
 #### 체크리스트
-- [ ] QueryClient 설정 중앙화
-- [ ] 주요 테이블 Realtime 구독 구현
+- [ ] `useRealtimeCacheSync` 훅 구현
+- [ ] 주요 테이블(projects, buildings) Realtime 구독
+- [ ] MemoryCache invalidate와 UI 갱신 연결
 - [ ] 캐시 무효화 로직 검증
 
 ---
@@ -380,45 +350,50 @@ export function useRealtimeSync(table: string, queryKey: string[]) {
 **예상 공수**: 2-4주
 **목표 커버리지**: 50%
 
-#### 테스트 전략
+> **참고**: 현재 **11개 테스트 파일**이 `apps/web/src/__tests__/`에 존재하며, 핵심 비즈니스 로직(공정 계산, 물량 해석, 간트 변환) 위주로 테스트가 작성되어 있음. 이를 기반으로 확대.
+
+#### 기존 테스트 현황 (11개 파일)
 
 ```
-우선순위 1: 유틸리티 함수 (순수 함수)
-├── lib/utils/process-calculation.ts
-├── lib/utils/process-quantity-resolver.ts
-└── sa-gantt-lib/src/lib/utils/dateUtils.ts
+apps/web/src/__tests__/
+├── components/
+│   └── Button.test.tsx                    # UI 컴포넌트
+└── utils/
+    ├── cache.test.ts                      # MemoryCache TTL
+    ├── calculateFormula.test.ts           # 수식 계산
+    ├── floorIdUtils.test.ts               # 층 ID 유틸
+    ├── process-calculation.test.ts        # 공정 계산
+    ├── process-days-calculator.test.ts    # 공정일 계산기
+    ├── process-quantity-resolver.test.ts  # 물량 해석
+    ├── process-to-gantt-converter.test.ts # 간트 변환기
+    ├── quantity-reference-migration.test.ts # 레거시 마이그레이션
+    ├── quantity-reference.test.ts         # 물량 참조
+    └── tradeDataHelpers.test.ts           # 공종 데이터 헬퍼
+```
 
-우선순위 2: 커스텀 훅
+#### 확대 전략 (기존 테스트 기반)
+
+```
+우선순위 1: 기존 유틸 테스트 강화 (이미 기반 있음)
+├── process-to-gantt-converter.test.ts ← 엣지 케이스 추가
+├── quantity-reference.test.ts ← 마이그레이션 시나리오 추가
+└── sa-gantt-lib/utils/date/ ← 달력 시스템 테스트 신규
+
+우선순위 2: 커스텀 훅 테스트 (신규)
 ├── lib/hooks/useAsyncData.ts
 └── sa-gantt-lib/src/lib/store/useGanttStore.ts
 
-우선순위 3: API 라우트
+우선순위 3: API 라우트 통합 테스트 (신규)
 ├── api/gemini/route.ts
 └── api/projects/route.ts
 
-우선순위 4: 컴포넌트 (스냅샷)
-└── 주요 UI 컴포넌트
-```
-
-#### 테스트 파일 구조
-
-```
-__tests__/
-├── unit/
-│   ├── utils/
-│   │   └── process-calculation.test.ts
-│   └── hooks/
-│       └── useAsyncData.test.ts
-├── integration/
-│   └── api/
-│       └── projects.test.ts
-└── e2e/
-    └── auth-flow.spec.ts
+우선순위 4: 컴포넌트 테스트 확대 (Button만 존재)
+└── 주요 페이지 컴포넌트
 ```
 
 #### 체크리스트
-- [ ] Jest + Testing Library 설정
-- [ ] 유틸리티 함수 단위 테스트 (20개+)
+- [ ] 기존 11개 테스트 파일의 엣지 케이스 보강
+- [ ] 달력 시스템(koreanHolidays, workingDays) 테스트 추가
 - [ ] 훅 테스트 (10개+)
 - [ ] API 통합 테스트 (5개+)
 - [ ] CI 파이프라인에 테스트 추가
@@ -520,7 +495,7 @@ docs/
  *
  * @example
  * ```tsx
- * <SAGanttChart
+ * <GanttChart
  *   tasks={tasks}
  *   onTaskClick={(id) => console.log(id)}
  * />
@@ -530,7 +505,7 @@ docs/
  * @param props.tasks - 표시할 작업 목록
  * @param props.onTaskClick - 작업 클릭 시 콜백
  */
-export function SAGanttChart(props: SAGanttChartProps) {
+export function GanttChart(props: GanttChartProps) {
   // ...
 }
 ```
@@ -569,4 +544,4 @@ export function SAGanttChart(props: SAGanttChartProps) {
 
 ---
 
-*이 문서는 코드 분석 자동화 도구를 통해 생성되었습니다.*
+*이 문서는 코드 분석 자동화 도구를 통해 생성되었으며, 2026-02-10 정확성 교정이 완료되었습니다.*

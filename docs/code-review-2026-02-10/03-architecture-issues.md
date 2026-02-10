@@ -16,16 +16,18 @@
 │  │                      Next.js 16 App                              │   │
 │  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐       │   │
 │  │  │   Pages       │  │  Components   │  │  sa-gantt-lib │       │   │
-│  │  │   (app/)      │  │  (buildings/) │  │  (package)    │       │   │
+│  │  │ (container)/  │  │  (buildings/) │  │  (package)    │       │   │
+│  │  │ (fullscreen)/ │  │               │  │               │       │   │
 │  │  └───────────────┘  └───────────────┘  └───────────────┘       │   │
 │  │          │                  │                  │                │   │
 │  │          ▼                  ▼                  ▼                │   │
 │  │  ┌─────────────────────────────────────────────────────────┐   │   │
 │  │  │                   State Management                       │   │   │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │   │   │
-│  │  │  │  Zustand    │  │ React Query │  │ localStorage│     │   │   │
-│  │  │  │  (UI State) │  │ (Server St) │  │ (Persist)   │     │   │   │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘     │   │   │
+│  │  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐    │   │   │
+│  │  │  │  Zustand    │  │ MemoryCache  │  │ localStorage│    │   │   │
+│  │  │  │  (UI State) │  │ (TTL Cache)  │  │ (Persist)   │    │   │   │
+│  │  │  │  ^5.0.8     │  │ (190 LOC)    │  │             │    │   │   │
+│  │  │  └─────────────┘  └──────────────┘  └─────────────┘    │   │   │
 │  │  └─────────────────────────────────────────────────────────┘   │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                    │                                    │
@@ -74,8 +76,8 @@
         │
         ▼
 ┌───────────────────┐
-│   Custom Hooks    │ ── useGanttStore (Zustand)
-│                   │ ── useQuery (React Query)
+│   Custom Hooks    │ ── useGanttStore (Zustand ^5.0.8)
+│                   │ ── DataService (MemoryCache 연동)
 └───────────────────┘
         │
         ├─────────────────────────────┐
@@ -83,7 +85,8 @@
 ┌───────────────────┐       ┌───────────────────┐
 │  Service Layer    │       │   localStorage    │ ⚠️ 분산 저장
 │  (lib/services/)  │       │                   │
-└───────────────────┘       └───────────────────┘
+│  + MemoryCache    │       └───────────────────┘
+└───────────────────┘
         │
         ▼
 ┌───────────────────┐
@@ -115,8 +118,12 @@
 ├── localStorage ⚠️
 │   ├── contech_process_plan_{buildingId}
 │   └── 기타 캐시 데이터
-└── Memory (Zustand)
-    └── UI 상태
+├── Memory (Zustand ^5.0.8)
+│   └── UI 상태
+└── Memory (MemoryCache TTL)
+    ├── projectsCache (DEFAULT_TTL: 5분)
+    ├── profilesCache (DEFAULT_TTL: 5분)
+    └── postsCache (SHORT_TTL: 1분)
 ```
 
 **문제점**:
@@ -148,46 +155,54 @@ Phase 3: 완전 Supabase 이관 + 오프라인 지원 (선택)
 
 ---
 
-### 2.2 캐시 전략 부재
+### 2.2 캐시 전략 (현재 MemoryCache 기반)
 
-**현황**:
+**현재 구현**: `lib/services/cache.ts` (190 LOC)
+
 ```
-클라이언트                    서버
-    │                          │
-    │   GET /api/projects      │
-    ├─────────────────────────►│
-    │   (매번 새로 fetch)      │
-    │◄─────────────────────────┤
-    │                          │
-    │   GET /api/projects      │
-    ├─────────────────────────►│  ← 중복 요청
-    │                          │
+┌─ MemoryCache<T> 구조 ──────────────────────────────────┐
+│                                                          │
+│  TTL 설정:                                               │
+│  ├── DEFAULT_TTL: 5분 (일반 데이터)                      │
+│  ├── SHORT_TTL:  1분 (자주 변경되는 데이터)              │
+│  └── LONG_TTL:  15분 (정적 데이터)                       │
+│                                                          │
+│  핵심 메서드:                                            │
+│  ├── get(key) → T | null                                │
+│  ├── set(key, data, ttl?)                               │
+│  ├── getOrFetch(key, fetcher, ttl?) → Promise<T>        │
+│  ├── invalidate(key)                                    │
+│  ├── invalidateAll()                                    │
+│  └── cleanup() → 만료 엔트리 정리                       │
+│                                                          │
+│  미리 정의된 인스턴스:                                   │
+│  ├── projectsCache  (DEFAULT_TTL)                       │
+│  ├── profilesCache  (DEFAULT_TTL)                       │
+│  └── postsCache     (SHORT_TTL)                         │
+│                                                          │
+│  키 생성 헬퍼:                                          │
+│  └── createCacheKey(prefix, ...params)                  │
+└──────────────────────────────────────────────────────────┘
 ```
 
 **문제점**:
-- React Query 캐시 설정 불명확
-- 동일 데이터 반복 요청
-- Supabase 실시간 구독과 캐시 불일치
+- 서버 메모리 전용 캐시 → 클라이언트와 동기화 없음
+- Supabase 실시간 구독과 캐시 무효화 미연동
+- 서버 재시작 시 모든 캐시 유실
+- 동일 데이터에 대한 클라이언트 측 중복 요청 가능
 
 **권장 개선안**:
 ```typescript
-// React Query 캐시 전략 명시
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,     // 5분
-      cacheTime: 1000 * 60 * 30,    // 30분
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-// Supabase 실시간 구독과 연동
+// Supabase Realtime 구독과 MemoryCache 연동
 useEffect(() => {
   const subscription = supabase
     .channel('projects')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' },
-      () => queryClient.invalidateQueries(['projects'])
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'projects' },
+      () => {
+        projectsCache.invalidateAll();
+        // 클라이언트 상태 갱신 트리거
+      }
     )
     .subscribe();
 
@@ -309,14 +324,14 @@ export const POST = withAuth(async (req, user) => {
 | ID | 부채 | 영향 | 예상 공수 |
 |----|------|------|-----------|
 | TD-4 | 컴포넌트 복잡도 | 유지보수 어려움 | 1-2주 |
-| TD-5 | 캐시 전략 부재 | 성능 저하 | 3일 |
+| TD-5 | MemoryCache↔Realtime 미연동 | 캐시 불일치 | 3일 |
 | TD-6 | 에러 처리 불일치 | 디버깅 어려움 | 2일 |
 
 ### 3.3 Low Priority (중기 해결)
 
 | ID | 부채 | 영향 | 예상 공수 |
 |----|------|------|-----------|
-| TD-7 | 테스트 부재 | 회귀 버그 위험 | 2-4주 |
+| TD-7 | 테스트 확대 필요 | 회귀 버그 위험 | 2-4주 |
 | TD-8 | 문서화 부족 | 온보딩 지연 | 1주 |
 | TD-9 | 성능 최적화 | 대용량 데이터 처리 | 1주 |
 
@@ -339,17 +354,17 @@ export const POST = withAuth(async (req, user) => {
 │                                    │                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                      State Layer                                 │   │
-│  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐       │   │
-│  │  │  UI Store     │  │ Server State  │  │ Cache Layer   │       │   │
-│  │  │  (Zustand)    │  │ (React Query) │  │ (Unified)     │       │   │
-│  │  └───────────────┘  └───────────────┘  └───────────────┘       │   │
+│  │  ┌───────────────┐  ┌──────────────┐  ┌───────────────┐        │   │
+│  │  │  UI Store     │  │ MemoryCache  │  │ Realtime Sync │        │   │
+│  │  │  (Zustand)    │  │ (TTL Cache)  │  │ (Supabase)    │        │   │
+│  │  └───────────────┘  └──────────────┘  └───────────────┘        │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                    │                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                      Service Layer                               │   │
 │  │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐       │   │
-│  │  │  API Client   │  │  Auth Service │  │ Error Handler │       │   │
-│  │  │  (Unified)    │  │  (Centralized)│  │ (Centralized) │       │   │
+│  │  │  DataService  │  │  Auth Service │  │ Error Handler │       │   │
+│  │  │  (Interface)  │  │  (Centralized)│  │ (Centralized) │       │   │
 │  │  └───────────────┘  └───────────────┘  └───────────────┘       │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -366,8 +381,8 @@ export const POST = withAuth(async (req, user) => {
 ### 4.2 핵심 변경 사항
 
 1. **데이터 저장소 통합**: localStorage → Supabase 이관
-2. **캐시 레이어 도입**: React Query 설정 표준화 + Realtime 연동
-3. **서비스 레이어 중앙화**: API 클라이언트, 인증, 에러 처리 통합
+2. **캐시 레이어 강화**: MemoryCache + Supabase Realtime 연동으로 실시간 무효화
+3. **서비스 레이어 중앙화**: DataService 인터페이스 패턴 확대, 인증/에러 처리 통합
 4. **도메인 기반 구조**: 기능별 Feature 폴더 구조
 
 ---
@@ -378,4 +393,4 @@ export const POST = withAuth(async (req, user) => {
 
 ---
 
-*이 문서는 코드 분석 자동화 도구를 통해 생성되었습니다.*
+*이 문서는 코드 분석 자동화 도구를 통해 생성되었으며, 2026-02-10 정확성 교정이 완료되었습니다.*

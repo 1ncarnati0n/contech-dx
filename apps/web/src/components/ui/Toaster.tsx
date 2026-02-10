@@ -8,7 +8,7 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
 export const Toaster = ({ ...props }: ToasterProps) => {
   const pathname = usePathname();
   const isGanttRoute = pathname?.includes("/gantt");
-  const toasterOffset = isGanttRoute ? 104 : 72;
+  const toasterOffset = isGanttRoute ? 124 : 72;
 
   return (
     <Sonner
