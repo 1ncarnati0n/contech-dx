@@ -36,7 +36,7 @@ interface ProjectSidebarProps {
     onTabChange: (tab: string) => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
-    isAdmin?: boolean;
+    canViewProcessLogic?: boolean;  // 시스템 관리자 또는 프로젝트 PM
 }
 
 interface MenuButtonProps {
@@ -96,7 +96,7 @@ export function ProjectSidebar({
     onTabChange,
     onMouseEnter,
     onMouseLeave,
-    isAdmin = false,
+    canViewProcessLogic = false,
 }: ProjectSidebarProps) {
     // 모든 서브메뉴를 디폴트로 펼친 상태로 설정
     const [isDataInputExpandedByUser, setIsDataInputExpandedByUser] = useState(true);
@@ -231,11 +231,11 @@ export function ProjectSidebar({
                     {isProcessPlanExpanded && (
                         <div className={`space-y-1 ${isCollapsed ? 'pl-1' : 'ml-4 border-l border-zinc-200 dark:border-zinc-700 pl-2'}`}>
                             {processPlanSubItems
-                                .filter(item => !item.adminOnly || isAdmin)
+                                .filter(item => !item.adminOnly || canViewProcessLogic)
                                 .map((item) => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id;
-                                const isAdminItem = item.adminOnly;
+                                const isRestrictedItem = item.adminOnly;  // PM/관리자 전용 메뉴
                                 return (
                                     <button
                                         key={item.id}
@@ -243,20 +243,20 @@ export function ProjectSidebar({
                                         title={isCollapsed ? item.label : undefined}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                             isActive
-                                                ? isAdminItem
+                                                ? isRestrictedItem
                                                     ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
                                                     : 'bg-[#ffff1d]/70 text-zinc-900 dark:bg-[#ffff1d]/80 dark:text-zinc-900'
-                                                : isAdminItem
+                                                : isRestrictedItem
                                                     ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-700 dark:hover:text-orange-300'
                                                     : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                                         } ${isCollapsed ? 'justify-center' : ''}`}
                                     >
                                         <Icon className={`w-4 h-4 shrink-0 ${
                                             isActive
-                                                ? isAdminItem
+                                                ? isRestrictedItem
                                                     ? 'text-orange-600 dark:text-orange-300'
                                                     : 'text-zinc-900 dark:text-zinc-900'
-                                                : isAdminItem
+                                                : isRestrictedItem
                                                     ? 'text-orange-500 dark:text-orange-400'
                                                     : 'text-zinc-400'
                                         }`} />

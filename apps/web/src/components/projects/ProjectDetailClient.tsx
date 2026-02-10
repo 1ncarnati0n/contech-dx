@@ -23,8 +23,9 @@ import {
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { Card, TabLoadingSkeleton } from '@/components/ui';
-import type { Project, Profile } from '@/lib/types';
+import type { Project, Profile, ProjectMemberRole } from '@/lib/types';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
+import { getUserRoleInProject } from '@/lib/services/projectMembers';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
 import { BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
@@ -149,15 +150,28 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
   const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userRole, setUserRole] = useState<ProjectMemberRole | null>(null);
   const [pouringSectionViewMode, setPouringSectionViewMode] = useState<'simple' | 'visual'>('visual');
 
-  // 프로필 로드
+  // 프로필 및 역할 로드
   useEffect(() => {
-    getCurrentUserProfile().then(setProfile);
-  }, []);
+    async function loadProfileAndRole() {
+      const currentProfile = await getCurrentUserProfile();
+      setProfile(currentProfile);
+
+      if (currentProfile) {
+        const role = await getUserRoleInProject(initialProject.id, currentProfile.id);
+        setUserRole(role as ProjectMemberRole);
+      }
+    }
+    loadProfileAndRole();
+  }, [initialProject.id]);
 
   // 관리자 권한 체크
   const isAdmin = isSystemAdmin(profile);
+
+  // 공정로직 페이지 접근 권한: 시스템 관리자 또는 프로젝트 PM
+  const canViewProcessLogic = isAdmin || userRole === 'pm';
 
   // URL에서 탭 초기값 읽기
   const tabFromUrl = searchParams.get('tab');
@@ -200,12 +214,12 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [activeTab]);
 
-  // 비관리자가 process_logic 탭에 직접 접근 시 overview로 리다이렉트
+  // 권한 없는 사용자가 process_logic 탭에 직접 접근 시 overview로 리다이렉트
   useEffect(() => {
-    if (activeTab === 'process_logic' && profile && !isAdmin) {
+    if (activeTab === 'process_logic' && profile && !canViewProcessLogic) {
       handleTabChange('overview');
     }
-  }, [activeTab, profile, isAdmin, handleTabChange]);
+  }, [activeTab, profile, canViewProcessLogic, handleTabChange]);
 
   // 프로젝트 데이터 동기화 (서버에서 업데이트된 데이터 반영)
   useEffect(() => {
@@ -278,7 +292,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         onTabChange={handleTabChange}
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
-        isAdmin={isAdmin}
+        canViewProcessLogic={canViewProcessLogic}
       />
 
       <div

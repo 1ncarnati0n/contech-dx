@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,12 +14,61 @@ import {
   Input,
   Textarea,
 } from '@/components/ui';
+import {
+  Megaphone,
+  Gavel,
+  Award,
+  HardHat,
+  CheckCircle2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { updateProject } from '@/lib/services/projects';
 import type { Project, UpdateProjectDTO } from '@/lib/types';
 import { logger } from '@/lib/utils/logger';
 import { SaveStatusBar } from '@/components/buildings/SaveStatusBar';
-import { useState } from 'react';
+
+/**
+ * 숫자를 한글 금액으로 변환 (예: 123456789 → "1억 2,345만 6,789원")
+ */
+function formatKoreanCurrency(value: number | null | undefined): string {
+  if (value == null || value === 0) return '';
+
+  const units = ['', '만', '억', '조', '경'];
+  const num = Math.abs(value);
+  const parts: string[] = [];
+
+  let remaining = num;
+  let unitIndex = 0;
+
+  while (remaining > 0 && unitIndex < units.length) {
+    const part = remaining % 10000;
+    if (part > 0) {
+      const formattedPart = part.toLocaleString('ko-KR');
+      parts.unshift(`${formattedPart}${units[unitIndex]}`);
+    }
+    remaining = Math.floor(remaining / 10000);
+    unitIndex++;
+  }
+
+  return parts.join(' ') + '원';
+}
+
+/**
+ * 콤마가 포함된 문자열에서 숫자만 추출
+ */
+function parseFormattedNumber(value: string): number | null {
+  const cleaned = value.replace(/[^\d]/g, '');
+  if (cleaned === '') return null;
+  return parseInt(cleaned, 10);
+}
+
+/**
+ * 숫자를 콤마 포맷 문자열로 변환
+ */
+function formatWithCommas(value: number | null | undefined): string {
+  if (value == null) return '';
+  return value.toLocaleString('ko-KR');
+}
 
 const projectSettingsSchema = z.object({
   name: z.string().min(1, '프로젝트명을 입력해주세요'),
@@ -128,33 +177,48 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     form.reset();
   }, [form]);
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'announcement':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'bidding':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'award':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      case 'construction_start':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
-      case 'completion':
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
-      default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'announcement': return '공모';
-      case 'bidding': return '입찰';
-      case 'award': return '수주';
-      case 'construction_start': return '착공';
-      case 'completion': return '준공';
-      default: return status;
-    }
-  };
+  const STATUS_OPTIONS = [
+    {
+      value: 'announcement',
+      label: '공모',
+      icon: Megaphone,
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      activeRing: 'ring-blue-500',
+    },
+    {
+      value: 'bidding',
+      label: '입찰',
+      icon: Gavel,
+      bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      activeRing: 'ring-amber-500',
+    },
+    {
+      value: 'award',
+      label: '수주',
+      icon: Award,
+      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      activeRing: 'ring-emerald-500',
+    },
+    {
+      value: 'construction_start',
+      label: '착공',
+      icon: HardHat,
+      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      activeRing: 'ring-purple-500',
+    },
+    {
+      value: 'completion',
+      label: '준공',
+      icon: CheckCircle2,
+      bgColor: 'bg-slate-100 dark:bg-slate-800',
+      iconColor: 'text-slate-600 dark:text-slate-400',
+      activeRing: 'ring-slate-500',
+    },
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -169,91 +233,67 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
       )}
 
       <Form {...form}>
-        <form className="space-y-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>프로젝트명 *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="프로젝트명 입력"
-                    disabled={!canEdit}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>상태 *</FormLabel>
-                <FormControl>
-                  <div className="space-y-2">
-                    <select
-                      className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus:ring-slate-300"
+        <form className="space-y-8">
+          {/* 기본 정보 */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              기본 정보
+            </p>
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>프로젝트명 *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="프로젝트명 입력"
                       disabled={!canEdit}
+                      className="h-11"
                       {...field}
-                    >
-                      <option value="announcement">공모</option>
-                      <option value="bidding">입찰</option>
-                      <option value="award">수주</option>
-                      <option value="construction_start">착공</option>
-                      <option value="completion">준공</option>
-                    </select>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-zinc-500">현재 상태:</span>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(field.value)}`}>
-                        {getStatusLabel(field.value)}
-                      </span>
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>프로젝트 상태 *</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {STATUS_OPTIONS.map((option) => {
+                        const Icon = option.icon;
+                        const isActive = field.value === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            disabled={!canEdit}
+                            onClick={() => canEdit && field.onChange(option.value)}
+                            className={`
+                              flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all
+                              ${isActive
+                                ? `${option.bgColor} border-transparent ring-2 ${option.activeRing}`
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                              }
+                              ${!canEdit ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
+                            `}
+                          >
+                            <div className={`p-1.5 rounded-md ${option.bgColor}`}>
+                              <Icon className={`w-4 h-4 ${option.iconColor}`} />
+                            </div>
+                            <span className={`text-xs font-medium ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                              {option.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="client"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>발주처</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="발주처 입력"
-                      disabled={!canEdit}
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="contract_amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>계약금액 (원)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      disabled={!canEdit}
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -261,53 +301,83 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>위치</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="현장 위치 입력"
-                    disabled={!canEdit}
-                    {...field}
-                    value={field.value || ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* 계약 정보 */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              계약 정보
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="client"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>발주처</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="발주처 입력"
+                        disabled={!canEdit}
+                        className="h-11"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contract_amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>계약금액</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="0"
+                            disabled={!canEdit}
+                            className="h-11 pr-8"
+                            value={formatWithCommas(field.value)}
+                            onChange={(e) => {
+                              const parsed = parseFormattedNumber(e.target.value);
+                              field.onChange(parsed);
+                            }}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400 dark:text-zinc-500">
+                            원
+                          </span>
+                        </div>
+                        {field.value != null && field.value > 0 && (
+                          <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">읽기:</span>
+                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                              {formatKoreanCurrency(field.value)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="start_date"
+              name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>시작일 *</FormLabel>
+                  <FormLabel>현장 위치</FormLabel>
                   <FormControl>
                     <Input
-                      type="date"
+                      placeholder="현장 위치 입력"
                       disabled={!canEdit}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="end_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>종료일</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      disabled={!canEdit}
+                      className="h-11"
                       {...field}
                       value={field.value || ''}
                     />
@@ -318,25 +388,77 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>설명</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="프로젝트에 대한 설명을 입력하세요"
-                    className="resize-none h-24"
-                    disabled={!canEdit}
-                    {...field}
-                    value={field.value || ''}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* 일정 */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              일정
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>시작일 *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        disabled={!canEdit}
+                        className="h-11"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="end_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>종료일</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        disabled={!canEdit}
+                        className="h-11"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* 설명 */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              추가 정보
+            </p>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>프로젝트 설명</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="프로젝트에 대한 설명을 입력하세요"
+                      className="resize-none min-h-[120px] leading-relaxed"
+                      disabled={!canEdit}
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </form>
       </Form>
     </div>
