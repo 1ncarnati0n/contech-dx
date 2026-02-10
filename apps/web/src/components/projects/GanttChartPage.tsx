@@ -8,7 +8,7 @@ import { getProject } from '@/lib/services/projects';
 import {
   convertProcessPlansToGanttTasks,
   CATEGORY_ORDER,
-  getFloorLabelsForCategory,
+  getImportFloorLabelsForCategory,
 } from '@/lib/utils/process-to-gantt-converter';
 import type { ConversionResult } from '@/lib/utils/process-to-gantt-converter';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
@@ -268,43 +268,29 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
         // 카테고리별 상세 정보 추출
         const categories: CategoryPreview[] = [];
         for (const category of CATEGORY_ORDER) {
-          // PH층은 옥탑층에 통합됨 - 별도 skip 불필요
-
           const processInfo = plan.processes[category];
-
-          // 지하층(층고6.5m이상): building 메타데이터로 감지 (floor labels가 ['']이라 일반 감지 불가)
-          if (category === '지하층(층고6.5m이상)') {
-            if (!building.meta?.floorCount?.hasHighCeilingEquipmentRoom) continue;
-            const processType = processInfo?.processType || '표준공정';
-            const mod = getProcessModule(category, processType);
-            let days = processInfo?.days || 0;
-            if (days === 0 && mod) {
-              days = calculateModuleWorkDays(building, mod, category);
-            }
-            categories.push({
-              category, days, processType, floorLabelsDisplay: '',
-              group: 'underground',
-            });
-            continue;
-          }
-
-          // 나머지 카테고리: 기존 floor labels 감지
-          const floorLabels = getFloorLabelsForCategory(building, category);
+          const floorLabels = getImportFloorLabelsForCategory(building, plan, category);
           const hasFloors = floorLabels.length > 0
             && !(floorLabels.length === 1 && floorLabels[0] === '');
-
-          if (!processInfo && !hasFloors) continue;
+          const allowSpecialFallback =
+            (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
+            hasFloors;
+          if (!processInfo && !allowSpecialFallback) continue;
 
           const processType = processInfo?.processType || '표준공정';
           const mod = getProcessModule(category, processType);
           let days = processInfo?.days || 0;
 
-          // 저장된 days가 0이면 on-the-fly 계산
+          // 저장된 days가 0이면 on-the-fly 계산 (특수행 카테고리는 processInfo.days 우선)
           if (days === 0 && mod) {
-            if (hasFloors) {
+            if (
+              hasFloors &&
+              category !== '지하주차장' &&
+              category !== '지하층(층고6.5m이상)'
+            ) {
               days = floorLabels.reduce((sum, fl) =>
                 sum + calculateModuleWorkDaysForFloor(building, mod, category, fl), 0);
-            } else {
+            } else if (!hasFloors) {
               days = calculateModuleWorkDays(building, mod, category);
             }
           }

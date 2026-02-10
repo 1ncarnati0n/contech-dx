@@ -33,6 +33,12 @@ import { getProcessModule } from '@/lib/data/process-modules';
 import type { ProcessItem, ProcessModule } from '@/lib/data/process-modules';
 import { filterItemsForFloor, resolveFloorQuantity } from './process-days-calculator';
 import {
+  getSpecialRowDeductions,
+  resolveWithDeduction,
+  type DeductionFields,
+} from './process-quantity-resolver';
+import { parseLegacyReference } from './quantity-reference-migration';
+import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
   calculateWorkDaysWithRounding,
@@ -68,6 +74,14 @@ interface ComputedFloorItem {
   quantity: number;
   directWorkDays: number;
   dailyInputWorkers: number;
+}
+
+interface SpecialRowQuantities {
+  gangForm?: number;
+  alForm?: number;
+  formwork?: number;
+  rebar?: number;
+  concrete?: number;
 }
 
 // ============================================
@@ -195,18 +209,31 @@ function convertBuildingPlan(
   let parallelEndDates: Date[] = [];
 
   for (const category of CATEGORY_ORDER) {
+    const categoryFloorLabels = getImportFloorLabelsForCategory(building, plan, category);
+    const hasSpecialRows = hasSpecialRowEntriesInPlan(plan);
+
+    if (
+      hasSpecialRows &&
+      (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
+      categoryFloorLabels.length === 0
+    ) {
+      continue;
+    }
+
     let processInfo = plan.processes[category];
+
+    if (categoryFloorLabels.length === 0 && !processInfo) {
+      continue;
+    }
+
     if (!processInfo) {
-      if (category === '지하층(층고6.5m이상)') {
-        // 층 라벨이 ['']이라 일반 감지 불가 → building 메타데이터로 감지
-        if (!building.meta?.floorCount?.hasHighCeilingEquipmentRoom) continue;
-      } else {
-        // 동에 해당 카테고리의 층이 있으면 기본 processInfo로 폴백
-        const floorLabels = getFloorLabelsForCategory(building, category);
-        const hasFloors = floorLabels.length > 0
-          && !(floorLabels.length === 1 && floorLabels[0] === '');
-        if (!hasFloors) continue;
-      }
+      // 특수행 기반 카테고리는 processInfo가 없어도 활성 행이 있으면 기본 타입으로 변환 허용
+      const canUseSpecialRowFallback =
+        hasSpecialRows &&
+        (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
+        categoryFloorLabels.length > 0;
+
+      if (!canUseSpecialRowFallback) continue;
       processInfo = { days: 0, processType: '표준공정' as ProcessType };
     }
 
@@ -221,6 +248,7 @@ function convertBuildingPlan(
         plan,
         category,
         processInfo,
+        categoryFloorLabels,
         blockId,
         parallelStartDate,
         holidays,
@@ -250,6 +278,7 @@ function convertBuildingPlan(
         plan,
         category,
         processInfo,
+        categoryFloorLabels,
         blockId,
         currentDate,
         holidays,
@@ -285,6 +314,7 @@ function convertCategory(
   plan: BuildingProcessPlan,
   category: ProcessCategory,
   processInfo: NonNullable<BuildingProcessPlan['processes'][ProcessCategory]>,
+  categoryFloorLabels: string[],
   blockId: string,
   startDate: Date,
   holidays: Date[],
@@ -313,18 +343,17 @@ function convertCategory(
 
   // 층 목록 결정:
   // floorDetails + building.floors 병합하여 모든 층이 GROUP으로 나오도록 보장
-  const buildingFloorLabels = getFloorLabelsForCategory(building, category);
   let floorLabels: string[];
 
   if (processInfo.floorDetails && hasFloorItems(processInfo.floorDetails)) {
     // building.floors + floorDetails 키 병합 → 모든 층 포함
     const detailLabels = Object.keys(processInfo.floorDetails);
-    const merged = new Set([...buildingFloorLabels, ...detailLabels]);
+    const merged = new Set([...categoryFloorLabels, ...detailLabels]);
     floorLabels = [...merged].sort(
       (a, b) => getFloorSortNumber(a, building) - getFloorSortNumber(b, building)
     );
   } else {
-    floorLabels = buildingFloorLabels;
+    floorLabels = categoryFloorLabels;
   }
 
   if (floorLabels.length > 0) {
@@ -468,17 +497,40 @@ function computeFloorItems(
   floorLabel: string
 ): ComputedFloorItem[] {
   const results: ComputedFloorItem[] = [];
+  const normalizedFloorLabel = normalizeFloorLabelForCalculation(category, floorLabel);
+  const deductionFields = getDeductionFieldsForBasement(
+    plan,
+    category,
+    normalizedFloorLabel
+  );
+  const specialRowQuantities = getSpecialRowQuantitiesForCategory(
+    plan,
+    category,
+    floorLabel
+  );
 
   // 카테고리별 항목 필터링 (process-days-calculator에서 재사용)
-  const filteredItems = filterItemsForFloor(module.items, category, floorLabel);
+  const filteredItems = filterItemsForFloor(
+    module.items,
+    category,
+    normalizedFloorLabel
+  );
   const maxPumpCarCount = building.meta?.pumpCarCount || 2;
 
   for (const item of filteredItems) {
     let directWorkDays = 0;
     let dailyInputWorkers = 0;
 
-    // 층별 물량 해석 (process-days-calculator에서 재사용)
-    const quantity = resolveFloorQuantity(building, item, category, floorLabel);
+    const quantity = resolveQuantityForFloorItem(
+      building,
+      item,
+      plan,
+      category,
+      floorLabel,
+      normalizedFloorLabel,
+      specialRowQuantities,
+      deductionFields
+    );
 
     // 3-way 계산 로직 (process-days-calculator.ts:136-181 동일)
     if (item.directWorkDays !== undefined) {
@@ -658,6 +710,30 @@ export function getFloorLabelsForCategory(
   }
 }
 
+/**
+ * 실제 간트 변환용 층 라벨 목록:
+ * - 지하 특수행(주차장, 6.5m 이상)은 specialRowQuantities의 활성 행만 반영
+ * - 특수행이 전혀 없는 기존 데이터는 기존 floor 기반 라벨 로직으로 폴백
+ */
+export function getImportFloorLabelsForCategory(
+  building: Building,
+  plan: BuildingProcessPlan,
+  category: ProcessCategory
+): string[] {
+  const baseLabels = getFloorLabelsForCategory(building, category);
+  const hasSpecialRowEntries = hasSpecialRowEntriesInPlan(plan);
+
+  if (category === '지하주차장' && hasSpecialRowEntries) {
+    return getActiveParkingRowLabels(plan);
+  }
+
+  if (category === '지하층(층고6.5m이상)' && hasSpecialRowEntries) {
+    return hasActiveHighCeilingRows(plan) ? ['B1 6.5m이상'] : [];
+  }
+
+  return baseLabels;
+}
+
 // ============================================
 // 순차 스케줄링 (TASK 날짜 계산)
 // ============================================
@@ -806,12 +882,186 @@ function getFloorProcessType(
   processInfo: NonNullable<BuildingProcessPlan['processes'][ProcessCategory]>,
   floorLabel: string
 ): ProcessType {
+  const normalizedFloorLabel = normalizeFloorLabelForProcessType(category, floorLabel);
+
+  // 특수행 라벨(B1 주차장, B1 6.5m이상) → B1으로 정규화된 오버라이드 우선
+  if (
+    normalizedFloorLabel !== floorLabel &&
+    processInfo.floors?.[normalizedFloorLabel]
+  ) {
+    return processInfo.floors[normalizedFloorLabel].processType;
+  }
+
   // 층별 오버라이드 확인
   if (processInfo.floors?.[floorLabel]) {
     return processInfo.floors[floorLabel].processType;
   }
   // 카테고리 기본 processType
   return processInfo.processType || '표준공정';
+}
+
+function normalizeFloorLabelForProcessType(
+  category: ProcessCategory,
+  floorLabel: string
+): string {
+  if (category === '지하주차장' || category === '지하층(층고6.5m이상)') {
+    return extractBasementFloorLabel(floorLabel) || floorLabel;
+  }
+
+  return floorLabel;
+}
+
+function normalizeFloorLabelForCalculation(
+  category: ProcessCategory,
+  floorLabel: string
+): string {
+  if (category === '지하주차장') {
+    return extractBasementFloorLabel(floorLabel) || floorLabel;
+  }
+
+  return floorLabel;
+}
+
+function extractBasementFloorLabel(label: string): string | null {
+  const match = label.match(/^(B\d+)/);
+  return match ? match[1] : null;
+}
+
+function hasPositiveSpecialQuantity(values: SpecialRowQuantities | undefined): boolean {
+  if (!values) return false;
+  return ['gangForm', 'alForm', 'formwork', 'rebar', 'concrete'].some((key) => {
+    const value = values[key as keyof SpecialRowQuantities] || 0;
+    return value > 0;
+  });
+}
+
+function hasSpecialRowEntriesInPlan(plan: BuildingProcessPlan): boolean {
+  return Object.keys(plan.specialRowQuantities || {}).length > 0;
+}
+
+function getActiveParkingRowLabels(plan: BuildingProcessPlan): string[] {
+  const labels = Object.entries(plan.specialRowQuantities || {})
+    .filter(([key, values]) => /^B\d+\s+주차장$/.test(key) && hasPositiveSpecialQuantity(values))
+    .map(([key]) => key);
+
+  return labels.sort((a, b) => {
+    const floorA = parseInt(a.match(/^B(\d+)/)?.[1] || '0', 10);
+    const floorB = parseInt(b.match(/^B(\d+)/)?.[1] || '0', 10);
+    return floorB - floorA; // B2 -> B1 순서
+  });
+}
+
+function hasActiveHighCeilingRows(plan: BuildingProcessPlan): boolean {
+  const specialRows = plan.specialRowQuantities || {};
+  return (
+    hasPositiveSpecialQuantity(specialRows['B1 6.5m이상']) ||
+    hasPositiveSpecialQuantity(specialRows['B2 6.5m이상'])
+  );
+}
+
+function getSpecialRowQuantitiesForCategory(
+  plan: BuildingProcessPlan,
+  category: ProcessCategory,
+  floorLabel: string
+): SpecialRowQuantities | null {
+  const specialRows = plan.specialRowQuantities || {};
+
+  if (category === '지하주차장') {
+    const values = specialRows[floorLabel];
+    return hasPositiveSpecialQuantity(values) ? values : null;
+  }
+
+  if (category === '지하층(층고6.5m이상)') {
+    const b1 = specialRows['B1 6.5m이상'] || {};
+    const b2 = specialRows['B2 6.5m이상'] || {};
+    const merged: SpecialRowQuantities = {
+      gangForm: (b1.gangForm || 0) + (b2.gangForm || 0),
+      alForm: (b1.alForm || 0) + (b2.alForm || 0),
+      formwork: (b1.formwork || 0) + (b2.formwork || 0),
+      rebar: (b1.rebar || 0) + (b2.rebar || 0),
+      concrete: (b1.concrete || 0) + (b2.concrete || 0),
+    };
+
+    return hasPositiveSpecialQuantity(merged) ? merged : null;
+  }
+
+  return null;
+}
+
+function getDeductionFieldsForBasement(
+  plan: BuildingProcessPlan,
+  category: ProcessCategory,
+  normalizedFloorLabel: string
+): DeductionFields | null {
+  if (category !== '주동 지하층') return null;
+
+  const basementFloorLabel = extractBasementFloorLabel(normalizedFloorLabel);
+  if (!basementFloorLabel) return null;
+
+  return getSpecialRowDeductions(
+    plan.specialRowQuantities as unknown as Record<string, Record<string, number>> | undefined,
+    basementFloorLabel
+  );
+}
+
+function resolveQuantityFromSpecialRow(
+  refTradeField: string,
+  ratio: number,
+  specialRowQuantities: SpecialRowQuantities
+): number {
+  const gangForm = specialRowQuantities.gangForm || 0;
+  const alForm = specialRowQuantities.alForm || 0;
+  const formwork = specialRowQuantities.formwork || 0;
+
+  let baseQuantity = 0;
+
+  if (refTradeField === 'formwork') {
+    baseQuantity = gangForm + alForm + formwork;
+  } else if (refTradeField === 'stripClean') {
+    baseQuantity = (gangForm + alForm + formwork) * 2;
+  } else if (refTradeField === 'euroForm') {
+    baseQuantity = formwork;
+  } else if (refTradeField === 'gangForm') {
+    baseQuantity = gangForm;
+  } else if (refTradeField === 'alForm') {
+    baseQuantity = alForm;
+  } else if (refTradeField === 'rebar') {
+    baseQuantity = specialRowQuantities.rebar || 0;
+  } else if (refTradeField === 'concrete') {
+    baseQuantity = specialRowQuantities.concrete || 0;
+  }
+
+  return baseQuantity * ratio;
+}
+
+function resolveQuantityForFloorItem(
+  building: Building,
+  item: ProcessItem,
+  plan: BuildingProcessPlan,
+  category: ProcessCategory,
+  floorLabel: string,
+  normalizedFloorLabel: string,
+  specialRowQuantities: SpecialRowQuantities | null,
+  deductionFields: DeductionFields | null
+): number {
+  if (!(item.quantityRef || item.quantityReference)) return 0;
+
+  const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, category);
+
+  if (specialRowQuantities && ref) {
+    return resolveQuantityFromSpecialRow(ref.tradeField, ref.ratio, specialRowQuantities);
+  }
+
+  if (deductionFields && ref && category === '주동 지하층') {
+    return resolveWithDeduction(
+      building,
+      ref,
+      normalizedFloorLabel,
+      deductionFields
+    );
+  }
+
+  return resolveFloorQuantity(building, item, category, normalizedFloorLabel || floorLabel);
 }
 
 /**

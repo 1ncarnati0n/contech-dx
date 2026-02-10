@@ -139,3 +139,22 @@ npx eslint src
 ```
 
 - 관련 진행 문서: `docs/refactoring_status.md`
+
+## Code Review Documentation
+
+코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다:
+
+| 문서 | 내용 |
+|------|------|
+| [00-overview.md](docs/code-review-2026-02-10/00-overview.md) | 전체 개요 및 현황 요약 |
+| [01-apps-web-analysis.md](docs/code-review-2026-02-10/01-apps-web-analysis.md) | apps/web 상세 분석 |
+| [02-sa-gantt-lib-analysis.md](docs/code-review-2026-02-10/02-sa-gantt-lib-analysis.md) | sa-gantt-lib 상세 분석 |
+| [03-architecture-issues.md](docs/code-review-2026-02-10/03-architecture-issues.md) | 아키텍처 이슈 및 개선안 |
+| [04-refactoring-roadmap.md](docs/code-review-2026-02-10/04-refactoring-roadmap.md) | 우선순위 기반 리팩토링 로드맵 |
+| [05-implementation-guide.md](docs/code-review-2026-02-10/05-implementation-guide.md) | 구현 가이드 및 체크리스트 |
+
+### 핵심 이슈 요약
+
+- 🔴 **Critical**: Supabase 인증 캐시 버그, Gemini API 오버플로우, 고복잡도 컴포넌트
+- 🟠 **High**: Props Drilling (sa-gantt-lib), 캐시 일관성, API 검증 불완전
+- 🟡 **Medium**: 테스트 커버리지 부족 (~9%), localStorage 데이터 분산

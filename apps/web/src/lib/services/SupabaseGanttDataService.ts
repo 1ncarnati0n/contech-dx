@@ -548,10 +548,18 @@ export class SupabaseGanttDataService implements DataService {
       .eq('id', id)
       .eq('project_id', this.projectId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Failed to update milestone:', error.message, error.code, error.details, error.hint);
+      return null;
+    }
+
+    if (!data) {
+      logger.warn('[updateMilestone] No milestone row matched update condition:', {
+        milestoneId: id,
+        projectId: this.projectId,
+      });
       return null;
     }
 
@@ -569,7 +577,11 @@ export class SupabaseGanttDataService implements DataService {
       throw new Error(`Authentication required: ${msg}`);
     }
 
-    const newId = crypto.randomUUID();
+    // 라이브러리에서 전달한 UUID를 우선 사용해 이후 편집/동기화 시 id 불일치를 방지
+    const candidateId = (milestone as Partial<Milestone>).id;
+    const newId = typeof candidateId === 'string' && candidateId.trim().length > 0
+      ? candidateId
+      : crypto.randomUUID();
     const newMilestone: Milestone = { ...milestone, id: newId };
     const row = milestoneToRow(newMilestone, this.projectId);
 

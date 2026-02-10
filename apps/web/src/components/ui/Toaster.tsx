@@ -1,16 +1,21 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 export const Toaster = ({ ...props }: ToasterProps) => {
+  const pathname = usePathname();
+  const isGanttRoute = pathname?.includes("/gantt");
+  const toasterOffset = isGanttRoute ? 104 : 72;
+
   return (
     <Sonner
       theme="system"
       className="toaster group"
       position="top-right"
-      offset={72}
+      offset={toasterOffset}
       toastOptions={{
         classNames: {
           toast:

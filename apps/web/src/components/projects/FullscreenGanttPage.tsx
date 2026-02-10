@@ -795,6 +795,11 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   // 마일스톤 핸들러
   const handleMilestoneCreate = useCallback(async (milestone: Partial<Milestone>) => {
     try {
+      if (!milestone.name || !milestone.date) {
+        toast.error('마일스톤 생성 데이터가 올바르지 않습니다.');
+        return;
+      }
+
       const newMilestone = await dataService.createMilestone(
         milestone as Omit<Milestone, 'id'>
       );
@@ -811,10 +816,14 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
   const handleMilestoneUpdate = useCallback(async (milestone: Milestone) => {
     try {
-      await dataService.updateMilestone(milestone.id, milestone);
+      const updatedMilestone = await dataService.updateMilestone(milestone.id, milestone);
+      if (!updatedMilestone) {
+        toast.error('마일스톤 업데이트 실패');
+        return;
+      }
       setAppState(prev => ({
         ...prev,
-        milestones: prev.milestones.map(m => m.id === milestone.id ? milestone : m),
+        milestones: prev.milestones.map(m => m.id === updatedMilestone.id ? updatedMilestone : m),
       }));
     } catch (error) {
       logger.error('Failed to update milestone:', error);
