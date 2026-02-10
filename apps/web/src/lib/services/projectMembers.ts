@@ -449,13 +449,10 @@ export async function isProjectMember(
       .select('id')
       .eq('project_id', projectId)
       .eq('user_id', userId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found
-        return false;
-      }
       logger.error('Error checking project membership:', error);
       return false;
     }
@@ -490,18 +487,14 @@ export async function getUserRoleInProject(
       .select('role')
       .eq('project_id', projectId)
       .eq('user_id', userId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found
-        return null;
-      }
       logger.error('Error fetching user role:', error);
       return null;
     }
 
-    return data.role;
+    return data?.role || null;
   });
 }
-

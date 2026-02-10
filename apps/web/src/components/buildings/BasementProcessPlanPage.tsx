@@ -755,9 +755,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
               {(() => {
                 const building = activeBuilding;
                 const plan = processPlans.get(building.id);
-                const temporaryWorkDays = plan?.temporaryWorkDays || 0;
-                const earthRetentionWorkDays = plan?.earthRetentionWorkDays || 0;
-                const earthworkWorkDays = plan?.earthworkWorkDays || 0;
+                const temporaryWorkDays = plan?.temporaryWorkDays ?? 0;
+                const earthRetentionWorkDays = plan?.earthRetentionWorkDays ?? 0;
+                const earthworkWorkDays = plan?.earthworkWorkDays ?? 0;
 
                 const handleWorkDaysChange = (field: 'temporaryWorkDays' | 'earthRetentionWorkDays' | 'earthworkWorkDays', value: number | null) => {
                   if (!building) return;
@@ -767,7 +767,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
                   const updatedPlan = {
                     ...currentPlan,
-                    [field]: value !== null && value >= 0 ? value : undefined,
+                    [field]: value !== null && value >= 0 ? value : 0,
                   };
 
                   updateProcessPlan(building.id, updatedPlan);
@@ -786,13 +786,13 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             type="number"
                             min="0"
                             step="1"
-                            value={temporaryWorkDays || ''}
+                            value={temporaryWorkDays}
                             onChange={(e) => {
-                              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                              const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                               handleWorkDaysChange('temporaryWorkDays', value);
                             }}
                             onBlur={(e) => {
-                              const value = e.target.value === '' ? null : Math.max(0, Math.round(parseFloat(e.target.value) || 0));
+                              const value = e.target.value === '' ? 0 : Math.max(0, Math.round(parseFloat(e.target.value) || 0));
                               handleWorkDaysChange('temporaryWorkDays', value);
                             }}
                             className="w-24"
@@ -808,13 +808,13 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             type="number"
                             min="0"
                             step="1"
-                            value={earthRetentionWorkDays || ''}
+                            value={earthRetentionWorkDays}
                             onChange={(e) => {
-                              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                              const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                               handleWorkDaysChange('earthRetentionWorkDays', value);
                             }}
                             onBlur={(e) => {
-                              const value = e.target.value === '' ? null : Math.max(0, Math.round(parseFloat(e.target.value) || 0));
+                              const value = e.target.value === '' ? 0 : Math.max(0, Math.round(parseFloat(e.target.value) || 0));
                               handleWorkDaysChange('earthRetentionWorkDays', value);
                             }}
                             className="w-24"
@@ -830,13 +830,13 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             type="number"
                             min="0"
                             step="1"
-                            value={earthworkWorkDays || ''}
+                            value={earthworkWorkDays}
                             onChange={(e) => {
-                              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                              const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
                               handleWorkDaysChange('earthworkWorkDays', value);
                             }}
                             onBlur={(e) => {
-                              const value = e.target.value === '' ? null : Math.max(0, Math.round(parseFloat(e.target.value) || 0));
+                              const value = e.target.value === '' ? 0 : Math.max(0, Math.round(parseFloat(e.target.value) || 0));
                               handleWorkDaysChange('earthworkWorkDays', value);
                             }}
                             className="w-24"
@@ -850,6 +850,8 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                             isSaving={isSaving}
                             onSave={() => saveToLocalStorage(building.id)}
                             onDiscard={() => discardChanges(building.id)}
+                            allowSaveWithoutChanges
+                            saveLabel="저장/세부공정 업데이트"
                           />
                         </div>
                       </div>
