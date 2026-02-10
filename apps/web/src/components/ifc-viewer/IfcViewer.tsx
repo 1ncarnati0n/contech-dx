@@ -46,7 +46,7 @@ interface ThreeLike {
 }
 
 interface CameraControlsLike {
-  addEventListener: (event: string, callback: () => void) => void;
+  addEventListener: (event: any, callback: () => void) => void;
   setLookAt: (
     px: number,
     py: number,
@@ -59,8 +59,9 @@ interface CameraControlsLike {
   reset: (animate: boolean) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenBIM Components library types use concrete Three.js types internally
 interface CameraLike {
-  three: unknown;
+  three: any;
   controls: CameraControlsLike;
   fitToItems: () => Promise<void> | void;
   hasCameraControls: () => boolean;
@@ -71,8 +72,8 @@ interface CameraLike {
 
 interface SceneLike {
   three: {
-    background: unknown;
-    add: (object: unknown) => void;
+    background: any;
+    add: (object: any) => void;
   };
 }
 
@@ -85,8 +86,8 @@ interface WorldLike {
 }
 
 interface ModelLike {
-  useCamera: (camera: unknown) => void;
-  object: unknown;
+  useCamera: (camera: any) => void;
+  object: any;
 }
 
 interface FragmentsLike {
@@ -103,7 +104,7 @@ interface FragmentsLike {
 }
 
 interface IfcLoaderLike {
-  setup: (options: unknown) => Promise<void> | void;
+  setup: (options: any) => Promise<void> | void;
   load: (data: Uint8Array, toOrigin: boolean, modelName: string) => Promise<void> | void;
 }
 
@@ -204,7 +205,8 @@ export function IfcViewer({ className }: IfcViewerProps) {
           typeof OBC.OrthoPerspectiveCamera.prototype,
           typeof OBF.PostproductionRenderer.prototype
         >();
-        worldRef.current = world;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenBIM library type mismatch
+        worldRef.current = world as any;
 
         // Setup scene, renderer, camera in correct order
         if (!containerRef.current) {
@@ -238,7 +240,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
 
         // Setup fragments manager FIRST (required before IFC loader)
         const fragments = components.get(OBC.FragmentsManager);
-        fragmentsRef.current = fragments;
+        fragmentsRef.current = fragments as any;
 
         // Initialize fragments with local worker URL (to avoid CORS issues)
         const workerUrl = '/wasm/worker.mjs';
@@ -250,7 +252,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         });
 
         // Handle new fragments loaded
-        fragments.list.onItemSet.add(async ({ value: model }: { value: ModelLike }) => {
+        (fragments.list.onItemSet as any).add(async ({ value: model }: { value: ModelLike }) => {
           model.useCamera(world.camera.three);
           world.scene.three.add(model.object);
           await fragments.core.update(true);
@@ -270,7 +272,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
             absolute: true,
           },
         });
-        ifcLoaderRef.current = ifcLoader;
+        ifcLoaderRef.current = ifcLoader as any;
 
         setLoadingState({ phase: 'initializing', progress: 60, message: '선택 기능 설정 중...' });
 

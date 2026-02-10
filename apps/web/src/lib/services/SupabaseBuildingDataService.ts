@@ -19,6 +19,7 @@ import type {
   BuildingProcessPlanRow,
   PouringSectionRow,
   BuildingInsert,
+  FloorInsert,
   FloorTradeInsert,
   TradeData,
 } from '@/lib/types';

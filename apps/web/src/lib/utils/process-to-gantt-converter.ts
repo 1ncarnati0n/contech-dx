@@ -752,7 +752,7 @@ function scheduleTasksSequentially(
     lastEndDate = finalEndDate;
 
     // 다음 TASK 시작일 = 현재 TASK 종료일 + 1일
-    currentDate = addDays(finalEndDate, 1);
+    currentDate = addDays(taskEndDate, 1);
   }
 
   return lastEndDate;

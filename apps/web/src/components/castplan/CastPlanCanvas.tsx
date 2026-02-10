@@ -5,6 +5,7 @@ import { Stage, Layer } from 'react-konva';
 import type Konva from 'konva';
 import type {
   CastPlanState,
+  CastPlanTool,
 } from '@/lib/types';
 import { DxfLayer } from './layers/DxfLayer';
 import { BlockLayer } from './layers/BlockLayer';

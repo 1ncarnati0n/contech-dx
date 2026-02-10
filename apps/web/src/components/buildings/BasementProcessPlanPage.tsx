@@ -53,7 +53,7 @@ const DEFAULT_PROCESS_TYPES: Partial<Record<ProcessCategory, ProcessType>> = {
 // 특수 행 필드 → floorTrade 필드 매핑 (resolveProcessQuantity 호출용)
 const SPECIAL_FIELD_TO_TRADE: Record<
   'gangForm' | 'alForm' | 'formwork' | 'rebar' | 'concrete',
-  { tradeField: 'gangForm' | 'alForm' | 'euroForm' | 'rebar' | 'concrete'; subField: string }
+  { tradeField: 'gangForm' | 'alForm' | 'euroForm' | 'rebar' | 'concrete'; subField: TradeSubFieldKey }
 > = {
   gangForm: { tradeField: 'gangForm', subField: 'areaM2' },
   alForm: { tradeField: 'alForm', subField: 'areaM2' },
