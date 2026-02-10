@@ -178,6 +178,92 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
   // 지하층 공정계획에서는 옥탑층을 사용하지 않음 (BuildingProcessPlanPage에서 처리)
 
+  const loadBuildings = useCallback(async () => {
+    try {
+      const data = await getBuildings(projectId);
+      setBuildings(data);
+
+      // activeBuildingIndex가 범위를 벗어나면 조정
+      setActiveBuildingIndex(prev => {
+        if (data.length > 0 && prev >= data.length) {
+          return 0;
+        }
+        return prev;
+      });
+
+      // 각 동별로 기본 공정 계획 초기화
+      setProcessPlans(prevPlans => {
+        const plans = new Map<string, BuildingProcessPlan>();
+        data.forEach(building => {
+          let existingPlan = prevPlans.get(building.id);
+
+          // localStorage에서도 로드 시도
+          if (!existingPlan && typeof window !== 'undefined') {
+            try {
+              const storageKey = `contech_process_plan_${building.id}`;
+              const storedPlanJson = localStorage.getItem(storageKey);
+              if (storedPlanJson) {
+                existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
+              }
+            } catch (error) {
+              logger.error('Failed to load process plan from localStorage:', error);
+            }
+          }
+
+          if (!existingPlan) {
+            const defaultProcesses: BuildingProcessPlan['processes'] = {};
+            PROCESS_CATEGORIES.forEach(category => {
+              defaultProcesses[category] = {
+                days: 0,
+                processType: DEFAULT_PROCESS_TYPES[category] || '표준공정',
+              };
+            });
+
+            plans.set(building.id, {
+              id: `plan-${building.id}`,
+              buildingId: building.id,
+              projectId: projectId,
+              processes: defaultProcesses,
+              totalDays: 0,
+            });
+          } else {
+            plans.set(building.id, existingPlan);
+          }
+        });
+        return plans;
+      });
+    } catch {
+      toast.error('동 목록을 불러오는데 실패했습니다.');
+    }
+  }, [projectId]);
+
+  // 합계일수 계산 - 모든 공정 카테고리의 일수 합계
+  const calculateTotalDays = useCallback((processes: BuildingProcessPlan['processes'], building?: Building): number => {
+    let total = 0;
+    // 모든 공정 카테고리의 일수를 합산
+    PROCESS_CATEGORIES.forEach(category => {
+      if (category === '주동 지하층' && building) {
+        // 주동 지하층는 각 층별 일수를 합산
+        const basementFloors = getBasementFloors.get(building.id) || [];
+        // 일반 지하층은 항상 표준공정 사용
+        basementFloors.forEach(floor => {
+          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
+          const mod = getProcessModule(category, floorProcessType);
+          if (!mod || !mod.items.length) return;
+          const floorDays = calculateModuleWorkDaysForFloor(building, mod, category, floor.floorLabel);
+          total += floorDays;
+        });
+        // 지하층 공정계획에서는 옥탑층, 기준층, 셋팅층을 처리하지 않음
+      } else {
+        const days = processes[category]?.days;
+        if (days !== undefined && days !== null && !isNaN(days)) {
+          total += days;
+        }
+      }
+    });
+    return total;
+  }, [getBasementFloors]);
+
   // 동 목록 로드
   useEffect(() => {
     loadBuildings();
@@ -293,65 +379,6 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     getBasementFloors,
     calculateTotalDays,
   ]);
-
-  const loadBuildings = useCallback(async () => {
-    try {
-      const data = await getBuildings(projectId);
-      setBuildings(data);
-
-      // activeBuildingIndex가 범위를 벗어나면 조정
-      setActiveBuildingIndex(prev => {
-        if (data.length > 0 && prev >= data.length) {
-          return 0;
-        }
-        return prev;
-      });
-
-      // 각 동별로 기본 공정 계획 초기화
-      setProcessPlans(prevPlans => {
-        const plans = new Map<string, BuildingProcessPlan>();
-        data.forEach(building => {
-          let existingPlan = prevPlans.get(building.id);
-
-          // localStorage에서도 로드 시도
-          if (!existingPlan && typeof window !== 'undefined') {
-            try {
-              const storageKey = `contech_process_plan_${building.id}`;
-              const storedPlanJson = localStorage.getItem(storageKey);
-              if (storedPlanJson) {
-                existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
-              }
-            } catch (error) {
-              logger.error('Failed to load process plan from localStorage:', error);
-            }
-          }
-
-          if (!existingPlan) {
-            const defaultProcesses: BuildingProcessPlan['processes'] = {};
-            PROCESS_CATEGORIES.forEach(category => {
-              defaultProcesses[category] = {
-                days: 0,
-                processType: DEFAULT_PROCESS_TYPES[category] || '표준공정',
-              };
-            });
-
-            plans.set(building.id, {
-              id: `plan-${building.id}`,
-              buildingId: building.id,
-              projectId: projectId,
-              processes: defaultProcesses,
-              totalDays: 0,
-            });
-          } else {
-            plans.set(building.id, existingPlan);
-          }
-        });
-        return plans;
-      });
-    } catch {
-      toast.error('동 목록을 불러오는데 실패했습니다.');
-    }
-  }, [projectId]);
 
   // 동 이름 변경
   const handleUpdateBuildingName = useCallback(async (buildingId: string, newName: string) => {
@@ -549,33 +576,6 @@ export function BasementProcessPlanPage({ projectId }: Props) {
   const isHighCeilingActive = (buildingId: string): boolean => {
     return isSpecialRowActive(buildingId, 'B1 6.5m이상') || isSpecialRowActive(buildingId, 'B2 6.5m이상');
   };
-
-  // 합계일수 계산 - 모든 공정 카테고리의 일수 합계
-  const calculateTotalDays = useCallback((processes: BuildingProcessPlan['processes'], building?: Building): number => {
-    let total = 0;
-    // 모든 공정 카테고리의 일수를 합산
-    PROCESS_CATEGORIES.forEach(category => {
-      if (category === '주동 지하층' && building) {
-        // 주동 지하층는 각 층별 일수를 합산
-        const basementFloors = getBasementFloors.get(building.id) || [];
-        // 일반 지하층은 항상 표준공정 사용
-        basementFloors.forEach(floor => {
-          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category] || '표준공정';
-          const mod = getProcessModule(category, floorProcessType);
-          if (!mod || !mod.items.length) return;
-          const floorDays = calculateModuleWorkDaysForFloor(building, mod, category, floor.floorLabel);
-          total += floorDays;
-        });
-        // 지하층 공정계획에서는 옥탑층, 기준층, 셋팅층을 처리하지 않음
-      } else {
-        const days = processes[category]?.days;
-        if (days !== undefined && days !== null && !isNaN(days)) {
-          total += days;
-        }
-      }
-    });
-    return total;
-  }, [getBasementFloors]);
 
   // 지하층 각 층별 일수 계산 (통합 유틸 사용)
   const calculateBasementFloorDays = (
