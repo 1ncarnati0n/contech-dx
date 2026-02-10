@@ -7,6 +7,9 @@ interface SaveStatusBarProps {
   isSaving: boolean;
   onSave: () => void;
   onDiscard?: () => void;
+  allowSaveWithoutChanges?: boolean;
+  saveLabel?: string;
+  savingLabel?: string;
 }
 
 /**
@@ -20,6 +23,9 @@ export function SaveStatusBar({
   isSaving,
   onSave,
   onDiscard,
+  allowSaveWithoutChanges = false,
+  saveLabel = '저장',
+  savingLabel = '저장 중...',
 }: SaveStatusBarProps) {
   return (
     <div className="flex items-center gap-3">
@@ -39,10 +45,10 @@ export function SaveStatusBar({
           variant={hasUnsavedChanges ? 'primary' : 'secondary'}
           size="sm"
           onClick={onSave}
-          disabled={isSaving || !hasUnsavedChanges}
+          disabled={isSaving || (!hasUnsavedChanges && !allowSaveWithoutChanges)}
           loading={isSaving}
         >
-          {isSaving ? '저장 중...' : '저장'}
+          {isSaving ? savingLabel : saveLabel}
         </Button>
       </div>
     </div>

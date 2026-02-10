@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useCallback } from 'react';
+import { Fragment, useEffect, useMemo, useCallback, useState } from 'react';
 import { Card, CardContent, Input } from '@/components/ui';
 import { SaveStatusBar } from './SaveStatusBar';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
@@ -83,10 +83,28 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     defaultProcessTypes: DEFAULT_PROCESS_TYPES,
   });
 
+  const [savedPumpCarCounts, setSavedPumpCarCounts] = useState<Map<string, number>>(new Map());
+
   const discardChanges = useCallback((buildingId: string) => {
     if (!confirm('변경사항을 취소하시겠습니까?')) return;
     discardChangesWithoutConfirm(buildingId);
-  }, [discardChangesWithoutConfirm]);
+    const savedPumpCarCount = savedPumpCarCounts.get(buildingId);
+    if (savedPumpCarCount !== undefined) {
+      setBuildings(prev =>
+        prev.map(building =>
+          building.id === buildingId
+            ? {
+              ...building,
+              meta: {
+                ...building.meta,
+                pumpCarCount: savedPumpCarCount,
+              },
+            }
+            : building
+        )
+      );
+    }
+  }, [discardChangesWithoutConfirm, savedPumpCarCounts, setBuildings]);
 
   // 전역 챗봇과 탭 컨텍스트 동기화
   useSyncTabContext({
@@ -228,6 +246,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     try {
       const data = await getBuildings(projectId);
       setBuildings(data);
+      setSavedPumpCarCounts(new Map(
+        data.map(building => [building.id, building.meta?.pumpCarCount ?? 1])
+      ));
 
       // activeBuildingIndex가 범위를 벗어나면 조정
       setActiveBuildingIndex(prev => {
@@ -242,6 +263,70 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     }
   }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans]);
+
+  const handlePumpCarCountChange = useCallback((buildingId: string, rawValue: string) => {
+    const parsedValue = rawValue === '' ? 1 : parseInt(rawValue, 10);
+    const value = Math.min(2, Math.max(1, Number.isNaN(parsedValue) ? 1 : parsedValue));
+
+    setBuildings(prev =>
+      prev.map(building =>
+        building.id === buildingId
+          ? {
+            ...building,
+            meta: {
+              ...building.meta,
+              pumpCarCount: value,
+            },
+          }
+          : building
+      )
+    );
+  }, [setBuildings]);
+
+  const hasPumpCarCountChanges = useCallback((building: Building) => {
+    const savedCount = savedPumpCarCounts.get(building.id);
+    if (savedCount === undefined) return false;
+    return (building.meta?.pumpCarCount ?? 1) !== savedCount;
+  }, [savedPumpCarCounts]);
+
+  const handleSaveAndUpdateDetailProcess = useCallback(async (buildingId: string) => {
+    const building = buildings.find(item => item.id === buildingId);
+    if (!building) return;
+
+    const hasPumpCarChanges = hasPumpCarCountChanges(building);
+
+    try {
+      // 변경사항이 없어도 현재 계산 상태를 명시적으로 저장할 수 있도록 항상 저장 허용
+      saveToLocalStorage(buildingId);
+
+      if (hasPumpCarChanges) {
+        const nextPumpCarCount = building.meta?.pumpCarCount ?? 1;
+        await updateBuilding(buildingId, projectId, {
+          meta: {
+            ...building.meta,
+            pumpCarCount: nextPumpCarCount,
+          },
+        });
+        setSavedPumpCarCounts(prev => {
+          const next = new Map(prev);
+          next.set(buildingId, nextPumpCarCount);
+          return next;
+        });
+      }
+
+      if (hasPumpCarChanges) {
+        await loadBuildings();
+      }
+    } catch {
+      toast.error('저장 및 세부공정 업데이트에 실패했습니다.');
+    }
+  }, [
+    buildings,
+    hasPumpCarCountChanges,
+    loadBuildings,
+    projectId,
+    saveToLocalStorage,
+  ]);
 
   // 합계일수 계산 - 지상층 공정 카테고리의 일수 합계 (지하층, 기초, 버림은 별도 탭에서 관리)
   const calculateTotalDays = useCallback((processes: BuildingProcessPlan['processes'], building?: Building): number => {
@@ -1190,6 +1275,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
               {activeBuilding && (() => {
                 const building = activeBuilding;
                 const info = getBuildingInfo(building);
+                const hasUnsavedChanges = dirtyBuildings.has(building.id) || hasPumpCarCountChanges(building);
                 return (
                   <Card className="mb-4">
                     <CardContent className="p-4">
@@ -1214,35 +1300,11 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                             max="2"
                             step="1"
                             value={building.meta?.pumpCarCount ?? 1}
-                            onChange={async (e) => {
-                              const rawValue = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
-                              const value = Math.min(2, Math.max(1, rawValue || 1));
-                              try {
-                                await updateBuilding(building.id, projectId, {
-                                  meta: {
-                                    ...building.meta,
-                                    pumpCarCount: value,
-                                  },
-                                });
-                                await loadBuildings();
-                              } catch {
-                                toast.error('펌프카 대수 저장에 실패했습니다.');
-                              }
+                            onChange={(e) => {
+                              handlePumpCarCountChange(building.id, e.target.value);
                             }}
-                            onBlur={async (e) => {
-                              const rawValue = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
-                              const value = Math.min(2, Math.max(1, rawValue || 1));
-                              try {
-                                await updateBuilding(building.id, projectId, {
-                                  meta: {
-                                    ...building.meta,
-                                    pumpCarCount: value,
-                                  },
-                                });
-                                await loadBuildings();
-                              } catch {
-                                toast.error('펌프카 대수 저장에 실패했습니다.');
-                              }
+                            onBlur={(e) => {
+                              handlePumpCarCountChange(building.id, e.target.value);
                             }}
                             className="w-20"
                             placeholder="1"
@@ -1251,10 +1313,14 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                         </div>
                         <div className="ml-auto">
                           <SaveStatusBar
-                            hasUnsavedChanges={dirtyBuildings.has(building.id)}
+                            hasUnsavedChanges={hasUnsavedChanges}
                             isSaving={isSaving}
-                            onSave={() => saveToLocalStorage(building.id)}
+                            onSave={() => {
+                              void handleSaveAndUpdateDetailProcess(building.id);
+                            }}
                             onDiscard={() => discardChanges(building.id)}
+                            allowSaveWithoutChanges
+                            saveLabel="저장/세부공정 업데이트"
                           />
                         </div>
                       </div>
