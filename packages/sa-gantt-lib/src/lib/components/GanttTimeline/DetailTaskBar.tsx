@@ -10,6 +10,11 @@ import { useHoverZone, useEffectiveDates } from './hooks';
 import type { HoverInfo } from './hooks';
 
 const { BAR_HEIGHT } = GANTT_LAYOUT;
+const DEFAULT_CALENDAR_SETTINGS = {
+    workOnSaturdays: true,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
 
 // Re-export types for backward compatibility
 export type { HoverInfo };
@@ -183,9 +188,12 @@ const DetailTaskBarComponent: React.FC<DetailTaskBarProps> = ({
     const effectiveBarHeight = barHeight ?? BAR_HEIGHT;
     const showBar = renderMode === 'full' || renderMode === 'bar';
     const showLabel = renderMode === 'full' || renderMode === 'label';
-
-    // GROUP 타입과 task 데이터 없으면 렌더링하지 않음
-    if (task.type === 'GROUP' || !task.task) return null;
+    const shouldRenderTask = task.type !== 'GROUP' && !!task.task;
+    const taskDetails = task.task ?? {
+        netWorkDays: 0,
+        indirectWorkDaysPre: 0,
+        indirectWorkDaysPost: 0,
+    };
 
     const radius = 0;
     const isDragging = !!dragInfo;
@@ -214,15 +222,21 @@ const DetailTaskBarComponent: React.FC<DetailTaskBarProps> = ({
     // ====================================
     // Task Data & Dimensions
     // ====================================
-    const { netWorkDays, indirectWorkDaysPre, indirectWorkDaysPost, indirectWorkNamePre, indirectWorkNamePost } = task.task;
+    const {
+        netWorkDays,
+        indirectWorkDaysPre,
+        indirectWorkDaysPost,
+        indirectWorkNamePre,
+        indirectWorkNamePost,
+    } = taskDetails;
 
     const effectivePreDays = dragInfo?.indirectWorkDaysPre ?? indirectWorkDaysPre;
     const effectivePostDays = dragInfo?.indirectWorkDaysPost ?? indirectWorkDaysPost;
     const effectiveNetDays = dragInfo?.netWorkDays ?? netWorkDays;
 
-    const taskSettings = calendarSettings
+    const taskSettings = calendarSettings && task.task
         ? getTaskCalendarSettings(task.task, calendarSettings)
-        : { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false };
+        : DEFAULT_CALENDAR_SETTINGS;
 
     const netStartCalendarDate = addDays(effectiveStartDate, effectivePreDays);
     const netEndCalendarDate = effectivePostDays > 0
@@ -265,6 +279,9 @@ const DetailTaskBarComponent: React.FC<DetailTaskBarProps> = ({
         isDragging,
         onMouseLeave,
     });
+
+    // Hook 호출 순서 보장을 위해 모든 hook 실행 뒤 렌더 가드 처리
+    if (!shouldRenderTask) return null;
 
     return (
         <g

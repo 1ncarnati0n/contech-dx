@@ -62,7 +62,7 @@ export class LocalStorageService implements DataService {
 
     private log(...args: unknown[]): void {
         if (this.debug) {
-            console.log('[LocalStorageService]', ...args);
+            console.warn('[LocalStorageService]', ...args);
         }
     }
 

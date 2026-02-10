@@ -83,7 +83,9 @@ export const TimelineContextMenu: React.FC<TimelineContextMenuProps> = ({
                 <>
                     <button
                         onClick={() => {
-                            onDeleteDependency!(selectedDependencyId!);
+                            if (selectedDependencyId && onDeleteDependency) {
+                                onDeleteDependency(selectedDependencyId);
+                            }
                             onClose();
                         }}
                         className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"

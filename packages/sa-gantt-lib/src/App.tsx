@@ -104,7 +104,6 @@ const loadInitialState = async (): Promise<AppState> => {
   const data = await dataService.loadAll();
 
   if (data.tasks.length > 0) {
-    console.log('Loaded from localStorage via DataService');
     return {
       tasks: data.tasks,
       milestones: data.milestones,
@@ -112,7 +111,6 @@ const loadInitialState = async (): Promise<AppState> => {
     };
   }
 
-  console.log('Loaded from mock.json (first time)');
   const mockState = parseMockData();
 
   // mock 데이터를 DataService로 저장
@@ -197,13 +195,11 @@ function App() {
           // Cmd/Ctrl + Shift + Z → Redo
           if (canRedo) {
             redo();
-            console.log('Redo executed');
           }
         } else {
           // Cmd/Ctrl + Z → Undo
           if (canUndo) {
             undo();
-            console.log('Undo executed');
           }
         }
       }
@@ -281,7 +277,6 @@ function App() {
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
 
-      console.log('Reset to mock data via DataService');
     } catch (error) {
       console.error('Failed to reset data:', error);
       alert('초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
@@ -322,12 +317,10 @@ function App() {
           await writable.write(jsonString);
           await writable.close();
 
-          console.log('Data exported successfully (File System Access API)');
           return;
         } catch (err) {
           // 사용자가 취소한 경우
           if (err instanceof Error && err.name === 'AbortError') {
-            console.log('Export cancelled by user');
             return;
           }
           // 다른 에러는 폴백으로 진행
@@ -346,7 +339,6 @@ function App() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      console.log('Data exported successfully (fallback method)');
     } catch (error) {
       console.error('Failed to export data:', error);
       alert('내보내기 중 오류가 발생했습니다.');
@@ -408,7 +400,6 @@ function App() {
       setHasUnsavedChanges(false);
       setSaveStatus('idle');
 
-      console.log('Data imported via DataService:', importedTasks.length, 'tasks,', importedMilestones.length, 'milestones,', importedDependencies.length, 'dependencies');
       alert(`가져오기 완료: ${importedTasks.length}개의 태스크, ${importedMilestones.length}개의 마일스톤, ${importedDependencies.length}개의 종속성`);
     } catch (error) {
       console.error('Failed to import data:', error);
@@ -466,7 +457,10 @@ function App() {
 
     return taskList.map(t => {
       if (t.wbsLevel === 1 && cpMap.has(t.id)) {
-        const agg = cpMap.get(t.id)!;
+        const agg = cpMap.get(t.id);
+        if (!agg) {
+          return t;
+        }
         return {
           ...t,
           startDate: agg.minStart,
@@ -485,20 +479,12 @@ function App() {
   // 태스크 업데이트 핸들러
   // ====================================
   const handleTaskUpdate = useCallback(async (updatedTask: ConstructionTask) => {
-    console.log('[handleTaskUpdate] Received updatedTask:', updatedTask);
-    console.log('[handleTaskUpdate] updatedTask.task:', updatedTask.task);
-    console.log('[handleTaskUpdate] indirectWorkNamePre:', updatedTask.task?.indirectWorkNamePre);
-    console.log('[handleTaskUpdate] indirectWorkNamePost:', updatedTask.task?.indirectWorkNamePost);
     try {
       setAppState(prev => {
         // 1. 해당 태스크 업데이트
         let newTasks = prev.tasks.map(t =>
           t.id === updatedTask.id ? updatedTask : t
         );
-
-        // 디버그: 업데이트 직후 확인
-        const afterUpdate = newTasks.find(t => t.id === updatedTask.id);
-        console.log('[handleTaskUpdate] After update - task:', afterUpdate?.task);
 
         // 2. Level 2 태스크의 날짜 재계산
         newTasks = newTasks.map(t => {
@@ -509,20 +495,9 @@ function App() {
           return t;
         });
 
-        // 디버그: 날짜 재계산 후 확인
-        const afterRecalc = newTasks.find(t => t.id === updatedTask.id);
-        console.log('[handleTaskUpdate] After date recalc - task:', afterRecalc?.task);
-        console.log('[handleTaskUpdate] After date recalc - indirectWorkNamePre:', afterRecalc?.task?.indirectWorkNamePre);
-
         // 3. Level 1 태스크의 cp 재계산
         newTasks = recalculateCPData(newTasks);
 
-        // 디버그: CP 날짜 확인
-        newTasks.filter(t => t.wbsLevel === 1).forEach(cp => {
-          console.log(`CP [${cp.name}] 날짜: ${cp.startDate.toISOString().slice(0, 10)} ~ ${cp.endDate.toISOString().slice(0, 10)}`);
-        });
-
-        console.log('Task updated:', updatedTask);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -563,7 +538,6 @@ function App() {
         // Level 1 태스크의 cp 재계산
         newTasks = recalculateCPData(newTasks);
 
-        console.log('Task created:', taskToAdd);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -589,7 +563,6 @@ function App() {
         const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
         newTasks.splice(adjustedIndex, 0, task);
 
-        console.log('Task reordered:', taskId, 'to index:', adjustedIndex);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -635,7 +608,7 @@ function App() {
         };
 
         // 선택된 태스크들의 parentId를 새 GROUP으로 변경
-        let newTasks = prev.tasks.map(t => {
+        const newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
             return { ...t, parentId: newGroupId };
           }
@@ -646,7 +619,6 @@ function App() {
         const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
         newTasks.splice(firstSelectedIndex, 0, newGroup);
 
-        console.log('Tasks grouped:', taskIds, 'into group:', newGroupId);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -691,7 +663,7 @@ function App() {
         };
 
         // 선택된 CP들의 parentId를 새 BLOCK으로 변경
-        let newTasks = prev.tasks.map(t => {
+        const newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
             return { ...t, parentId: newBlockId };
           }
@@ -702,7 +674,6 @@ function App() {
         const firstSelectedIndex = newTasks.findIndex(t => taskIds.includes(t.id));
         newTasks.splice(firstSelectedIndex, 0, newBlock);
 
-        console.log('CPs blockified:', taskIds, 'into block:', newBlockId);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -736,7 +707,6 @@ function App() {
         // GROUP 삭제
         newTasks = newTasks.filter(t => t.id !== groupId);
 
-        console.log('Group ungrouped:', groupId);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -764,7 +734,7 @@ function App() {
           return prev;
         }
 
-        let newTasks = [...prev.tasks];
+        const newTasks = [...prev.tasks];
 
         // 기존 위치에서 제거
         const taskIndex = newTasks.findIndex(t => t.id === taskId);
@@ -788,7 +758,6 @@ function App() {
           newTasks.splice(insertIndex, 0, updatedTask);
         }
 
-        console.log('Task moved:', taskId, 'to', targetId, 'position:', position);
         return { ...prev, tasks: newTasks };
       });
     } catch (error) {
@@ -828,7 +797,6 @@ function App() {
         // Level 1 태스크의 cp 재계산
         newTasks = recalculateCPData(newTasks);
 
-        console.log('Task deleted:', taskId, '(total deleted:', allIdsToDelete.length, ')');
         return { ...prev, tasks: newTasks, groupDependencies: newDependencies };
       });
     } catch (error) {
@@ -838,8 +806,7 @@ function App() {
   }, [setAppState, recalculateCPData]);
 
   // 뷰 전환 핸들러
-  const handleViewChange = useCallback((view: ViewMode, activeCPId?: string) => {
-    console.log('View changed:', view, activeCPId);
+  const handleViewChange = useCallback((_view: ViewMode, _activeCPId?: string) => {
   }, []);
 
   // ====================================
@@ -856,7 +823,6 @@ function App() {
       };
 
       setAppState(prev => {
-        console.log('Milestone created:', milestoneToAdd);
         return { ...prev, milestones: [...prev.milestones, milestoneToAdd] };
       });
     } catch (error) {
@@ -871,7 +837,6 @@ function App() {
         const newMilestones = prev.milestones.map(m =>
           m.id === updatedMilestone.id ? updatedMilestone : m
         );
-        console.log('Milestone updated:', updatedMilestone);
         return { ...prev, milestones: newMilestones };
       });
     } catch (error) {
@@ -884,7 +849,6 @@ function App() {
     try {
       setAppState(prev => {
         const newMilestones = prev.milestones.filter(m => m.id !== milestoneId);
-        console.log('Milestone deleted:', milestoneId);
         return { ...prev, milestones: newMilestones };
       });
     } catch (error) {
@@ -898,7 +862,6 @@ function App() {
   // ====================================
   const handleGroupDependencyCreate = useCallback((dep: GroupDependency) => {
     setAppState(prev => {
-      console.log('Group dependency created:', dep);
       return {
         ...prev,
         groupDependencies: [...prev.groupDependencies, dep],
@@ -908,7 +871,6 @@ function App() {
 
   const handleGroupDependencyDelete = useCallback((depId: string) => {
     setAppState(prev => {
-      console.log('Group dependency deleted:', depId);
       return {
         ...prev,
         groupDependencies: prev.groupDependencies.filter(d => d.id !== depId),

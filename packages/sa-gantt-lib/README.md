@@ -120,7 +120,7 @@
 | 포맷 | 출력 파일 | 용도 |
 |------|----------|------|
 | ES Module | `dist/index.es.js` | 모던 번들러 지원 (Vite, Webpack 5+) |
-| UMD | `dist/index.umd.js` | CommonJS 및 브라우저 직접 사용 |
+| CommonJS | `dist/index.cjs` | Node.js `require()` 호환 |
 | TypeScript | `dist/index.d.ts` | 타입 정의 파일 |
 
 ---
@@ -796,7 +796,7 @@ sa-gantt-lib/
 │
 ├── dist/                             # 빌드 출력
 │   ├── index.es.js                   # ES Module
-│   ├── index.umd.js                  # UMD
+│   ├── index.cjs                     # CommonJS
 │   ├── index.d.ts                    # TypeScript 선언
 │   └── style.css
 │

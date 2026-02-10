@@ -20,7 +20,6 @@ import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
 import { calculateDateRange } from '../../utils/dateUtils';
 import {
     GanttChartProps,
-    ConstructionTask,
     CalendarSettings,
     ZOOM_CONFIG,
     getLayoutValues,
@@ -37,6 +36,7 @@ import {
     useSidebarColumns,
     useExpandCollapse,
     useGanttHandlers,
+    useVisibleTasks,
 } from './hooks';
 
 export type { BarDragResult };
@@ -207,91 +207,14 @@ export function GanttChart({
     });
 
     // ========================================
-    // Parent → Children Map
+    // Visible Tasks Calculation (분리 훅)
     // ========================================
-    const childrenMap = useMemo(() => {
-        const map = new Map<string | null, ConstructionTask[]>();
-        tasks.forEach(task => {
-            const parentId = task.parentId;
-            if (!map.has(parentId)) {
-                map.set(parentId, []);
-            }
-            map.get(parentId)!.push(task);
-        });
-        return map;
-    }, [tasks]);
-
-    // ========================================
-    // Visible Tasks Calculation
-    // ========================================
-    const visibleTasks = useMemo(() => {
-        if (viewMode === 'MASTER') {
-            const visible: ConstructionTask[] = [];
-            const collectVisible = (parentId: string | null) => {
-                const children = childrenMap.get(parentId) || [];
-                children.forEach(task => {
-                    // BLOCK은 wbsLevel 관계없이 표시 (최상위 레벨)
-                    if (task.type === 'BLOCK') {
-                        if (parentId === null || expandedTaskIds.has(parentId)) {
-                            visible.push(task);
-                            if (expandedTaskIds.has(task.id)) {
-                                collectVisible(task.id);  // BLOCK 하위 탐색
-                            }
-                        }
-                        return;
-                    }
-                    if (task.wbsLevel !== 1) return;
-                    if (parentId === null || expandedTaskIds.has(parentId)) {
-                        visible.push(task);
-                        if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
-                            collectVisible(task.id);
-                        }
-                    }
-                });
-            };
-            collectVisible(null);
-            return visible;
-        } else if (viewMode === 'DETAIL') {
-            const visible: ConstructionTask[] = [];
-            const collectVisible = (parentId: string | null) => {
-                const children = childrenMap.get(parentId) || [];
-                children.forEach(task => {
-                    if (task.wbsLevel !== 2) return;
-                    if (parentId === activeCPId || expandedTaskIds.has(parentId!)) {
-                        visible.push(task);
-                        if (task.type === 'GROUP') {
-                            collectVisible(task.id);
-                        }
-                    }
-                });
-            };
-            collectVisible(activeCPId!);
-            return visible;
-        } else {
-            // UNIFIED
-            const visible: ConstructionTask[] = [];
-            const collectUnified = (parentId: string | null) => {
-                const children = childrenMap.get(parentId) || [];
-                children.forEach(task => {
-                    if (task.wbsLevel === 1) {
-                        if (parentId === null || expandedTaskIds.has(parentId)) {
-                            visible.push(task);
-                            if (expandedTaskIds.has(task.id)) {
-                                collectUnified(task.id);
-                            }
-                        }
-                    } else if (task.wbsLevel === 2) {
-                        visible.push(task);
-                        if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
-                            collectUnified(task.id);
-                        }
-                    }
-                });
-            };
-            collectUnified(null);
-            return visible;
-        }
-    }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
+    const visibleTasks = useVisibleTasks({
+        tasks,
+        viewMode,
+        activeCPId,
+        expandedTaskIds,
+    });
 
     // ========================================
     // Virtualization

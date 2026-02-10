@@ -19,7 +19,10 @@ export const buildChildrenMap = (
         if (!map.has(parentId)) {
             map.set(parentId, []);
         }
-        map.get(parentId)!.push(task);
+        const children = map.get(parentId);
+        if (children) {
+            children.push(task);
+        }
     });
     return map;
 };

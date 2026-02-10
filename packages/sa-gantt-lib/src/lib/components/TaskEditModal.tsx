@@ -121,7 +121,24 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 preInputRef.current?.focus();
             }, 100);
         }
-    }, [task?.id, isOpen]);
+    }, [
+        isOpen,
+        task,
+        task?.id,
+        task?.startDate,
+        task?.task?.indirectWorkDaysPre,
+        task?.task?.netWorkDays,
+        task?.task?.indirectWorkDaysPost,
+        task?.task?.indirectWorkNamePre,
+        task?.task?.indirectWorkNamePost,
+        task?.task?.quantity,
+        task?.task?.unit,
+        task?.task?.dailyOutput,
+        task?.task?.crew,
+        task?.task?.workOnSaturdays,
+        task?.task?.workOnSundays,
+        task?.task?.workOnHolidays,
+    ]);
 
     // ESC 키로 닫기
     useEffect(() => {

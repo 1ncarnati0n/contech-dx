@@ -57,7 +57,18 @@ export default tseslint.config(
         files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**'],
         rules: {
             '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-non-null-assertion': 'off',
             'no-console': 'off',
+        },
+    },
+    // 라이브러리 Context/Hook 파일은 컴포넌트 외 export가 정상 패턴이므로 규칙 완화
+    {
+        files: [
+            'src/lib/context/*.tsx',
+            'src/lib/components/GanttTimeline/MilestoneMarker.tsx',
+        ],
+        rules: {
+            'react-refresh/only-export-components': 'off',
         },
     }
 );

@@ -10,6 +10,11 @@ import type { ConstructionTask, CalendarSettings, CriticalPathDay } from '../../
 
 const CP_BAR_HEIGHT = 6; // CP 바 높이
 const BAR_GAP = 0.3;
+const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
+    workOnSaturdays: true,
+    workOnSundays: false,
+    workOnHolidays: false,
+};
 
 /**
  * 날짜별 블록 - 소수점 비율로 Vermilion(작업일)과 Teal(비작업일) 표시
@@ -99,24 +104,34 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
 }) => {
     const showBar = renderMode === 'full' || renderMode === 'bar';
     const showLabel = renderMode === 'full' || renderMode === 'label';
-
-    // GROUP 타입은 렌더링하지 않음
-    if (task.type === 'GROUP') return null;
+    const isGroupTask = task.type === 'GROUP';
 
     // CP Summary 계산 (effectiveStartDate보다 먼저 계산 - startDate가 cpSummary에서 파생됨)
     const childTasks = useMemo(() =>
-        collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 }),
-        [task.id, allTasks]
+        isGroupTask ? [] : collectDescendantTasks(task.id, allTasks, { wbsLevel: 2 }),
+        [isGroupTask, task.id, allTasks]
     );
 
-    const cpSummary = useMemo(() =>
-        calculateCriticalPath(
+    const cpSummary = useMemo(() => {
+        if (isGroupTask) {
+            return {
+                startDate: task.startDate,
+                endDate: task.endDate,
+                totalDays: 0,
+                workDays: 0,
+                nonWorkDays: 0,
+                netWorkDaysTotal: 0,
+                indirectWorkDaysTotal: 0,
+                dailyBreakdown: [],
+            };
+        }
+
+        return calculateCriticalPath(
             childTasks,
             holidays,
-            calendarSettings || { workOnSaturdays: true, workOnSundays: false, workOnHolidays: false }
-        ),
-        [childTasks, holidays, calendarSettings]
-    );
+            calendarSettings || DEFAULT_CALENDAR_SETTINGS
+        );
+    }, [isGroupTask, task.startDate, task.endDate, childTasks, holidays, calendarSettings]);
 
     // effectiveDates 계산 (cpSummary.startDate 기반 - 하위 태스크 변경 시 자동 동기화)
     const { effectiveStartDate } = useMemo(() => {
@@ -137,7 +152,8 @@ export const MasterTaskBar: React.FC<MasterTaskBarProps> = React.memo(({
 
     const totalDays = cpSummary.totalDays;
 
-    if (totalDays === 0) return null;
+    // Hook 호출 순서 보장을 위해 모든 hook 실행 뒤 렌더 가드 처리
+    if (isGroupTask || totalDays === 0) return null;
 
     // 하이라이트 너비: totalDays(정수)를 사용하여 dailyBreakdown 렌더링과 일치시킴
     // workDays + nonWorkDays는 분수값이라 실제 바 영역과 불일치할 수 있음

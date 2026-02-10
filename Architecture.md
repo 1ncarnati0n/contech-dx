@@ -60,7 +60,7 @@ contech-dx/
 │
 ├── packages/
 │   └── sa-gantt-lib/             # 간트차트 라이브러리 (sa-gantt-lib 0.1.1)
-│       ├── dist/                 #   빌드 출력 (ESM + UMD + CSS + .d.ts)
+│       ├── dist/                 #   빌드 출력 (ESM + CJS + CSS + .d.ts)
 │       └── src/lib/
 │           ├── components/       #     React 컴포넌트 (~45 TSX)
 │           ├── context/          #     GanttContext, ThemeContext
@@ -470,7 +470,7 @@ vite build                   .next/ 출력
   ↓                             ↑
 dist/                        dist/ 참조
 ├── index.es.js (ESM)        (이전 버전 참조 위험!)
-├── index.umd.js (UMD)
+├── index.cjs (CommonJS)
 ├── style.css
 └── index.d.ts
 

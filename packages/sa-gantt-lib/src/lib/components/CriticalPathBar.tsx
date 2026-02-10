@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
     ConstructionTask,
@@ -155,18 +155,22 @@ export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
 }) => {
     const [hoveredDay, setHoveredDay] = useState<CriticalPathDay | null>(null);
     const [tooltipX, setTooltipX] = useState(0);
+    const taskMap = useMemo(
+        () => new Map(tasks.map(task => [task.id, task])),
+        [tasks]
+    );
 
     // activeCPId의 자손인지 확인하는 헬퍼 함수
-    const isDescendantOf = (task: ConstructionTask, ancestorId: string): boolean => {
+    const isDescendantOf = useCallback((task: ConstructionTask, ancestorId: string): boolean => {
         let currentParentId = task.parentId;
         while (currentParentId) {
             if (currentParentId === ancestorId) return true;
-            const parent = tasks.find(t => t.id === currentParentId);
+            const parent = taskMap.get(currentParentId);
             if (!parent) break;
             currentParentId = parent.parentId;
         }
         return false;
-    };
+    }, [taskMap]);
 
     // Critical Path 계산 (activeCPId가 있으면 해당 CP의 하위 Task만 필터링)
     const summary: CriticalPathSummary = useMemo(() => {
@@ -174,7 +178,7 @@ export const CriticalPathBar: React.FC<CriticalPathBarProps> = ({
             ? tasks.filter(t => isDescendantOf(t, activeCPId))
             : tasks;
         return calculateCriticalPath(targetTasks, holidays, calendarSettings);
-    }, [tasks, activeCPId, holidays, calendarSettings]);
+    }, [tasks, activeCPId, holidays, calendarSettings, isDescendantOf]);
 
     // 호버 핸들러
     const handleDayHover = (day: CriticalPathDay | null, x: number) => {

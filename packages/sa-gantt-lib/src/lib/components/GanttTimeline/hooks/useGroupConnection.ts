@@ -72,7 +72,10 @@ const wouldCreateGroupCycle = (
     const queue: string[] = [targetGroupId];
 
     while (queue.length > 0) {
-        const currentId = queue.shift()!;
+        const currentId = queue.shift();
+        if (!currentId) {
+            break;
+        }
         if (currentId === sourceGroupId) {
             return true; // 순환 발생
         }
