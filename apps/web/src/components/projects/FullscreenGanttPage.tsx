@@ -400,7 +400,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       const createdTask = await (dataService as { createTask: (task: ConstructionTask & { sortOrder?: number }) => Promise<ConstructionTask> }).createTask({ ...taskToAdd, sortOrder });
 
       setAppState(prev => {
-        let newTasks = [...prev.tasks, { ...taskToAdd, id: createdTask.id }];
+        const insertIndex = Math.max(0, Math.min(sortOrder, prev.tasks.length));
+        let newTasks = [...prev.tasks];
+        newTasks.splice(insertIndex, 0, { ...taskToAdd, id: createdTask.id });
 
         newTasks = newTasks.map(t => {
           if (t.wbsLevel === 2 && t.task) {

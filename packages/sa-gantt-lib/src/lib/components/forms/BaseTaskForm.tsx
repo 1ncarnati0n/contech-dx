@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { addDays, format, parse, isValid } from 'date-fns';
 import { Check, X } from 'lucide-react';
 import { GANTT_LAYOUT } from '../../types';
+import type { ConstructionTask } from '../../types';
 import type { FormConfig, FormState, BaseTaskFormProps } from './types';
 
 const { ROW_HEIGHT } = GANTT_LAYOUT;
@@ -22,6 +23,9 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
     config,
     columns,
     tasks,
+    allTasks,
+    selectedTaskIds,
+    focusedTaskId,
     activeCPId,
     onTaskCreate,
     onCancel,
@@ -35,6 +39,30 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
+    const insertionSortOrder = useMemo(() => {
+        const sourceTasks = allTasks ?? tasks;
+        if (sourceTasks.length === 0) return 0;
+
+        const selectedIds = selectedTaskIds ? Array.from(selectedTaskIds) : [];
+        const selectedId = (focusedTaskId && selectedTaskIds?.has(focusedTaskId))
+            ? focusedTaskId
+            : (selectedIds.length > 0 ? selectedIds[selectedIds.length - 1] : null);
+
+        if (!selectedId) return sourceTasks.length;
+
+        const selectedVisibleIndex = tasks.findIndex(t => t.id === selectedId);
+        if (selectedVisibleIndex === -1) {
+            const selectedAllIndex = sourceTasks.findIndex(t => t.id === selectedId);
+            return selectedAllIndex >= 0 ? selectedAllIndex + 1 : sourceTasks.length;
+        }
+
+        const nextVisibleTask = tasks[selectedVisibleIndex + 1];
+        if (!nextVisibleTask) return sourceTasks.length;
+
+        const nextAllIndex = sourceTasks.findIndex(t => t.id === nextVisibleTask.id);
+        return nextAllIndex >= 0 ? nextAllIndex : sourceTasks.length;
+    }, [allTasks, tasks, selectedTaskIds, focusedTaskId]);
+
     // 마운트 시 초기화 및 포커스
     useEffect(() => {
         setFormState(config.getInitialState(tasks, activeCPId));
@@ -43,9 +71,9 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
         }, 0);
     }, [config, tasks, activeCPId]);
 
-    // Unified View의 종료일 계산
+    // Unified TASK의 종료일 계산
     const calculatedEndDate = useMemo(() => {
-        if (config.viewMode !== 'UNIFIED') return null;
+        if (config.viewMode !== 'UNIFIED' || config.formType !== 'TASK') return null;
 
         const startDateStr = formState.startDate as string;
         const duration = formState.duration as number;
@@ -57,16 +85,7 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
 
         const end = addDays(start, Math.max(duration - 1, 0));
         return format(end, 'yyyy-MM-dd');
-    }, [config.viewMode, formState.startDate, formState.duration]);
-
-    // Master View의 총 공기 계산
-    const calculatedTotalDays = useMemo(() => {
-        if (config.viewMode !== 'MASTER' || config.formType !== 'CP') return null;
-
-        const workDays = (formState.workDaysTotal as number) || 0;
-        const nonWorkDays = (formState.nonWorkDaysTotal as number) || 0;
-        return `${workDays + nonWorkDays}일`;
-    }, [config.viewMode, config.formType, formState.workDaysTotal, formState.nonWorkDaysTotal]);
+    }, [config.viewMode, config.formType, formState.startDate, formState.duration]);
 
     const handleCancel = useCallback(() => {
         setFormState(config.getInitialState(tasks, activeCPId));
@@ -82,8 +101,8 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
         // TASK 타입은 activeCPId 필요
         if (config.formType === 'TASK' && !activeCPId) return;
 
-        // Unified View 날짜 유효성 검사
-        if (config.viewMode === 'UNIFIED') {
+        // Unified TASK 날짜 유효성 검사
+        if (config.viewMode === 'UNIFIED' && config.formType === 'TASK') {
             const startDateStr = formState.startDate as string;
             const start = parse(startDateStr, 'yyyy-MM-dd', new Date());
             if (!isValid(start)) {
@@ -99,7 +118,12 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
                 throw new Error('Task 생성 실패');
             }
 
-            await onTaskCreate(newTask);
+            const taskWithSortOrder = {
+                ...newTask,
+                sortOrder: insertionSortOrder,
+            } as Partial<ConstructionTask>;
+
+            await onTaskCreate(taskWithSortOrder);
             setFormState(config.getInitialState(tasks, activeCPId));
             onCancel();
         } catch (error) {
@@ -108,7 +132,7 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
         } finally {
             setIsSubmitting(false);
         }
-    }, [isSubmitting, formState, onTaskCreate, config, tasks, activeCPId, onCancel]);
+    }, [isSubmitting, formState, onTaskCreate, config, tasks, activeCPId, onCancel, insertionSortOrder]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -165,10 +189,8 @@ export const BaseTaskForm: React.FC<BaseTaskFormInternalProps> = ({
         if (field.type === 'display' || field.readOnly) {
             let displayValue: string;
 
-            if (field.id === 'endDate') {
+            if (field.id === 'endDate' && config.viewMode === 'UNIFIED' && config.formType === 'TASK') {
                 displayValue = calculatedEndDate || '-';
-            } else if (field.id === 'totalDays') {
-                displayValue = calculatedTotalDays || '-';
             } else {
                 displayValue = String(value || '-');
             }

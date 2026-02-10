@@ -144,7 +144,7 @@ export const GANTT_LAYOUT = {
     SIDEBAR_MIN_WIDTH: 300,
     SIDEBAR_MAX_WIDTH: 800,
     SIDEBAR_MASTER_WIDTH: 500,
-    SIDEBAR_DETAIL_WIDTH: 600,
+    SIDEBAR_DETAIL_WIDTH: 560,
     SIDEBAR_UNIFIED_WIDTH: 450,
     /** 뷰 전환 후 스크롤 대기 시간 (ms) */
     SCROLL_DELAY_MS: 100,
@@ -183,14 +183,14 @@ export const DEFAULT_MASTER_COLUMNS: ColumnConfig[] = [
     { id: 'nonWorkDays', label: '비작업일수', width: 90, minWidth: 60 },
 ];
 
-/** Detail View 기본 컬럼 (총 565px) */
+/** Detail View 기본 컬럼 (총 530px) */
 export const DEFAULT_DETAIL_COLUMNS: ColumnConfig[] = [
-    { id: 'name', label: '단위공정명', width: 180, minWidth: 80 },
-    { id: 'indirectPre', label: '선간접', width: 65, minWidth: 45 },
-    { id: 'netWork', label: '순작업', width: 65, minWidth: 45 },
-    { id: 'indirectPost', label: '후간접', width: 65, minWidth: 45 },
-    { id: 'startDate', label: '시작일', width: 95, minWidth: 75 },
-    { id: 'endDate', label: '종료일', width: 95, minWidth: 75 },
+    { id: 'name', label: '단위공정명', width: 170, minWidth: 80 },
+    { id: 'indirectPre', label: '선간접일', width: 60, minWidth: 48 },
+    { id: 'netWork', label: '순작업일', width: 60, minWidth: 48 },
+    { id: 'indirectPost', label: '후간접일', width: 60, minWidth: 48 },
+    { id: 'startDate', label: '시작일', width: 90, minWidth: 72 },
+    { id: 'endDate', label: '종료일', width: 90, minWidth: 72 },
 ];
 
 /** Unified View 기본 컬럼 (총 450px) - CP/Task 공통 */

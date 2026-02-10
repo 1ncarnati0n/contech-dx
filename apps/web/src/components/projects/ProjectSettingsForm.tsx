@@ -14,13 +14,7 @@ import {
   Input,
   Textarea,
 } from '@/components/ui';
-import {
-  Megaphone,
-  Gavel,
-  Award,
-  HardHat,
-  CheckCircle2,
-} from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { toast } from 'sonner';
 import { updateProject } from '@/lib/services/projects';
 import type { Project, UpdateProjectDTO } from '@/lib/types';
@@ -181,7 +175,7 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     {
       value: 'announcement',
       label: '공모',
-      icon: Megaphone,
+      icon: LucideIcons.Megaphone,
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
       iconColor: 'text-blue-600 dark:text-blue-400',
       activeRing: 'ring-blue-500',
@@ -189,7 +183,7 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     {
       value: 'bidding',
       label: '입찰',
-      icon: Gavel,
+      icon: LucideIcons.Gavel,
       bgColor: 'bg-amber-50 dark:bg-amber-900/20',
       iconColor: 'text-amber-600 dark:text-amber-400',
       activeRing: 'ring-amber-500',
@@ -197,7 +191,7 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     {
       value: 'award',
       label: '수주',
-      icon: Award,
+      icon: LucideIcons.Award,
       bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
       activeRing: 'ring-emerald-500',
@@ -205,7 +199,7 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     {
       value: 'construction_start',
       label: '착공',
-      icon: HardHat,
+      icon: LucideIcons.HardHat,
       bgColor: 'bg-purple-50 dark:bg-purple-900/20',
       iconColor: 'text-purple-600 dark:text-purple-400',
       activeRing: 'ring-purple-500',
@@ -213,7 +207,7 @@ export function ProjectSettingsForm({ project, canEdit, onUpdate }: ProjectSetti
     {
       value: 'completion',
       label: '준공',
-      icon: CheckCircle2,
+      icon: LucideIcons.CheckCircle2,
       bgColor: 'bg-slate-100 dark:bg-slate-800',
       iconColor: 'text-slate-600 dark:text-slate-400',
       activeRing: 'ring-slate-500',

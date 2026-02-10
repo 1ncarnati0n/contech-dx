@@ -62,6 +62,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [indirectWorkDaysPostStr, setIndirectWorkDaysPostStr] = useState('0');
 
     // 작업명 상태
+    const [taskName, setTaskName] = useState('');
     const [indirectWorkNamePre, setIndirectWorkNamePre] = useState('');
     const [indirectWorkNamePost, setIndirectWorkNamePost] = useState('');
 
@@ -98,6 +99,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     // Task 데이터로 폼 초기화
     useEffect(() => {
         if (task && task.task && isOpen) {
+            setTaskName(task.name);
             setIndirectWorkDaysPreStr(String(task.task.indirectWorkDaysPre));
             setNetWorkDaysStr(String(task.task.netWorkDays));
             setIndirectWorkDaysPostStr(String(task.task.indirectWorkDaysPost));
@@ -125,6 +127,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         isOpen,
         task,
         task?.id,
+        task?.name,
         task?.startDate,
         task?.task?.indirectWorkDaysPre,
         task?.task?.netWorkDays,
@@ -168,6 +171,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             currentPre !== task.task.indirectWorkDaysPre ||
             currentNet !== task.task.netWorkDays ||
             currentPost !== task.task.indirectWorkDaysPost ||
+            taskName.trim() !== task.name ||
             indirectWorkNamePre !== (task.task.indirectWorkNamePre || '') ||
             indirectWorkNamePost !== (task.task.indirectWorkNamePost || '') ||
             (saturdayOff !== (task.task.workOnSaturdays === false)) ||
@@ -178,12 +182,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             dailyOutputStr !== (task.task.dailyOutput != null ? String(task.task.dailyOutput) : '') ||
             crewStr !== (task.task.crew != null ? String(task.task.crew) : '')
         );
-    }, [task, isOpen, indirectWorkDaysPreStr, netWorkDaysStr, indirectWorkDaysPostStr,
+    }, [task, isOpen, taskName, indirectWorkDaysPreStr, netWorkDaysStr, indirectWorkDaysPostStr,
         indirectWorkNamePre, indirectWorkNamePost, saturdayOff, sundayWork, holidayWork, startDateStr,
         quantityStr, dailyOutputStr, crewStr]);
 
     const handleSave = async () => {
         if (!task || !task.task || isSaving) return;
+
+        const trimmedTaskName = taskName.trim();
+        if (!trimmedTaskName) {
+            alert('순작업일 공정명을 입력해주세요.');
+            return;
+        }
 
         const newStartDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : task.startDate;
 
@@ -213,6 +223,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
         const updatedTask: ConstructionTask = {
             ...task,
+            name: trimmedTaskName,
             startDate: newStartDate,
             task: updatedTaskData,
         };
@@ -267,6 +278,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     if (!isOpen || !task || !task.task) return null;
 
     const totalDays = indirectWorkDaysPre + netWorkDays + indirectWorkDaysPost;
+    const isTaskNameValid = taskName.trim().length > 0;
 
     // 산출 근거가 있는지 확인 (하나라도 값이 있으면 섹션 표시)
     const hasProductionBasis = task.task.quantity != null || task.task.dailyOutput != null || task.task.crew != null;
@@ -309,7 +321,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 className="text-sm mt-0.5"
                                 style={{ color: 'var(--gantt-text-muted)' }}
                             >
-                                {task.name}
+                                {taskName || task.name}
                             </p>
                         </div>
                         <button
@@ -354,7 +366,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                             <h3 style={sectionTitleStyle}>⏱️ 작업 기간</h3>
                             <div className="space-y-3">
                                 <CompactInputRow
-                                    label="앞 간접"
+                                    label="선간접일"
                                     daysValue={indirectWorkDaysPreStr}
                                     nameValue={indirectWorkNamePre}
                                     onDaysChange={setIndirectWorkDaysPreStr}
@@ -365,16 +377,24 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     color="blue"
                                 />
                                 <CompactInputRow
-                                    label="순작업"
+                                    label="순작업일"
                                     daysValue={netWorkDaysStr}
+                                    nameValue={taskName}
                                     onDaysChange={setNetWorkDaysStr}
+                                    onNameChange={setTaskName}
                                     onKeyDown={handleKeyDown}
                                     onNumberChange={handleNumberChange}
                                     color="red"
-                                    showNameInput={false}
+                                    namePlaceholder="공정명 (필수)"
+                                    nameRequired
                                 />
+                                {!isTaskNameValid && (
+                                    <p className="text-xs text-red-600">
+                                        순작업일 공정명은 필수 입력입니다.
+                                    </p>
+                                )}
                                 <CompactInputRow
-                                    label="뒤 간접"
+                                    label="후간접일"
                                     daysValue={indirectWorkDaysPostStr}
                                     nameValue={indirectWorkNamePost}
                                     onDaysChange={setIndirectWorkDaysPostStr}
@@ -573,8 +593,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         {/* 저장/닫기 버튼 */}
                         <button
                             onClick={hasChanges ? handleSave : onClose}
+                            disabled={hasChanges && (!isTaskNameValid || isSaving)}
                             className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${hasChanges
-                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none'
                                 : 'bg-gray-600 text-white hover:bg-gray-700'
                                 }`}
                         >

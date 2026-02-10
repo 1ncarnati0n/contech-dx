@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useMemo, useState } from 'react';
+import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 import { KOREAN_HOLIDAYS_ALL } from '../../utils/dateUtils';
 import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
@@ -20,6 +20,7 @@ import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
 import { calculateDateRange } from '../../utils/dateUtils';
 import {
     GanttChartProps,
+    ConstructionTask,
     CalendarSettings,
     ZOOM_CONFIG,
     getLayoutValues,
@@ -113,6 +114,9 @@ export function GanttChart({
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [isAddingCP, setIsAddingCP] = useState(false);
     const [sidebarTotalWidth, setSidebarTotalWidth] = useState<number | null>(null);
+    const [isViewSwitching, setIsViewSwitching] = useState(false);
+    const viewSwitchRafRef = useRef<number | null>(null);
+    const viewSwitchResetRafRef = useRef<number | null>(null);
 
     // ========================================
     // Sidebar Columns Hook
@@ -182,6 +186,72 @@ export function GanttChart({
         onError,
         setViewMode,
     });
+
+    // ========================================
+    // View Transition Loading
+    // ========================================
+    const runViewSwitchTransition = useCallback((action: () => void) => {
+        if (typeof window === 'undefined') {
+            action();
+            return;
+        }
+
+        if (viewSwitchRafRef.current !== null) {
+            window.cancelAnimationFrame(viewSwitchRafRef.current);
+            viewSwitchRafRef.current = null;
+        }
+        if (viewSwitchResetRafRef.current !== null) {
+            window.cancelAnimationFrame(viewSwitchResetRafRef.current);
+            viewSwitchResetRafRef.current = null;
+        }
+
+        setIsViewSwitching(true);
+        viewSwitchRafRef.current = window.requestAnimationFrame(() => {
+            try {
+                action();
+            } finally {
+                viewSwitchResetRafRef.current = window.requestAnimationFrame(() => {
+                    setIsViewSwitching(false);
+                    viewSwitchRafRef.current = null;
+                    viewSwitchResetRafRef.current = null;
+                });
+            }
+        });
+    }, []);
+
+    const handleViewChangeWithLoading = useCallback((mode: 'MASTER' | 'DETAIL' | 'UNIFIED', cpId?: string) => {
+        const nextCPId = cpId ?? null;
+        const isSameMode = mode === viewMode;
+        const isSameTarget = mode !== 'DETAIL' || nextCPId === activeCPId;
+
+        if (isSameMode && isSameTarget) {
+            handleViewChange(mode, cpId);
+            return;
+        }
+
+        runViewSwitchTransition(() => {
+            handleViewChange(mode, cpId);
+        });
+    }, [activeCPId, handleViewChange, runViewSwitchTransition, viewMode]);
+
+    const handleTaskClickWithLoading = useCallback((task: ConstructionTask) => {
+        if (viewMode === 'MASTER' && task.type === 'CP') {
+            handleViewChangeWithLoading('DETAIL', task.id);
+            return;
+        }
+        handleTaskClick(task);
+    }, [viewMode, handleTaskClick, handleViewChangeWithLoading]);
+
+    useEffect(() => {
+        return () => {
+            if (viewSwitchRafRef.current !== null) {
+                window.cancelAnimationFrame(viewSwitchRafRef.current);
+            }
+            if (viewSwitchResetRafRef.current !== null) {
+                window.cancelAnimationFrame(viewSwitchResetRafRef.current);
+            }
+        };
+    }, []);
 
     // ========================================
     // Scroll Sync Handler
@@ -279,7 +349,7 @@ export function GanttChart({
     useKeyboardNavigation({
         visibleTasks,
         viewMode,
-        onViewChange: handleViewChange,
+        onViewChange: handleViewChangeWithLoading,
         focusTask,
         onTaskEdit: handleTaskDoubleClick,
     });
@@ -293,7 +363,7 @@ export function GanttChart({
         viewMode,
         expandedIds: expandedTaskIds,
         onToggle: toggleTask,
-        onTaskClick: handleTaskClick,
+        onTaskClick: handleTaskClickWithLoading,
         onTaskUpdate,
         onTaskCreate,
         onTaskReorder,
@@ -321,7 +391,7 @@ export function GanttChart({
         externalResizingIndex: sidebarResizingIndex,
         onOptimalColumnWidth: handleOptimalColumnWidth,
     }), [
-        visibleTasks, tasks, viewMode, expandedTaskIds, toggleTask, handleTaskClick,
+        visibleTasks, tasks, viewMode, expandedTaskIds, toggleTask, handleTaskClickWithLoading,
         onTaskUpdate, onTaskCreate, onTaskReorder, onTaskGroup, onTaskUngroup, onTaskBlockify,
         onTaskDelete, onTaskMove, activeCPId, holidays, calendarSettings,
         virtualRows, totalHeight, isAddingTask, isAddingCP, handleTaskDoubleClick,
@@ -384,7 +454,7 @@ export function GanttChart({
                 hasUnsavedChanges={hasUnsavedChanges}
                 saveStatus={saveStatus}
                 isCompactMode={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? isCompactMode : false}
-                onViewChange={handleViewChange}
+                onViewChange={handleViewChangeWithLoading}
                 onZoomChange={setZoomLevel}
                 onToggleCompact={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? toggleCompactMode : undefined}
                 onStartAddTask={() => setIsAddingTask(true)}
@@ -513,6 +583,34 @@ export function GanttChart({
                         <div className="fixed inset-0 z-50 cursor-col-resize" />
                     )}
                 </div>
+
+                {isViewSwitching && (
+                    <div
+                        className="absolute inset-0 z-[70] flex items-center justify-center"
+                        style={{
+                            backgroundColor: 'rgba(17, 24, 39, 0.18)',
+                            backdropFilter: 'blur(1px)',
+                        }}
+                    >
+                        <div
+                            className="flex items-center gap-2 rounded-lg px-3 py-2 shadow-sm"
+                            style={{
+                                backgroundColor: 'var(--gantt-bg-primary)',
+                                border: '1px solid var(--gantt-border)',
+                                color: 'var(--gantt-text-secondary)',
+                            }}
+                        >
+                            <span
+                                className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-transparent"
+                                style={{
+                                    borderTopColor: 'var(--gantt-focus)',
+                                    borderRightColor: 'var(--gantt-focus)',
+                                }}
+                            />
+                            <span className="text-xs font-medium">뷰 전환 중...</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <MilestoneEditModal
