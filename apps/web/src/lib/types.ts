@@ -518,7 +518,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 알폼
   alForm?: {
     areaM2: number;
@@ -526,7 +526,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 형틀
   formwork?: {
     areaM2: number;
@@ -534,7 +534,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 유로폼
   euroForm?: {
     areaM2: number;
@@ -542,7 +542,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 해체/정리
   stripClean?: {
     areaM2: number;
@@ -550,7 +550,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 철근
   rebar?: {
     ton: number; // 기존 (합계용)
@@ -560,7 +560,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 콘크리트
   concrete?: {
     volumeM3: number; // 기존 (합계용)
@@ -666,7 +666,7 @@ export type UnitRateType = 'planned' | 'executed';
 /**
  * 공정 구분 타입
  */
-export type ProcessCategory = '버림' | '기초' | '주동 지하층' | '지하층(층고6.5m이상)' | '셋팅층' | '기준층' | '최상층' | 'PH층' | '옥탑층' | '지하주차장' | '일반층';
+export type ProcessCategory = '버림' | '기초' | '주동 지하층' | '지하층(층고6.5m이상)' | '셋팅층' | '기준층' | '최상층' | '옥탑층' | '지하주차장' | '일반층';
 
 /**
  * 공정 타입 (표준공정 또는 사이클)

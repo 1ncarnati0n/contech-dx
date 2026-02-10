@@ -84,8 +84,8 @@ export function useProcessTypeChange(
       markDirty(buildingId);
     } else {
       // Category-wide process type change
-      const module = getProcessModule(category, processType);
-      const sumDays = module ? calculateModuleWorkDays(building, module, category) : 0;
+      const mod = getProcessModule(category, processType);
+      const sumDays = mod ? calculateModuleWorkDays(building, mod, category) : 0;
 
       const updatedPlan: BuildingProcessPlan = {
         ...plan,

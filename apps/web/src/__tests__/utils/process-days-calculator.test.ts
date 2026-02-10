@@ -19,7 +19,7 @@ describe('calculateModuleWorkDays', () => {
   describe('rounding behavior', () => {
     it('should use Math.ceil for conservative estimation', () => {
       const building = createTestBuilding();
-      const module: ProcessModule = {
+      const mod: ProcessModule = {
         id: 'test-module',
         name: 'Test Module',
         items: [
@@ -44,7 +44,7 @@ describe('calculateModuleWorkDays', () => {
         ],
       };
 
-      const result = calculateModuleWorkDays(building, module, '기준층');
+      const result = calculateModuleWorkDays(building, mod, '기준층');
 
       // ceil(2.3 + 1.8) = ceil(4.1) = 5
       // 기존 floor(4.1) = 4 였음
@@ -53,18 +53,18 @@ describe('calculateModuleWorkDays', () => {
 
     it('should return 0 for empty module', () => {
       const building = createTestBuilding();
-      const module: ProcessModule = {
+      const mod: ProcessModule = {
         id: 'empty',
         name: 'Empty',
         items: []
       };
 
-      expect(calculateModuleWorkDays(building, module, '기준층')).toBe(0);
+      expect(calculateModuleWorkDays(building, mod, '기준층')).toBe(0);
     });
 
     it('should handle exact integer sums correctly', () => {
       const building = createTestBuilding();
-      const module: ProcessModule = {
+      const mod: ProcessModule = {
         id: 'exact-module',
         name: 'Exact Module',
         items: [
@@ -89,14 +89,14 @@ describe('calculateModuleWorkDays', () => {
         ],
       };
 
-      const result = calculateModuleWorkDays(building, module, '기준층');
+      const result = calculateModuleWorkDays(building, mod, '기준층');
       // ceil(2.0 + 3.0) = ceil(5.0) = 5
       expect(result).toBe(5);
     });
 
     it('should always round up for any fractional total', () => {
       const building = createTestBuilding();
-      const module: ProcessModule = {
+      const mod: ProcessModule = {
         id: 'fractional-module',
         name: 'Fractional Module',
         items: [
@@ -121,7 +121,7 @@ describe('calculateModuleWorkDays', () => {
         ],
       };
 
-      const result = calculateModuleWorkDays(building, module, '기준층');
+      const result = calculateModuleWorkDays(building, mod, '기준층');
       // ceil(1.1 + 2.9) = ceil(4.0) = 4
       expect(result).toBe(4);
     });

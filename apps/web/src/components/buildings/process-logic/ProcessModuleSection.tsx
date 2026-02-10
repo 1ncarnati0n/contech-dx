@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Layers, Info, Lock, Calculator, Truck, Settings } from 'lucide-react';
 import { Card, Button, Badge, Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui';
-import { PROCESS_MODULES, type ProcessModule, type ProcessItem } from '@/lib/data/process-modules';
+import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory } from '@/lib/types';
 import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
 
@@ -231,8 +231,8 @@ export function ProcessModuleSection({
 
     // moduleId가 지정된 경우 해당 모듈만 반환 (명시적 모듈 지정)
     if (currentTab.moduleId) {
-      const module = modules.find(m => m.id === currentTab.moduleId);
-      return module ? [module] : [];
+      const mod = modules.find(m => m.id === currentTab.moduleId);
+      return mod ? [mod] : [];
     }
 
     // moduleId가 없는 경우 기존 로직 사용

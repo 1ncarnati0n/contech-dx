@@ -37,6 +37,88 @@ interface ViewerStats {
 type ViewOrientation = 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
 type ProjectionMode = 'Perspective' | 'Orthographic';
 
+interface DisposableLike {
+  dispose: () => void;
+}
+
+interface ThreeLike {
+  Color: new (color: number) => unknown;
+}
+
+interface CameraControlsLike {
+  addEventListener: (event: string, callback: () => void) => void;
+  setLookAt: (
+    px: number,
+    py: number,
+    pz: number,
+    tx: number,
+    ty: number,
+    tz: number,
+    animate: boolean
+  ) => Promise<void> | void;
+  reset: (animate: boolean) => void;
+}
+
+interface CameraLike {
+  three: unknown;
+  controls: CameraControlsLike;
+  fitToItems: () => Promise<void> | void;
+  hasCameraControls: () => boolean;
+  projection: {
+    set: (mode: ProjectionMode) => Promise<void> | void;
+  };
+}
+
+interface SceneLike {
+  three: {
+    background: unknown;
+    add: (object: unknown) => void;
+  };
+}
+
+interface WorldLike {
+  scene: SceneLike;
+  camera: CameraLike;
+  renderer?: {
+    resize: () => void;
+  };
+}
+
+interface ModelLike {
+  useCamera: (camera: unknown) => void;
+  object: unknown;
+}
+
+interface FragmentsLike {
+  core: {
+    update: (force: boolean) => Promise<void> | void;
+  };
+  init: (workerUrl: string) => void;
+  list: {
+    size: number;
+    onItemSet: {
+      add: (listener: (item: { value: ModelLike }) => Promise<void> | void) => void;
+    };
+  };
+}
+
+interface IfcLoaderLike {
+  setup: (options: unknown) => Promise<void> | void;
+  load: (data: Uint8Array, toOrigin: boolean, modelName: string) => Promise<void> | void;
+}
+
+interface BoundingBoxerLike {
+  addFromModels: () => void;
+  getCameraOrientation: (orientation: ViewOrientation) => Promise<{
+    position: { x: number; y: number; z: number };
+    target: { x: number; y: number; z: number };
+  }>;
+}
+
+interface HighlighterLike {
+  multiple: string;
+}
+
 /**
  * next-themes와 시스템 설정을 고려한 초기 테마 감지
  * SSR 안전, hydration 불일치 최소화
@@ -61,13 +143,13 @@ function detectInitialTheme(): boolean {
 export function IfcViewer({ className }: IfcViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const componentsRef = useRef<any>(null);
-  const worldRef = useRef<any>(null);
-  const ifcLoaderRef = useRef<any>(null);
-  const fragmentsRef = useRef<any>(null);
-  const highlighterRef = useRef<any>(null);
-  const boundingBoxerRef = useRef<any>(null);
-  const threeRef = useRef<any>(null);
+  const componentsRef = useRef<DisposableLike | null>(null);
+  const worldRef = useRef<WorldLike | null>(null);
+  const ifcLoaderRef = useRef<IfcLoaderLike | null>(null);
+  const fragmentsRef = useRef<FragmentsLike | null>(null);
+  const highlighterRef = useRef<HighlighterLike | null>(null);
+  const boundingBoxerRef = useRef<BoundingBoxerLike | null>(null);
+  const threeRef = useRef<ThreeLike | null>(null);
   const isInitializedRef = useRef(false);
 
   // Theme synchronization
@@ -168,7 +250,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         });
 
         // Handle new fragments loaded
-        fragments.list.onItemSet.add(async ({ value: model }: { value: any }) => {
+        fragments.list.onItemSet.add(async ({ value: model }: { value: ModelLike }) => {
           model.useCamera(world.camera.three);
           world.scene.three.add(model.object);
           await fragments.core.update(true);
@@ -300,6 +382,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
       setLoadingState({ phase: 'idle', progress: 0, message: '' });
     }
   }, [isReady]);
+  void loadIfcFromUrl;
 
   // Auto-loading disabled - user must click "로딩" button to load sample
 

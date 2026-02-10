@@ -33,6 +33,7 @@ export function ProcessItemCard({
   onDirectWorkDaysChange,
   className,
 }: ProcessItemCardProps) {
+  void overriddenDirectWorkDays;
   const {
     quantity,
     quantitySource,

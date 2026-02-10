@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
-import { Calculator, Construction, Loader2 } from 'lucide-react';
+import { Construction, Loader2 } from 'lucide-react';
 import { calculatePouringSectionDetailed } from '@/lib/utils/pouring-section-calculation';
 import type { PouringSectionCalculationResult } from '@/lib/types';
 import { toast } from 'sonner';
@@ -35,6 +35,7 @@ export function PouringSectionReviewPage({
   viewMode = 'visual',
   onViewModeChange
 }: Props) {
+  void onViewModeChange;
 
   // ============================================
   // Simple 모드 상태

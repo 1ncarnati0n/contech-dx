@@ -21,7 +21,7 @@ export type ColumnType = FormworkColumnType | 'stripClean' | 'rebar' | 'concrete
 /**
  * 공정계획 행의 카테고리/층 정보로부터 물량입력 셀 주소를 반환
  *
- * @param category - 공정 구분 (버림, 기초, 주동 지하층, 셋팅층, 기준층, 옥탑층, PH층)
+ * @param category - 공정 구분 (버림, 기초, 주동 지하층, 셋팅층, 기준층, 옥탑층)
  * @param floorLabel - 층 라벨 (B2, B1, 1F, 2F, 옥탑1 등)
  * @param columnType - 물량 유형 (formworkTotal, gangForm, alForm, euroForm, rebar, concrete)
  * @param maxFloorNumber - 해당 동의 최대 지상층 번호 (옥탑 제외). 옥탑층 행 번호 계산에 사용
@@ -86,10 +86,10 @@ function getRowNumber(
     return floorLabelToRow(floorLabel);
   }
 
-  // 옥탑층/PH층: 동적 시작 행 = max(maxFloorNumber + 10, 25) + N
+  // 옥탑층: 동적 시작 행 = max(maxFloorNumber + 10, 25) + N
   // 101동(15F): PH1=26, PH2=27 (기존과 동일)
   // 102동(25F): PH1=36, PH2=37 (16F~25F 행과 충돌 방지)
-  if (category === '옥탑층' || category === 'PH층') {
+  if (category === '옥탑층') {
     if (!floorLabel) return null;
     const phStartRow = maxFloorNumber
       ? Math.max(maxFloorNumber + 10, 25)

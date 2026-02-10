@@ -4,7 +4,7 @@
  */
 
 import type { HighlightTarget, HighlightTargetKey } from '@/components/buildings/ProcessPlanChatbotTypes';
-import { HIGHLIGHT_REGISTRY, getHighlightTarget, getHighlightTargets } from './highlight-registry';
+import { getHighlightTarget, getHighlightTargets } from './highlight-registry';
 import { logger } from '@/lib/utils/logger';
 
 const HIGHLIGHT_CLASS = 'process-plan-highlight';

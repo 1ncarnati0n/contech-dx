@@ -55,23 +55,29 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
           localStorage.setItem(storageKey, JSON.stringify(migratedModules2));
         }
 
-        setState((prev) => ({
-          ...prev,
-          modules: migratedModules2,
-          isLoading: false,
-        }));
+        queueMicrotask(() => {
+          setState((prev) => ({
+            ...prev,
+            modules: migratedModules2,
+            isLoading: false,
+          }));
+        });
       } else {
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-        }));
+        queueMicrotask(() => {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+          }));
+        });
       }
     } catch (error) {
       logger.error('Failed to load process logic settings:', error);
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-      }));
+      queueMicrotask(() => {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+        }));
+      });
     }
   }, [storageKey]);
 

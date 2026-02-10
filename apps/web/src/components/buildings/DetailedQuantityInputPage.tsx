@@ -16,13 +16,11 @@ interface Props {
 export function DetailedQuantityInputPage({ projectId }: Props) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // 초기 데이터 로드
   const loadBuildings = useCallback(async () => {
     try {
-      setIsLoading(true);
       const data = await getBuildings(projectId);
       setBuildings(data);
       setIsInitialized(true);
@@ -31,16 +29,16 @@ export function DetailedQuantityInputPage({ projectId }: Props) {
       if (data.length > 0 && activeBuildingIndex >= data.length) {
         setActiveBuildingIndex(0);
       }
-    } catch (error) {
+    } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
     }
   }, [projectId, activeBuildingIndex]);
 
   useEffect(() => {
     if (!isInitialized) {
-      loadBuildings();
+      queueMicrotask(() => {
+        void loadBuildings();
+      });
     }
   }, [isInitialized, loadBuildings]);
 
@@ -75,7 +73,7 @@ export function DetailedQuantityInputPage({ projectId }: Props) {
       } else if (activeBuildingIndex < fromIndex && activeBuildingIndex >= toIndex) {
         setActiveBuildingIndex(activeBuildingIndex + 1);
       }
-    } catch (error) {
+    } catch {
       toast.error('동 순서 변경에 실패했습니다.');
     }
   }, [projectId, loadBuildings, activeBuildingIndex]);
@@ -111,7 +109,7 @@ export function DetailedQuantityInputPage({ projectId }: Props) {
       }
       
       toast.success('동이 삭제되었습니다.');
-    } catch (error) {
+    } catch {
       toast.error('동 삭제에 실패했습니다.');
     }
   }, [projectId, buildings, activeBuildingIndex]);

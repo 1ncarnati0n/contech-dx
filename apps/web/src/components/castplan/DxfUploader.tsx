@@ -2,7 +2,7 @@
 
 import { logger } from '@/lib/utils/logger';
 import { useRef, useState, useCallback } from 'react';
-import { Upload, FileText, X, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button, Card, CardContent } from '@/components/ui';
 import { loadDxfFromFile } from '@/lib/utils/dxf-parser';
 import type { ParsedDxfData, DxfParseProgress, DxfStatistics } from '@/lib/types';

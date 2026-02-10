@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     LayoutDashboard,
     ListTodo,
@@ -39,6 +39,54 @@ interface ProjectSidebarProps {
     isAdmin?: boolean;
 }
 
+interface MenuButtonProps {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    isActive: boolean;
+    onClick: () => void;
+    isCollapsed: boolean;
+    hasSubmenu?: boolean;
+    isExpanded?: boolean;
+}
+
+function MenuButton({
+    label,
+    icon: Icon,
+    isActive,
+    onClick,
+    isCollapsed,
+    hasSubmenu = false,
+    isExpanded = false,
+}: MenuButtonProps) {
+    return (
+        <button
+            onClick={onClick}
+            title={isCollapsed ? label : undefined}
+            className={`relative w-full flex items-center ${hasSubmenu && !isCollapsed ? 'justify-between' : ''} gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                    ? hasSubmenu
+                        ? 'bg-[#ffff1d]/30 text-zinc-900 dark:bg-[#ffff1d]/40 dark:text-zinc-100'
+                        : 'bg-[#ffff1d] text-zinc-900 dark:bg-[#ffff1d] dark:text-zinc-900'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+            } ${isCollapsed && hasSubmenu ? 'pb-4' : ''}`}
+        >
+            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? (hasSubmenu ? 'text-zinc-700 dark:text-zinc-100' : 'text-zinc-900') : 'text-zinc-400'}`} />
+                {!isCollapsed && <span>{label}</span>}
+            </div>
+            {hasSubmenu && (
+                isCollapsed ? (
+                    <MoreHorizontal className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 text-zinc-400" />
+                ) : isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-zinc-400" />
+                ) : (
+                    <ChevronRight className="w-4 h-4 text-zinc-400" />
+                )
+            )}
+        </button>
+    );
+}
+
 export function ProjectSidebar({
     isCollapsed,
     isPinned,
@@ -51,8 +99,8 @@ export function ProjectSidebar({
     isAdmin = false,
 }: ProjectSidebarProps) {
     // 모든 서브메뉴를 디폴트로 펼친 상태로 설정
-    const [isDataInputExpanded, setIsDataInputExpanded] = useState(true);
-    const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(true);
+    const [isDataInputExpandedByUser, setIsDataInputExpandedByUser] = useState(true);
+    const [isProcessPlanExpandedByUser, setIsProcessPlanExpandedByUser] = useState(true);
 
     const menuItems = [
         { id: 'overview', label: '개요', icon: LayoutDashboard },
@@ -80,63 +128,8 @@ export function ProjectSidebar({
     const isDataInputActive = activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data';
     const isProcessPlanActive = activeTab === 'process_logic' || activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
     const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
-
-    // activeTab이 변경될 때 확장 상태 업데이트
-    useEffect(() => {
-        if (isDataInputActive && !isDataInputExpanded) {
-            setIsDataInputExpanded(true);
-        }
-        if (isProcessPlanActive && !isProcessPlanExpanded) {
-            setIsProcessPlanExpanded(true);
-        }
-    }, [activeTab, isDataInputActive, isDataInputExpanded, isProcessPlanActive, isProcessPlanExpanded]);
-
-    // 접힌 상태에서도 서브메뉴 확장 상태 유지 (제거됨)
-
-    // 메뉴 버튼 공통 컴포넌트
-    const MenuButton = ({
-        id,
-        label,
-        icon: Icon,
-        isActive,
-        onClick,
-        hasSubmenu = false,
-        isExpanded = false,
-    }: {
-        id: string;
-        label: string;
-        icon: React.ComponentType<{ className?: string }>;
-        isActive: boolean;
-        onClick: () => void;
-        hasSubmenu?: boolean;
-        isExpanded?: boolean;
-    }) => (
-        <button
-            onClick={onClick}
-            title={isCollapsed ? label : undefined}
-            className={`relative w-full flex items-center ${hasSubmenu && !isCollapsed ? 'justify-between' : ''} gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                    ? hasSubmenu
-                        ? 'bg-[#ffff1d]/30 text-zinc-900 dark:bg-[#ffff1d]/40 dark:text-zinc-100'
-                        : 'bg-[#ffff1d] text-zinc-900 dark:bg-[#ffff1d] dark:text-zinc-900'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
-            } ${isCollapsed && hasSubmenu ? 'pb-4' : ''}`}
-        >
-            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center w-full' : ''}`}>
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? (hasSubmenu ? 'text-zinc-700 dark:text-zinc-100' : 'text-zinc-900') : 'text-zinc-400'}`} />
-                {!isCollapsed && <span>{label}</span>}
-            </div>
-            {hasSubmenu && (
-                isCollapsed ? (
-                    <MoreHorizontal className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 text-zinc-400" />
-                ) : isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                ) : (
-                    <ChevronRight className="w-4 h-4 text-zinc-400" />
-                )
-            )}
-        </button>
-    );
+    const isDataInputExpanded = isDataInputActive || isDataInputExpandedByUser;
+    const isProcessPlanExpanded = isProcessPlanActive || isProcessPlanExpandedByUser;
 
     return (
         <div
@@ -177,21 +170,21 @@ export function ProjectSidebar({
             <div className={`flex-1 overflow-y-auto py-4 space-y-1 ${isCollapsed ? 'px-2' : 'px-3'}`}>
                 {/* Overview */}
                 <MenuButton
-                    id="overview"
                     label="개요"
                     icon={LayoutDashboard}
                     isActive={activeTab === 'overview'}
                     onClick={() => onTabChange('overview')}
+                    isCollapsed={isCollapsed}
                 />
 
                 {/* 데이터 입력 확장 메뉴 */}
                 <div className="space-y-1">
                     <MenuButton
-                        id="data_input_group"
                         label="데이터 입력"
                         icon={Database}
                         isActive={isDataInputActive}
-                        onClick={() => setIsDataInputExpanded(!isDataInputExpanded)}
+                        onClick={() => setIsDataInputExpandedByUser(!isDataInputExpanded)}
+                        isCollapsed={isCollapsed}
                         hasSubmenu={true}
                         isExpanded={isDataInputExpanded}
                     />
@@ -225,11 +218,11 @@ export function ProjectSidebar({
                 {/* 공정계획 확장 메뉴 */}
                 <div className="space-y-1">
                     <MenuButton
-                        id="process_plan_group"
                         label="공정계획"
                         icon={ListTodo}
                         isActive={isProcessPlanActive}
-                        onClick={() => setIsProcessPlanExpanded(!isProcessPlanExpanded)}
+                        onClick={() => setIsProcessPlanExpandedByUser(!isProcessPlanExpanded)}
+                        isCollapsed={isCollapsed}
                         hasSubmenu={true}
                         isExpanded={isProcessPlanExpanded}
                     />
@@ -277,22 +270,22 @@ export function ProjectSidebar({
 
                 {/* 단가 입력 메뉴 */}
                 <MenuButton
-                    id="planned_unit_rate"
                     label="단가 입력"
                     icon={DollarSign}
                     isActive={isUnitRateActive}
                     onClick={() => onTabChange('planned_unit_rate')}
+                    isCollapsed={isCollapsed}
                 />
 
                 {/* 나머지 메뉴 아이템들 */}
                 {menuItems.slice(2).map((item) => (
                     <MenuButton
                         key={item.id}
-                        id={item.id}
                         label={item.label}
                         icon={item.icon}
                         isActive={activeTab === item.id}
                         onClick={() => onTabChange(item.id)}
+                        isCollapsed={isCollapsed}
                     />
                 ))}
             </div>

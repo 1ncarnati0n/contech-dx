@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/label';
 import {
   Card,
   CardContent,
@@ -22,7 +21,6 @@ import {
 } from '@/components/ui/Card';
 
 import { Badge } from '@/components/ui/Badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/Tooltip';
 import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory } from '@/lib/types';
@@ -345,6 +343,7 @@ export function ProcessModuleEditModal({
   projectId,
   equipmentBaseForCategory,
 }: ProcessModuleEditModalProps) {
+  void projectId;
   const [editValues, setEditValues] = useState<ProcessModule[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -371,7 +370,9 @@ export function ProcessModuleEditModal({
       };
     });
 
-    setEditValues(syncedModules);
+    queueMicrotask(() => {
+      setEditValues(syncedModules);
+    });
   }, [open, modules, activeCategory, equipmentBaseForCategory]);
 
   // 현재 카테고리의 모듈 필터링 (공정타입 선택 시 해당 타입만)
@@ -486,8 +487,8 @@ export function ProcessModuleEditModal({
     onOpenChange(false);
   };
 
-  // 변경된 항목 Set을 useMemo로 미리 계산
-  const changedItemIds = useMemo(() => {
+  // 변경된 항목 Set 계산
+  const changedItemIds = (() => {
     const changedSet = new Set<string>();
 
     modules.forEach((originalModule) => {
@@ -514,7 +515,7 @@ export function ProcessModuleEditModal({
     });
 
     return changedSet;
-  }, [modules, editValues]);
+  })();
 
   // 변경된 항목 확인 (O(1) 조회)
   const isItemChanged = (itemId: string): boolean => {

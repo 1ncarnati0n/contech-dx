@@ -1,11 +1,11 @@
 'use client';
 
 import { logger } from '@/lib/utils/logger';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/components/ui';
 import type { UnitRateItem } from '@/lib/types';
-import { getUnitRates, saveUnitRates, updateUnitRateItem, deleteUnitRateItem } from '@/lib/services/unitRates';
+import { getUnitRates, saveUnitRates, updateUnitRateItem } from '@/lib/services/unitRates';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
 
@@ -13,29 +13,12 @@ interface Props {
   projectId: string;
 }
 
-const TRADE_OPTIONS = [
-  '전체',
-  '형틀',
-  '갱폼',
-  '알폼',
-  '해체정리',
-  '철근',
-  '타설',
-];
-
 export function PlannedUnitRatePage({ projectId }: Props) {
   const [items, setItems] = useState<UnitRateItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
-  const [selectionStart, setSelectionStart] = useState<{ row: number; col: number } | null>(null);
-
-  // 초기 데이터 로드
-  useEffect(() => {
-    loadItems();
-  }, [projectId]);
-
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await getUnitRates(projectId, 'planned');
@@ -284,7 +267,12 @@ export function PlannedUnitRatePage({ projectId }: Props) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
 
   const handleSave = async () => {
     try {
@@ -296,22 +284,6 @@ export function PlannedUnitRatePage({ projectId }: Props) {
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-
-  const handleDelete = async (itemId: string) => {
-    if (!window.confirm('정말 이 행을 삭제하시겠습니까?')) {
-      return;
-    }
-
-    try {
-      await deleteUnitRateItem(projectId, 'planned', itemId);
-      setItems(items.filter(item => item.id !== itemId));
-      toast.success('행이 삭제되었습니다.');
-    } catch (error) {
-      logger.error('Failed to delete row:', error);
-      toast.error('삭제에 실패했습니다.');
     }
   };
 
@@ -522,24 +494,8 @@ export function PlannedUnitRatePage({ projectId }: Props) {
       });
     } else {
       setSelectedCells(new Set([cellKey]));
-      setSelectionStart({ row: rowIndex, col: colIndex });
     }
   };
-
-  // 공종별 합계 계산
-  const tradeSummary = useMemo(() => {
-    const summary: Record<string, { materialTotal: number; laborTotal: number }> = {};
-    
-    items.forEach(item => {
-      if (!summary[item.trade]) {
-        summary[item.trade] = { materialTotal: 0, laborTotal: 0 };
-      }
-      summary[item.trade].materialTotal += item.materialAmount || 0;
-      summary[item.trade].laborTotal += item.laborAmount || 0;
-    });
-
-    return summary;
-  }, [items]);
 
   const formatNumber = (num: number | null | undefined): string => {
     if (num === null || num === undefined || num === 0) return '';
@@ -738,7 +694,7 @@ function UnitRateInputCell({
   };
 
   // 포커스를 받았을 때
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleFocus = () => {
     setIsFocused(true);
     // 천단위 구분자 제거하여 편집 가능하게
     // 0이거나 null/undefined이면 빈 문자열로 표시
@@ -765,13 +721,6 @@ function UnitRateInputCell({
     const inputValue = e.target.value;
     setDisplayValue(inputValue);
   };
-
-  // value가 변경되었을 때 displayValue 업데이트 (포커스가 없을 때만)
-  useEffect(() => {
-    if (!isFocused) {
-      setDisplayValue(formatValue(value));
-    }
-  }, [value, isFocused]);
 
   const handlePaste = (e: React.ClipboardEvent) => {
     if (onPaste) {
@@ -818,4 +767,3 @@ function UnitRateInputCell({
     </td>
   );
 }
-

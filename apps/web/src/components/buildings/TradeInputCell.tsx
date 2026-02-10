@@ -222,28 +222,42 @@ export function TradeInputCell({
       if (formula) {
         const calculatedValue = calculateFormula(formula);
         if (calculatedValue !== null) {
-          setDisplayValue(formatValue(calculatedValue));
+          queueMicrotask(() => {
+            setDisplayValue(formatValue(calculatedValue));
+          });
         } else {
-          setDisplayValue(formatValue(value));
+          queueMicrotask(() => {
+            setDisplayValue(formatValue(value));
+          });
         }
       } else {
-        setDisplayValue(formatValue(value));
+        queueMicrotask(() => {
+          setDisplayValue(formatValue(value));
+        });
       }
     }
   }, [value, isFocused, isPasting, formula]);
 
   // Load formula on mount and recalculate if stale
   useEffect(() => {
-    const stored = getStoredFormula();
+    if (!formulaKey) return;
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(formulaKey);
+    } catch {
+      stored = null;
+    }
+
     if (stored) {
-      setFormula(stored);
+      queueMicrotask(() => {
+        setFormula(stored);
+      });
       const calculated = calculateFormula(stored);
       if (calculated !== null && calculated !== value) {
         onChange(calculated);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [formulaKey, onChange, value]);
 
   // Paste handler
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {

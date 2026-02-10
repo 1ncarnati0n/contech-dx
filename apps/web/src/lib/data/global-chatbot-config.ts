@@ -143,7 +143,7 @@ export const PAGE_CHATBOT_CONFIGS: Record<PageType, PageChatbotConfig> = {
 
 ### 자주 묻는 질문
 - 기준층/최상층 표준공정: 6일 사이클 기반 표준공정으로 통일
-- 사이클 공정: 셋팅층, PH층, 일반층에서 5일/6일/7일/8일 사이클 선택 가능
+- 사이클 공정: 셋팅층, 옥탑층, 일반층에서 5일/6일/7일/8일 사이클 선택 가능
 - 물량 참조: 건물의 층별 물량 데이터를 가져와서 계산에 활용
 - 순작업일: 실제 작업이 수행되는 일수
 - 간접일: 준비, 양생, 대기 등의 간접 작업일`,
@@ -497,7 +497,11 @@ export function getDynamicQuickQuestions(
     .slice(0, maxQuestions);
 
   // 5. DynamicQuickQuestion을 QuickQuestion으로 변환
-  return sortedQuestions.map(({ priority, ...rest }) => rest);
+  return sortedQuestions.map((question) => {
+    const { priority, ...rest } = question;
+    void priority;
+    return rest;
+  });
 }
 
 /**

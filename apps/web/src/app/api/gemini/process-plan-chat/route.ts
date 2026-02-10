@@ -8,7 +8,6 @@ import type {
   ChatContextSnapshot,
   ChatbotError,
   ChatbotErrorType,
-  HighlightTarget,
 } from '@/components/buildings/ProcessPlanChatbotTypes';
 
 interface CitationSource {

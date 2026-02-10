@@ -285,46 +285,46 @@ const MessageBubble = memo(function MessageBubble({
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                a: ({ node: _node, ...props }) => (
+                a: ({ ...props }) => (
                   <a target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 hover:underline break-all" {...props} />
                 ),
-                table: ({ node: _node, ...props }) => (
+                table: ({ ...props }) => (
                   <div className="overflow-x-auto my-4 rounded-lg border border-slate-200 dark:border-slate-700">
                     <table className="w-full text-sm text-left text-slate-700 dark:text-slate-300" {...props} />
                   </div>
                 ),
-                thead: ({ node: _node, ...props }) => (
+                thead: ({ ...props }) => (
                   <thead className="text-xs text-slate-700 dark:text-slate-300 uppercase bg-slate-50 dark:bg-slate-800/50" {...props} />
                 ),
-                tbody: ({ node: _node, ...props }) => (
+                tbody: ({ ...props }) => (
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800" {...props} />
                 ),
-                th: ({ node: _node, ...props }) => (
+                th: ({ ...props }) => (
                   <th className="px-4 py-3 font-semibold whitespace-nowrap" {...props} />
                 ),
-                td: ({ node: _node, ...props }) => (
+                td: ({ ...props }) => (
                   <td className="px-4 py-3" {...props} />
                 ),
-                tr: ({ node: _node, ...props }) => (
+                tr: ({ ...props }) => (
                   <tr className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" {...props} />
                 ),
-                ul: ({ node: _node, ...props }) => (
+                ul: ({ ...props }) => (
                   <ul className="list-disc list-outside ml-5 space-y-1 my-3" {...props} />
                 ),
-                ol: ({ node: _node, ...props }) => (
+                ol: ({ ...props }) => (
                   <ol className="list-decimal list-outside ml-5 space-y-1 my-3" {...props} />
                 ),
-                li: ({ node: _node, ...props }) => (
+                li: ({ ...props }) => (
                   <li className="pl-1" {...props} />
                 ),
-                blockquote: ({ node: _node, ...props }) => (
+                blockquote: ({ ...props }) => (
                   <blockquote className="border-l-4 border-slate-300 dark:border-slate-600 pl-4 italic text-slate-600 dark:text-slate-400 my-4" {...props} />
                 ),
-                h1: ({ node: _node, ...props }) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900 dark:text-white" {...props} />,
-                h2: ({ node: _node, ...props }) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 dark:text-white" {...props} />,
-                h3: ({ node: _node, ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800 dark:text-slate-200" {...props} />,
+                h1: ({ ...props }) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900 dark:text-white" {...props} />,
+                h2: ({ ...props }) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 dark:text-white" {...props} />,
+                h3: ({ ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800 dark:text-slate-200" {...props} />,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                code: ({ node: _node, className, children, ...props }: any) => {
+                code: ({ className, children, ...props }: any) => {
                   const match = /language-(\w+)/.exec(className || '');
                   const isInline = !match && !String(children).includes('\n');
 
@@ -345,8 +345,8 @@ const MessageBubble = memo(function MessageBubble({
                     </div>
                   );
                 },
-                p: ({ node: _node, ...props }) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
-                hr: ({ node: _node, ...props }) => <hr className="my-6 border-slate-200 dark:border-slate-700" {...props} />,
+                p: ({ ...props }) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+                hr: ({ ...props }) => <hr className="my-6 border-slate-200 dark:border-slate-700" {...props} />,
               }}
             >
               {message.content}

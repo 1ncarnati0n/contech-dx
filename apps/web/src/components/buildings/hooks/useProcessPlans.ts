@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Building, BuildingProcessPlan, ProcessCategory } from '@/lib/types';
-import { getProcessModule } from '@/lib/data/process-modules';
 import { logger } from '@/lib/utils/logger';
 
 const DEFAULT_PROCESS_TYPES = {
@@ -79,7 +78,9 @@ export function useProcessPlans(projectId: string, buildings: Building[]) {
       }
     });
 
-    setProcessPlans(plans);
+    queueMicrotask(() => {
+      setProcessPlans(plans);
+    });
   }, [projectId, buildings]);
 
   // 💾 Auto-save to localStorage with debouncing

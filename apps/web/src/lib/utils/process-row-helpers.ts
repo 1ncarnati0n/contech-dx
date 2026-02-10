@@ -92,7 +92,7 @@ function resolveFloorParams(row: ProcessRow): { quantityFloorLabel: string; rang
     ? row.floor.id
     : undefined;
 
-  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
+  const quantityFloorLabel = row.category === '옥탑층' && row.floor
     ? row.floor.floorLabel.replace(/코어\d+-/, '')
     : row.floorLabel;
 

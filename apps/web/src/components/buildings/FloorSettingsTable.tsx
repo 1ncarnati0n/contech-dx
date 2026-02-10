@@ -301,9 +301,9 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
             continue;
           }
           
-          let rangeStart = current.floorNum;
+          const rangeStart = current.floorNum;
           let rangeEnd = current.floorNum;
-          let rangeFloors: Floor[] = [currentFloor];
+          const rangeFloors: Floor[] = [currentFloor];
           
           // 연속된 기준층 찾기
           let j = i + 1;
@@ -424,9 +424,9 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
       
       // 기준층인 경우 연속된 범위 찾기
       if (current.floorClass === '기준층') {
-        let rangeStart = current.floorNumber;
+        const rangeStart = current.floorNumber;
         let rangeEnd = current.floorNumber;
-        let rangeFloors: Floor[] = [current];
+        const rangeFloors: Floor[] = [current];
         
         // 연속된 기준층 찾기
         let j = i + 1;
@@ -698,7 +698,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
       }
 
       onUpdate();
-    } catch (error) {
+    } catch {
       toast.error('업데이트에 실패했습니다.');
     }
   };
@@ -865,4 +865,3 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
     </Card>
   );
 }
-

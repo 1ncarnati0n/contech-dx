@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/Form';
 import { Input, Textarea } from '@/components/ui/Input';
 import { createProject } from '@/lib/services/projects';
-import type { ProjectStatus } from '@/lib/types';
 import { logger } from '@/lib/utils/logger';
 
 // ============================================
@@ -329,4 +328,3 @@ export function ProjectCreateModal({
     </div>
   );
 }
-

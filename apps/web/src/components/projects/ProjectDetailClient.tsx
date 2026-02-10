@@ -27,7 +27,7 @@ import type { Project, Profile } from '@/lib/types';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
 import { ProjectSidebar } from './ProjectSidebar';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
+import { BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
 

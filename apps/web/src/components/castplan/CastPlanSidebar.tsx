@@ -1,8 +1,8 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
-import { Layers, Box, DoorOpen, Truck, FileSpreadsheet } from 'lucide-react';
-import type { CastPlanState, CastBlock, Gate, PumpCar } from '@/lib/types';
+import { Layers, Box, DoorOpen, Truck } from 'lucide-react';
+import type { CastPlanState, CastBlock } from '@/lib/types';
 import { BlockPropertiesPanel } from './panels/BlockPropertiesPanel';
 import { VolumeCalculationPanel } from './panels/VolumeCalculationPanel';
 
@@ -23,6 +23,7 @@ export function CastPlanSidebar({
   onGateSelect,
   onPumpCarSelect,
 }: CastPlanSidebarProps) {
+  void onStateChange;
   const selectedBlock = state.blocks.find((b) => b.id === state.selectedBlockId);
 
   // 총 면적 및 물량 계산

@@ -50,13 +50,8 @@ const HOLIDAYS = KOREAN_HOLIDAYS_ALL;
 // 커스텀 테마 토글 컴포넌트 (next-themes 기반)
 function CustomThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
+  if (!resolvedTheme) {
     return (
       <button
         className="flex items-center justify-center rounded p-2 transition-colors"
@@ -428,7 +423,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       logger.error('[handleTaskCreate] Full error:', error);
       toast.error(`태스크 생성 실패: ${errMsg}`);
     }
-  }, [setAppState, recalculateCPData, dataService]);
+  }, [setAppState, recalculateCPData, dataService, tasks.length]);
 
   // 태스크 순서 변경 핸들러
   const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
@@ -588,7 +583,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // 로컬 상태 업데이트
       setAppState(prev => {
         // 선택된 태스크들의 parentId를 새 그룹으로 변경
-        let newTasks = prev.tasks.map(t => {
+        const newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
             return { ...t, parentId: newGroupId };
           }
@@ -653,7 +648,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // 로컬 상태 업데이트
       setAppState(prev => {
         // 선택된 CP들의 parentId를 새 블럭으로 변경
-        let newTasks = prev.tasks.map(t => {
+        const newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
             return { ...t, parentId: newBlockId };
           }
@@ -840,7 +835,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   }, [dataService, setAppState]);
 
   // 뷰 전환 핸들러
-  const handleViewChange = useCallback((_view: ViewMode, _activeCPId?: string) => {
+  const handleViewChange = useCallback((view: ViewMode, activeCPId?: string) => {
+    void view;
+    void activeCPId;
     // no-op: reserved for future view change handling
   }, []);
 

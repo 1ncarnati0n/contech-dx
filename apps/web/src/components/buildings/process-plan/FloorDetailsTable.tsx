@@ -1,13 +1,12 @@
 'use client';
 
-import { FloorProcessDetails, ProcessCategory } from '@/lib/types';
+import { FloorProcessDetails } from '@/lib/types';
 
 interface FloorDetailsTableProps {
-  category: ProcessCategory;
   floorDetails: Record<string, FloorProcessDetails>;
 }
 
-export function FloorDetailsTable({ category, floorDetails }: FloorDetailsTableProps) {
+export function FloorDetailsTable({ floorDetails }: FloorDetailsTableProps) {
   const floors = Object.values(floorDetails);
 
   if (floors.length === 0) {

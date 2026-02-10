@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions/server';
+import { getRoleDisplayName, getRoleBadgeVariant } from '@/lib/permissions/server';
+import { Badge } from '@/components/ui/Badge';
 import { requireAuth } from '@/lib/auth/requireAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -53,13 +54,9 @@ export default async function ProfilePage() {
                 </p>
               )}
               <p className="text-sm text-slate-600 dark:text-primary-400 mb-2">{profile.email}</p>
-              <span
-                className={`inline-flex text-xs px-3 py-1 rounded-full border font-medium ${getRoleBadgeColor(
-                  profile.role
-                )}`}
-              >
+              <Badge variant={getRoleBadgeVariant(profile.role)} className="text-xs">
                 {getRoleDisplayName(profile.role)}
-              </span>
+              </Badge>
             </div>
 
             {/* 통계 */}

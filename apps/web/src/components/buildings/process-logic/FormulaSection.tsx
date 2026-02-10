@@ -20,7 +20,7 @@ interface FormulaSectionProps {
 }
 
 // UI 라벨과 실제 ProcessCategory 간의 매핑
-type EquipmentBaseLabel = '버림' | '기초' | '주동 지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
+type EquipmentBaseLabel = '버림' | '기초' | '주동 지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | '옥탑층';
 
 const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[] = [
   { label: '버림', defaultValue: 650 },
@@ -31,7 +31,7 @@ const EQUIPMENT_BASE_ITEMS: { label: EquipmentBaseLabel; defaultValue: number }[
   { label: '셋팅층', defaultValue: 400 },
   { label: '기준층', defaultValue: 320 },
   { label: '최상층', defaultValue: 230 },
-  { label: 'PH층', defaultValue: 230 },
+  { label: '옥탑층', defaultValue: 230 },
 ];
 
 // UI 라벨을 ProcessCategory로 매핑
@@ -44,7 +44,7 @@ const LABEL_TO_CATEGORY_MAP: Record<EquipmentBaseLabel, ProcessCategory> = {
   '일반층': '일반층',   // 일반층은 별도 카테고리 (200㎥)
   '기준층': '기준층',
   '최상층': '최상층',  // 최상층 카테고리
-  'PH층': 'PH층',
+  '옥탑층': '옥탑층',
 };
 
 const FORMULAS: Formula[] = [
@@ -115,21 +115,20 @@ function getEquipmentBaseByCategory(modules: ProcessModule[]): Record<ProcessCat
     '셋팅층': 400,
     '기준층': 320,
     '최상층': 230,
-    'PH층': 230,
     '옥탑층': 230,
     '지하주차장': 500,
     '일반층': 200,
   };
 
-  for (const module of modules) {
+  for (const mod of modules) {
     // 해당 카테고리의 콘크리트 타설 항목 찾기
-    const concreteItem = module.items.find(
+    const concreteItem = mod.items.find(
       (item) => item.equipmentCalculationBase !== undefined
     );
     if (concreteItem && concreteItem.equipmentCalculationBase !== undefined) {
       // 첫 번째로 찾은 값만 사용 (표준공정 우선)
-      if (defaults[module.category] === getDefaultValueForCategory(module.category)) {
-        defaults[module.category] = concreteItem.equipmentCalculationBase;
+      if (defaults[mod.category] === getDefaultValueForCategory(mod.category)) {
+        defaults[mod.category] = concreteItem.equipmentCalculationBase;
       }
     }
   }
@@ -145,7 +144,6 @@ function getDefaultValueForCategory(category: ProcessCategory): number {
     '셋팅층': 400,
     '기준층': 320,
     '최상층': 230,
-    'PH층': 230,
     '옥탑층': 230,
     '지하주차장': 500,
     '일반층': 200,
@@ -222,100 +220,100 @@ export function FormulaSection({
 
       {/* 섹션 콘텐츠 */}
       <div className="border-t border-zinc-200 dark:border-zinc-700">
-          <div className="p-4 space-y-3">
-            {FORMULAS.map((formula) => (
-              <div
-                key={formula.id}
-                className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden"
+        <div className="p-4 space-y-3">
+          {FORMULAS.map((formula) => (
+            <div
+              key={formula.id}
+              className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden"
+            >
+              {/* 공식 헤더 */}
+              <button
+                onClick={() => toggleFormula(formula.id)}
+                className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               >
-                {/* 공식 헤더 */}
-                <button
-                  onClick={() => toggleFormula(formula.id)}
-                  className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium text-zinc-900 dark:text-white">
-                      {formula.name}
-                    </span>
-                    <code className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded text-sm font-mono text-zinc-700 dark:text-zinc-300">
-                      {formula.formula}
-                    </code>
-                  </div>
-                  {expandedFormula === formula.id ? (
-                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-zinc-400" />
-                  )}
-                </button>
-
-                {/* 공식 상세 */}
-                {expandedFormula === formula.id && (
-                  <div className="p-4 space-y-3 bg-white dark:bg-zinc-900">
-                    {/* 변수 설명 */}
-                    <div>
-                      <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        변수 설명
-                      </h4>
-                      <ul className="space-y-1">
-                        {formula.variables.map((variable, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm">
-                            <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-xs font-mono text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
-                              {variable.name}
-                            </code>
-                            <span className="text-zinc-600 dark:text-zinc-400">
-                              {variable.description}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* 예제 */}
-                    {formula.example && (
-                      <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                        <div>
-                          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                            예제:{' '}
-                          </span>
-                          <span className="text-sm text-blue-600 dark:text-blue-400">
-                            {formula.example}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-zinc-900 dark:text-white">
+                    {formula.name}
+                  </span>
+                  <code className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded text-sm font-mono text-zinc-700 dark:text-zinc-300">
+                    {formula.formula}
+                  </code>
+                </div>
+                {expandedFormula === formula.id ? (
+                  <ChevronDown className="w-4 h-4 text-zinc-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-zinc-400" />
                 )}
+              </button>
+
+              {/* 공식 상세 */}
+              {expandedFormula === formula.id && (
+                <div className="p-4 space-y-3 bg-white dark:bg-zinc-900">
+                  {/* 변수 설명 */}
+                  <div>
+                    <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      변수 설명
+                    </h4>
+                    <ul className="space-y-1">
+                      {formula.variables.map((variable, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-xs font-mono text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                            {variable.name}
+                          </code>
+                          <span className="text-zinc-600 dark:text-zinc-400">
+                            {variable.description}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* 예제 */}
+                  {formula.example && (
+                    <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                          예제:{' '}
+                        </span>
+                        <span className="text-sm text-blue-600 dark:text-blue-400">
+                          {formula.example}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* 부위별 대당 타설량 기준표 (읽기 전용) */}
+        <div className="border-t border-zinc-200 dark:border-zinc-700 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              부위별 대당 타설량 기준
+            </h4>
+          </div>
+
+          {/* 읽기 모드: 값만 표시 */}
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
+            {EQUIPMENT_BASE_ITEMS.map((item) => (
+              <div
+                key={item.label}
+                className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
+              >
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {item.label}
+                </span>
+                <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  {equipmentBaseValues[item.label]}㎥
+                </span>
               </div>
             ))}
           </div>
-
-          {/* 부위별 대당 타설량 기준표 (읽기 전용) */}
-          <div className="border-t border-zinc-200 dark:border-zinc-700 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                부위별 대당 타설량 기준
-              </h4>
-            </div>
-
-            {/* 읽기 모드: 값만 표시 */}
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
-              {EQUIPMENT_BASE_ITEMS.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex flex-col items-center p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
-                >
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {item.label}
-                  </span>
-                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                    {equipmentBaseValues[item.label]}㎥
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
+      </div>
     </Card>
   );
 }

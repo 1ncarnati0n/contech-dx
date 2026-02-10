@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
@@ -102,7 +102,10 @@ export default function ProfileEditForm({ profile }: ProfileEditFormProps) {
     });
   };
 
-  const bioValue = form.watch('bio') || '';
+  const bioValue = useWatch({
+    control: form.control,
+    name: 'bio',
+  }) || '';
 
   return (
     <Form {...form}>

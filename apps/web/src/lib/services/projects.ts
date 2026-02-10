@@ -117,7 +117,7 @@ export async function createProject(
 
   // Clean data: Remove undefined values and empty strings
   const cleanedProject = Object.fromEntries(
-    Object.entries(projectData).filter(([_, v]) => v !== undefined && v !== '')
+    Object.entries(projectData).filter(([, v]) => v !== undefined && v !== '')
   );
 
   logger.debug('🔧 Cleaned project data for Supabase:', cleanedProject);

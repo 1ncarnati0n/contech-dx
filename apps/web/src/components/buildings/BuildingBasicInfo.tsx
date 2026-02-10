@@ -55,6 +55,7 @@ export function BuildingBasicInfo({
   onGenerationComplete,
   onBeforeRegenerate,
 }: BuildingBasicInfoProps) {
+  void isFirstBuilding;
   // ============================================
   // State 관리
   // ============================================
@@ -169,16 +170,14 @@ export function BuildingBasicInfo({
         setCoreGroundFloors([]);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coreCount]);
+  }, [coreCount, coreGroundFloors, groundCount]);
 
   // 단위세대 구성 변경 시 코어개수 자동 업데이트
   useEffect(() => {
     if (unitTypePattern.length > 0 && calculatedCoreCount !== coreCount) {
       setCoreCount(calculatedCoreCount);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calculatedCoreCount, unitTypePattern.length]);
+  }, [calculatedCoreCount, coreCount, unitTypePattern.length]);
 
   // building prop 변경 시 상태 동기화
   useEffect(() => {

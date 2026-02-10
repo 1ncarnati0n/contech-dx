@@ -87,12 +87,8 @@ export function useAsyncData<T>(
 
   // deps 변경 추적을 위한 ref
   const depsRef = useRef(deps);
-  const depsChangedRef = useRef(0);
-
-  // deps가 실제로 변경된 경우에만 카운터 증가
   if (!depsAreSame(depsRef.current, deps)) {
     depsRef.current = deps;
-    depsChangedRef.current += 1;
   }
 
   const fetchData = useCallback(async () => {
@@ -110,7 +106,7 @@ export function useAsyncData<T>(
     } finally {
       setLoading(false);
     }
-  }, [depsChangedRef.current]); // deps 변경 시에만 새 함수 생성
+  }, []); // fetcherRef를 통해 최신 fetcher를 참조
 
   useEffect(() => {
     if (autoFetch) {

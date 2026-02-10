@@ -20,7 +20,9 @@ export function KPICards() {
     ];
 
     useEffect(() => {
-        setIsMounted(true);
+        queueMicrotask(() => {
+            setIsMounted(true);
+        });
     }, []);
 
     return (

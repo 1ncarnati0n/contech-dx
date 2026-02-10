@@ -16,6 +16,7 @@ export function ProjectImagePlaceholder({
 }: ProjectImagePlaceholderProps) {
   return (
     <div
+      aria-label={projectName}
       className={cn(
         'w-full h-full flex flex-col items-center justify-center',
         'bg-gradient-to-br from-zinc-100 via-zinc-50 to-zinc-100',

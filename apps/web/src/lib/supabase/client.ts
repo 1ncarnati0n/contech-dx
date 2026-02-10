@@ -24,7 +24,7 @@ export function createClient() {
     authListenerInitialized = true;
 
     // 세션 에러 발생 시 자동으로 세션 정리 및 리다이렉트
-    supabaseInstance.auth.onAuthStateChange((event, session) => {
+    supabaseInstance.auth.onAuthStateChange(() => {
       // 토큰 갱신 및 로그아웃 이벤트 처리
       // 프로덕션에서는 로깅 제거하여 성능 최적화
     });

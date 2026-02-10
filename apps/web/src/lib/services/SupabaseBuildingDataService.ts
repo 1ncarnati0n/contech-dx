@@ -19,7 +19,6 @@ import type {
   BuildingProcessPlanRow,
   PouringSectionRow,
   BuildingInsert,
-  FloorInsert,
   FloorTradeInsert,
   TradeData,
 } from '@/lib/types';
@@ -81,20 +80,6 @@ function rowToFloorTrade(row: FloorTradeRow): FloorTrade {
     buildingId: row.building_id,
     tradeGroup: row.trade_group,
     trades: row.trades,
-  };
-}
-
-/**
- * Floor -> FloorInsert 변환
- */
-function floorToInsert(floor: Floor): FloorInsert {
-  return {
-    building_id: floor.buildingId,
-    floor_label: floor.floorLabel,
-    floor_number: floor.floorNumber,
-    level_type: floor.levelType,
-    floor_class: floor.floorClass,
-    height: floor.height,
   };
 }
 
@@ -361,7 +346,7 @@ export async function updateBuilding(
   }
 
   // 업데이트 실행
-  const { data: updatedRow, error: updateError } = await supabase
+  const { error: updateError } = await supabase
     .from('buildings')
     .update(updateData)
     .eq('id', buildingId)
@@ -867,4 +852,3 @@ export function invalidateCache(projectId: string): void {
 export function invalidateAllCache(): void {
   buildingsCache.invalidateAll();
 }
-

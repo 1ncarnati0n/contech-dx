@@ -83,6 +83,7 @@ export default function Sidebar({
   onCreateSession,
   onDeleteSession,
 }: SidebarProps) {
+  void isAdmin;
   const [newStoreName, setNewStoreName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isStoreExpanded, setIsStoreExpanded] = useState(true);

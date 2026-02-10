@@ -126,42 +126,16 @@ npm run lint                        # 전체 lint
 npm run clean                       # node_modules 정리
 ```
 
-## Code Review (2025-02)
+## Code Quality Status
 
-### 리팩토링 요약
+기준일: `2026-02-10`
 
-| 대상 파일 | Before | After | 감소율 |
-|-----------|--------|-------|--------|
-| `FloorTradeTable.tsx` | 1,977줄 | 595줄 | -70% |
-| `DetailedFloorTradeTable.tsx` | 2,001줄 | 559줄 | -72% |
+- `apps/web` 린트 상태: `errors: 0`, `warnings: 0`
+- 검증 명령:
 
-### 추출된 공유 모듈
+```bash
+cd apps/web
+npx eslint src
+```
 
-**커스텀 훅 (6개):**
-- `useProcessPlanState` — 공정계획 공유 상태 (save/discard/markDirty)
-- `useBuildingOperations` — 동 CRUD (load/delete/reorder/rename)
-- `useProcessTypeChange` — 공정타입 변경 핸들러
-- `useTradeTableState` — 물량테이블 공유 상태 + building 동기화
-- `useCellSelection` — 드래그 선택 + 붙여넣기 인프라
-- `useTradeOperations` — 물량 CRUD (getTrade/updateTrade/save/discard)
-
-**공유 컴포넌트 (1개):**
-- `TradeInputCell` — Excel 스타일 수식 지원 입력 셀 (=수식, localStorage 수식 저장, 한국어 숫자 포맷)
-
-### 접근성(A11y) 개선
-- 테이블 `<caption>`, `scope="col"` / `scope="colgroup"` 속성 추가
-- `TradeInputCell` Input에 `aria-label` 추가 (셀 주소 + 필드명)
-- `window.confirm()` → `ConfirmDialog` 컴포넌트 교체 (스크린리더 호환)
-
-### 테스트 추가 (3개 파일, 71개 테스트)
-- `floorIdUtils.test.ts` — 층 ID 유틸리티 (special/dummy/ranged/UUID)
-- `tradeDataHelpers.test.ts` — 물량 데이터 접근/변형 헬퍼
-- `calculateFormula.test.ts` — 수식 평가 및 보안 검증
-
-### ESLint 설정 정비
-- `eslint-plugin-react-compiler` 추가 (React Compiler 호환성)
-- `no-console: warn` 규칙 추가 (logger 유틸 사용 유도)
-
-## Changelog
-
-상세 변경 이력은 [CHANGELOG.md](./CHANGELOG.md) 참고.
+- 관련 진행 문서: `docs/refactoring_status.md`

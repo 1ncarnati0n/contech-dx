@@ -268,7 +268,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
         // 카테고리별 상세 정보 추출
         const categories: CategoryPreview[] = [];
         for (const category of CATEGORY_ORDER) {
-          if (category === 'PH층') continue;
+          // PH층은 옥탑층에 통합됨 - 별도 skip 불필요
 
           const processInfo = plan.processes[category];
 
@@ -276,10 +276,10 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           if (category === '지하층(층고6.5m이상)') {
             if (!building.meta?.floorCount?.hasHighCeilingEquipmentRoom) continue;
             const processType = processInfo?.processType || '표준공정';
-            const module = getProcessModule(category, processType);
+            const mod = getProcessModule(category, processType);
             let days = processInfo?.days || 0;
-            if (days === 0 && module) {
-              days = calculateModuleWorkDays(building, module, category);
+            if (days === 0 && mod) {
+              days = calculateModuleWorkDays(building, mod, category);
             }
             categories.push({
               category, days, processType, floorLabelsDisplay: '',
@@ -296,16 +296,16 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           if (!processInfo && !hasFloors) continue;
 
           const processType = processInfo?.processType || '표준공정';
-          const module = getProcessModule(category, processType);
+          const mod = getProcessModule(category, processType);
           let days = processInfo?.days || 0;
 
           // 저장된 days가 0이면 on-the-fly 계산
-          if (days === 0 && module) {
+          if (days === 0 && mod) {
             if (hasFloors) {
               days = floorLabels.reduce((sum, fl) =>
-                sum + calculateModuleWorkDaysForFloor(building, module, category, fl), 0);
+                sum + calculateModuleWorkDaysForFloor(building, mod, category, fl), 0);
             } else {
-              days = calculateModuleWorkDays(building, module, category);
+              days = calculateModuleWorkDays(building, mod, category);
             }
           }
 

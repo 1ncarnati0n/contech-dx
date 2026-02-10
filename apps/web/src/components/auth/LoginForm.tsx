@@ -62,7 +62,7 @@ export default function LoginForm() {
 
       router.push('/home');
       router.refresh();
-    } catch (err) {
+    } catch {
       toast.error('오류 발생', {
         description: '로그인 중 오류가 발생했습니다.',
       });

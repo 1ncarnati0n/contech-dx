@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Users, Plus, Edit2, Trash2, UserPlus, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, Badge } from '@/components/ui';
@@ -10,8 +11,7 @@ import {
   updateProjectMemberRole,
   removeProjectMember,
 } from '@/lib/services/projectMembers';
-import { getAllUsersClient } from '@/lib/services/users.client';
-import type { ProjectMember, ProjectMemberRole, Profile } from '@/lib/types';
+import type { ProjectMember, ProjectMemberRole } from '@/lib/types';
 import { AddMemberModal } from './AddMemberModal';
 import { logger } from '@/lib/utils/logger';
 
@@ -157,9 +157,11 @@ export function ProjectTeamPage({ projectId, projectCreatedBy }: ProjectTeamPage
                     {/* Avatar */}
                     <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
                       {member.user?.avatar_url ? (
-                        <img
+                        <Image
                           src={member.user.avatar_url}
                           alt={member.user.display_name || member.user.email}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 rounded-full"
                         />
                       ) : (

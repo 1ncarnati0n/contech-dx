@@ -10,8 +10,7 @@ import type { Building, BuildingMeta, Floor, FloorTrade } from '@/lib/types';
 import { createBuilding, getBuildings, deleteBuilding, updateBuilding, reorderBuildings, updateBuildingFloorsAndTrades } from '@/lib/services/buildings';
 import { isSpecialFloorId, parseSpecialFloorId, createSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import { toast } from 'sonner';
-import { Spinner, Button } from '@/components/ui';
-import { logger } from '@/lib/utils/logger';
+import { Spinner } from '@/components/ui';
 
 interface Props {
   projectId: string;
@@ -22,7 +21,6 @@ export function DataInputPage({ projectId }: Props) {
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [commonMeta, setCommonMeta] = useState<BuildingMeta | null>(null);
   const [isGeneratingFloors, setIsGeneratingFloors] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationMessage, setGenerationMessage] = useState('');
@@ -39,7 +37,7 @@ export function DataInputPage({ projectId }: Props) {
       if (data.length > 0 && activeBuildingIndex >= data.length) {
         setActiveBuildingIndex(0);
       }
-    } catch (error) {
+    } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     }
   }, [projectId, activeBuildingIndex]);
@@ -49,25 +47,6 @@ export function DataInputPage({ projectId }: Props) {
       loadBuildings();
     }
   }, [isInitialized, loadBuildings]);
-
-  // 공통 메타데이터가 변경되면 모든 동에 자동 적용
-  useEffect(() => {
-    if (commonMeta && buildings.length > 0) {
-      // 모든 동에 공통 메타데이터 적용
-      const applyPromises = buildings.map(building => 
-        updateBuilding(building.id, projectId, {
-          meta: commonMeta,
-        }).catch((error) => {
-          logger.error(`Failed to apply common meta to ${building.buildingName}:`, error);
-          return null;
-        })
-      );
-      
-      Promise.all(applyPromises).then(() => {
-        loadBuildings();
-      });
-    }
-  }, [commonMeta, projectId]); // commonMeta가 변경될 때만 실행
 
   // 동 이름에서 번호 추출 및 다음 번호 찾기
   const getNextBuildingNumber = useCallback((existingBuildings: Building[]): number => {
@@ -94,7 +73,7 @@ export function DataInputPage({ projectId }: Props) {
     setIsLoading(true);
     try {
       const newBuildings: Building[] = [];
-      let nextNumber = getNextBuildingNumber(buildings);
+      const nextNumber = getNextBuildingNumber(buildings);
       
       // 입력한 동수에서 기존 동 수를 빼서 추가 생성할 개수 계산
       const existingCount = buildings.length;
@@ -118,8 +97,6 @@ export function DataInputPage({ projectId }: Props) {
         // 103동이 있으면 103동의 메타데이터와 층 설정 복사
         defaultMeta = JSON.parse(JSON.stringify(referenceBuilding.meta));
         referenceFloors = JSON.parse(JSON.stringify(referenceBuilding.floors));
-      } else if (commonMeta) {
-        defaultMeta = commonMeta;
       } else {
         defaultMeta = {
           totalUnits: 0,
@@ -210,17 +187,12 @@ export function DataInputPage({ projectId }: Props) {
       setActiveBuildingIndex(updatedBuildings.length - 1);
       
       toast.success(`${additionalCount}개의 동이 추가 생성되었습니다. (총 ${updatedBuildings.length}개)`);
-    } catch (error) {
+    } catch {
       toast.error('동 생성에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, buildings, commonMeta, getNextBuildingNumber]);
-
-  // 전동 공통적용 메타데이터 저장
-  const handleApplyCommonMeta = useCallback((meta: BuildingMeta) => {
-    setCommonMeta(meta);
-  }, []);
+  }, [projectId, buildings, getNextBuildingNumber]);
 
   // 층 생성 진행률 콜백
   const handleGenerationProgress = useCallback((progress: number, message: string) => {
@@ -274,7 +246,7 @@ export function DataInputPage({ projectId }: Props) {
       } else if (activeBuildingIndex < fromIndex && activeBuildingIndex >= toIndex) {
         setActiveBuildingIndex(activeBuildingIndex + 1);
       }
-    } catch (error) {
+    } catch {
       toast.error('동 순서 변경에 실패했습니다.');
     }
   }, [projectId, loadBuildings, activeBuildingIndex]);
@@ -310,7 +282,7 @@ export function DataInputPage({ projectId }: Props) {
       }
       
       toast.success('동이 삭제되었습니다.');
-    } catch (error) {
+    } catch {
       toast.error('동 삭제에 실패했습니다.');
     }
   }, [projectId, buildings, activeBuildingIndex]);
@@ -397,10 +369,9 @@ export function DataInputPage({ projectId }: Props) {
         </BuildingTabs>
       ) : (
         <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-          <p>동 수를 입력하고 "동 탭 생성" 버튼을 클릭하여 시작하세요.</p>
+          <p>동 수를 입력하고 &quot;동 탭 생성&quot; 버튼을 클릭하여 시작하세요.</p>
         </div>
       )}
     </div>
   );
 }
-

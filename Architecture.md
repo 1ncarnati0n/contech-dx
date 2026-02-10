@@ -18,6 +18,7 @@
 8. [주요 아키텍처 패턴](#8-주요-아키텍처-패턴)
 9. [물량 해석 시스템 (Quantity Resolution)](#9-물량-해석-시스템-quantity-resolution)
 10. [대형 파일 목록 (리팩토링 후보)](#10-대형-파일-목록-리팩토링-후보)
+11. [리팩토링/품질 현황](#11-리팩토링품질-현황)
 
 ---
 
@@ -76,7 +77,7 @@ contech-dx/
 └── package.json                  # npm workspaces 루트
 ```
 
-**소스 규모:** apps/web ~282 TS/TSX 파일, sa-gantt-lib ~142 TS/TSX 파일, 총 ~88,000 LOC
+**소스 규모:** apps/web ~270 TS/TSX 파일, sa-gantt-lib ~139 TS/TSX 파일, 총 ~87,000 LOC
 
 ---
 
@@ -710,4 +711,18 @@ lib/
 | `sa-gantt-lib/components/GanttChart/index.tsx` | 613 | 간트 오케스트레이터 |
 | `components/projects/ProjectDetailClient.tsx` | 588 | 프로젝트 상세 |
 
-**패턴 관찰:** `buildings/` 디렉토리에 대형 파일이 집중 (상위 6개 중 4개). 공정표 관련 로직의 모듈화가 가장 큰 개선 효과를 가져올 수 있습니다.
+---
+
+## 11. 리팩토링/품질 현황
+
+기준일: `2026-02-10`
+
+- 대상: `apps/web`
+- 결과: `npx eslint src` 기준 `errors: 0`, `warnings: 0`
+- 주요 반영 사항:
+  - 미사용 import/변수 및 dead code 정리
+  - `react-hooks/exhaustive-deps` 및 `set-state-in-effect` 패턴 정리
+  - `next/no-img-element`를 `next/image` 기반으로 전환
+  - 타입 안정성 보강(`no-explicit-any`, 빈 타입 선언 정리)
+
+상세 로그: `docs/refactoring_status.md`

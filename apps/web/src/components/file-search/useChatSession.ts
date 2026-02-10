@@ -33,11 +33,6 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
-  // 초기 로드
-  useEffect(() => {
-    loadAllSessions();
-  }, []);
-
   // 전체 세션 목록 로드
   const loadAllSessions = useCallback(() => {
     const savedSessions = localStorage.getItem('chat_sessions_all');
@@ -52,6 +47,11 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
       }
     }
   }, []);
+
+  // 초기 로드
+  useEffect(() => {
+    loadAllSessions();
+  }, [loadAllSessions]);
 
   // 메시지 로드 (세션 선택 시)
   useEffect(() => {
@@ -274,4 +274,3 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
 }
 
 export type ChatSessionState = ReturnType<typeof useChatSession>;
-

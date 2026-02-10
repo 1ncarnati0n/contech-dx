@@ -19,7 +19,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
 
     if (hover) {
       // motion.div에 전달할 props 추출 (HTML 속성만)
-      const { onClick, onMouseEnter, onMouseLeave, style, id, role, tabIndex, 'aria-label': ariaLabel, ...rest } = props;
+      const { onClick, onMouseEnter, onMouseLeave, style, id, role, tabIndex, 'aria-label': ariaLabel } = props;
 
       // motion.div용 props 구성
       const motionProps: HTMLMotionProps<"div"> = {

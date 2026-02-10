@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Search, UserPlus, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -39,6 +40,7 @@ export function AddMemberModal({
   projectId,
   existingMemberIds,
 }: AddMemberModalProps) {
+  void projectId;
   const [users, setUsers] = useState<Profile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,16 +48,32 @@ export function AddMemberModal({
   const [selectedRole, setSelectedRole] = useState<ProjectMemberRole>('member');
   const [isLoading, setIsLoading] = useState(false);
 
+  const loadUsers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const allUsers = await getAllUsersClient();
+      // 이미 멤버로 추가된 사용자 제외
+      const availableUsers = allUsers.filter((user) => !existingMemberIds.includes(user.id));
+      setUsers(availableUsers);
+      setFilteredUsers(availableUsers);
+    } catch (error) {
+      logger.error('Failed to load users:', error);
+      toast.error('사용자 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [existingMemberIds]);
+
   useEffect(() => {
     if (isOpen) {
-      loadUsers();
+      void loadUsers();
     } else {
       // 모달 닫을 때 상태 초기화
       setSearchQuery('');
       setSelectedUserId('');
       setSelectedRole('member');
     }
-  }, [isOpen]);
+  }, [isOpen, loadUsers]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -71,22 +89,6 @@ export function AddMemberModal({
       );
     }
   }, [searchQuery, users]);
-
-  const loadUsers = async () => {
-    try {
-      setIsLoading(true);
-      const allUsers = await getAllUsersClient();
-      // 이미 멤버로 추가된 사용자 제외
-      const availableUsers = allUsers.filter((user) => !existingMemberIds.includes(user.id));
-      setUsers(availableUsers);
-      setFilteredUsers(availableUsers);
-    } catch (error) {
-      logger.error('Failed to load users:', error);
-      toast.error('사용자 목록을 불러오는데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = () => {
     if (!selectedUserId) {
@@ -141,9 +143,11 @@ export function AddMemberModal({
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
                         {user.avatar_url ? (
-                          <img
+                          <Image
                             src={user.avatar_url}
                             alt={user.display_name || user.email || ''}
+                            width={32}
+                            height={32}
                             className="w-8 h-8 rounded-full"
                           />
                         ) : (

@@ -6,7 +6,7 @@
  */
 
 // 기존 utils.ts의 cn 함수 re-export
-export { cn, isError, getErrorMessage } from '../utils';
+export { cn } from '../utils';
 
 // 포맷팅 유틸리티
 export {

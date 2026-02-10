@@ -38,7 +38,7 @@ export const GLOSSARY: GlossaryTerm[] = [
   },
   {
     term: '사이클 공정',
-    definition: '셋팅층, PH층, 일반층에서 반복되는 공정으로, 5일/6일/7일/8일 사이클로 진행됩니다.',
+    definition: '셋팅층, 옥탑층, 일반층에서 반복되는 공정으로, 5일/6일/7일/8일 사이클로 진행됩니다.',
     category: 'process',
     relatedTerms: ['셋팅층', '표준공정'],
     example: '6일 사이클: 순작업일 4일 + 양생 2일 = 6일',
@@ -57,7 +57,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     relatedTerms: ['타설구간'],
     example: '가설공사 + 흙막이 + 토공사 + 버림 + 기초 + 지하층까지의 가장 긴 구간',
   },
-  
+
   // 재료 관련
   {
     term: '갱폼',
@@ -87,7 +87,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     relatedTerms: ['형틀'],
     example: '거푸집 해체 면적 1,447㎡',
   },
-  
+
   // 계산 관련
   {
     term: '총 작업인원',
@@ -117,7 +117,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     relatedTerms: ['대당 타설량'],
     example: '콘크리트 400㎥ ÷ 200㎥/대 = 2대',
   },
-  
+
   // 구조 관련
   {
     term: '기준층',

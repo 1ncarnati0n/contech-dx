@@ -85,7 +85,6 @@ export const CATEGORY_ORDER: ProcessCategory[] = [
   '셋팅층',
   '기준층',
   '최상층',
-  'PH층',
   '옥탑층',
 ];
 
@@ -410,16 +409,16 @@ function convertFloorGroup(
 
   // 해당 층의 processType 결정
   const floorProcessType = getFloorProcessType(plan, category, processInfo, floorLabel);
-  const module = getProcessModule(category, floorProcessType);
+  const mod = getProcessModule(category, floorProcessType);
 
-  if (!module) {
+  if (!mod) {
     return { tasks, endDate: startDate };
   }
 
   // floorDetail.items가 있으면 기존 데이터, 없으면 on-the-fly 계산
   const items = (floorDetail?.items && floorDetail.items.length > 0)
     ? floorDetail.items
-    : computeFloorItems(building, module, plan, category, floorLabel);
+    : computeFloorItems(building, mod, plan, category, floorLabel);
 
   if (!items || items.length === 0) {
     return { tasks, endDate: startDate };
@@ -430,7 +429,7 @@ function convertFloorGroup(
     tasks,
     groupId,
     items,
-    module.items,
+    mod.items,
     plan,
     category,
     floorLabel,
@@ -646,18 +645,10 @@ export function getFloorLabelsForCategory(
           .map(f => f.floorLabel)
       );
 
-    case 'PH층':
-      return expandFloorLabels(
-        building.floors
-          .filter(f => f.floorClass === 'PH층')
-          .sort((a, b) => a.floorNumber - b.floorNumber)
-          .map(f => f.floorLabel)
-      );
-
     case '옥탑층':
       return expandFloorLabels(
         building.floors
-          .filter(f => f.floorClass === '옥탑층')
+          .filter(f => f.floorClass === '옥탑층' || f.floorClass === 'PH층')
           .sort((a, b) => a.floorNumber - b.floorNumber)
           .map(f => f.floorLabel)
       );
@@ -780,23 +771,6 @@ function hasFloorItems(
   return Object.values(floorDetails).some(
     (fd) => fd.items && fd.items.length > 0
   );
-}
-
-/**
- * 층 라벨을 floorNumber 기준 오름차순 정렬
- * B3→B2→B1→1F→2F→... 순서
- */
-function getSortedFloorLabels(
-  floorDetails: Record<string, FloorProcessDetails>,
-  building: Building
-): string[] {
-  const labels = Object.keys(floorDetails);
-
-  return labels.sort((a, b) => {
-    const numA = getFloorSortNumber(a, building);
-    const numB = getFloorSortNumber(b, building);
-    return numA - numB;
-  });
 }
 
 /**

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { GeminiFileSearchStore } from '@/lib/types';
-import { getErrorMessage } from '@/lib/utils';
+
 import { geminiStoreRequest } from '@/lib/utils/geminiApi';
 import { checkAuth } from '@/lib/utils/apiAuth';
 import { logger } from '@/lib/utils/logger';
@@ -45,7 +45,7 @@ export async function GET() {
   } catch (error: unknown) {
     logger.error('Error listing file search stores:', error);
     return NextResponse.json(
-      { success: false, error: getErrorMessage(error) },
+      { success: false, error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.' },
       { status: 500 }
     );
   }

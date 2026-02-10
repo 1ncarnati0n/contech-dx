@@ -4,12 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Bot,
   ChevronDown,
-  X,
   Send,
   Loader2,
   MessageSquare,
   Square,
-  RefreshCw,
   AlertTriangle,
   Trash2,
   GripVertical,

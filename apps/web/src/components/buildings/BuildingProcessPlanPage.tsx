@@ -1,12 +1,13 @@
 'use client';
 
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { Card, CardContent, Input } from '@/components/ui';
 import { SaveStatusBar } from './SaveStatusBar';
-import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor, FloorProcessDetails } from '@/lib/types';
+import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
+import type { TradeFieldKey, TradeSubFieldKey } from '@/lib/types/process-quantity';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { Calendar, ChevronDown, ChevronUp, Building2, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Building2, Info } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
 import { getProcessModule } from '@/lib/data/process-modules';
 import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
@@ -16,13 +17,9 @@ import { getCellReferenceForRow } from '@/lib/utils/process-cell-reference';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
-  calculateTotalWorkDays,
   calculateWorkDaysWithRounding,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
-  calculateDailyInputWorkersByWorkDays,
-  calculateIndirectWorkers,
-  calculateIndirectEquipment,
 } from '@/lib/utils/process-calculation';
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
@@ -42,13 +39,12 @@ const PROCESS_TYPE_OPTIONS: Record<ProcessCategory, ProcessType[]> = {
   '기초': ['표준공정'],
   '주동 지하층': ['표준공정'],
   '지하층(층고6.5m이상)': ['표준공정'],
-  '셋팅층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
+  '셋팅층': ['표준공정'],
   '기준층': ['표준공정'],
   '최상층': ['표준공정'],
-  'PH층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
   '옥탑층': ['표준공정'],
   '지하주차장': ['표준공정'],
-  '일반층': ['표준공정', '5일 사이클', '6일 사이클', '7일 사이클', '8일 사이클'],
+  '일반층': ['표준공정'],
 };
 
 // 기본 공정 타입
@@ -60,7 +56,6 @@ const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
   '셋팅층': '표준공정',
   '기준층': '표준공정',
   '최상층': '표준공정',
-  'PH층': '표준공정',
   '옥탑층': '표준공정',
   '지하주차장': '표준공정',
   '일반층': '표준공정',
@@ -69,7 +64,7 @@ const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
 export function BuildingProcessPlanPage({ projectId }: Props) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
-  const [isLoading, setIsLoading] = useState(false);
+
   const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
   const [dirtyBuildings, setDirtyBuildings] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
@@ -106,11 +101,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         return next;
       });
       toast.success('공정계획이 저장되었습니다.');
-    } catch (error) {
+    } catch {
       toast.error('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
     }
+    setIsSaving(false);
   }, [processPlans]);
 
   // 변경사항 취소 함수 — localStorage에서 재로드
@@ -133,7 +127,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         next.delete(buildingId);
         return next;
       });
-    } catch (error) {
+    } catch {
       toast.error('복원에 실패했습니다.');
     }
   }, []);
@@ -164,7 +158,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
       standardFloors.forEach(floor => {
         // 코어 정보 제거 (예: "코어1-3F" -> "3F")
-        let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+        const cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
         const rangeMatch = cleanLabel.match(/(\d+)~(\d+)F/);
         if (rangeMatch) {
           const start = parseInt(rangeMatch[1], 10);
@@ -215,27 +209,6 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     return map;
   }, [buildings]);
 
-  // 지하층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반
-  const getBasementFloors = useMemo(() => {
-    const map = new Map<string, Floor[]>();
-    buildings.forEach(building => {
-      // 동기본정보 페이지의 층설정 데이터(building.floors)에서 지하층 추출
-      const basementFloors = building.floors
-        .filter(f => f.levelType === '지하')
-        .map(floor => {
-          // 코어 정보 제거 (예: "코어1-B1" -> "B1")
-          let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
-          return {
-            ...floor,
-            floorLabel: cleanLabel,
-          };
-        })
-        .sort((a, b) => a.floorNumber - b.floorNumber); // B2, B1 순서
-      map.set(building.id, basementFloors);
-    });
-    return map;
-  }, [buildings]);
-
   // 셋팅층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반
   const getSettingFloors = useMemo(() => {
     const map = new Map<string, Floor[]>();
@@ -245,7 +218,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         .filter(f => f.floorClass === '셋팅층')
         .map(floor => {
           // 코어 정보 제거 (예: "코어1-1F" -> "1F")
-          let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+          const cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
           return {
             ...floor,
             floorLabel: cleanLabel,
@@ -266,7 +239,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         .filter(f => f.floorClass === '일반층')
         .map(floor => {
           // 코어 정보 제거 (예: "코어1-1F" -> "1F")
-          let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+          const cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
           return {
             ...floor,
             floorLabel: cleanLabel,
@@ -287,7 +260,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         .filter(f => f.floorClass === '옥탑층')
         .map(floor => {
           // 코어 정보 제거 (예: "코어1-옥탑1층" -> "옥탑1층")
-          let cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
+          const cleanLabel = floor.floorLabel.replace(/코어\d+-/, '');
           return {
             ...floor,
             floorLabel: cleanLabel,
@@ -302,7 +275,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   // 동 목록 로드
   useEffect(() => {
     loadBuildings();
-  }, [projectId]);
+  }, [loadBuildings]);
 
   // 🔥 Stage 1 Optimization: Memoize floorTrades hash to avoid JSON.stringify on every render
   const floorTradesHash = useMemo(() => {
@@ -322,13 +295,13 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         if (!plan) return;
 
         const processType = plan.processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-        const module = getProcessModule(category, processType);
+        const mod = getProcessModule(category, processType);
 
-        if (!module || module.items.length === 0) return;
+        if (!mod || mod.items.length === 0) return;
 
         // 🚀 Stage 2 Optimization: Use consolidated calculation utility
         // Replaces 35 lines of duplicate logic with single function call
-        const sumDays = calculateModuleWorkDays(building, module, category);
+        const sumDays = calculateModuleWorkDays(building, mod, category);
 
         // 계산된 일수로 업데이트 (기존 일수와 다를 때만)
         const currentDays = plan.processes[category]?.days || 0;
@@ -360,11 +333,13 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   }, [
     floorTradesHash, // 🔥 Stage 1: Use memoized hash instead of JSON.stringify
     processPlans.size, // processPlans 변경 감지 (셀렉트박스 변경 시)
+    buildings,
+    processPlans,
+    calculateTotalDays,
   ]);
 
   const loadBuildings = useCallback(async () => {
     try {
-      setIsLoading(true);
       const data = await getBuildings(projectId);
       setBuildings(data);
 
@@ -390,8 +365,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
               if (storedPlanJson) {
                 existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
               }
-            } catch (error) {
-              logger.error('Failed to load process plan from localStorage:', error);
+            } catch {
+              logger.error('Failed to load process plan from localStorage:');
             }
           }
 
@@ -417,10 +392,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         });
         return plans;
       });
-    } catch (error) {
+    } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
     }
   }, [projectId]);
 
@@ -465,7 +438,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       });
 
       toast.success('동이 삭제되었습니다.');
-    } catch (error) {
+    } catch {
       toast.error('동 삭제에 실패했습니다.');
     }
   }, [projectId, loadBuildings]);
@@ -490,7 +463,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       });
 
       await loadBuildings();
-    } catch (error) {
+    } catch {
       toast.error('동 순서 변경에 실패했습니다.');
     }
   }, [projectId, loadBuildings]);
@@ -528,10 +501,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     } else {
       // 기존 로직 (카테고리 전체에 대한 공정 변경)
       // 새로운 모듈 가져오기
-      const module = getProcessModule(category, processType);
+      const mod = getProcessModule(category, processType);
 
       // 🚀 Stage 2 Optimization: Use consolidated calculation utility
-      const sumDays = module ? calculateModuleWorkDays(building, module, category) : 0;
+      const sumDays = mod ? calculateModuleWorkDays(building, mod, category) : 0;
 
       const updatedPlan = {
         ...plan,
@@ -559,7 +532,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
   };
 
   // 각 층별 processType을 가져오는 헬퍼 함수
-  const getProcessTypeForFloor = (plan: BuildingProcessPlan | undefined, category: ProcessCategory, floorLabel: string): ProcessType => {
+  const getProcessTypeForFloor = useCallback((plan: BuildingProcessPlan | undefined, category: ProcessCategory, floorLabel: string): ProcessType => {
     if (!plan) return DEFAULT_PROCESS_TYPES[category];
 
     const categoryProcess = plan.processes[category];
@@ -574,10 +547,10 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
     // 기본 processType 반환
     return categoryProcess.processType || DEFAULT_PROCESS_TYPES[category];
-  };
+  }, []);
 
   // 합계일수 계산 - 지상층 공정 카테고리의 일수 합계 (지하층, 기초, 버림은 별도 탭에서 관리)
-  const calculateTotalDays = (processes: BuildingProcessPlan['processes'], building?: Building): number => {
+  const calculateTotalDays = useCallback((processes: BuildingProcessPlan['processes'], building?: Building): number => {
     let total = 0;
     // 모든 공정 카테고리의 일수를 합산
     PROCESS_CATEGORIES.forEach(category => {
@@ -620,58 +593,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
       }
     });
     return total;
-  };
-
-  // 합계 간접작업일 계산 - calculateTotalDays와 동일 구조, 간접일만 합산
-  const calculateTotalIndirectDays = (processes: BuildingProcessPlan['processes'], building?: Building): number => {
-    let total = 0;
-    PROCESS_CATEGORIES.forEach(category => {
-      if (category === '옥탑층' && building) {
-        const phFloors = getPhFloors.get(building.id) || [];
-        phFloors.forEach(floor => {
-          const floorProcessType = processes[category]?.floors?.[floor.floorLabel]?.processType || processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-          const module = getProcessModule(category, floorProcessType);
-          if (module) {
-            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
-          }
-        });
-      } else if (category === '기준층' && building) {
-        const standardFloors = getStandardFloors.get(building.id) || [];
-        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-        standardFloors.forEach(floor => {
-          const module = getProcessModule(category, processType);
-          if (module) {
-            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
-          }
-        });
-      } else if (category === '셋팅층' && building) {
-        const settingFloors = getSettingFloors.get(building.id) || [];
-        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-        settingFloors.forEach(floor => {
-          const module = getProcessModule(category, processType);
-          if (module) {
-            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
-          }
-        });
-      } else if (category === '일반층' && building) {
-        const normalFloors = getNormalFloors.get(building.id) || [];
-        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-        normalFloors.forEach(floor => {
-          const module = getProcessModule(category, processType);
-          if (module) {
-            total += calculateModuleIndirectDaysForFloor(module, category, floor.floorLabel);
-          }
-        });
-      } else {
-        const processType = processes[category]?.processType || DEFAULT_PROCESS_TYPES[category];
-        const module = getProcessModule(category, processType);
-        if (module) {
-          total += calculateModuleIndirectDays(module);
-        }
-      }
-    });
-    return total;
-  };
+  }, [getPhFloors, getStandardFloors, getSettingFloors, getNormalFloors]);
 
   // 지하층 각 층별 일수 계산 (통합 유틸 사용)
   const calculateBasementFloorDays = (
@@ -680,9 +602,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     processType: ProcessType,
     floorLabel: string
   ): number => {
-    const module = getProcessModule(category, processType);
-    if (!module || !module.items.length) return 0;
-    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
+    const mod = getProcessModule(category, processType);
+    if (!mod || !mod.items.length) return 0;
+    return calculateModuleWorkDaysForFloor(building, mod, category, floorLabel);
   };
 
   // 옥탑층 각 층별 일수 계산 (통합 유틸 사용)
@@ -692,9 +614,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     processType: ProcessType,
     floorLabel: string
   ): number => {
-    const module = getProcessModule(category, processType);
-    if (!module || !module.items.length) return 0;
-    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
+    const mod = getProcessModule(category, processType);
+    if (!mod || !mod.items.length) return 0;
+    return calculateModuleWorkDaysForFloor(building, mod, category, floorLabel);
   };
 
   // 기준층 각 층별 일수 계산 (통합 유틸 사용)
@@ -704,9 +626,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     processType: ProcessType,
     floorLabel: string
   ): number => {
-    const module = getProcessModule(category, processType);
-    if (!module || !module.items.length) return 0;
-    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
+    const mod = getProcessModule(category, processType);
+    if (!mod || !mod.items.length) return 0;
+    return calculateModuleWorkDaysForFloor(building, mod, category, floorLabel);
   };
 
   // 셋팅층 각 층별 일수 계산 (통합 유틸 사용)
@@ -716,9 +638,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     processType: ProcessType,
     floorLabel: string
   ): number => {
-    const module = getProcessModule(category, processType);
-    if (!module || !module.items.length) return 0;
-    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
+    const mod = getProcessModule(category, processType);
+    if (!mod || !mod.items.length) return 0;
+    return calculateModuleWorkDaysForFloor(building, mod, category, floorLabel);
   };
 
   // 일반층 각 층별 일수 계산 (통합 유틸 사용)
@@ -728,9 +650,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     processType: ProcessType,
     floorLabel: string
   ): number => {
-    const module = getProcessModule(category, processType);
-    if (!module || !module.items.length) return 0;
-    return calculateModuleWorkDaysForFloor(building, module, category, floorLabel);
+    const mod = getProcessModule(category, processType);
+    if (!mod || !mod.items.length) return 0;
+    return calculateModuleWorkDaysForFloor(building, mod, category, floorLabel);
   };
 
   // 동별 주요정보 계산 (Building.meta에서 가져오기)
@@ -825,7 +747,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     return aboveGroundFloors.length > 0 ? Math.max(...aboveGroundFloors) : undefined;
   }, [activeBuilding]);
 
-  // 물량입력표와 반대 순서로 행 생성 (옥탑층, PH층, 지상층, 지하층, 기초, 버림)
+  // 물량입력표와 반대 순서로 행 생성 (옥탑층, 지상층, 지하층, 기초, 버림)
   const processRows = useMemo(() => {
     if (!activeBuilding) return [];
 
@@ -879,7 +801,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         }
       }
       rows.push({
-        category: 'PH층',
+        category: '옥탑층',
         floorLabel: cleanLabel,
         floor,
         floorClass: floor.floorClass,
@@ -966,7 +888,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
       const settingAndNormalFloors: Array<{ floor: Floor; floorNum: number }> = [];
       for (let i = 1; i <= core1MaxFloor; i++) {
-        let foundFloor = floors.find(f => {
+        const foundFloor = floors.find(f => {
           const match = f.floorLabel.match(/코어1-(\d+)F$/);
           if (match && parseInt(match[1], 10) === i) {
             return true;
@@ -1075,7 +997,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
       const settingAndNormalFloors: Array<{ floor: Floor; floorNum: number }> = [];
       for (let i = 1; i <= groundFloorCount; i++) {
-        let foundFloor = floors.find(f => {
+        const foundFloor = floors.find(f => {
           if (f.floorLabel === `${i}F` && (f.floorClass === '셋팅층' || f.floorClass === '일반층')) {
             return true;
           }
@@ -1133,7 +1055,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     }
 
     // itemKey에서 category와 floorLabel 추출
-    const [category, floorLabel] = itemKey.split('-');
+    const [category] = itemKey.split('-');
     const categoryKey = category as ProcessCategory;
 
     // 현재 동의 확장된 모듈 가져오기
@@ -1151,7 +1073,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
     const expandedEffectiveCategory = expandedRow?.category || categoryKey;
 
-    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '주동 지하층' || expandedRow.category === 'PH층' || expandedRow.category === '옥탑층' || expandedRow.category === '일반층')
+    const colProcessType = expandedRow?.floorLabel && (expandedRow.category === '주동 지하층' || expandedRow.category === '옥탑층' || expandedRow.category === '일반층')
       ? getProcessTypeForFloor(plan, expandedRow.category, expandedRow.floorLabel)
       : plan?.processes[expandedRow?.category || categoryKey]?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || categoryKey];
     const colModule = getProcessModule(expandedEffectiveCategory, colProcessType);
@@ -1212,7 +1134,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         if (expandedRow.category === '주동 지하층') {
           return moduleItem.floorLabel === expandedRow.floorLabel;
         }
-        if (expandedRow.category === 'PH층') {
+        if (expandedRow.category === '옥탑층' && expandedRow.floor?.floorClass === 'PH층') {
           return !moduleItem.floorLabel || moduleItem.floorLabel === expandedRow.floorLabel;
         }
         if (expandedRow.category === '일반층') {
@@ -1225,14 +1147,17 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
           return moduleItem.floorLabel === targetFloorLabel || !moduleItem.floorLabel;
         }
         if (expandedRow.category === '옥탑층') {
-          if (!moduleItem.floorLabel) return true;
-          if (!expandedRow.floorLabel) return true;
-          const itemMatch = moduleItem.floorLabel.match(/옥탑(\d+)/);
-          const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
-          if (itemMatch && rowMatch) {
-            return itemMatch[1] === rowMatch[1];
+          if (expandedRow.category === '옥탑층') {
+            if (!moduleItem.floorLabel) return true;
+            if (!expandedRow.floorLabel) return true;
+            const itemMatch = moduleItem.floorLabel.match(/옥탑(\d+)/);
+            const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
+            if (itemMatch && rowMatch) {
+              return itemMatch[1] === rowMatch[1];
+            }
+            return moduleItem.floorLabel === expandedRow.floorLabel;
           }
-          return moduleItem.floorLabel === expandedRow.floorLabel;
+          return true;
         }
         return true;
       }) || [];
@@ -1335,13 +1260,6 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     return [{ category: '버림' as ProcessCategory, colIndex: 0 }];
   }, [activeBuilding]);
 
-  // 전체 행 수 계산 (공정 구분 행 수 + 합계 행)
-  const totalRows = useMemo(() => {
-    if (!activeBuilding) return 0;
-    // processRows의 행 수 + 합계 1행
-    return processRows.length + 1;
-  }, [processRows]);
-
   return (
     <div className="space-y-6">
       {buildings.length > 0 ? (
@@ -1369,7 +1287,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                           </label>
                           <span className="text-sm text-zinc-600 dark:text-zinc-400">
                             {info.coreUnits && info.coreUnits.length > 0
-                              ? info.coreUnits.map((cu, idx) => `코어${cu.coreNumber} ${cu.units}호`).join(', ')
+                              ? info.coreUnits.map((cu) => `코어${cu.coreNumber} ${cu.units}호`).join(', ')
                               : info.totalUnits}
                           </span>
                         </div>
@@ -1394,7 +1312,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   },
                                 });
                                 await loadBuildings();
-                              } catch (error) {
+                              } catch {
                                 toast.error('펌프카 대수 저장에 실패했습니다.');
                               }
                             }}
@@ -1409,7 +1327,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   },
                                 });
                                 await loadBuildings();
-                              } catch (error) {
+                              } catch {
                                 toast.error('펌프카 대수 저장에 실패했습니다.');
                               }
                             }}
@@ -1509,14 +1427,13 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                       <tbody className="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-800">
                         {(() => {
                           const building = activeBuilding;
-                          const plan = processPlans.get(building.id);
-                          const info = getBuildingInfo(building);
-                          const isDetailExpanded = expandedModules.get(building.id) || new Set<string>();
+                          const plan = processPlans.get(building!.id);
+                          const isDetailExpanded = expandedModules.get(building!.id) || new Set<string>();
 
                           return (
-                            <Fragment key={building.id}>
+                            <Fragment key={building!.id}>
                               {/* 공정 구분 섹션 - 물량입력표와 동일한 순서로 행 표시 */}
-                              {processRows.map((row, rowIdx) => {
+                              {processRows.map((row) => {
                                 // processType 결정 (주동 지하층/옥탑층/일반층은 층별, 나머지는 카테고리별)
                                 let processType: ProcessType;
                                 if (row.floorLabel && (row.category === '주동 지하층' || row.category === '옥탑층' || row.category === '일반층')) {
@@ -1524,13 +1441,12 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                 } else {
                                   processType = plan?.processes[row.category]?.processType || DEFAULT_PROCESS_TYPES[row.category];
                                 }
-                                const module = getProcessModule(row.category, processType);
+                                const mod = getProcessModule(row.category, processType);
 
                                 // 일수 계산 - 세부공정의 순작업일 합계
                                 let days = 0;
                                 let indirectDays = 0;
-                                let totalDays = 0;
-                                if (!module || !module.items || module.items.length === 0) {
+                                if (!mod || !mod.items || mod.items.length === 0) {
                                   // 모듈이 없으면 기존 방식 사용
                                   // fallback에서도 간접일 계산을 위해 모듈을 한번 더 조회
                                   const fallbackModule = getProcessModule(row.category, processType);
@@ -1540,44 +1456,43 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       indirectDays = calculateModuleIndirectDays(fallbackModule);
                                     }
                                   } else if (row.category === '주동 지하층' && row.floorLabel) {
-                                    days = calculateBasementFloorDays(building, row.category, processType, row.floorLabel);
+                                    days = calculateBasementFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '셋팅층' && row.floorLabel) {
-                                    days = calculateSettingFloorDays(building, row.category, processType, row.floorLabel);
+                                    days = calculateSettingFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '일반층' && row.floorLabel) {
-                                    days = calculateNormalFloorDays(building, row.category, processType, row.floorLabel);
+                                    days = calculateNormalFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '기준층' && row.floorLabel) {
-                                    days = calculateStandardFloorDays(building, row.category, processType, row.floorLabel);
+                                    days = calculateStandardFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '최상층' && row.floorLabel) {
-                                    days = calculateStandardFloorDays(building, row.category, processType, row.floorLabel);
+                                    days = calculateStandardFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
-                                  } else if (row.category === 'PH층' && row.floorLabel) {
-                                    days = calculatePhFloorDays(building, row.category, processType, row.floorLabel);
+                                  } else if (row.category === '옥탑층' && row.floor?.floorClass === 'PH층' && row.floorLabel) {
+                                    days = calculatePhFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   } else if (row.category === '옥탑층' && row.floorLabel) {
-                                    days = calculatePhFloorDays(building, row.category, processType, row.floorLabel);
+                                    days = calculatePhFloorDays(building!, row.category, processType, row.floorLabel);
                                     if (fallbackModule) {
                                       indirectDays = calculateModuleIndirectDaysForFloor(fallbackModule, row.category, row.floorLabel);
                                     }
                                   }
                                   // fallback의 days는 이미 direct+indirect를 포함하므로 순작업일에서 간접일을 빼기
                                   days = days - indirectDays;
-                                  totalDays = days + indirectDays;
                                 } else {
                                   // 세부공정의 순작업일 합계 계산 (오버라이드된 값 고려)
                                   let sumDirectDays = 0;
@@ -1585,7 +1500,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
                                   // 버림, 기초는 floorLabel 없이 계산
                                   if (row.category === '버림' || row.category === '기초') {
-                                    module.items.forEach(item => {
+                                    mod.items.forEach(item => {
                                       // 오버라이드된 순작업일 확인
                                       const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       const overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];
@@ -1603,7 +1518,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       if (item.quantityReference) {
                                         const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, row.category);
                                         if (ref) {
-                                          quantity = resolveProcessQuantity(building, ref);
+                                          quantity = resolveProcessQuantity(building!, ref);
                                         }
                                       }
 
@@ -1613,7 +1528,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
                                         if (quantity > 0 && item.dailyProductivity > 0) {
                                           // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                          const maxPumpCarCount = building.meta?.pumpCarCount || 2;
+                                          const maxPumpCarCount = building!.meta?.pumpCarCount || 2;
                                           const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
                                           const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
                                           if (dailyInputWorkers > 0) {
@@ -1632,16 +1547,16 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       sumIndirectDays += item.indirectDays;
                                     });
                                   }
-                                  // 셋팅층, 일반층, 지하층, PH층, 옥탑층, 기준층 - 각 층별로 해당 층의 항목만 계산
-                                  else if (row.floorLabel && (row.category === '셋팅층' || row.category === '일반층' || row.category === '주동 지하층' || row.category === 'PH층' || row.category === '옥탑층' || row.category === '기준층' || row.category === '최상층')) {
+                                  // 셋팅층, 일반층, 지하층, 옥탑층, 기준층 - 각 층별로 해당 층의 항목만 계산
+                                  else if (row.floorLabel && (row.category === '셋팅층' || row.category === '일반층' || row.category === '주동 지하층' || row.category === '옥탑층' || row.category === '기준층' || row.category === '최상층')) {
                                     // 해당 층의 항목만 필터링
-                                    const floorItems = module.items.filter(item => {
+                                    const floorItems = mod.items.filter(item => {
                                       // 지하층의 경우 item.floorLabel과 row.floorLabel이 일치해야 함
                                       if (row.category === '주동 지하층') {
                                         return item.floorLabel === row.floorLabel;
                                       }
-                                      // PH층의 경우 floorLabel이 없으면 모든 항목 포함 (일반층처럼 처리)
-                                      if (row.category === 'PH층') {
+                                      // PH층(옥탑층 통합)의 경우 floorLabel이 없으면 모든 항목 포함
+                                      if (row.category === '옥탑층' && row.floor?.floorClass === 'PH층') {
                                         return !item.floorLabel || item.floorLabel === row.floorLabel;
                                       }
                                       // 옥탑층의 경우 옥탑1, 옥탑2 형식 처리
@@ -1677,7 +1592,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                     floorItems.forEach(item => {
                                       // 오버라이드된 순작업일 확인
                                       // 기준층인 경우: 현재 층의 오버라이드 값을 먼저 확인하고, 없으면 첫 번째 기준층의 오버라이드 값 확인
-                                      let itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
+                                      const itemKey = `${row.category}-${row.floorLabel || ''}-${item.id}`;
                                       let firstStandardFloorLabel: string | undefined;
                                       if (row.category === '기준층') {
                                         const found = processRows.find(r => r.category === '기준층' && r.floorLabel);
@@ -1718,7 +1633,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                             : row.floorLabel;
                                           const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
                                             ? row.floor.id : undefined;
-                                          quantity = resolveProcessQuantity(building, ref, effectiveFloorLabel, rangeFloorId);
+                                          quantity = resolveProcessQuantity(building!, ref, effectiveFloorLabel, rangeFloorId);
                                         }
                                       }
 
@@ -1729,7 +1644,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                       } else if (item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined && item.quantityReference) {
                                         if (quantity > 0 && item.dailyProductivity > 0) {
                                           // 장비대수 계산 (펌프카 최대 투입대수 기준)
-                                          const maxPumpCarCount = building.meta?.pumpCarCount || 2;
+                                          const maxPumpCarCount = building!.meta?.pumpCarCount || 2;
                                           const calculatedEquipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
                                           const dailyInputWorkers = calculateDailyInputWorkersByEquipment(calculatedEquipmentCount, item.equipmentWorkersPerUnit);
                                           if (dailyInputWorkers > 0) {
@@ -1753,8 +1668,8 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   // 저장된 days 값은 무시하고 항상 실시간 계산된 합계를 표시
                                   days = Math.floor(sumDirectDays);
                                   indirectDays = Math.ceil(sumIndirectDays);
-                                  totalDays = days + indirectDays;
                                 }
+                                void days;
 
                                 // 확장 상태 확인
                                 const expandKey = row.floorLabel
@@ -1819,23 +1734,23 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                   const rangeFloorId = row.category === '기준층' && row.floor?.floorLabel?.includes('~')
                                     ? row.floor.id
                                     : undefined;
-                                  const quantityFloorLabel = (row.category === '옥탑층' || row.category === 'PH층') && row.floor
+                                  const quantityFloorLabel = (row.category === '옥탑층') && row.floor
                                     ? row.floor.floorLabel.replace(/코어\d+-/, '')
                                     : row.floorLabel;
                                   return { quantityFloorLabel, rangeFloorId };
                                 };
 
-                                const resolveQty = (tradeField: string, subField: string) => {
+                                const resolveQty = (tradeField: TradeFieldKey, subField: TradeSubFieldKey) => {
                                   if (row.category === '버림' || row.category === '기초') {
-                                    return resolveProcessQuantity(building, {
-                                      tradeField: tradeField as any, subField: subField as any, ratio: 1,
+                                    return resolveProcessQuantity(building!, {
+                                      tradeField, subField, ratio: 1,
                                       sourceType: 'category', tradeGroup: row.category,
                                     });
                                   }
                                   const p = resolveParams();
                                   if (!p) return 0;
-                                  return resolveProcessQuantity(building, {
-                                    tradeField: tradeField as any, subField: subField as any, ratio: 1, sourceType: 'floor',
+                                  return resolveProcessQuantity(building!, {
+                                    tradeField, subField, ratio: 1, sourceType: 'floor',
                                   }, p.quantityFloorLabel, p.rangeFloorId);
                                 };
 
@@ -1966,7 +1881,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
                                     {/* 여덟 번째 열: 세부공정 버튼 */}
                                     <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                      {module && module.items.length > 0 && (
+                                      {mod && mod.items.length > 0 && (
                                         <button
                                           onClick={() => {
                                             const expanded = expandedModules.get(building.id) || new Set<string>();
@@ -2141,7 +2056,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
               </h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
                 지상층 공정계획을 입력하려면 먼저 <br />
-                <span className="font-medium text-primary-600 dark:text-primary-400">"동 기본정보"</span> 탭에서 동을 생성해주세요.
+                <span className="font-medium text-primary-600 dark:text-primary-400">&quot;동 기본정보&quot;</span> 탭에서 동을 생성해주세요.
               </p>
             </div>
           </div>

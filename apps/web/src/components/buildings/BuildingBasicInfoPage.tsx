@@ -40,7 +40,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       if (data.length > 0 && activeBuildingIndex >= data.length) {
         setActiveBuildingIndex(0);
       }
-    } catch (error) {
+    } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     } finally {
       setIsLoading(false);
@@ -80,7 +80,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
     setIsLoading(true);
     try {
       const newBuildings: Building[] = [];
-      let nextNumber = getNextBuildingNumber(buildings);
+      const nextNumber = getNextBuildingNumber(buildings);
       
       // 입력한 동수에서 기존 동 수를 빼서 추가 생성할 개수 계산
       const existingCount = buildings.length;
@@ -196,7 +196,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       setActiveBuildingIndex(updatedBuildings.length - 1);
       
       toast.success(`${additionalCount}개의 동이 추가 생성되었습니다. (총 ${updatedBuildings.length}개)`);
-    } catch (error) {
+    } catch {
       toast.error('동 생성에 실패했습니다.');
     } finally {
       setIsLoading(false);
@@ -243,7 +243,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
     setIsCopying(true);
     try {
       const newBuildings: Building[] = [];
-      let nextNumber = getNextBuildingNumber(buildings);
+      const nextNumber = getNextBuildingNumber(buildings);
       
       // 소스 동의 정보를 깊은 복사
       const sourceMeta = JSON.parse(JSON.stringify(sourceBuilding.meta));
@@ -319,7 +319,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       toast.success(`${count}개의 동이 복사되었습니다.`);
       setShowCopyDialog(false);
       setCopyCount(1);
-    } catch (error) {
+    } catch {
       toast.error('동 복사에 실패했습니다.');
     } finally {
       setIsCopying(false);
@@ -342,7 +342,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       } else if (activeBuildingIndex < fromIndex && activeBuildingIndex >= toIndex) {
         setActiveBuildingIndex(activeBuildingIndex + 1);
       }
-    } catch (error) {
+    } catch {
       toast.error('동 순서 변경에 실패했습니다.');
     }
   }, [projectId, loadBuildings, activeBuildingIndex]);
@@ -378,7 +378,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       }
       
       toast.success('동이 삭제되었습니다.');
-    } catch (error) {
+    } catch {
       toast.error('동 삭제에 실패했습니다.');
     }
   }, [projectId, buildings, activeBuildingIndex]);
@@ -535,7 +535,7 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
                 위의 동 수 입력란에 생성할 동의 개수를 입력하고 <br />
-                <span className="font-medium text-primary-600 dark:text-primary-400">"동 탭 생성"</span> 버튼을 클릭하여 시작하세요.
+                <span className="font-medium text-primary-600 dark:text-primary-400">&quot;동 탭 생성&quot;</span> 버튼을 클릭하여 시작하세요.
               </p>
             </div>
           </div>
@@ -544,4 +544,3 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
     </div>
   );
 }
-

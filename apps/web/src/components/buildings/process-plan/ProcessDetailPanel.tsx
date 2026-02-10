@@ -186,7 +186,7 @@ export function ProcessDetailPanel({
       // 지하주차장: targetFloorLabel("B1")로 매칭 (expandedRow.floorLabel은 "B1 주차장")
       return item.floorLabel === targetFloorLabel;
     }
-    if (expandedRow.category === 'PH층') {
+    if (expandedRow.category === '옥탑층' && expandedRow.floor?.floorClass === 'PH층') {
       return !item.floorLabel || item.floorLabel === expandedRow.floorLabel;
     }
     if (expandedRow.category === '옥탑층') {
@@ -219,7 +219,7 @@ export function ProcessDetailPanel({
     let sum = 0;
     filteredItems.forEach((item) => {
       // 기준층인 경우 첫 번째 기준층의 오버라이드 사용
-      let itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
+      const itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
       let firstStandardFloorLabel: string | undefined;
 
       if (expandedRow.category === '기준층') {
@@ -256,46 +256,6 @@ export function ProcessDetailPanel({
     filteredItems.reduce((sum, item) => sum + item.indirectDays, 0)
   );
   const totalWorkDaysSum = directWorkDaysSum + indirectDaysSum;
-
-  // 카테고리 표시 이름 생성
-  const getCategoryDisplayName = (): string => {
-    if (expandedRow.category === '버림' || expandedRow.category === '기초') {
-      return expandedRow.category;
-    }
-    if (expandedRow.category === '주동 지하층') {
-      // 특수 행(주차장, 3단 가시설)인 경우 그대로 표시
-      if (isSpecialRow) {
-        return expandedRow.floorLabel || '';
-      }
-      return `지하층 ${expandedRow.floorLabel}층`;
-    }
-    if (expandedRow.category === '옥탑층' || expandedRow.category === 'PH층') {
-      let displayLabel = expandedRow.floorLabel || '';
-      if (displayLabel.match(/^PH\d+$/i)) {
-        const phMatch = displayLabel.match(/PH(\d+)/i);
-        if (phMatch) {
-          displayLabel = `옥탑${phMatch[1]}`;
-        }
-      }
-      return `옥탑층 ${displayLabel}층`;
-    }
-    if (expandedRow.category === '셋팅층') {
-      return `셋팅층 ${expandedRow.floorLabel}`;
-    }
-    if (expandedRow.category === '일반층') {
-      return `일반층 ${expandedRow.floorLabel}`;
-    }
-    if (expandedRow.category === '기준층') {
-      return `기준층 ${expandedRow.floorLabel}`;
-    }
-    if (expandedRow.category === '최상층') {
-      return `최상층 ${expandedRow.floorLabel}`;
-    }
-    if (expandedRow.category === '지하주차장') {
-      return expandedRow.floorLabel || '지하주차장';
-    }
-    return `${expandedRow.category} ${expandedRow.floorLabel || ''}`;
-  };
 
   return (
     <div

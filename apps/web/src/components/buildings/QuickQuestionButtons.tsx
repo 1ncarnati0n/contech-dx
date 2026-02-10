@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui';
 import { HelpCircle, Calculator, AlertCircle, BookOpen, Lightbulb } from 'lucide-react';
-import type { QuickQuestion, QuickQuestionCategory, HighlightTargetKey } from './ProcessPlanChatbotTypes';
+import type { QuickQuestion, QuickQuestionCategory } from './ProcessPlanChatbotTypes';
 
 interface QuickQuestionButtonsProps {
   onQuestionClick: (question: string) => void;

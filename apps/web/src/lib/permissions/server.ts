@@ -13,7 +13,6 @@ export {
   isVIP,
   hasMinimumRole,
   getRoleDisplayName,
-  getRoleBadgeColor,
   getRoleBadgeVariant,
   getRoleLevel,
   isRoleHigherOrEqual,

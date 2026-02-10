@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
-import type { Building, ProcessCategory, ProcessType } from '@/lib/types';
+import type { Building, ProcessCategory } from '@/lib/types';
 import type { ProcessItem } from '@/lib/data/process-modules';
 import type { FormulaStep, CalculationResult } from '../FormulaDisplay';
 import { resolveProcessQuantity, resolveWithDeduction, type DeductionFields } from '@/lib/utils/process-quantity-resolver';
 import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
-import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,

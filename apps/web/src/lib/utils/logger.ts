@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * 환경별 로깅 유틸리티
  * 개발 환경에서만 로그를 출력하고, 프로덕션에서는 에러/경고만 출력합니다.
@@ -86,4 +87,3 @@ export const perfLogger = {
     };
   },
 };
-

@@ -24,7 +24,6 @@ export function VisualGuideOverlay({
 }: VisualGuideOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [highlightedElements, setHighlightedElements] = useState<HTMLElement[]>([]);
 
   // 현재 타겟
   const currentTarget = targets[currentIndex];
@@ -54,8 +53,6 @@ export function VisualGuideOverlay({
         elements.push(element);
       }
     });
-
-    setHighlightedElements(elements);
 
     return () => {
       removeAllHighlights();
@@ -106,7 +103,6 @@ export function VisualGuideOverlay({
   // 현재 타겟 요소의 위치 계산
   const element = document.querySelector(currentTarget.selector) as HTMLElement;
   const rect = element?.getBoundingClientRect();
-  const elementNotFound = !element || !rect;
 
   return (
     <>
@@ -203,7 +199,7 @@ function Tooltip({
   const position = target.position || 'top';
 
   // 툴팁 위치 계산
-  let tooltipStyle: React.CSSProperties = {
+  const tooltipStyle: React.CSSProperties = {
     position: 'fixed',
     zIndex: 45,
     pointerEvents: 'auto',

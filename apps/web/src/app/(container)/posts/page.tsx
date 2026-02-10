@@ -12,7 +12,7 @@ import PostsTable from '@/components/posts/PostsTable';
 
 export default async function PostsPage() {
   // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트
-  const { user } = await requireAuth();
+  await requireAuth();
 
   // 서비스 레이어를 통해 게시글 목록 가져오기
   const { posts, error } = await getPosts(20);

@@ -20,7 +20,7 @@ interface UnifiedSettingsModalProps {
   onEquipmentBaseChange: (category: ProcessCategory, value: number) => void;
 }
 
-type EquipmentBaseLabel = '버림' | '기초' | '주동 지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | 'PH층';
+type EquipmentBaseLabel = '버림' | '기초' | '주동 지하층' | '1층' | '셋팅층' | '일반층' | '기준층' | '최상층' | '옥탑층';
 
 interface EquipmentBaseItem {
   label: EquipmentBaseLabel;
@@ -66,7 +66,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
     textColor: 'text-emerald-700 dark:text-emerald-300',
     items: [
       { label: '최상층', defaultValue: 230 },
-      { label: 'PH층', defaultValue: 230 },
+      { label: '옥탑층', defaultValue: 230 },
     ],
   },
 ];
@@ -82,7 +82,7 @@ const LABEL_TO_CATEGORY_MAP: Record<EquipmentBaseLabel, ProcessCategory> = {
   '일반층': '일반층',
   '기준층': '기준층',
   '최상층': '최상층',
-  'PH층': 'PH층',
+  '옥탑층': '옥탑층',
 };
 
 /**

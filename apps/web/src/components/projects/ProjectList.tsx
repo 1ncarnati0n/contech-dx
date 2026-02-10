@@ -67,7 +67,7 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
     }
 
     return filtered;
-  }, [projects, searchQuery, statusFilter, isAdmin]);
+  }, [projects, searchQuery, statusFilter]);
 
   // 상태 옵션 (관리자는 테스트 상태 포함)
   const statusOptions = useMemo(() => {

@@ -50,12 +50,8 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
 
   const {
     modules,
-    isEditing,
-    hasChanges,
     isLoading,
-    toggleEditing,
     updateModules,
-    save,
     resetToDefault,
     cancelChanges,
   } = useProcessLogicState({ projectId });
@@ -70,18 +66,17 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
       '셋팅층': 400,
       '기준층': 320,
       '최상층': 230,
-      'PH층': 230,
       '옥탑층': 230,
       '지하주차장': 500,
       '일반층': 200,
     };
 
-    for (const module of modules) {
-      const concreteItem = module.items.find(
+    for (const mod of modules) {
+      const concreteItem = mod.items.find(
         (item) => item.equipmentCalculationBase !== undefined
       );
       if (concreteItem && concreteItem.equipmentCalculationBase !== undefined) {
-        bases[module.category] = concreteItem.equipmentCalculationBase;
+        bases[mod.category] = concreteItem.equipmentCalculationBase;
       }
     }
 
@@ -99,32 +94,9 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
       '일반층': currentEquipmentBases['일반층'],
       '기준층': currentEquipmentBases['기준층'],
       '최상층': currentEquipmentBases['최상층'],
-      'PH층': currentEquipmentBases['PH층'],
+      '옥탑층': currentEquipmentBases['옥탑층'],
     };
   }, [currentEquipmentBases]);
-
-  const handleSave = () => {
-    const success = save();
-    if (success) {
-      toast.success('공정로직 설정이 저장되었습니다.');
-    } else {
-      toast.error('저장 실패', {
-        description: '설정을 저장하는 데 실패했습니다.',
-      });
-    }
-  };
-
-  const handleCancel = () => {
-    if (hasChanges) {
-      setConfirmDialog({ open: true, type: 'cancel' });
-    } else {
-      toggleEditing();
-    }
-  };
-
-  const handleResetToDefault = () => {
-    setConfirmDialog({ open: true, type: 'reset' });
-  };
 
   const handleConfirmDialogAction = () => {
     if (confirmDialog.type === 'cancel') {
@@ -142,13 +114,13 @@ export function ProcessLogicPage({ projectId }: ProcessLogicPageProps) {
    * 해당 카테고리의 모든 ProcessItem.equipmentCalculationBase를 업데이트
    */
   const handleEquipmentBaseChange = (category: ProcessCategory, value: number) => {
-    const updatedModules = modules.map((module) => {
+    const updatedModules = modules.map((mod) => {
       // 카테고리가 일치하지 않으면 그대로 반환
-      if (module.category !== category) return module;
+      if (mod.category !== category) return mod;
 
       return {
-        ...module,
-        items: module.items.map((item) =>
+        ...mod,
+        items: mod.items.map((item) =>
           // equipmentCalculationBase가 있는 항목만 업데이트 (콘크리트 타설 항목)
           item.equipmentCalculationBase !== undefined
             ? { ...item, equipmentCalculationBase: value }

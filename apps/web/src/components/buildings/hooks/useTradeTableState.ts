@@ -19,16 +19,18 @@ export function useTradeTableState(building: Building) {
 
   // Sync state when building changes
   useEffect(() => {
-    setFloors(building.floors);
     const tradesMap = new Map<string, FloorTrade>();
     building.floorTrades.forEach(trade => {
       const key = `${trade.floorId}-${trade.tradeGroup}`;
       tradesMap.set(key, trade);
     });
-    setTrades(tradesMap);
-    setOriginalTrades(new Map(tradesMap));
-    setHasUnsavedChanges(false);
-    pendingSavesRef.current = new Map();
+    queueMicrotask(() => {
+      setFloors(building.floors);
+      setTrades(tradesMap);
+      setOriginalTrades(new Map(tradesMap));
+      setHasUnsavedChanges(false);
+      pendingSavesRef.current = new Map();
+    });
   }, [building]);
 
   // Page unload warning

@@ -8,7 +8,6 @@ import { getBuildingsForOverview } from '@/lib/services/buildings';
 import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
 import {
   calculateTotalWorkers,
-  calculateDailyInputWorkers,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
 } from '@/lib/utils/process-calculation';

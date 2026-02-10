@@ -22,8 +22,8 @@ export function getQuantityFromBuilding(
 
   const tradeData = trade.trades[field];
   if (!tradeData) return 0;
-  
-  return (tradeData as any)[subField] || 0;
+
+  return getQuantityValue(tradeData, subField);
 }
 
 /**
@@ -177,7 +177,7 @@ export function getQuantityFromFloor(
   // 개별 데이터 저장 방식: 정확한 개별 층 ID로 직접 조회
   // 개별 층이 있으면 개별 층의 trade를 우선 사용, 없으면 범위 기반 individualFloorId 사용
   // 개별 층 ID로 trade를 찾지 못하면 범위 기반 individualFloorId를 fallback으로 사용
-  let primaryTargetFloorId = (floor ? floor.id : null) || individualFloorId;
+  const primaryTargetFloorId = (floor ? floor.id : null) || individualFloorId;
 
   if (!primaryTargetFloorId) {
     return 0;
@@ -658,4 +658,3 @@ export function getQuantityByReference(
   
   return quantity * ratio;
 }
-

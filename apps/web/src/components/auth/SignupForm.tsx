@@ -112,7 +112,7 @@ export default function SignupForm() {
         router.push('/posts');
         router.refresh();
       }
-    } catch (err) {
+    } catch {
       toast.error('오류 발생', {
         description: '회원가입 중 오류가 발생했습니다.',
       });

@@ -51,7 +51,7 @@ export const BuildingInfoHeader = memo(function BuildingInfoHeader({
         },
       });
       await onUpdate();
-    } catch (error) {
+    } catch {
       toast.error('펌프카 대수 저장에 실패했습니다.');
     }
   };
@@ -73,7 +73,7 @@ export const BuildingInfoHeader = memo(function BuildingInfoHeader({
           호수:{' '}
           <span className="font-normal">
             {buildingInfo.coreUnits && buildingInfo.coreUnits.length > 0
-              ? buildingInfo.coreUnits.map((cu, idx) => `코어${cu.coreNumber} ${cu.units}호`).join(', ')
+              ? buildingInfo.coreUnits.map((cu) => `코어${cu.coreNumber} ${cu.units}호`).join(', ')
               : buildingInfo.totalUnits}
           </span>
         </div>
