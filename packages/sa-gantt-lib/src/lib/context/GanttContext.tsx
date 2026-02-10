@@ -4,9 +4,28 @@ import { createContext, useContext, useMemo, ReactNode } from 'react';
 import type {
     ConstructionTask,
     ViewMode,
+    ZoomLevel,
     CalendarSettings,
     DropPosition,
 } from '../types';
+
+export interface TimelineConfig {
+    holidays: Date[];
+    calendarSettings: CalendarSettings;
+}
+
+export interface ZoomConfig {
+    level: ZoomLevel;
+    pixelsPerDay: number;
+    setLevel: (level: ZoomLevel) => void;
+}
+
+export interface SidebarConfig {
+    width: number;
+    totalWidth: number | null;
+    setWidth: (width: number) => void;
+    setTotalWidth: (width: number | null) => void;
+}
 
 /**
  * GanttContext에서 제공하는 값의 타입
@@ -20,6 +39,9 @@ export interface GanttContextValue {
     // 캘린더 설정
     holidays: Date[];
     calendarSettings: CalendarSettings;
+    timelineConfig: TimelineConfig;
+    zoomConfig: ZoomConfig;
+    sidebarConfig: SidebarConfig;
 
     // Task 관련 콜백
     onTaskUpdate?: (task: ConstructionTask) => void | Promise<void>;
@@ -69,6 +91,9 @@ export function GanttProvider({
     activeCPId,
     holidays,
     calendarSettings,
+    timelineConfig,
+    zoomConfig,
+    sidebarConfig,
     onTaskUpdate,
     onTaskCreate,
     onTaskDelete,
@@ -85,6 +110,9 @@ export function GanttProvider({
             activeCPId,
             holidays,
             calendarSettings,
+            timelineConfig,
+            zoomConfig,
+            sidebarConfig,
             onTaskUpdate,
             onTaskCreate,
             onTaskDelete,
@@ -99,6 +127,9 @@ export function GanttProvider({
             activeCPId,
             holidays,
             calendarSettings,
+            timelineConfig,
+            zoomConfig,
+            sidebarConfig,
             onTaskUpdate,
             onTaskCreate,
             onTaskDelete,

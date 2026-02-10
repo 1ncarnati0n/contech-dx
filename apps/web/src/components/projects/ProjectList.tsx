@@ -12,6 +12,8 @@ import type { Project, ProjectStatus } from '@/lib/types';
 import { getProjects } from '@/lib/services/projects';
 import { useAsyncList } from '@/lib/hooks';
 import { getStatusOptions } from '@/lib/utils/index';
+import { projectsCache } from '@/lib/services/cache';
+import { useRealtimeCacheSync } from '@/lib/hooks/useRealtimeCacheSync';
 
 interface ProjectListProps {
   isAdmin?: boolean;
@@ -23,6 +25,12 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
 
   // useAsyncList 훅으로 데이터 fetching 단순화
   const { data: projects, loading, refetch: loadProjects } = useAsyncList<Project>(getProjects);
+
+  useRealtimeCacheSync({
+    table: 'projects',
+    cache: projectsCache,
+    onInvalidate: loadProjects,
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');

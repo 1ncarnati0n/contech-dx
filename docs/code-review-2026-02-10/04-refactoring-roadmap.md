@@ -342,6 +342,38 @@ useRealtimeCacheSync('projects', projectsCache, () => {
 
 ---
 
+## Phase 2 진행 현황 (업데이트: 2026-02-10)
+
+### 완료
+
+- **2.2 GanttContext 범위 확장**
+  - `timelineConfig`, `zoomConfig`, `sidebarConfig`를 `GanttContext`에 추가
+  - `GanttChart` 렌더 트리를 `GanttProvider`로 감싸 실제 Context 주입
+  - `GanttHeader`가 `viewMode/zoomLevel`을 Context 기반으로 읽도록 변경
+  - `sa-gantt-lib` lint/build 검증 완료
+
+- **2.3 MemoryCache + Supabase Realtime 캐시 연동**
+  - `useRealtimeCacheSync` 훅 신규 구현 (`apps/web/src/lib/hooks/useRealtimeCacheSync.ts`)
+  - `projects` Realtime 구독 + `projectsCache.invalidateAll()` + 목록 refetch 연결 (`ProjectList`)
+  - `buildings` Realtime 구독 + 빌딩 캐시 무효화 + 목록 refetch 연결 (`BuildingBasicInfoPage`)
+  - web lint/tsc 검증 완료
+
+### 진행중
+
+- **2.1 대형 컴포넌트 분할**
+  - 공통 상태/저장/dirty 처리 로직을 `useProcessPlanState`로 실제 페이지에 연결
+    - `BuildingProcessPlanPage.tsx`
+    - `BasementProcessPlanPage.tsx`
+  - Map 직접 변이 패턴(`new Map(processPlans.set(...))`) 제거 및 공통 업데이트 함수로 통일
+  - 현재 LOC: `BasementProcessPlanPage` 2,054 / `BuildingProcessPlanPage` 1,981
+
+### 미착수(Phase 2 내 잔여)
+
+- `ProcessPlanTable`/`TableRow` 등 렌더링 블록 단위 컴포넌트 분해
+- 계산 함수의 추가 유틸 분리 및 회귀 테스트 보강
+
+---
+
 ## Phase 3: 중기 개선 (1-2개월)
 
 ### 3.1 테스트 커버리지 확대

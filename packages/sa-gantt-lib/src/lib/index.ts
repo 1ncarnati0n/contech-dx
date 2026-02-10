@@ -61,7 +61,12 @@ export {
     useGanttContext,
     useGanttContextOptional,
 } from './context/GanttContext';
-export type { GanttContextValue } from './context/GanttContext';
+export type {
+    GanttContextValue,
+    TimelineConfig,
+    ZoomConfig,
+    SidebarConfig,
+} from './context/GanttContext';
 
 // ============================================
 // Theme System

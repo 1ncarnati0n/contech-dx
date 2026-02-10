@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
+import { Fragment, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, Input } from '@/components/ui';
 import { SaveStatusBar } from './SaveStatusBar';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
@@ -24,7 +24,7 @@ import {
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
 import { useSyncTabContext } from '@/lib/hooks/useSyncTabContext';
 import { ProcessDetailPanel } from './process-plan';
-import { logger } from '@/lib/utils/logger';
+import { useProcessPlanState } from './hooks/useProcessPlanState';
 
 interface Props {
   projectId: string;
@@ -62,13 +62,32 @@ const DEFAULT_PROCESS_TYPES: Record<ProcessCategory, ProcessType> = {
 };
 
 export function BuildingProcessPlanPage({ projectId }: Props) {
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
+  const {
+    buildings,
+    setBuildings,
+    processPlans,
+    setProcessPlans,
+    expandedModules,
+    dirtyBuildings,
+    isSaving,
+    activeBuildingIndex,
+    setActiveBuildingIndex,
+    updateProcessPlan,
+    updateExpandedModules,
+    markDirty,
+    saveToLocalStorage,
+    discardChanges: discardChangesWithoutConfirm,
+    initializePlans,
+  } = useProcessPlanState(projectId, {
+    processCategories: PROCESS_CATEGORIES,
+    defaultProcessTypes: DEFAULT_PROCESS_TYPES,
+  });
 
-  const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
-  const [dirtyBuildings, setDirtyBuildings] = useState<Set<string>>(new Set());
-  const [isSaving, setIsSaving] = useState(false);
-  const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
+  const discardChanges = useCallback((buildingId: string) => {
+    if (!confirm('변경사항을 취소하시겠습니까?')) return;
+    discardChangesWithoutConfirm(buildingId);
+  }, [discardChangesWithoutConfirm]);
+
   // 전역 챗봇과 탭 컨텍스트 동기화
   useSyncTabContext({
     activeBuildingIndex,
@@ -76,73 +95,6 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     processPlans,
     enabled: buildings.length > 0,
   });
-
-  // dirty 마킹 헬퍼
-  const markDirty = useCallback((buildingId: string) => {
-    setDirtyBuildings(prev => {
-      const next = new Set(prev);
-      next.add(buildingId);
-      return next;
-    });
-  }, []);
-
-  // 명시적 저장 함수
-  const saveToLocalStorage = useCallback((buildingId: string) => {
-    const storageKey = `contech_process_plan_${buildingId}`;
-    const currentPlan = processPlans.get(buildingId);
-    if (!currentPlan) return;
-
-    setIsSaving(true);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(currentPlan));
-      setDirtyBuildings(prev => {
-        const next = new Set(prev);
-        next.delete(buildingId);
-        return next;
-      });
-      toast.success('공정계획이 저장되었습니다.');
-    } catch {
-      toast.error('저장에 실패했습니다.');
-    }
-    setIsSaving(false);
-  }, [processPlans]);
-
-  // 변경사항 취소 함수 — localStorage에서 재로드
-  const discardChanges = useCallback((buildingId: string) => {
-    if (!confirm('변경사항을 취소하시겠습니까?')) return;
-
-    const storageKey = `contech_process_plan_${buildingId}`;
-    try {
-      const storedJson = localStorage.getItem(storageKey);
-      if (storedJson) {
-        const restoredPlan = JSON.parse(storedJson) as BuildingProcessPlan;
-        setProcessPlans(prev => {
-          const newPlans = new Map(prev);
-          newPlans.set(buildingId, restoredPlan);
-          return newPlans;
-        });
-      }
-      setDirtyBuildings(prev => {
-        const next = new Set(prev);
-        next.delete(buildingId);
-        return next;
-      });
-    } catch {
-      toast.error('복원에 실패했습니다.');
-    }
-  }, []);
-
-  // 페이지 이탈 경고
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (dirtyBuildings.size > 0) {
-        e.preventDefault();
-        e.returnValue = '저장하지 않은 변경사항이 있습니다.';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [dirtyBuildings]);
 
   // 기준층에 해당하는 층 목록 추출 (각 동별로) - 동기본정보 페이지의 층설정 데이터 기반, 최상층 포함, 코어 구분 없음, 중복 제거
   const getStandardFloors = useMemo(() => {
@@ -285,51 +237,11 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
         return prev;
       });
 
-      // 각 동별로 기본 공정 계획 초기화
-      setProcessPlans(prevPlans => {
-        const plans = new Map<string, BuildingProcessPlan>();
-        data.forEach(building => {
-          let existingPlan = prevPlans.get(building.id);
-
-          // localStorage에서도 로드 시도
-          if (!existingPlan && typeof window !== 'undefined') {
-            try {
-              const storageKey = `contech_process_plan_${building.id}`;
-              const storedPlanJson = localStorage.getItem(storageKey);
-              if (storedPlanJson) {
-                existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
-              }
-            } catch {
-              logger.error('Failed to load process plan from localStorage:');
-            }
-          }
-
-          if (!existingPlan) {
-            const defaultProcesses: BuildingProcessPlan['processes'] = {};
-            PROCESS_CATEGORIES.forEach(category => {
-              defaultProcesses[category] = {
-                days: 0,
-                processType: DEFAULT_PROCESS_TYPES[category],
-              };
-            });
-
-            plans.set(building.id, {
-              id: `plan-${building.id}`,
-              buildingId: building.id,
-              projectId: projectId,
-              processes: defaultProcesses,
-              totalDays: 0,
-            });
-          } else {
-            plans.set(building.id, existingPlan);
-          }
-        });
-        return plans;
-      });
+      setProcessPlans(prevPlans => initializePlans(data, prevPlans));
     } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     }
-  }, [projectId]);
+  }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans]);
 
   // 합계일수 계산 - 지상층 공정 카테고리의 일수 합계 (지하층, 기초, 버림은 별도 탭에서 관리)
   const calculateTotalDays = useCallback((processes: BuildingProcessPlan['processes'], building?: Building): number => {
@@ -441,6 +353,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     buildings,
     processPlans,
     calculateTotalDays,
+    setProcessPlans,
   ]);
 
   // 동 이름 변경
@@ -487,7 +400,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     } catch {
       toast.error('동 삭제에 실패했습니다.');
     }
-  }, [projectId, loadBuildings]);
+  }, [projectId, loadBuildings, setProcessPlans, setActiveBuildingIndex]);
 
   // 동 순서 변경
   const handleReorder = useCallback(async (fromIndex: number, toIndex: number) => {
@@ -512,7 +425,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     } catch {
       toast.error('동 순서 변경에 실패했습니다.');
     }
-  }, [projectId, loadBuildings]);
+  }, [projectId, loadBuildings, setActiveBuildingIndex]);
 
   // 공정 타입 변경
   const handleProcessTypeChange = (buildingId: string, category: ProcessCategory, processType: ProcessType, floorLabel?: string) => {
@@ -542,7 +455,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
       // 합계일수 재계산
       updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-      setProcessPlans(new Map(processPlans.set(buildingId, updatedPlan)));
+      updateProcessPlan(buildingId, updatedPlan);
       markDirty(buildingId);
     } else {
       // 기존 로직 (카테고리 전체에 대한 공정 변경)
@@ -566,7 +479,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
 
       // 합계일수 재계산
       updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-      setProcessPlans(new Map(processPlans.set(buildingId, updatedPlan)));
+      updateProcessPlan(buildingId, updatedPlan);
       markDirty(buildingId);
     }
 
@@ -574,7 +487,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     const expanded = expandedModules.get(buildingId) || new Set<string>();
     const newExpanded = new Set(expanded);
     newExpanded.add(category);
-    setExpandedModules(new Map(expandedModules.set(buildingId, newExpanded)));
+    updateExpandedModules(buildingId, newExpanded);
   };
 
   // 각 층별 processType을 가져오는 헬퍼 함수
@@ -1250,9 +1163,9 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
     // totalDays 재계산
     updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
 
-    setProcessPlans(new Map(processPlans.set(building.id, updatedPlan)));
+    updateProcessPlan(building.id, updatedPlan);
     markDirty(building.id);
-  }, [processPlans, processRows, expandedModules, getProcessTypeForFloor, calculateTotalDays, markDirty]);
+  }, [processPlans, processRows, expandedModules, getProcessTypeForFloor, calculateTotalDays, updateProcessPlan, markDirty]);
 
   // 공정 열 목록 생성 (첫 번째 공정 열만 사용)
   const processColumns = useMemo(() => {
@@ -1891,7 +1804,7 @@ export function BuildingProcessPlanPage({ projectId }: Props) {
                                               newExpanded.add(expandKey);
                                             }
                                             // 이미 확장된 경우 닫기 (newExpanded는 빈 Set이므로 아무것도 표시되지 않음)
-                                            setExpandedModules(new Map(expandedModules.set(building.id, newExpanded)));
+                                            updateExpandedModules(building.id, newExpanded);
                                           }}
                                           className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded mx-auto block"
                                           title="세부공정 보기/숨기기"

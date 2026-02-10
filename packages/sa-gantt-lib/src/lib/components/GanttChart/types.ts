@@ -3,9 +3,8 @@ import type { ConstructionTask, Milestone, GanttChartProps, ViewMode, ZoomLevel 
 export type SaveStatus = 'idle' | 'saving' | 'saved';
 
 export interface GanttHeaderProps {
-    viewMode: ViewMode;
-    zoomLevel: ZoomLevel;
-    activeCPId: string | null;
+    viewMode?: ViewMode;
+    zoomLevel?: ZoomLevel;
     isAddingTask: boolean;
     isAddingCP: boolean;
     hasUnsavedChanges?: boolean;
@@ -14,7 +13,7 @@ export interface GanttHeaderProps {
     isCompactMode?: boolean;
     // Handlers
     onViewChange: (mode: ViewMode, cpId?: string) => void;
-    onZoomChange: (level: ZoomLevel) => void;
+    onZoomChange?: (level: ZoomLevel) => void;
     onToggleCompact?: () => void;
     onStartAddTask?: () => void;
     onStartAddCP?: () => void;

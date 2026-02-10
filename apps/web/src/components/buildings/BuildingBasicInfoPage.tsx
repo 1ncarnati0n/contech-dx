@@ -6,11 +6,12 @@ import { BuildingTabs } from './BuildingTabs';
 import { BuildingBasicInfo } from './BuildingBasicInfo';
 import { FloorSettingsTable } from './FloorSettingsTable';
 import type { Building, BuildingMeta, Floor, FloorTrade } from '@/lib/types';
-import { createBuilding, getBuildings, deleteBuilding, updateBuildingFloorsAndTrades, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
+import { createBuilding, getBuildings, deleteBuilding, updateBuildingFloorsAndTrades, updateBuilding, reorderBuildings, invalidateCache } from '@/lib/services/buildings';
 import { isSpecialFloorId, parseSpecialFloorId, createSpecialFloorId } from '@/lib/utils/floorIdUtils';
 import { toast } from 'sonner';
 import { Spinner, Button, Card } from '@/components/ui';
 import { Copy, Building2 } from 'lucide-react';
+import { useRealtimeCacheSync } from '@/lib/hooks/useRealtimeCacheSync';
 
 interface Props {
   projectId: string;
@@ -46,6 +47,17 @@ export function BuildingBasicInfoPage({ projectId }: Props) {
       setIsLoading(false);
     }
   }, [projectId, activeBuildingIndex]);
+
+  const handleRealtimeBuildingsChange = useCallback(() => {
+    invalidateCache(projectId);
+    void loadBuildings();
+  }, [projectId, loadBuildings]);
+
+  useRealtimeCacheSync({
+    table: 'buildings',
+    filter: `project_id=eq.${projectId}`,
+    onInvalidate: handleRealtimeBuildingsChange,
+  });
 
   useEffect(() => {
     if (!isInitialized) {

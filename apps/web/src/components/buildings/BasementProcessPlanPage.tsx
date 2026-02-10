@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
+import { Fragment, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, Input } from '@/components/ui';
 import { SaveStatusBar } from './SaveStatusBar';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor } from '@/lib/types';
@@ -23,7 +23,7 @@ import {
   calculateDailyInputWorkersByEquipment,
 } from '@/lib/utils/process-calculation';
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from '@/lib/utils/process-days-calculator';
-import { logger } from '@/lib/utils/logger';
+import { useProcessPlanState } from './hooks/useProcessPlanState';
 
 interface Props {
   projectId: string;
@@ -63,93 +63,31 @@ const SPECIAL_FIELD_TO_TRADE: Record<
 };
 
 export function BasementProcessPlanPage({ projectId }: Props) {
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
-  const [expandedModules, setExpandedModules] = useState<Map<string, Set<string>>>(new Map()); // buildingId-category 조합
-  const [dirtyBuildings, setDirtyBuildings] = useState<Set<string>>(new Set());
-  const [isSaving, setIsSaving] = useState(false);
+  const {
+    buildings,
+    setBuildings,
+    processPlans,
+    setProcessPlans,
+    expandedModules,
+    dirtyBuildings,
+    isSaving,
+    activeBuildingIndex,
+    setActiveBuildingIndex,
+    updateProcessPlan,
+    updateExpandedModules,
+    markDirty,
+    saveToLocalStorage,
+    discardChanges: discardChangesWithoutConfirm,
+    initializePlans,
+  } = useProcessPlanState(projectId, {
+    processCategories: PROCESS_CATEGORIES,
+    defaultProcessTypes: DEFAULT_PROCESS_TYPES,
+  });
 
-  // 🔥 Stage 1 Optimization: Helper functions for efficient Map updates
-  const updateProcessPlan = useCallback((buildingId: string, updatedPlan: BuildingProcessPlan) => {
-    setProcessPlans(prev => {
-      const newPlans = new Map(prev);
-      newPlans.set(buildingId, updatedPlan);
-      return newPlans;
-    });
-  }, []);
-
-  const updateExpandedModules = useCallback((buildingId: string, newExpanded: Set<string>) => {
-    setExpandedModules(prev => {
-      const newMap = new Map(prev);
-      newMap.set(buildingId, newExpanded);
-      return newMap;
-    });
-  }, []);
-  const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
-
-  // dirty 마킹 헬퍼
-  const markDirty = useCallback((buildingId: string) => {
-    setDirtyBuildings(prev => {
-      const next = new Set(prev);
-      next.add(buildingId);
-      return next;
-    });
-  }, []);
-
-  // 명시적 저장 함수
-  const saveToLocalStorage = useCallback((buildingId: string) => {
-    const storageKey = `contech_process_plan_${buildingId}`;
-    const currentPlan = processPlans.get(buildingId);
-    if (!currentPlan) return;
-
-    setIsSaving(true);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(currentPlan));
-      setDirtyBuildings(prev => {
-        const next = new Set(prev);
-        next.delete(buildingId);
-        return next;
-      });
-      toast.success('공정계획이 저장되었습니다.');
-    } catch {
-      toast.error('저장에 실패했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
-  }, [processPlans]);
-
-  // 변경사항 취소 함수 — localStorage에서 재로드
   const discardChanges = useCallback((buildingId: string) => {
     if (!confirm('변경사항을 취소하시겠습니까?')) return;
-
-    const storageKey = `contech_process_plan_${buildingId}`;
-    try {
-      const storedJson = localStorage.getItem(storageKey);
-      if (storedJson) {
-        const restoredPlan = JSON.parse(storedJson) as BuildingProcessPlan;
-        updateProcessPlan(buildingId, restoredPlan);
-      }
-      setDirtyBuildings(prev => {
-        const next = new Set(prev);
-        next.delete(buildingId);
-        return next;
-      });
-    } catch {
-      toast.error('복원에 실패했습니다.');
-    }
-  }, [updateProcessPlan]);
-
-  // 페이지 이탈 경고
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (dirtyBuildings.size > 0) {
-        e.preventDefault();
-        e.returnValue = '저장하지 않은 변경사항이 있습니다.';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [dirtyBuildings]);
+    discardChangesWithoutConfirm(buildingId);
+  }, [discardChangesWithoutConfirm]);
 
   // 지하층 공정계획에서는 기준층을 사용하지 않음 (BuildingProcessPlanPage에서 처리)
 
@@ -191,51 +129,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
         return prev;
       });
 
-      // 각 동별로 기본 공정 계획 초기화
-      setProcessPlans(prevPlans => {
-        const plans = new Map<string, BuildingProcessPlan>();
-        data.forEach(building => {
-          let existingPlan = prevPlans.get(building.id);
-
-          // localStorage에서도 로드 시도
-          if (!existingPlan && typeof window !== 'undefined') {
-            try {
-              const storageKey = `contech_process_plan_${building.id}`;
-              const storedPlanJson = localStorage.getItem(storageKey);
-              if (storedPlanJson) {
-                existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
-              }
-            } catch (error) {
-              logger.error('Failed to load process plan from localStorage:', error);
-            }
-          }
-
-          if (!existingPlan) {
-            const defaultProcesses: BuildingProcessPlan['processes'] = {};
-            PROCESS_CATEGORIES.forEach(category => {
-              defaultProcesses[category] = {
-                days: 0,
-                processType: DEFAULT_PROCESS_TYPES[category] || '표준공정',
-              };
-            });
-
-            plans.set(building.id, {
-              id: `plan-${building.id}`,
-              buildingId: building.id,
-              projectId: projectId,
-              processes: defaultProcesses,
-              totalDays: 0,
-            });
-          } else {
-            plans.set(building.id, existingPlan);
-          }
-        });
-        return plans;
-      });
+      setProcessPlans(prevPlans => initializePlans(data, prevPlans));
     } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     }
-  }, [projectId]);
+  }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans]);
 
   // 합계일수 계산 - 모든 공정 카테고리의 일수 합계
   const calculateTotalDays = useCallback((processes: BuildingProcessPlan['processes'], building?: Building): number => {
@@ -378,6 +276,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     processPlans,
     getBasementFloors,
     calculateTotalDays,
+    setProcessPlans,
   ]);
 
   // 동 이름 변경
@@ -424,7 +323,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     } catch {
       toast.error('동 삭제에 실패했습니다.');
     }
-  }, [projectId, loadBuildings]);
+  }, [projectId, loadBuildings, setProcessPlans, setActiveBuildingIndex]);
 
   // 동 순서 변경
   const handleReorder = useCallback(async (fromIndex: number, toIndex: number) => {
@@ -449,7 +348,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     } catch {
       toast.error('동 순서 변경에 실패했습니다.');
     }
-  }, [projectId, loadBuildings]);
+  }, [projectId, loadBuildings, setActiveBuildingIndex]);
 
   // 공정 타입 변경
   const handleProcessTypeChange = (buildingId: string, category: ProcessCategory, processType: ProcessType, floorLabel?: string) => {
@@ -720,11 +619,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
     };
 
     updatedPlan.totalDays = calculateTotalDays(updatedPlan.processes, building);
-    setProcessPlans(new Map(processPlans.set(buildingId, updatedPlan)));
+    updateProcessPlan(buildingId, updatedPlan);
 
     // dirty 마킹 (명시적 저장으로 변경)
     markDirty(buildingId);
-  }, [buildings, processPlans, markDirty, calculateTotalDays]);
+  }, [buildings, processPlans, markDirty, calculateTotalDays, updateProcessPlan]);
 
   // activeBuilding을 먼저 계산 (hooks 순서 보장을 위해)
   const activeBuilding = buildings.length > 0 && activeBuildingIndex < buildings.length
@@ -1349,7 +1248,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                                 if (!expanded.has(expandKey)) {
                                                   newExpanded.add(expandKey);
                                                 }
-                                                setExpandedModules(new Map(expandedModules.set(building.id, newExpanded)));
+                                                updateExpandedModules(building.id, newExpanded);
                                               }}
                                               className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded mx-auto block"
                                               title="세부공정 보기/숨기기"
@@ -1948,7 +1847,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                               newExpanded.add(expandKey);
                                             }
                                             // 이미 확장된 경우 닫기 (newExpanded는 빈 Set이므로 아무것도 표시되지 않음)
-                                            setExpandedModules(new Map(expandedModules.set(building.id, newExpanded)));
+                                            updateExpandedModules(building.id, newExpanded);
                                           }}
                                           className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded mx-auto block"
                                           title="세부공정 보기/숨기기"

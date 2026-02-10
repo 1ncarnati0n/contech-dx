@@ -18,6 +18,7 @@ import { useGanttVirtualization } from '../../hooks/useGanttVirtualization';
 import { useTaskFocus } from '../../hooks/useTaskFocus';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
 import { calculateDateRange } from '../../utils/dateUtils';
+import { GanttProvider } from '../../context/GanttContext';
 import {
     GanttChartProps,
     ConstructionTask,
@@ -354,6 +355,24 @@ export function GanttChart({
         onTaskEdit: handleTaskDoubleClick,
     });
 
+    const timelineConfig = useMemo(() => ({
+        holidays,
+        calendarSettings,
+    }), [holidays, calendarSettings]);
+
+    const zoomConfig = useMemo(() => ({
+        level: zoomLevel,
+        pixelsPerDay: ZOOM_CONFIG[zoomLevel].pixelsPerDay,
+        setLevel: setZoomLevel,
+    }), [zoomLevel, setZoomLevel]);
+
+    const sidebarConfig = useMemo(() => ({
+        width: sidebarWidth,
+        totalWidth: sidebarTotalWidth,
+        setWidth: setSidebarWidth,
+        setTotalWidth: setSidebarTotalWidth,
+    }), [sidebarWidth, sidebarTotalWidth, setSidebarWidth, setSidebarTotalWidth]);
+
     // ========================================
     // Shared Props for Sidebar
     // ========================================
@@ -440,22 +459,35 @@ export function GanttChart({
     // Render
     // ========================================
     return (
-        <div
-            ref={containerRef}
-            className={`flex h-full w-full flex-col ${className || ''}`}
-            style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
+        <GanttProvider
+            viewMode={viewMode}
+            activeCPId={activeCPId}
+            holidays={holidays}
+            calendarSettings={calendarSettings}
+            timelineConfig={timelineConfig}
+            zoomConfig={zoomConfig}
+            sidebarConfig={sidebarConfig}
+            onTaskUpdate={onTaskUpdate}
+            onTaskCreate={onTaskCreate}
+            onTaskDelete={onTaskDelete}
+            onTaskReorder={onTaskReorder}
+            onTaskGroup={onTaskGroup}
+            onTaskUngroup={onTaskUngroup}
+            onTaskMove={onTaskMove}
+            onTaskDoubleClick={handleTaskDoubleClick}
         >
+            <div
+                ref={containerRef}
+                className={`flex h-full w-full flex-col ${className || ''}`}
+                style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
+            >
             <GanttHeader
-                viewMode={viewMode}
-                zoomLevel={zoomLevel}
-                activeCPId={activeCPId}
                 isAddingTask={isAddingTask}
                 isAddingCP={isAddingCP}
                 hasUnsavedChanges={hasUnsavedChanges}
                 saveStatus={saveStatus}
                 isCompactMode={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? isCompactMode : false}
                 onViewChange={handleViewChangeWithLoading}
-                onZoomChange={setZoomLevel}
                 onToggleCompact={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? toggleCompactMode : undefined}
                 onStartAddTask={() => setIsAddingTask(true)}
                 onStartAddCP={() => setIsAddingCP(true)}
@@ -629,6 +661,7 @@ export function GanttChart({
                 onSave={handleTaskEditSave}
                 onDelete={onTaskDelete ? handleTaskEditDelete : undefined}
             />
-        </div>
+            </div>
+        </GanttProvider>
     );
 }
