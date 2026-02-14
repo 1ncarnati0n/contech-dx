@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logger';
 import { geminiUploadStart } from '@/lib/utils/geminiApi';
-import { checkAuth } from '@/lib/utils/apiAuth';
+import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
+import { z } from 'zod';
 
 // 보안 설정
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -61,6 +62,10 @@ const DANGEROUS_EXTENSIONS = [
   '.jar', '.class',
   '.php', '.asp', '.aspx', '.jsp',
 ];
+
+const uploadMetadataSchema = z.object({
+  storeName: z.string().trim().min(1, '스토어를 선택해주세요.'),
+});
 
 // 파일명 sanitize 함수
 function sanitizeFileName(fileName: string): string {
@@ -253,21 +258,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData();
-    const storeName = formData.get('storeName') as string;
+    const metadataResult = uploadMetadataSchema.safeParse({
+      storeName: formData.get('storeName'),
+    });
 
-    if (!storeName) {
-      return NextResponse.json(
-        { success: false, error: '스토어를 선택해주세요.' },
-        { status: 400 }
+    if (!metadataResult.success) {
+      return apiError(
+        ErrorCode.VALIDATION_ERROR,
+        '스토어를 선택해주세요.',
+        { fieldErrors: metadataResult.error.flatten().fieldErrors }
       );
     }
+    const { storeName } = metadataResult.data;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { success: false, error: 'Gemini API 키가 설정되지 않았습니다.' },
-        { status: 500 }
-      );
+      return apiError(ErrorCode.SERVER_ERROR, 'Gemini API 키가 설정되지 않았습니다.');
     }
 
     // 여러 파일 수집
@@ -279,23 +285,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (files.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { code: 'NO_FILES', message: '파일을 선택해주세요.' } },
-        { status: 400 }
-      );
+      return apiError(ErrorCode.MISSING_FIELD, '파일을 선택해주세요.');
     }
 
     // 한 번에 업로드 가능한 파일 수 제한
     if (files.length > MAX_FILES_PER_REQUEST) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'TOO_MANY_FILES',
-            message: `한 번에 최대 ${MAX_FILES_PER_REQUEST}개 파일만 업로드할 수 있습니다.`,
-          },
-        },
-        { status: 400 }
+      return apiError(
+        ErrorCode.LIMIT_EXCEEDED,
+        `한 번에 최대 ${MAX_FILES_PER_REQUEST}개 파일만 업로드할 수 있습니다.`,
+        { maxFilesPerRequest: MAX_FILES_PER_REQUEST }
       );
     }
 
@@ -316,7 +314,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: 'VALIDATION_FAILED', message: '유효한 파일이 없습니다.' },
+          error: {
+            code: ErrorCode.VALIDATION_ERROR,
+            message: '유효한 파일이 없습니다.',
+            details: { validationErrors },
+          },
           validationErrors,
         },
         { status: 400 }
@@ -346,9 +348,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     logger.error('파일 업로드 오류', { error: error instanceof Error ? error.message : '알 수 없는 오류' });
-    return NextResponse.json(
-      { success: false, error: { code: 'UPLOAD_ERROR', message: '파일 업로드 중 오류가 발생했습니다.' } },
-      { status: 500 }
-    );
+    return apiError(ErrorCode.OPERATION_FAILED, '파일 업로드 중 오류가 발생했습니다.');
   }
 }

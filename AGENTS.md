@@ -1,45 +1,86 @@
-# Repository Guidelines
+# Guidelines
 
-## Project Structure & Module Organization
-This repository is an npm workspaces monorepo.
-- `apps/web/`: Next.js 16 App Router app (`@contech/web`) with source in `apps/web/src`.
-- `packages/sa-gantt-lib/`: shared Gantt library built with Vite/TypeScript.
-- `apps/web/sql/`: Supabase schema, migrations, and seed SQL.
-- `docs/`: planning and refactoring notes.
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-Within `apps/web/src`, keep route files in `app/`, reusable UI in `components/`, and domain logic in `lib/` (`services/`, `utils/`, `hooks/`, `types/`).
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-## Build, Test, and Development Commands
-Use workspace-root commands unless package-specific behavior is needed.
-- `npm run dev`: start web app locally on `http://localhost:3000`.
-- `npm run dev:lib`: watch-build `sa-gantt-lib` while editing the library.
-- `npm run build:lib`: build library artifacts in `packages/sa-gantt-lib/dist`.
-- `npm run build`: production build for web app.
-- `npm run lint`: run ESLint across workspaces.
-- `npm run test`: run Jest (web) and Vitest (library).
-- `npm -w @contech/web run test:coverage`: coverage report with thresholds.
+## 1. Think Before Coding
 
-When changing library APIs used by web, run `npm run build:lib` before `npm run build`.
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-## Coding Style & Naming Conventions
-- Language: TypeScript (`strict`), React function components.
-- Indentation: 2 spaces in `apps/web`, 4 spaces in `packages/sa-gantt-lib` (match existing file style).
-- Components/files: `PascalCase.tsx` for React components, `camelCase.ts` for utilities/hooks.
-- Tests: `*.test.ts` or `*.test.tsx` under `__tests__` or adjacent test folders.
-- Linting: ESLint required in both workspaces; fix warnings before opening a PR.
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-## Testing Guidelines
-- Web app uses Jest + Testing Library (`apps/web/jest.config.ts`).
-- Gantt library uses Vitest + jsdom (`packages/sa-gantt-lib/vitest.config.ts`).
-- Web coverage threshold is 50% global (branches/functions/lines/statements).
-- Add regression tests for bug fixes and core utility changes.
+## 2. Simplicity First
 
-## Commit & Pull Request Guidelines
-Recent history includes broad messages like `update all`; prefer clear, scoped commits such as `web: fix project status badge render`.
-- Keep commits focused and runnable.
-- PRs should include: purpose, key changes, test commands run, and screenshots/GIFs for UI updates.
-- Link related issues or task IDs, and note any schema/env var changes explicitly.
+**Minimum code that solves the problem. Nothing speculative.**
 
-## Security & Configuration Tips
-- Keep secrets in `.env.local` only (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GEMINI_API_KEY`).
-- Never commit credentials or generated local artifacts (`.next/`, `dist/`, coverage outputs).
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+
+# 일반사항
+
+- pnpm 말고 npm 사용
+- npm run dev 는 유저가 기본적으로 실행하도록, build 만 agent가 실행
+- Code Review 완료시 꼭 README.md 업데이트
+
+## 모노레포 빌드 순서
+
+라이브러리 패키지 수정 시 반드시 **순서대로** 빌드해야 변경사항이 반영됨:
+
+```bash
+# 1. 라이브러리 먼저 빌드
+cd packages/sa-gantt-lib && npm run build
+
+# 2. 그 다음 web 빌드
+cd apps/web && npm run build
+```
+
+> ⚠️ 라이브러리를 빌드하지 않으면 web이 이전 버전의 dist/를 참조함

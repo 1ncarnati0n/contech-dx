@@ -9,6 +9,11 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
+type MarkdownCodeProps = React.HTMLAttributes<HTMLElement> & {
+  children?: React.ReactNode;
+  className?: string;
+};
+
 /**
  * 헤딩 텍스트에서 ID 생성
  */
@@ -146,8 +151,7 @@ export default function MarkdownRenderer({
               {children}
             </h4>
           ),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          code: ({ className, children, ...props }: any) => {
+          code: ({ className, children, ...props }: MarkdownCodeProps) => {
             const match = /language-(\w+)/.exec(className || '');
             const isInline = !match && !String(children).includes('\n');
 

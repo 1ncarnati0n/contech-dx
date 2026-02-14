@@ -3,6 +3,7 @@
 import { logger } from '@/lib/utils/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '@/lib/constants';
+import { getApiErrorMessage } from '@/lib/utils/api-error';
 import type { Message, ChatSession } from './types';
 
 interface UseChatSessionOptions {
@@ -175,7 +176,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
           role: 'model',
           content: data.success
             ? data.answer
-            : `오류가 발생했습니다: ${data.error || '알 수 없는 오류'}`,
+            : `오류가 발생했습니다: ${getApiErrorMessage(data.error, '알 수 없는 오류')}`,
           citations: data.success ? data.citations : undefined,
           timestamp: new Date(),
         };
