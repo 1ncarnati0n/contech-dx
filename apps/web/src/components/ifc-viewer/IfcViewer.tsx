@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { logger } from '@/lib/utils/logger';
+import type { Color, Object3D, Texture } from 'three';
 
 interface IfcViewerProps {
   className?: string;
@@ -41,12 +42,17 @@ interface DisposableLike {
   dispose: () => void;
 }
 
+interface ComponentsLike extends DisposableLike {
+  init: () => void;
+  get: <T>(token: unknown) => T;
+}
+
 interface ThreeLike {
-  Color: new (color: number) => unknown;
+  Color: new (color: number) => Color;
 }
 
 interface CameraControlsLike {
-  addEventListener: (event: any, callback: () => void) => void;
+  addEventListener: (event: string | symbol, callback: () => void) => void;
   setLookAt: (
     px: number,
     py: number,
@@ -59,9 +65,8 @@ interface CameraControlsLike {
   reset: (animate: boolean) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenBIM Components library types use concrete Three.js types internally
 interface CameraLike {
-  three: any;
+  three: unknown;
   controls: CameraControlsLike;
   fitToItems: () => Promise<void> | void;
   hasCameraControls: () => boolean;
@@ -71,9 +76,10 @@ interface CameraLike {
 }
 
 interface SceneLike {
+  setup: () => void;
   three: {
-    background: any;
-    add: (object: any) => void;
+    background: Color | Texture | null;
+    add: (object: Object3D) => void;
   };
 }
 
@@ -81,13 +87,14 @@ interface WorldLike {
   scene: SceneLike;
   camera: CameraLike;
   renderer?: {
+    postproduction: { enabled: boolean };
     resize: () => void;
   };
 }
 
 interface ModelLike {
-  useCamera: (camera: any) => void;
-  object: any;
+  useCamera: (camera: unknown) => void;
+  object: Object3D;
 }
 
 interface FragmentsLike {
@@ -104,7 +111,7 @@ interface FragmentsLike {
 }
 
 interface IfcLoaderLike {
-  setup: (options: any) => Promise<void> | void;
+  setup: (options: { autoSetWasm: boolean; wasm: { path: string; absolute: boolean } }) => Promise<void> | void;
   load: (data: Uint8Array, toOrigin: boolean, modelName: string) => Promise<void> | void;
 }
 
@@ -118,6 +125,42 @@ interface BoundingBoxerLike {
 
 interface HighlighterLike {
   multiple: string;
+}
+
+interface WorldsLike {
+  create: () => WorldLike;
+}
+
+interface GridsLike {
+  create: (world: WorldLike) => void;
+}
+
+interface RaycastersLike {
+  get: (world: WorldLike) => unknown;
+}
+
+interface HighlighterInstanceLike extends HighlighterLike {
+  setup: (config: unknown) => void;
+}
+
+interface OBCModuleLike {
+  Components: new () => ComponentsLike;
+  Worlds: unknown;
+  SimpleScene: new (components: ComponentsLike) => SceneLike;
+  OrthoPerspectiveCamera: new (components: ComponentsLike) => CameraLike;
+  Grids: unknown;
+  FragmentsManager: unknown;
+  BoundingBoxer: unknown;
+  IfcLoader: unknown;
+  Raycasters: unknown;
+}
+
+interface OBFModuleLike {
+  PostproductionRenderer: new (components: ComponentsLike, container: HTMLElement) => {
+    postproduction: { enabled: boolean };
+    resize: () => void;
+  };
+  Highlighter: unknown;
 }
 
 /**
@@ -183,8 +226,8 @@ export function IfcViewer({ className }: IfcViewerProps) {
         setLoadingState({ phase: 'initializing', progress: 10, message: '뷰어 초기화 중...' });
 
         // Dynamic imports
-        const OBC = await import('@thatopen/components');
-        const OBF = await import('@thatopen/components-front');
+        const OBC = await import('@thatopen/components') as unknown as OBCModuleLike;
+        const OBF = await import('@thatopen/components-front') as unknown as OBFModuleLike;
         const THREE = await import('three');
         threeRef.current = THREE;
 
@@ -199,14 +242,9 @@ export function IfcViewer({ className }: IfcViewerProps) {
         componentsRef.current = components;
 
         // Create world with OrthoPerspectiveCamera for view presets
-        const worlds = components.get(OBC.Worlds);
-        const world = worlds.create<
-          typeof OBC.SimpleScene.prototype,
-          typeof OBC.OrthoPerspectiveCamera.prototype,
-          typeof OBF.PostproductionRenderer.prototype
-        >();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OpenBIM library type mismatch
-        worldRef.current = world as any;
+        const worlds = components.get<WorldsLike>(OBC.Worlds);
+        const world = worlds.create();
+        worldRef.current = world;
 
         // Setup scene, renderer, camera in correct order
         if (!containerRef.current) {
@@ -230,7 +268,7 @@ export function IfcViewer({ className }: IfcViewerProps) {
         world.scene.three.background = new THREE.Color(initialBgColor);
 
         // Setup grids
-        const grids = components.get(OBC.Grids);
+        const grids = components.get<GridsLike>(OBC.Grids);
         grids.create(world);
 
         // Enable postproduction
@@ -239,8 +277,8 @@ export function IfcViewer({ className }: IfcViewerProps) {
         setLoadingState({ phase: 'initializing', progress: 30, message: 'IFC 로더 설정 중...' });
 
         // Setup fragments manager FIRST (required before IFC loader)
-        const fragments = components.get(OBC.FragmentsManager);
-        fragmentsRef.current = fragments as any;
+        const fragments = components.get<FragmentsLike>(OBC.FragmentsManager);
+        fragmentsRef.current = fragments;
 
         // Initialize fragments with local worker URL (to avoid CORS issues)
         const workerUrl = '/wasm/worker.mjs';
@@ -252,19 +290,19 @@ export function IfcViewer({ className }: IfcViewerProps) {
         });
 
         // Handle new fragments loaded
-        (fragments.list.onItemSet as any).add(async ({ value: model }: { value: ModelLike }) => {
+        fragments.list.onItemSet.add(async ({ value: model }: { value: ModelLike }) => {
           model.useCamera(world.camera.three);
           world.scene.three.add(model.object);
           await fragments.core.update(true);
 
           // Setup BoundingBoxer after model loads
-          const boxer = components.get(OBC.BoundingBoxer);
+          const boxer = components.get<BoundingBoxerLike>(OBC.BoundingBoxer);
           boxer.addFromModels();
           boundingBoxerRef.current = boxer;
         });
 
         // Setup IFC loader AFTER fragments with explicit WASM configuration
-        const ifcLoader = components.get(OBC.IfcLoader);
+        const ifcLoader = components.get<IfcLoaderLike>(OBC.IfcLoader);
         await ifcLoader.setup({
           autoSetWasm: false,
           wasm: {
@@ -272,15 +310,16 @@ export function IfcViewer({ className }: IfcViewerProps) {
             absolute: true,
           },
         });
-        ifcLoaderRef.current = ifcLoader as any;
+        ifcLoaderRef.current = ifcLoader;
 
         setLoadingState({ phase: 'initializing', progress: 60, message: '선택 기능 설정 중...' });
 
         // Setup Raycasters for selection
-        components.get(OBC.Raycasters).get(world);
+        const raycasters = components.get<RaycastersLike>(OBC.Raycasters);
+        raycasters.get(world);
 
         // Setup Highlighter for object selection
-        const highlighter = components.get(OBF.Highlighter);
+        const highlighter = components.get<HighlighterInstanceLike>(OBF.Highlighter);
         highlighter.setup({
           world,
           selectMaterialDefinition: {

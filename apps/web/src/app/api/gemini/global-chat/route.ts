@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { withValidation } from '@/lib/api/withValidation';
 import { getPageChatbotConfig } from '@/lib/data/global-chatbot-config';
 import { geminiModelRequest } from '@/lib/utils/geminiApi';
-import { checkAuth } from '@/lib/utils/apiAuth';
+import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
 import { logger } from '@/lib/utils/logger';
 import type { PageType } from '@/lib/hooks/usePageContext';
 
@@ -57,6 +59,53 @@ interface GlobalChatRequest {
   }>;
   thinkingMode?: boolean;
 }
+
+const pageTypeSchema = z.enum([
+  'home',
+  'projects',
+  'project-detail',
+  'project-gantt',
+  'building-process-plan',
+  'basement-process-plan',
+  'posts',
+  'post-detail',
+  'profile',
+  'admin',
+  'admin-users',
+  'admin-settings',
+  'unknown',
+]);
+
+const historySchema = z.object({
+  role: z.enum(['user', 'model']),
+  content: z.string().trim().min(1),
+});
+
+const globalChatBodySchema = z.object({
+  query: z.string().trim().min(1, '질문을 입력해주세요.').max(3000),
+  pageType: pageTypeSchema,
+  pageContext: z.object({
+    projectId: z.string().optional(),
+    buildingId: z.string().optional(),
+    postId: z.string().optional(),
+    pathname: z.string().optional(),
+  }).optional(),
+  tabContext: z.object({
+    buildingName: z.string().optional(),
+    totalUnits: z.number().optional(),
+    coreCount: z.number().optional(),
+    floorCount: z.number().optional(),
+    currentStep: z.enum(['type_selection', 'quantity_input', 'calculation', 'review']).optional(),
+    totalDays: z.number().optional(),
+    hasErrors: z.boolean().optional(),
+    errorMessages: z.array(z.string()).optional(),
+    selectedTypes: z.record(z.string(), z.string().nullable()).optional(),
+    calculatedDays: z.record(z.string(), z.number().nullable()).optional(),
+    completionRate: z.number().optional(),
+  }).optional(),
+  history: z.array(historySchema).max(30).optional(),
+  thinkingMode: z.boolean().optional(),
+});
 
 /**
  * 에러 타입 분류
@@ -122,6 +171,22 @@ function classifyError(error: unknown, status?: number): ChatbotError {
     retryable: true,
     retryAfter: 2000,
   };
+}
+
+function mapChatbotErrorToApiCode(error: ChatbotError): ErrorCode {
+  switch (error.type) {
+    case 'API_RATE_LIMIT':
+      return ErrorCode.LIMIT_EXCEEDED;
+    case 'INVALID_RESPONSE':
+    case 'CONTEXT_TOO_LARGE':
+      return ErrorCode.INVALID_INPUT;
+    case 'NETWORK_ERROR':
+    case 'API_OVERLOADED':
+    case 'TIMEOUT':
+      return ErrorCode.EXTERNAL_API_ERROR;
+    default:
+      return ErrorCode.SERVER_ERROR;
+  }
 }
 
 /**
@@ -207,7 +272,7 @@ function buildContextPrompt(
     if (tabContext.hasErrors && tabContext.errorMessages && tabContext.errorMessages.length > 0) {
       lines.push('');
       lines.push('## 현재 오류');
-      tabContext.errorMessages.slice(0, 3).forEach(msg => {
+      tabContext.errorMessages.slice(0, 3).forEach((msg) => {
         lines.push(`- ${msg}`);
       });
       if (tabContext.errorMessages.length > 3) {
@@ -225,141 +290,126 @@ function buildContextPrompt(
  * 전역 챗봇 API
  * 페이지 타입에 따른 맞춤형 응답 제공
  */
-export async function POST(request: NextRequest) {
-  // 인증 확인
-  const authCheck = await checkAuth();
-  if (!authCheck.success) return authCheck.response;
+export const POST = withValidation(
+  { schema: globalChatBodySchema, source: 'body' },
+  async (_request: NextRequest, body) => {
+    // 인증 확인
+    const authCheck = await checkAuth();
+    if (!authCheck.success) return authCheck.response;
 
-  try {
-    const body: GlobalChatRequest = await request.json();
-    const { query, pageType, pageContext, tabContext, history = [], thinkingMode = false } = body;
+    try {
+      const { query, pageType, pageContext, tabContext, history = [], thinkingMode = false } = body;
 
-    if (!query) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            type: 'INVALID_RESPONSE' as ChatbotErrorType,
-            message: '질문을 입력해주세요.',
-            retryable: false,
-          },
-        },
-        { status: 400 }
-      );
-    }
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return apiError(ErrorCode.SERVER_ERROR, 'Gemini API 키가 설정되지 않았습니다.');
+      }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            type: 'INVALID_RESPONSE' as ChatbotErrorType,
-            message: 'Gemini API 키가 설정되지 않았습니다.',
-            retryable: false,
-          },
-        },
-        { status: 500 }
-      );
-    }
+      // 페이지별 챗봇 설정 가져오기
+      const config = getPageChatbotConfig(pageType);
 
-    // 페이지별 챗봇 설정 가져오기
-    const config = getPageChatbotConfig(pageType);
+      // 시스템 프롬프트 구성 (tabContext 포함)
+      const systemPrompt = config.systemPrompt + buildContextPrompt(pageContext, tabContext);
 
-    // 시스템 프롬프트 구성 (tabContext 포함)
-    const systemPrompt = config.systemPrompt + buildContextPrompt(pageContext, tabContext);
+      // 대화 히스토리 구성
+      const contents = [];
 
-    // 대화 히스토리 구성
-    const contents = [];
-
-    // 시스템 프롬프트를 첫 메시지로 추가
-    contents.push({
-      role: 'user',
-      parts: [{ text: systemPrompt }],
-    });
-    contents.push({
-      role: 'model',
-      parts: [{ text: config.welcomeMessage }],
-    });
-
-    // 대화 히스토리 추가 (최근 10개만)
-    const recentHistory = history.slice(-10);
-    recentHistory.forEach(msg => {
+      // 시스템 프롬프트를 첫 메시지로 추가
       contents.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
+        role: 'user',
+        parts: [{ text: systemPrompt }],
       });
-    });
+      contents.push({
+        role: 'model',
+        parts: [{ text: config.welcomeMessage }],
+      });
 
-    // 현재 질문 추가
-    contents.push({
-      role: 'user',
-      parts: [{ text: query }],
-    });
+      // 대화 히스토리 추가 (최근 10개만)
+      const recentHistory = history.slice(-10);
+      recentHistory.forEach((msg) => {
+        contents.push({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.content }],
+        });
+      });
 
-    // 모델 선택: 사고 모드에 따라 다른 모델 사용
-    const model = thinkingMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+      // 현재 질문 추가
+      contents.push({
+        role: 'user',
+        parts: [{ text: query }],
+      });
 
-    // Gemini API 호출
-    const response = await geminiModelRequest(
-      model,
-      'generateContent',
-      apiKey,
-      {
-        contents,
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-          // 사고 모드 설정: thinkingConfig는 generationConfig 내부에 위치해야 함
-          // thinkingBudget -1은 모델이 자동으로 사고 양 조절
-          // includeThoughts: true로 사고 내용을 응답에 포함
-          ...(thinkingMode && {
-            thinkingConfig: {
-              thinkingBudget: -1,
-              includeThoughts: true,
-            },
-          }),
-        },
-      }
-    );
+      // 모델 선택: 사고 모드에 따라 다른 모델 사용
+      const model = thinkingMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = classifyError(
-        new Error(errorData.error?.message || 'API 요청 실패'),
-        response.status
+      // Gemini API 호출
+      const response = await geminiModelRequest(
+        model,
+        'generateContent',
+        apiKey,
+        {
+          contents,
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+            ...(thinkingMode && {
+              thinkingConfig: {
+                thinkingBudget: -1,
+                includeThoughts: true,
+              },
+            }),
+          },
+        }
       );
-      return NextResponse.json({ success: false, error }, { status: response.status });
-    }
 
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const parts = candidate?.content?.parts || [];
-
-    // 사고 모드일 때 thoughts와 answer를 분리하여 파싱
-    // Gemini API는 thought: true 플래그로 사고 내용을 표시
-    let thoughts = '';
-    let answer = '';
-
-    for (const part of parts) {
-      if (part.thought === true) {
-        thoughts += part.text || '';
-      } else {
-        answer += part.text || '';
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const chatbotError = classifyError(
+          new Error(errorData.error?.message || 'API 요청 실패'),
+          response.status
+        );
+        return apiError(
+          mapChatbotErrorToApiCode(chatbotError),
+          chatbotError.message,
+          {
+            chatbotError,
+            status: response.status,
+          }
+        );
       }
-    }
 
-    return NextResponse.json({
-      success: true,
-      answer: answer || '응답을 받지 못했습니다.',
-      thoughts: thinkingMode && thoughts ? thoughts : undefined,
-      pageType,
-    });
-  } catch (error) {
-    logger.error('Error in global-chat:', error);
-    const chatbotError = classifyError(error);
-    return NextResponse.json({ success: false, error: chatbotError }, { status: 500 });
+      const data = await response.json();
+      const candidate = data.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+
+      // 사고 모드일 때 thoughts와 answer를 분리하여 파싱
+      let thoughts = '';
+      let answer = '';
+
+      for (const part of parts) {
+        if (part.thought === true) {
+          thoughts += part.text || '';
+        } else {
+          answer += part.text || '';
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        answer: answer || '응답을 받지 못했습니다.',
+        thoughts: thinkingMode && thoughts ? thoughts : undefined,
+        pageType,
+      });
+    } catch (error) {
+      logger.error('Error in global-chat:', error);
+      const chatbotError = classifyError(error);
+      return apiError(
+        mapChatbotErrorToApiCode(chatbotError),
+        chatbotError.message,
+        { chatbotError }
+      );
+    }
   }
-}
+);

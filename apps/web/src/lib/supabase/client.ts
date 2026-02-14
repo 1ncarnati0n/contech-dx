@@ -3,6 +3,7 @@
 
 import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/utils/logger';
 
 // 싱글톤 패턴: 클라이언트와 리스너를 한 번만 생성
 let supabaseInstance: SupabaseClient | null = null;
@@ -38,14 +39,10 @@ export async function clearInvalidSession() {
   const supabase = createClient();
   try {
     await supabase.auth.signOut({ scope: 'local' });
-  } catch {
-    // 에러 무시 - 이미 세션이 무효한 상태일 수 있음
+  } catch (error) {
+    // 이미 세션이 무효한 상태일 수 있으므로 경고만 남기고 진행
+    logger.warn('Failed to clear invalid Supabase session', {
+      reason: error instanceof Error ? error.message : 'unknown',
+    });
   }
-  // 쿠키 정리
-  document.cookie.split(';').forEach((cookie) => {
-    const name = cookie.split('=')[0].trim();
-    if (name.startsWith('sb-')) {
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
-  });
 }

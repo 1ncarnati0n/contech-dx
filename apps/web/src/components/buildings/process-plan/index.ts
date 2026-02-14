@@ -9,6 +9,10 @@
  */
 
 export { ProcessDetailPanel } from './ProcessDetailPanel';
+export { ProcessPlanDetailCard } from './ProcessPlanDetailCard';
+export { ProcessPlanTable } from './ProcessPlanTable';
+export { ProcessPlanTableRow } from './ProcessPlanTableRow';
+export { ProcessPlanSidePanel } from './ProcessPlanSidePanel';
 export { ProcessItemCard } from './ProcessItemCard';
 export { FormulaDisplay } from './FormulaDisplay';
 export type { FormulaStep, CalculationResult } from './FormulaDisplay';

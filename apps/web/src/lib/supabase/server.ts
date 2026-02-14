@@ -3,6 +3,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/utils/logger';
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -20,8 +21,12 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch {
+          } catch (error) {
             // Server Component에서는 set이 동작하지 않을 수 있음
+            logger.warn('Failed to set Supabase auth cookies in server context', {
+              reason: error instanceof Error ? error.message : 'unknown',
+              cookieCount: cookiesToSet.length,
+            });
           }
         },
       },

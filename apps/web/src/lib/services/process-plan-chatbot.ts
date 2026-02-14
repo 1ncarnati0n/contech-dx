@@ -9,6 +9,7 @@ import type {
   ChatContextSnapshot,
   ChatbotError,
 } from '@/components/buildings/ProcessPlanChatbotTypes';
+import { getApiErrorMessage, getChatbotErrorDetails } from '@/lib/utils/api-error';
 
 export interface ProcessPlanChatRequest {
   query: string;
@@ -31,6 +32,59 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   baseDelay: 1000, // 1초
   maxDelay: 8000, // 8초
 };
+
+function mapErrorType(rawType: string): ChatbotError['type'] {
+  const knownTypes: ChatbotError['type'][] = [
+    'NETWORK_ERROR',
+    'API_RATE_LIMIT',
+    'API_OVERLOADED',
+    'INVALID_RESPONSE',
+    'CONTEXT_TOO_LARGE',
+    'TIMEOUT',
+    'UNKNOWN',
+  ];
+  return knownTypes.includes(rawType as ChatbotError['type'])
+    ? (rawType as ChatbotError['type'])
+    : 'UNKNOWN';
+}
+
+function mapApiCodeToChatbotType(code?: string): ChatbotError['type'] {
+  switch (code) {
+    case 'LIMIT_EXCEEDED':
+      return 'API_RATE_LIMIT';
+    case 'INVALID_INPUT':
+    case 'VALIDATION_ERROR':
+      return 'INVALID_RESPONSE';
+    case 'EXTERNAL_API_ERROR':
+      return 'API_OVERLOADED';
+    default:
+      return 'UNKNOWN';
+  }
+}
+
+function toChatbotError(error: unknown): ChatbotError {
+  const chatbotDetails = getChatbotErrorDetails(error);
+  if (chatbotDetails) {
+    return {
+      type: mapErrorType(chatbotDetails.type),
+      message: chatbotDetails.message,
+      retryable: chatbotDetails.retryable,
+      retryAfter: chatbotDetails.retryAfter,
+    };
+  }
+
+  const apiError = error as { code?: string };
+  const message = getApiErrorMessage(error, '요청 실패');
+  const type = mapApiCodeToChatbotType(apiError?.code);
+  const retryable = type === 'API_RATE_LIMIT' || type === 'API_OVERLOADED';
+
+  return {
+    type,
+    message,
+    retryable,
+    ...(retryable ? { retryAfter: type === 'API_RATE_LIMIT' ? 5000 : 3000 } : {}),
+  };
+}
 
 /**
  * 지수 백오프 딜레이 계산
@@ -112,11 +166,7 @@ export async function sendProcessPlanChat(
       }
 
       // 에러 응답
-      const error: ChatbotError = data.error || {
-        type: 'UNKNOWN',
-        message: data.error?.message || '요청 실패',
-        retryable: false,
-      };
+      const error = toChatbotError(data.error);
 
       // 재시도 불가능한 에러
       if (!error.retryable) {

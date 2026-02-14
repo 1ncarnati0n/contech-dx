@@ -34,6 +34,11 @@ interface ChatAreaProps {
   onStopSearch?: () => void;
 }
 
+type MarkdownCodeProps = React.HTMLAttributes<HTMLElement> & {
+  children?: React.ReactNode;
+  className?: string;
+};
+
 export default function ChatArea({
   messages,
   selectedStore,
@@ -323,8 +328,7 @@ const MessageBubble = memo(function MessageBubble({
                 h1: ({ ...props }) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900 dark:text-white" {...props} />,
                 h2: ({ ...props }) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 dark:text-white" {...props} />,
                 h3: ({ ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800 dark:text-slate-200" {...props} />,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                code: ({ className, children, ...props }: any) => {
+                code: ({ className, children, ...props }: MarkdownCodeProps) => {
                   const match = /language-(\w+)/.exec(className || '');
                   const isInline = !match && !String(children).includes('\n');
 

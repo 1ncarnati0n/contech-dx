@@ -7,9 +7,15 @@ import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType, Floor
 import type { TradeFieldKey, TradeSubFieldKey } from '@/lib/types/process-quantity';
 import { getBuildings, deleteBuilding, updateBuilding, reorderBuildings } from '@/lib/services/buildings';
 import { toast } from 'sonner';
-import { ChevronDown, ChevronUp, Building2, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import { BuildingTabs } from './BuildingTabs';
-import { ProcessDetailPanel } from './process-plan/ProcessDetailPanel';
+import {
+  ProcessDetailPanel,
+  ProcessPlanDetailCard,
+  ProcessPlanTable,
+  ProcessPlanTableRow,
+  ProcessPlanSidePanel,
+} from './process-plan';
 import { getProcessModule } from '@/lib/data/process-modules';
 import { resolveProcessQuantity, getSpecialRowDeductions, resolveWithDeduction } from '@/lib/utils/process-quantity-resolver';
 import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
@@ -863,80 +869,11 @@ export function BasementProcessPlanPage({ projectId }: Props) {
               {/* 공정 목록 테이블 */}
               <div className="flex items-start gap-4 min-w-[1024px]">
                 {/* 좌측: 테이블 카드 */}
-                <div className="flex-1 min-w-0 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden">
-                  {/* 테이블 헤더 */}
-                  <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                    <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                      공정 목록
-                    </h3>
-                  </div>
-
-                  {/* 테이블 스크롤 컨테이너 */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm table-fixed">
-                      <colgroup>
-                        {/* 구분 항목 */}<col style={{ width: '92px' }} />
-                        {/* 층수 */}<col style={{ width: '44px' }} />
-                        {/* 형틀 합계 */}<col style={{ width: '52px' }} />
-                        {/* 갱폼 */}<col style={{ width: '48px' }} />
-                        {/* 알폼 */}<col style={{ width: '48px' }} />
-                        {/* 유로폼 */}<col style={{ width: '52px' }} />
-                        {/* 해체/정리 */}<col style={{ width: '52px' }} />
-                        {/* 철근 */}<col style={{ width: '54px' }} />
-                        {/* 콘크리트 */}<col style={{ width: '58px' }} />
-                        {/* 공정타입 */}<col style={{ width: '90px' }} />
-                        {/* 세부공정 */}<col style={{ width: '56px' }} />
-                      </colgroup>
-                      <thead className="bg-zinc-50 dark:bg-zinc-900/50">
-                        {/* 상단 헤더 행 */}
-                        <tr className="border-b border-zinc-200 dark:border-zinc-800" style={{ height: '24px' }}>
-                          <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            구분
-                          </th>
-                          <th rowSpan={2} className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            층수
-                          </th>
-                          <th colSpan={4} className="px-1 py-0.5 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
-                            형틀
-                          </th>
-                          <th rowSpan={2} className="px-0.5 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.1' }}>
-                            해체/<br />정리
-                          </th>
-                          <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            철근
-                          </th>
-                          <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r-2 border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            콘크리트
-                          </th>
-                          {processColumns.length > 0 && (
-                            <Fragment key={`header-${processColumns[0].category}-${processColumns[0].colIndex}`}>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                공정타입
-                              </th>
-                              <th rowSpan={2} className="px-1 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800" style={{ height: '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                세부공정
-                              </th>
-                            </Fragment>
-                          )}
-                        </tr>
-                        {/* 하단 서브헤더 행: 형틀 세분화 */}
-                        <tr className="border-b border-zinc-200 dark:border-zinc-800" style={{ height: '20px' }}>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
-                            합계
-                          </th>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
-                            갱폼
-                          </th>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
-                            알폼
-                          </th>
-                          <th className="px-0.5 py-0.5 text-center text-[10px] font-medium text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-800" style={{ whiteSpace: 'nowrap' }}>
-                            유로폼
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-800">
-                        {(() => {
+                <ProcessPlanTable
+                  hasProcessColumns={processColumns.length > 0}
+                  summaryLabelClassName="text-zinc-500 dark:text-zinc-400 uppercase tracking-wider"
+                >
+                  {(() => {
                           const building = activeBuilding;
                           const plan = processPlans.get(building.id);
                           const isDetailExpanded = expandedModules.get(building.id) || new Set<string>();
@@ -1059,10 +996,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
 
                                   // B1+B2 합산 물량으로 순작업일 계산하는 헬퍼 (B1 행의 rowSpan 일수 셀에서 사용)
                                   return (
-                                    <tr
+                                    <ProcessPlanTableRow
                                       key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
-                                      className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 border-l-4 border-l-transparent ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-accent-500 shadow-sm' : ''}`}
-                                      style={{ height: '32px' }}
+                                      isExpanded={isExpanded}
                                     >
                                       {/* 첫 번째 열: 구분 항목 - B2(isSecondHighCeiling)는 rowSpan으로 병합되므로 렌더링 생략 */}
                                       {!row.isSecondHighCeiling && (
@@ -1264,7 +1200,7 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                           )}
                                         </td>
                                       )}
-                                    </tr>
+                                    </ProcessPlanTableRow>
                                   );
                                 }
 
@@ -1589,10 +1525,9 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                 const getConcreteQuantity = () => resolveBasementQty('concrete', 'volumeM3', 'concrete');
 
                                 return (
-                                  <tr
+                                  <ProcessPlanTableRow
                                     key={`process-${row.category}-${row.floorLabel || ''}-${row.rowIndex}`}
-                                    className={`border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors duration-200 border-l-4 border-l-transparent ${isExpanded ? 'bg-accent-50 dark:bg-accent-900/20 border-l-accent-500 shadow-sm' : ''}`}
-                                    style={{ height: '32px' }}
+                                    isExpanded={isExpanded}
                                   >
                                     {/* 첫 번째 열: 구분 항목 */}
                                     <td className="px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: row.isSpecialRow ? 'auto' : '24px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1862,62 +1797,17 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                                         </button>
                                       )}
                                     </td>
-                                  </tr>
+                                  </ProcessPlanTableRow>
                                 );
                               })}
-
-                              {/* 합계 행 - 첫 번째 공정 열의 첫 번째 칸에만 표시 */}
-                              <tr className="border-t-2 border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800" style={{ height: '24px' }}>
-                                {/* 구분 항목 열 */}
-                                <td className="px-2 py-1 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}>
-                                  합계
-                                </td>
-                                {/* 층수 열 */}
-                                <td className="px-2 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 형틀 합계 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 갱폼 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 알폼 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 유로폼 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 해체/정리 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 철근 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {/* 콘크리트 열 */}
-                                <td className="px-1 py-1 text-center text-xs border-r-2 border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                {processColumns.length > 0 && (
-                                  <>
-                                    {/* 공정타입 열 (빈칸) */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                    {/* 세부공정 열 (빈칸) */}
-                                    <td className="px-1 py-1 border-r border-zinc-200 dark:border-zinc-800 align-middle" style={{ height: '24px' }}></td>
-                                  </>
-                                )}
-                              </tr>
                             </Fragment>
                           );
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                  })()}
+                </ProcessPlanTable>
 
                 {/* 우측: 패널 카드 */}
-                <div className="w-[320px] flex-shrink-0 rounded-lg shadow-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 overflow-hidden">
-                  {/* 패널 헤더 */}
-                  <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                    <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                      세부공정 정보
-                    </h3>
-                  </div>
-
-                  {/* 패널 콘텐츠 */}
-                  <div className="p-4">
-                    <div className="sticky top-4 overflow-y-auto space-y-4 text-xs" style={{ maxHeight: 'calc(100vh - 260px)', minHeight: '300px' }}>
-                      {(() => {
+                <ProcessPlanSidePanel>
+                  {(() => {
                         const building = activeBuilding;
                         const plan = processPlans.get(building!.id);
                         const isDetailExpanded = expandedModules.get(building!.id) || new Set<string>();
@@ -1934,101 +1824,79 @@ export function BasementProcessPlanPage({ projectId }: Props) {
                           return isDetailExpanded.has(expandKey);
                         });
 
-                        // 확장된 행이 없으면 안내 메시지
-                        if (!expandedRow) {
-                          return (
-                            <div className="flex flex-col items-center justify-center h-full text-zinc-400 dark:text-zinc-500">
-                              <Info className="w-6 h-6 mb-2" />
-                              <p className="text-xs text-center">
-                                세부공정 버튼을 클릭하여<br />상세 정보를 확인하세요
-                              </p>
-                            </div>
-                          );
-                        }
-
-                        // 주차장/3단 가시설/6.5m이상 특수 행 처리
-                        const isParking = expandedRow?.floorLabel?.includes('주차장');
-                        const isFacility = expandedRow?.floorLabel?.includes('3단 가시설 적용부');
-                        const isHighCeiling = expandedRow?.floorLabel?.includes('6.5m이상');
-                        const isSpecialRow = isParking || isFacility || isHighCeiling;
-
-                        let targetFloorLabel = expandedRow?.floorLabel;
-                        if (isSpecialRow && expandedRow?.floorLabel) {
-                          const floorMatch = expandedRow.floorLabel.match(/^(B\d+)/);
-                          if (floorMatch) {
-                            targetFloorLabel = floorMatch[1];
-                          }
-                        }
-
-                        // 공정 타입과 모듈 결정
-                        const expandedProcessType = expandedRow?.floorLabel && (expandedRow?.category === '주동 지하층' || expandedRow?.category === '지하주차장' || expandedRow?.category === '지하층(층고6.5m이상)')
-                          ? getProcessTypeForFloor(plan, expandedRow.category, targetFloorLabel || expandedRow.floorLabel)
-                          : plan?.processes[expandedRow?.category || '버림']?.processType || DEFAULT_PROCESS_TYPES[expandedRow?.category || '버림'] || '표준공정';
-                        const expandedModule = expandedRow ? (getProcessModule(expandedRow.category, expandedProcessType) || null) : null;
-
                         // 카테고리명 표시
-                        const getCategoryDisplayName = () => {
-                          if (!expandedRow) return '';
-                          if (expandedRow.category === '버림' || expandedRow.category === '기초') {
-                            return expandedRow.category;
+                        const getCategoryDisplayName = (row: NonNullable<typeof expandedRow>) => {
+                          if (row.category === '버림' || row.category === '기초') {
+                            return row.category;
                           }
-                          if (expandedRow.category === '주동 지하층' && expandedRow.floorLabel) {
-                            return `주동 지하층 ${expandedRow.floorLabel}`;
+                          if (row.category === '주동 지하층' && row.floorLabel) {
+                            return `주동 지하층 ${row.floorLabel}`;
                           }
-                          if (expandedRow.category === '지하층(층고6.5m이상)') {
+                          if (row.category === '지하층(층고6.5m이상)') {
                             return '지하층(6.5m이상) B1+B2';
                           }
-                          if (expandedRow.category === '지하주차장') {
-                            return expandedRow.floorLabel || '지하주차장';
+                          if (row.category === '지하주차장') {
+                            return row.floorLabel || '지하주차장';
                           }
-                          return expandedRow.category;
+                          return row.category;
                         };
 
                         return (
-                          <div className="space-y-4">
-                            {/* 헤더 */}
-                            <div className="border-l-4 border-accent-500 pl-4 bg-accent-50 dark:bg-accent-900/20 py-3 rounded">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
-                                  {getCategoryDisplayName()} 상세 공정
-                                </h4>
-                              </div>
-                              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                                세부 공종별 계획 정보
-                              </p>
-                            </div>
+                          <ProcessPlanDetailCard
+                            expandedRow={expandedRow || null}
+                            getCategoryDisplayName={getCategoryDisplayName}
+                          >
+                            {(selectedRow) => {
+                              // 주차장/3단 가시설/6.5m이상 특수 행 처리
+                              const isParking = selectedRow.floorLabel?.includes('주차장');
+                              const isFacility = selectedRow.floorLabel?.includes('3단 가시설 적용부');
+                              const isHighCeiling = selectedRow.floorLabel?.includes('6.5m이상');
+                              const isSpecialRow = isParking || isFacility || isHighCeiling;
 
-                            {/* ProcessDetailPanel 본문 - 6.5m이상은 B1+B2 합산 specialRowQuantities 전달 */}
-                            <ProcessDetailPanel
-                              building={building!}
-                              expandedRow={expandedRow || null}
-                              module={expandedModule}
-                              plan={plan}
-                              processRows={processRows}
-                              onDirectWorkDaysChange={(itemKey, value) => handleItemDirectWorkDaysChange(building!.id, itemKey, value)}
-                              specialRowQuantities={(() => {
-                                if (!isHighCeiling || !plan?.specialRowQuantities) return plan?.specialRowQuantities;
-                                // B1+B2 합산 물량을 B1 키로 통합
-                                const b1Qty = plan.specialRowQuantities['B1 6.5m이상'] || {};
-                                const b2Qty = plan.specialRowQuantities['B2 6.5m이상'] || {};
-                                return {
-                                  ...plan.specialRowQuantities,
-                                  ['B1 6.5m이상']: {
-                                    gangForm: (b1Qty.gangForm || 0) + (b2Qty.gangForm || 0),
-                                    alForm: (b1Qty.alForm || 0) + (b2Qty.alForm || 0),
-                                    formwork: (b1Qty.formwork || 0) + (b2Qty.formwork || 0),
-                                    rebar: (b1Qty.rebar || 0) + (b2Qty.rebar || 0),
-                                    concrete: (b1Qty.concrete || 0) + (b2Qty.concrete || 0),
-                                  },
-                                };
-                              })()}
-                            />
-                          </div>
+                              let targetFloorLabel = selectedRow.floorLabel;
+                              if (isSpecialRow && selectedRow.floorLabel) {
+                                const floorMatch = selectedRow.floorLabel.match(/^(B\d+)/);
+                                if (floorMatch) {
+                                  targetFloorLabel = floorMatch[1];
+                                }
+                              }
+
+                              const expandedProcessType = selectedRow.floorLabel && (selectedRow.category === '주동 지하층' || selectedRow.category === '지하주차장' || selectedRow.category === '지하층(층고6.5m이상)')
+                                ? getProcessTypeForFloor(plan, selectedRow.category, targetFloorLabel || selectedRow.floorLabel)
+                                : plan?.processes[selectedRow.category]?.processType || DEFAULT_PROCESS_TYPES[selectedRow.category] || '표준공정';
+                              const expandedModule = getProcessModule(selectedRow.category, expandedProcessType) || null;
+
+                              return (
+                                <ProcessDetailPanel
+                                  building={building!}
+                                  expandedRow={selectedRow}
+                                  module={expandedModule}
+                                  plan={plan}
+                                  processRows={processRows}
+                                  onDirectWorkDaysChange={(itemKey, value) => handleItemDirectWorkDaysChange(building!.id, itemKey, value)}
+                                  specialRowQuantities={(() => {
+                                    if (!isHighCeiling || !plan?.specialRowQuantities) return plan?.specialRowQuantities;
+                                    // B1+B2 합산 물량을 B1 키로 통합
+                                    const b1Qty = plan.specialRowQuantities['B1 6.5m이상'] || {};
+                                    const b2Qty = plan.specialRowQuantities['B2 6.5m이상'] || {};
+                                    return {
+                                      ...plan.specialRowQuantities,
+                                      ['B1 6.5m이상']: {
+                                        gangForm: (b1Qty.gangForm || 0) + (b2Qty.gangForm || 0),
+                                        alForm: (b1Qty.alForm || 0) + (b2Qty.alForm || 0),
+                                        formwork: (b1Qty.formwork || 0) + (b2Qty.formwork || 0),
+                                        rebar: (b1Qty.rebar || 0) + (b2Qty.rebar || 0),
+                                        concrete: (b1Qty.concrete || 0) + (b2Qty.concrete || 0),
+                                      },
+                                    };
+                                  })()}
+                                />
+                              );
+                            }}
+                          </ProcessPlanDetailCard>
                         );
-                      })()}
-                    </div>
-                  </div>
-                </div>
+                  })()}
+                </ProcessPlanSidePanel>
               </div>
             </div>
           )}

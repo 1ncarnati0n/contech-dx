@@ -128,7 +128,7 @@ npm run clean                       # node_modules 정리
 
 ## Code Quality Status
 
-기준일: `2026-02-10`
+기준일: `2026-02-14`
 
 - `apps/web` 린트 상태: `errors: 0`, `warnings: 0`
 - 검증 명령:
@@ -142,7 +142,15 @@ npx eslint src
 
 ## Code Review Documentation
 
-코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다 (2026-02-10 정확성 교정 완료):
+### 최신 리뷰 (2026-02-14)
+
+| 문서 | 내용 |
+|------|------|
+| [code-review-2026-02-14.md](docs/code-review-2026-02-14.md) | 통합 코드리뷰 (보안 감사 + 리팩토링 추적 + 액션 아이템) |
+
+### 이전 리뷰 (2026-02-10)
+
+코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다:
 
 | 문서 | 내용 |
 |------|------|
@@ -154,8 +162,9 @@ npx eslint src
 | [05-implementation-guide.md](docs/code-review-2026-02-10/05-implementation-guide.md) | 구현 가이드 및 체크리스트 |
 | [06-process-to-gantt-converter-analysis.md](docs/code-review-2026-02-10/06-process-to-gantt-converter-analysis.md) | 공정→간트 컨버터 상세 분석 |
 
-### 핵심 이슈 요약
+### 핵심 이슈 요약 (02-14 기준)
 
-- 🔴 **Critical**: Supabase 인증 캐시 버그, Gemini API 오버플로우, 고복잡도 컴포넌트
-- 🟠 **High**: Props Drilling 부분 해소 중 (GanttContext 168 LOC 도입됨), MemoryCache↔Realtime 캐시 미연동, API 검증 불완전
-- 🟡 **Medium**: 테스트 11개 파일 존재 (커버리지 확대 필요), localStorage 데이터 분산
+- 🔴 **Critical**: `admin/promote` 프로덕션 노출, `withValidation` 미적용 (0/12 라우트)
+- 🟠 **High**: `any` 타입 9개소, `new Function()` 사용, 대형 컴포넌트(2,000+ LOC) 잔존
+- 🟡 **Medium**: 테스트 20개 파일 (커버리지 확대 필요), localStorage 15개 파일 분산, 에러 처리 불일치
+- ✅ **Resolved**: GanttContext 확장 완료 (199 LOC), Realtime 캐시 동기화 구현, ESLint 0/0 유지
