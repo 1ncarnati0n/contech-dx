@@ -6,16 +6,11 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui';
 import { ProcessItemCard } from './ProcessItemCard';
 import { useProcessCalculation } from './hooks/useProcessCalculation';
-import type { Building, ProcessCategory, BuildingProcessPlan, Floor } from '@/lib/types';
+import type { Building, ProcessCategory, BuildingProcessPlan } from '@/lib/types';
 import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
 import { getSpecialRowDeductions, type DeductionFields } from '@/lib/utils/process-quantity-resolver';
-
-interface ProcessRowData {
-  category: ProcessCategory;
-  floorLabel?: string;
-  floor?: Floor;
-  floorClass?: string;
-}
+import type { ProcessPlanRow } from './types';
+import { isProcessItemMatchedToBuildingRow } from './utils/processRowHelpers';
 
 /** 특수 행 수량 데이터 타입 */
 type SpecialRowQuantities = {
@@ -31,13 +26,13 @@ interface ProcessDetailPanelProps {
   /** 동 데이터 */
   building: Building;
   /** 확장된 행 데이터 */
-  expandedRow: ProcessRowData | null;
+  expandedRow: ProcessPlanRow | null;
   /** 해당 공정 모듈 */
   module: ProcessModule | null;
   /** 공정 계획 데이터 */
   plan: BuildingProcessPlan | undefined;
   /** 공정 행 목록 (기준층 공통 적용을 위해) */
-  processRows: ProcessRowData[];
+  processRows: ProcessPlanRow[];
   /** 순작업일 변경 핸들러 */
   onDirectWorkDaysChange: (itemKey: string, value: number | null) => void;
   /** 추가 클래스명 */
@@ -166,52 +161,34 @@ export function ProcessDetailPanel({
   const currentSpecialRowQuantities = isSpecialRow && expandedRow.floorLabel
     ? specialRowQuantities?.[expandedRow.floorLabel]
     : undefined;
+  const firstStandardFloorLabel = processRows.find(
+    (r) => r.category === '기준층' && r.floorLabel
+  )?.floorLabel;
 
   // 해당 층의 항목만 필터링
   const filteredItems = module.items.filter((item) => {
-    if (expandedRow.category === '기준층') {
-      return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-    }
-    if (expandedRow.category === '최상층') {
-      return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-    }
     if (expandedRow.category === '주동 지하층') {
       // 특수 행(주차장, 3단 가시설)인 경우 해당 지하층의 항목 사용
       if (isSpecialRow) {
         return item.floorLabel === targetFloorLabel;
       }
-      return item.floorLabel === expandedRow.floorLabel;
     }
     if (expandedRow.category === '지하주차장') {
       // 지하주차장: targetFloorLabel("B1")로 매칭 (expandedRow.floorLabel은 "B1 주차장")
       return item.floorLabel === targetFloorLabel;
     }
-    if (expandedRow.category === '옥탑층' && expandedRow.floor?.floorClass === 'PH층') {
-      return !item.floorLabel || item.floorLabel === expandedRow.floorLabel;
-    }
-    if (expandedRow.category === '옥탑층') {
-      if (!item.floorLabel) return true;
-      if (!expandedRow.floorLabel) return true;
-      const itemMatch = item.floorLabel.match(/옥탑(\d+)/);
-      const rowMatch = expandedRow.floorLabel.match(/옥탑(\d+)/);
-      if (itemMatch && rowMatch) {
-        return itemMatch[1] === rowMatch[1];
-      }
-      return item.floorLabel === expandedRow.floorLabel;
-    }
-    if (expandedRow.category === '일반층') {
-      return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-    }
-    if (expandedRow.category === '셋팅층') {
-      return item.floorLabel === expandedRow.floorLabel || !item.floorLabel;
-    }
+
     // 버림, 기초
-    if (expandedRow.floorLabel && item.floorLabel) {
-      return item.floorLabel === expandedRow.floorLabel;
+    if (expandedRow.category === '버림' || expandedRow.category === '기초') {
+      if (expandedRow.floorLabel && item.floorLabel) {
+        return item.floorLabel === expandedRow.floorLabel;
+      }
+      const hasDirectDays = item.directWorkDays !== undefined && item.directWorkDays > 0;
+      const hasIndirectDays = item.indirectDays > 0;
+      return hasDirectDays || hasIndirectDays;
     }
-    const hasDirectDays = item.directWorkDays !== undefined && item.directWorkDays > 0;
-    const hasIndirectDays = item.indirectDays > 0;
-    return hasDirectDays || hasIndirectDays;
+
+    return isProcessItemMatchedToBuildingRow(item, expandedRow, firstStandardFloorLabel);
   });
 
   // 순작업일 합계 계산
@@ -220,13 +197,6 @@ export function ProcessDetailPanel({
     filteredItems.forEach((item) => {
       // 기준층인 경우 첫 번째 기준층의 오버라이드 사용
       const itemKey = `${expandedRow.category}-${expandedRow.floorLabel || ''}-${item.id}`;
-      let firstStandardFloorLabel: string | undefined;
-
-      if (expandedRow.category === '기준층') {
-        const found = processRows.find(r => r.category === '기준층' && r.floorLabel);
-        firstStandardFloorLabel = found?.floorLabel;
-      }
-
       let overriddenDays: number | undefined;
       if (expandedRow.category === '기준층') {
         const currentFloorKey = `기준층-${expandedRow.floorLabel}-${item.id}`;
@@ -296,12 +266,9 @@ export function ProcessDetailPanel({
             overriddenDays = plan?.itemDirectWorkDaysOverrides?.[currentFloorKey];
 
             // 없으면 첫 번째 기준층의 오버라이드 확인
-            if (overriddenDays === undefined) {
-              const firstStandardFloor = processRows.find(r => r.category === '기준층' && r.floorLabel);
-              if (firstStandardFloor) {
-                const firstStandardFloorKey = `기준층-${firstStandardFloor.floorLabel}-${item.id}`;
-                overriddenDays = plan?.itemDirectWorkDaysOverrides?.[firstStandardFloorKey];
-              }
+            if (overriddenDays === undefined && firstStandardFloorLabel) {
+              const firstStandardFloorKey = `기준층-${firstStandardFloorLabel}-${item.id}`;
+              overriddenDays = plan?.itemDirectWorkDaysOverrides?.[firstStandardFloorKey];
             }
           } else {
             overriddenDays = plan?.itemDirectWorkDaysOverrides?.[itemKey];

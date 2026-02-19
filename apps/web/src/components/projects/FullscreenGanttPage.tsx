@@ -21,10 +21,10 @@ import {
 import 'sa-gantt-lib/style.css';
 import { createSupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
 import { toast } from 'sonner';
-import { Loader2, X, Undo2, Redo2, Sun, Moon } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { logger } from '@/lib/utils/logger';
+import { FullscreenGanttHeader } from './fullscreen-gantt/FullscreenGanttHeader';
 
 interface FullscreenGanttPageProps {
   projectId: string;
@@ -46,39 +46,6 @@ const CALENDAR_SETTINGS: CalendarSettings = {
 };
 
 const HOLIDAYS = KOREAN_HOLIDAYS_ALL;
-
-// 커스텀 테마 토글 컴포넌트 (next-themes 기반)
-function CustomThemeToggle() {
-  const { setTheme, resolvedTheme } = useTheme();
-
-  if (!resolvedTheme) {
-    return (
-      <button
-        className="flex items-center justify-center rounded p-2 transition-colors"
-        style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}
-      >
-        <Sun className="h-4 w-4" style={{ color: 'var(--gantt-text-secondary)' }} />
-      </button>
-    );
-  }
-
-  const isDark = resolvedTheme === 'dark';
-
-  return (
-    <button
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="flex items-center justify-center rounded p-2 transition-colors hover:opacity-80"
-      style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}
-      title={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-    >
-      {isDark ? (
-        <Sun className="h-4 w-4" style={{ color: 'var(--gantt-text-secondary)' }} />
-      ) : (
-        <Moon className="h-4 w-4" style={{ color: 'var(--gantt-text-secondary)' }} />
-      )}
-    </button>
-  );
-}
 
 export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttPageProps) {
   const router = useRouter();
@@ -900,106 +867,17 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden sa-gantt-root"
          style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}>
-      {/* 상단 헤더 바 - sa-gantt-lib 데모 앱 스타일 */}
-      <div
-        className="flex h-12 shrink-0 items-center justify-between px-4 shadow-sm"
-        style={{
-          backgroundColor: 'var(--gantt-bg-primary)',
-          borderBottom: '1px solid var(--gantt-border)'
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <h1
-            className="flex items-center gap-2 text-lg font-extrabold"
-            style={{ color: 'var(--gantt-text-primary)' }}
-          >
-            <span>
-              <span style={{ color: 'var(--gantt-teal)' }}>건설</span>{' '}
-              <span style={{ color: 'var(--gantt-vermilion)' }}>표준공정표</span>
-            </span>
-            <span className="text-sm font-normal" style={{ color: 'var(--gantt-text-secondary)' }}>
-              - {projectName}
-            </span>
-          </h1>
-
-          {/* Undo/Redo 버튼 */}
-          <div
-            className="flex items-center gap-1 pl-3"
-            style={{ borderLeft: '1px solid var(--gantt-border)' }}
-          >
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: canUndo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
-                color: canUndo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
-                cursor: canUndo ? 'pointer' : 'not-allowed',
-              }}
-              title="실행 취소 (Ctrl+Z / Cmd+Z)"
-            >
-              <Undo2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">실행취소</span>
-              {historyLength.past > 0 && (
-                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>
-                  ({historyLength.past})
-                </span>
-              )}
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: canRedo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
-                color: canRedo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
-                cursor: canRedo ? 'pointer' : 'not-allowed',
-              }}
-              title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
-            >
-              <Redo2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">다시실행</span>
-              {historyLength.future > 0 && (
-                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>
-                  ({historyLength.future})
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* 변경사항 표시 */}
-          {hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              변경사항 있음
-            </span>
-          )}
-
-          {/* 저장 완료 표시 */}
-          {saveStatus === 'saved' && !hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              저장됨
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* 테마 토글 버튼 */}
-          <CustomThemeToggle />
-
-          {/* 닫기 버튼 */}
-          <button
-            onClick={handleClose}
-            className="flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
-            style={{ color: 'var(--gantt-text-secondary)' }}
-            title="닫기"
-          >
-            <X className="h-4 w-4" />
-            <span className="hidden sm:inline">닫기</span>
-          </button>
-        </div>
-      </div>
+      <FullscreenGanttHeader
+        projectName={projectName}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        historyLength={historyLength}
+        hasUnsavedChanges={hasUnsavedChanges}
+        saveStatus={saveStatus}
+        onUndo={undo}
+        onRedo={redo}
+        onClose={handleClose}
+      />
 
       {/* 간트 차트 영역 */}
       <div className="flex-1 overflow-hidden">
