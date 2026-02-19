@@ -1,9 +1,9 @@
-# Code Review Report — 2026-02-14
+# Code Review Report — 2026-02-19
 
 > **프로젝트**: ConTech-DX (건축직영공사 공정관리 시스템)
 > **리뷰어**: Claude Code (Automated Review)
 > **범위**: 전체 모노레포 (`apps/web` + `packages/sa-gantt-lib`)
-> **기준**: 2026-02-10 리뷰 대비 증분 분석 + 보안 감사 신규 추가
+> **기준**: 2026-02-10 리뷰 대비 증분 분석 + 2026-02-19 리팩토링 진행 반영
 
 ---
 
@@ -23,16 +23,17 @@
 
 ### 프로젝트 현황 스냅샷
 
-| 항목 | 02-10 | 02-14 | 변화 |
+| 항목 | 02-10 | 02-19 | 변화 |
 |------|-------|-------|------|
-| apps/web 파일 수 | ~288 | 300 | +12 |
+| apps/web 파일 수 | ~288 | 308 | +20 |
 | packages/sa-gantt-lib 파일 수 | ~144 | 148 | +4 |
-| 전체 LOC (core) | ~56,798 | ~56,900 | 소폭 증가 |
+| 전체 LOC (core) | ~56,798 | ~56,800 | 소폭 증가 |
 | ESLint errors / warnings | 0 / 0 | 0 / 0 | ✅ 유지 |
-| 테스트 파일 | 11 (web) | 14 (web) + 9 (lib) = 23 | +3 (hooks) |
+| 테스트 파일 | 11 (web) | 15 (web) + 9 (lib) = 24 | +4 (hooks/util) |
 | GanttContext LOC | 168 | 199 | +31 |
-| BasementProcessPlanPage LOC | 2,155 → 2,054 | 1,924 | −132 (최근) |
-| BuildingProcessPlanPage LOC | 2,068 → 1,981 | 1,914 | −133 (최근) |
+| BasementProcessPlanPage LOC | 2,155 → 2,054 | 1,750 | −174 (최근) |
+| BuildingProcessPlanPage LOC | 2,068 → 1,981 | 1,442 | −472 (최근) |
+| FullscreenGanttPage LOC | 1,039 | 917 | −122 (헤더 분리) |
 | useRealtimeCacheSync | 신규 | 69 LOC | ✅ 완료 |
 | 보안 감사 핵심 4건 | 미실시 | 조치 완료 | ✅ 갱신 |
 | withValidation 적용 핸들러 | 0 | 12 | ✅ 적용 완료 |
@@ -43,7 +44,7 @@
 |------|------|
 | 🔒 **SECURITY** | `admin/promote` 게이트, `new Function` 제거, `any` 제거, cookie 파싱 제거 완료 |
 | ✅ **POSITIVE** | `withValidation` 12개 핸들러 적용, 커스텀 훅 테스트 3종 추가, 타입/테스트/린트 통과 |
-| 📊 **PROGRESS** | Phase 1 핵심 대응 대부분 완료, Phase 2는 대형 페이지 분할을 계속 진행 중 |
+| 📊 **PROGRESS** | Phase 1 핵심 대응 대부분 완료, Phase 2는 계산/행 로직 분리 1차 반영 완료 |
 
 ### 우선순위 다이어그램
 
@@ -86,7 +87,7 @@
 
 | ID | 항목 | 상태 | 상세 |
 |----|------|------|------|
-| 2.1 | 대형 컴포넌트 분할 | 🔄 진행중 | `ProcessPlanTable`/`ProcessPlanTableRow`/`ProcessPlanSidePanel` 추출 완료, LOC 유의미 감소 |
+| 2.1 | 대형 컴포넌트 분할 | 🔄 진행중 | `processRows` 유틸 분리 + 행 label/filter 공용화 + `FullscreenGanttHeader` 추출 완료 |
 | 2.2 | GanttContext 확장 | ✅ 완료 | 168 → 199 LOC. timelineConfig, zoomConfig, sidebarConfig 추가 |
 | 2.3 | MemoryCache + Realtime 연동 | ✅ 완료 | `useRealtimeCacheSync` 69 LOC. projects/buildings 구독 활성 |
 
@@ -95,20 +96,21 @@
 ```
 BasementProcessPlanPage.tsx
   02-10 초기: 2,155 LOC
-  02-14 이전: 2,056 LOC
-  02-14 현재: 1,924 LOC  (−132, 최근 리팩토링)
+  02-14 기준: 1,924 LOC
+  02-19 현재: 1,750 LOC  (−174, 최근 리팩토링)
 
 BuildingProcessPlanPage.tsx
   02-10 초기: 2,068 LOC
-  02-14 이전: 2,047 LOC
-  02-14 현재: 1,914 LOC  (−133, 최근 리팩토링)
+  02-14 기준: 1,914 LOC
+  02-19 현재: 1,442 LOC  (−472, 최근 리팩토링)
 ```
 
 **잔여 항목**:
 - ✅ `ProcessPlanTable` 컴포넌트 분리
 - ✅ `TableRow` 컴포넌트 분리
 - ✅ `ProcessPlanSidePanel` 컴포넌트 분리
-- ❌ 계산/행 도메인 유틸 분리
+- ✅ 계산/행 도메인 유틸 분리 (1차)
+- ❌ 상태/이벤트 핸들러 훅 추가 분리 (2차)
 
 **목표 분할 구조** (02-10 로드맵 기준):
 ```
@@ -127,7 +129,7 @@ BuildingProcessPlanPage.tsx
   └── basementCalculations.ts   (~200 LOC) — 계산 유틸리티
 ```
 
-> **Phase 2 진행률**: ████████░░ **75%** — 구조 분리 진행, 계산 로직 분리 잔여
+> **Phase 2 진행률**: ████████░░ **82%** — 구조 분리 1차 완료, 핸들러 분리/데이터 이관 잔여
 
 ### Phase 3 상태: Medium-term Improvements
 
@@ -153,7 +155,7 @@ Phase 3 ██░░░░░░░░ 20%  Medium-term Improvements
 
 ## 3. 보안 감사 (Security Audit)
 
-> 본 섹션은 02-14에 신규 추가된 보안 전문 감사입니다.
+> 본 섹션은 02-14에 신규 추가되었으며, 02-19 기준으로 유효성을 재확인했습니다.
 
 ### S-1 [INFO] `.env.local` git history 확인
 
@@ -236,26 +238,28 @@ Phase 3 ██░░░░░░░░ 20%  Medium-term Improvements
 
 | 파일 | LOC | 목표 |
 |------|-----|------|
-| `BasementProcessPlanPage.tsx` | 1,924 | < 500 |
-| `BuildingProcessPlanPage.tsx` | 1,914 | < 500 |
-| `FullscreenGanttPage.tsx` | 1,039 | < 500 |
+| `BasementProcessPlanPage.tsx` | 1,750 | < 500 |
+| `BuildingProcessPlanPage.tsx` | 1,442 | < 500 |
+| `FullscreenGanttPage.tsx` | 917 | < 500 |
 
 **진행 상황**:
 - `useProcessPlanState` 훅 추출 완료 (공통 상태/저장/dirty 로직)
 - Map immutability 패턴 표준화 완료
 - `ProcessPlanTable`, `ProcessPlanTableRow`, `ProcessPlanSidePanel` 분리 완료
-- 페이지 LOC가 최근 작업 기준 각각 130+ 줄 감소
+- `processRows` 생성 로직 유틸 분리(`createBuildingProcessRows`, `createBasementProcessRows`)
+- 행 label/filter 공용화(`processRowHelpers`)
+- `FullscreenGanttHeader` 분리로 `FullscreenGanttPage` 1차 분할 착수
 
 **다음 단계**:
-1. 행 단위 계산/파생값 로직을 훅 또는 util로 분리
-2. 카테고리별 분기 렌더링을 하위 row 컴포넌트로 추가 분리
-3. `FullscreenGanttPage.tsx` 분할 착수
+1. 대형 페이지의 상태/이벤트 핸들러를 훅으로 2차 분리
+2. `ProcessDetailPanel` 계산 합계/오버라이드 처리 로직 추가 공용화
+3. `FullscreenGanttPage.tsx` 본문 핸들러 군 분리(헤더 이후 2차)
 
 ### Q-2 [MEDIUM] 테스트 커버리지
 
-**현황**: 23개 테스트 파일 / 300개 소스 파일 = **7.7%** 파일 커버리지
+**현황**: 24개 테스트 파일 / 308개 소스 파일 = **7.8%** 파일 커버리지
 
-**apps/web 테스트 (14개)**:
+**apps/web 테스트 (15개)**:
 | 테스트 파일 | 대상 |
 |-------------|------|
 | `Button.test.tsx` | UI 컴포넌트 |
@@ -321,7 +325,7 @@ Phase 3 ██░░░░░░░░ 20%  Medium-term Improvements
 | 항목 | 상태 |
 |------|------|
 | README.md | ✅ 최신 상태 (02-10) |
-| 코드 리뷰 문서 | ✅ 02-10 완료, 02-14 진행 중 |
+| 코드 리뷰 문서 | ✅ 02-10 완료, 02-19 업데이트 반영 |
 | TSDoc | ❌ 주요 컴포넌트/훅 미작성 |
 | Storybook | ❌ 미도입 |
 | API 문서 | ❌ 라우트별 스펙 없음 |
@@ -345,7 +349,7 @@ Phase 3 ██░░░░░░░░ 20%  Medium-term Improvements
 | **ACT-03** | `any` 타입 제거 — `types/openbim.d.ts` 타입 선언 파일 생성 | ✅ 완료 | `IfcViewer.tsx`, `types/openbim.d.ts`, `MarkdownRenderer.tsx`, `ChatArea.tsx` |
 | **ACT-04** | `new Function()` → 안전한 수식 파서 교체 | ✅ 완료 | `TradeInputCell.tsx` |
 | **ACT-05** | `server.ts` 인증 에러 로깅 추가 | ✅ 완료 | `lib/supabase/server.ts` |
-| **ACT-06** | 대형 컴포넌트 분할 — `ProcessPlanTable`/`TableRow`/`SidePanel` 추출 | 🔄 진행중 | `BasementProcessPlanPage.tsx`, `BuildingProcessPlanPage.tsx`, `process-plan/*` |
+| **ACT-06** | 대형 컴포넌트 분할 — 계산 유틸/행 생성/행 분기 공용화 1차 완료 | 🔄 진행중 | `BasementProcessPlanPage.tsx`, `BuildingProcessPlanPage.tsx`, `ProcessDetailPanel.tsx`, `process-plan/utils/*` |
 
 ### 🟡 MEDIUM — 2-4주
 
@@ -392,10 +396,10 @@ Week 1
 
 ```
 Week 2-3
-├── ACT-06: 컴포넌트 분할 완료 (< 500 LOC 목표)
+├── ACT-06: 컴포넌트 분할 2차 (상태/핸들러 훅 분리)
 ├── ACT-10: 에러 처리 표준화
 ├── ACT-07: 커스텀 훅 테스트
-└── FullscreenGanttPage 분할 검토
+└── FullscreenGanttPage 분할 2차 (본문 핸들러 분리)
 
 Week 4
 ├── ACT-08: localStorage 이관 시작
@@ -412,11 +416,11 @@ Month 2
 └── ACT-12: Storybook 평가
 ```
 
-### 실행 현황 (2026-02-14 최신 반영)
+### 실행 현황 (2026-02-19 최신 반영)
 
 ```
 완료: ACT-01, ACT-02, ACT-03, ACT-04, ACT-05, ACT-09, ACT-13
-진행중: ACT-06, ACT-07, ACT-10
+진행중: ACT-06(2차), ACT-07, ACT-10
 미착수: ACT-08, ACT-11, ACT-12, C-2
 ```
 
@@ -437,14 +441,14 @@ Month 2
 
 | 순위 | 파일 | LOC |
 |------|------|-----|
-| 1 | `components/buildings/BasementProcessPlanPage.tsx` | 1,924 |
-| 2 | `components/buildings/BuildingProcessPlanPage.tsx` | 1,914 |
+| 1 | `components/buildings/BasementProcessPlanPage.tsx` | 1,750 |
+| 2 | `components/buildings/BuildingProcessPlanPage.tsx` | 1,442 |
 | 3 | `lib/types.ts` | 1,249 |
 | 4 | `lib/data/process-modules.ts` | 1,240 |
 | 5 | `lib/utils/process-to-gantt-converter.ts` | 1,152 |
 | 6 | `lib/utils/dxf-parser.ts` | 1,130 |
-| 7 | `components/projects/FullscreenGanttPage.tsx` | 1,039 |
-| 8 | `components/projects/GanttChartPage.tsx` | 920 |
+| 7 | `components/projects/GanttChartPage.tsx` | 920 |
+| 8 | `components/projects/FullscreenGanttPage.tsx` | 917 |
 | 9 | `lib/services/buildings.ts` | 899 |
 | 10 | `components/buildings/FloorSettingsTable.tsx` | 867 |
 
@@ -488,9 +492,10 @@ rg -n "localStorage" apps/web/src/
 | 구현 가이드 | [`docs/code-review-2026-02-10/05-implementation-guide.md`](code-review-2026-02-10/05-implementation-guide.md) |
 | 컨버터 분석 | [`docs/code-review-2026-02-10/06-process-to-gantt-converter-analysis.md`](code-review-2026-02-10/06-process-to-gantt-converter-analysis.md) |
 | ESLint 정리 이력 | [`docs/refactoring_status.md`](refactoring_status.md) |
+| 리팩토링 진행 로그 (02-18) | [`docs/refactoring-progress-2026-02-18.md`](refactoring-progress-2026-02-18.md) |
 
 ---
 
-> **다음 리뷰 예정**: ACT-06 잔여 분할(계산/행 로직 분리) 및 ACT-08 설계 완료 후
-> **생성일**: 2026-02-14
+> **다음 리뷰 예정**: ACT-06 2차(상태/핸들러 훅 분리) 및 ACT-08 설계 완료 후
+> **생성일**: 2026-02-19
 > **도구**: Claude Code (Automated Review)
