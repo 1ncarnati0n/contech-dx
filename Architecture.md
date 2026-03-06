@@ -395,11 +395,11 @@ Tier 1: 데이터 상태 (Props)          Tier 2: UI 상태 (Zustand)
 │ holidays, calendar     │          │ selectedTaskIds (Set)    │
 │ groupDependencies      │          │ expandedTaskIds (Set)    │
 │                        │          │ sidebarWidth             │
-│ ← 부모에서 props 전달  │          │ isDragging, dragType     │
-│ ← 콜백으로 변경 알림   │          │ isCompactMode            │
+│ ← 부모에서 props 전달    │          │ isDragging, dragType     │
+│ ← 콜백으로 변경 알림      │          │ isCompactMode            │
 │                        │          │                          │
-│ onTaskUpdate()         │          │ ← 라이브러리 내부 관리    │
-│ onTaskCreate()         │          │ ← Selector 훅으로 구독   │
+│ onTaskUpdate()         │          │ ← 라이브러리 내부 관리      │
+│ onTaskCreate()         │          │ ← Selector 훅으로 구독     │
 │ onMilestoneCreate()    │          │                          │
 └────────────────────────┘          └──────────────────────────┘
 ```
@@ -524,12 +524,12 @@ dist/                        dist/ 참조
 ```
 ┌───────────────┐     ┌──────────────────┐     ┌─────────────┐
 │ ErrorBoundary │     │  handleError()   │     │  ApiError   │
-│ (컴포넌트)     │     │  (유틸)           │     │  (타입)     │
+│ (컴포넌트)      │     │  (유틸)          │     │  (타입)     │
 │               │     │                  │     │             │
-│ React 에러    │     │ 1. toApiError()  │     │ code        │
+│ React 에러     │     │ 1. toApiError()  │     │ code        │
 │ catch →       │     │ 2. logger.error  │     │ message     │
-│ 폴백 UI +    │     │ 3. toast.error   │     │ statusCode  │
-│ 재시도 버튼   │     │ 4. onAuthError?  │     │ details     │
+│ 폴백 UI +      │     │ 3. toast.error   │     │ statusCode  │
+│ 재시도 버튼     │     │ 4. onAuthError?  │     │ details     │
 └───────────────┘     └──────────────────┘     └─────────────┘
 ```
 
@@ -596,27 +596,27 @@ lib/services/
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  UI 디스플레이 레이어                                          │
-│  BuildingProcessPlanPage / BasementProcessPlanPage           │
-│  DailyWorkerInputDashboard / process-row-helpers             │
-│                                                              │
-│  ↓ resolveProcessQuantity(building, ref, floorLabel?)        │
+│  BuildingProcessPlanPage / BasementProcessPlanPage          │
+│  DailyWorkerInputDashboard / process-row-helpers            │
+│                                                             │
+│  ↓ resolveProcessQuantity(building, ref, floorLabel?)       │
 ├─────────────────────────────────────────────────────────────┤
 │  계산 레이어                                                  │
-│  process-days-calculator.ts / useProcessCalculation.ts       │
-│                                                              │
-│  ↓ resolveProcessQuantity(building, ref, floorLabel?)        │
+│  process-days-calculator.ts / useProcessCalculation.ts      │
+│                                                             │
+│  ↓ resolveProcessQuantity(building, ref, floorLabel?)       │
 ├─────────────────────────────────────────────────────────────┤
 │  통합 해석기 (Resolver)                                       │
-│  process-quantity-resolver.ts                                │
+│  process-quantity-resolver.ts                               │
 │  ┌──────────────┬──────────────┬──────────────┐             │
 │  │ resolveBy    │ resolveBy    │ resolveBy    │             │
 │  │ Category     │ Floor        │ Combined     │             │
 │  └──────┬───────┴──────┬───────┴──────┬───────┘             │
-│         ↓              ↓              ↓                      │
+│         ↓              ↓              ↓                     │
 ├─────────────────────────────────────────────────────────────┤
 │  레거시 데이터 접근 (내부 전용)                                 │
-│  quantity-reference.ts                                       │
-│  getQuantityByReference() / getQuantityFromFloor()           │
+│  quantity-reference.ts                                      │
+│  getQuantityByReference() / getQuantityFromFloor()          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
