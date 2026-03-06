@@ -17,6 +17,7 @@ import {
   Button,
 } from '@/components/ui';
 import { AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/Spinner';
 
 function getLoginErrorMessage(error: string): string {
   if (error.includes('Invalid login credentials')) {
@@ -83,7 +84,12 @@ export default function LoginForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-5">
+        {form.formState.isSubmitting && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
+            <Spinner size="lg" text="로그인 중..." />
+          </div>
+        )}
         {errorMessage && (
           <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/50 text-sm text-red-700 dark:text-red-300">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
