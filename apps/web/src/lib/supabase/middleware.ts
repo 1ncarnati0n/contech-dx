@@ -82,8 +82,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Public paths that don't require authentication
-  const publicPaths = ['/login', '/signup', '/auth/callback', '/'];
-  const isPublicPath = publicPaths.some(p => path === p || path.startsWith('/auth/'));
+  const publicPaths = ['/login', '/signup', '/auth/callback', '/', '/reset-password'];
+  const isPublicPath = publicPaths.some(p => path === p || path.startsWith(p + '/') || path.startsWith('/auth/'));
 
   if (!user && !isPublicPath) {
     // Redirect unauthenticated users to landing page

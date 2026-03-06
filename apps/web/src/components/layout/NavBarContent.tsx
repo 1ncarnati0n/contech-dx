@@ -19,7 +19,7 @@ interface NavBarContentProps {
 export default function NavBarContent({ user, profile, isAdmin }: NavBarContentProps) {
     const pathname = usePathname();
     // Hide main navigation on Landing, Login, and Signup pages
-    const isMinimalNav = pathname === '/' || pathname === '/login' || pathname === '/signup';
+    const isMinimalNav = pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname.startsWith('/reset-password');
 
     return (
         <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-lg shadow-sm border-b border-zinc-200 dark:border-zinc-800 transition-colors">
