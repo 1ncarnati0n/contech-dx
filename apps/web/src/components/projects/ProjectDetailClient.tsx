@@ -6,6 +6,7 @@ import {
   Calendar,
   DollarSign,
   MapPin,
+  Box,
   Building2,
   Settings,
   LayoutDashboard,
@@ -83,6 +84,7 @@ interface Props {
 // 탭별 제목 매핑
 const TAB_TITLES: Record<string, string> = {
   overview: '프로젝트 개요',
+  ifc_viewer: 'IFC 뷰어',
   pouring_section_review: '타설구간검토',
   data_input: '동 기본 정보',
   quantity_input: '물량 입력',
@@ -102,6 +104,7 @@ const TAB_TITLES: Record<string, string> = {
 // 탭별 설명 매핑
 const TAB_DESCRIPTIONS: Record<string, string> = {
   overview: '',
+  ifc_viewer: 'IFC 모델 뷰어 페이지입니다.',
   pouring_section_review: '콘크리트 물량과 동수를 기반으로 타설구간을 개략 검토합니다.',
   data_input: '각 동의 기본 정보와 층 구성을 입력합니다.',
   quantity_input: '층별/공종별 물량 데이터를 입력합니다.',
@@ -128,6 +131,7 @@ function isValidTab(tab: string | null): tab is string {
 // 탭별 아이콘 매핑
 const TAB_ICONS: Record<string, LucideIcon> = {
   overview: LayoutDashboard,
+  ifc_viewer: Box,
   pouring_section_review: Calculator,
   data_input: Database,
   quantity_input: Package,
@@ -436,6 +440,10 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
               />
             )}
 
+            {activeTab === 'ifc_viewer' && (
+              <div className="min-h-[60vh] rounded-2xl border border-dashed border-zinc-200 bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/60" />
+            )}
+
             {activeTab === 'data_input' && (
               <BuildingBasicInfoPage projectId={project.id} />
             )}
@@ -494,7 +502,7 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
               <ProjectSettingsPage project={project} onUpdate={handleProjectUpdate} />
             )}
 
-            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && activeTab !== 'settings' && (
+            {activeTab !== 'overview' && activeTab !== 'ifc_viewer' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && activeTab !== 'settings' && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
                 <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
                   <Settings className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />

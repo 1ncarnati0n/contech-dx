@@ -12,6 +12,8 @@ npm run build        # web 앱 빌드
 npm run test         # 테스트 실행
 ```
 
+> 현재 lockfile과 검증 명령은 `npm` 기준으로 사용 중입니다.
+
 ## Monorepo Structure
 
 ```
@@ -115,7 +117,8 @@ Supabase PostgreSQL. 스키마는 `sql/schema/` 참고.
 | 기능 | 저장소 | 비고 |
 |------|--------|------|
 | 프로젝트/간트/게시판/사용자 | Supabase | 운영 중 |
-| 동/층/물량 | localStorage | Supabase 이관 예정 |
+| 동/층/층별 공종 기본 데이터 | Supabase | 운영 중 |
+| 공정로직/공정계획 일부 상태 | localStorage + Supabase 혼재 | 정리 필요 |
 
 ## Workspace Commands
 
@@ -126,45 +129,32 @@ npm run lint                        # 전체 lint
 npm run clean                       # node_modules 정리
 ```
 
-## Code Quality Status
+## Current Status
 
-기준일: `2026-02-14`
+기준일: `2026-03-06`
 
-- `apps/web` 린트 상태: `errors: 0`, `warnings: 0`
-- 검증 명령:
+- 워크트리 상태: 조사 시점 기준 변경 파일 없음
+- 테스트 상태:
+  - `apps/web`: Jest `15` suites, `256` tests 통과
+  - `packages/sa-gantt-lib`: Vitest `9` files, `186` tests 통과
+- 소스 기준 린트 확인 명령:
 
 ```bash
 cd apps/web
 npx eslint src
 ```
 
-- 관련 진행 문서: `docs/refactoring_status.md`
+- 현재 결과: `4 errors`, `2 warnings`
+- 주요 에러 위치: `src/components/buildings/BuildingProcessPlanPage.tsx`
+  - 층별 일수 계산 헬퍼가 선언 전에 참조되고 있어 `react-hooks/immutability` 에러 발생
+- 현재 경고 위치:
+  - `src/components/projects/ProjectSettingsPage.tsx`
+  - `src/components/projects/ProjectTeamPage.tsx`
+- 참고: 루트 `npm run lint`는 현재 생성물(`apps/web/coverage`, `apps/web/public/wasm/worker.mjs`)까지 검사해 노이즈가 큽니다. 실제 작업 시에는 우선 `apps/web/src` 범위 린트를 기준으로 확인하는 것이 안전합니다.
 
-## Code Review Documentation
+## Documentation
 
-### 최신 리뷰 (2026-02-14)
-
-| 문서 | 내용 |
-|------|------|
-| [code-review-2026-02-14.md](docs/code-review-2026-02-14.md) | 통합 코드리뷰 (보안 감사 + 리팩토링 추적 + 액션 아이템) |
-
-### 이전 리뷰 (2026-02-10)
-
-코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다:
-
-| 문서 | 내용 |
-|------|------|
-| [00-overview.md](docs/code-review-2026-02-10/00-overview.md) | 전체 개요 및 현황 요약 |
-| [01-apps-web-analysis.md](docs/code-review-2026-02-10/01-apps-web-analysis.md) | apps/web 상세 분석 |
-| [02-sa-gantt-lib-analysis.md](docs/code-review-2026-02-10/02-sa-gantt-lib-analysis.md) | sa-gantt-lib 상세 분석 |
-| [03-architecture-issues.md](docs/code-review-2026-02-10/03-architecture-issues.md) | 아키텍처 이슈 및 개선안 |
-| [04-refactoring-roadmap.md](docs/code-review-2026-02-10/04-refactoring-roadmap.md) | 우선순위 기반 리팩토링 로드맵 |
-| [05-implementation-guide.md](docs/code-review-2026-02-10/05-implementation-guide.md) | 구현 가이드 및 체크리스트 |
-| [06-process-to-gantt-converter-analysis.md](docs/code-review-2026-02-10/06-process-to-gantt-converter-analysis.md) | 공정→간트 컨버터 상세 분석 |
-
-### 핵심 이슈 요약 (02-14 기준)
-
-- 🔴 **Critical**: `admin/promote` 프로덕션 노출, `withValidation` 미적용 (0/12 라우트)
-- 🟠 **High**: `any` 타입 9개소, `new Function()` 사용, 대형 컴포넌트(2,000+ LOC) 잔존
-- 🟡 **Medium**: 테스트 20개 파일 (커버리지 확대 필요), localStorage 15개 파일 분산, 에러 처리 불일치
-- ✅ **Resolved**: GanttContext 확장 완료 (199 LOC), Realtime 캐시 동기화 구현, ESLint 0/0 유지
+- 현재 `docs/`에는 샘플 파일만 있습니다.
+  - `docs/Sample/Sample_logic rev.1.numbers`
+  - `docs/Sample/Sample_물량입력.numbers`
+- 진행 중 작업과 개선 항목은 루트의 `inprogress.md`를 기준으로 관리합니다.

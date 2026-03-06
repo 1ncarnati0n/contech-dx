@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import {
     LayoutDashboard,
+    Box,
     ListTodo,
     Users,
     FileText,
@@ -174,6 +175,14 @@ export function ProjectSidebar({
                     icon={LayoutDashboard}
                     isActive={activeTab === 'overview'}
                     onClick={() => onTabChange('overview')}
+                    isCollapsed={isCollapsed}
+                />
+
+                <MenuButton
+                    label="IFC 뷰어"
+                    icon={Box}
+                    isActive={activeTab === 'ifc_viewer'}
+                    onClick={() => onTabChange('ifc_viewer')}
                     isCollapsed={isCollapsed}
                 />
 
