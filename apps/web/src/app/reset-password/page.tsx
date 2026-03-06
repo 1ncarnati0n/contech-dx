@@ -1,22 +1,8 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import LoginForm from '@/components/auth/LoginForm';
+import ResetPasswordRequestForm from '@/components/auth/ResetPasswordRequestForm';
 import Link from 'next/link';
-import { LogIn, ArrowRight, KeyRound, CheckCircle2 } from 'lucide-react';
+import { KeyRound, ArrowLeft } from 'lucide-react';
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ reset?: string }>;
-}) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { reset } = await searchParams;
-
-  // 로그인된 사용자는 /home으로 리다이렉트
-  if (user) {
-    redirect('/home');
-  }
+export default function ResetPasswordPage() {
   return (
     <div className="relative min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden transition-colors duration-300">
       {/* Background Effects */}
@@ -29,51 +15,31 @@ export default async function LoginPage({
         {/* Badge */}
         <div className="mb-8 flex justify-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 dark:bg-white/5 border border-primary-200 dark:border-white/10 backdrop-blur-md text-sm text-primary-600 dark:text-primary-200 shadow-sm">
-            <LogIn className="w-4 h-4" />
-            Member Access
+            <KeyRound className="w-4 h-4" />
+            Password Reset
           </div>
         </div>
 
         {/* Title */}
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2 text-center">
-          로그인
+          비밀번호 재설정
         </h1>
         <p className="text-zinc-500 dark:text-zinc-400 text-center mb-8">
-          계정에 로그인하여 서비스를 이용하세요
+          가입한 이메일을 입력하시면 재설정 링크를 보내드립니다
         </p>
 
-        {/* Success Alert */}
-        {reset === 'success' && (
-          <div className="mb-6 flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800/50 text-sm text-green-700 dark:text-green-300">
-            <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.</span>
-          </div>
-        )}
-
-        {/* Login Card */}
+        {/* Card */}
         <div className="p-1 rounded-2xl bg-gradient-to-b from-white/50 to-white/20 dark:from-white/10 dark:to-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl dark:shadow-2xl">
           <div className="bg-white/60 dark:bg-zinc-950/80 rounded-xl p-6 backdrop-blur-sm">
-            <LoginForm />
+            <ResetPasswordRequestForm />
 
             <div className="mt-6 pt-6 border-t border-zinc-200/50 dark:border-zinc-700/50">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  계정이 없으신가요?
-                </p>
-                <Link
-                  href="/reset-password"
-                  className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  비밀번호 찾기
-                </Link>
-              </div>
               <Link
-                href="/signup"
+                href="/login"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100/50 dark:bg-zinc-800/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 transition-colors"
               >
-                회원가입
-                <ArrowRight className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4" />
+                로그인으로 돌아가기
               </Link>
             </div>
           </div>
