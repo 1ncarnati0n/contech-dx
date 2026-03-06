@@ -58,16 +58,22 @@ export default async function LoginPage({
             <div className="mt-6 pt-6 border-t border-zinc-200/50 dark:border-zinc-700/50">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  계정이 없으신가요?
+                  로그인에 문제가 있으면 
                 </p>
+              <div>
                 <Link
                   href="/reset-password"
-                  className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100/50 dark:bg-zinc-800/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 transition-colors"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  비밀번호 찾기
-                </Link>
+                  비밀번호 재설정
+                </Link>  
+              </div>  
+
               </div>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  계정이 없으시면 
+                </p>
               <Link
                 href="/signup"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100/50 dark:bg-zinc-800/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 transition-colors"
