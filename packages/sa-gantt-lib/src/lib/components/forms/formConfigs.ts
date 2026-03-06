@@ -21,46 +21,12 @@ export const cpMasterFormConfig: FormConfig = {
             columnIndex: 0,
             stateKey: 'name',
         },
-        {
-            id: 'totalDays',
-            label: '총 공기',
-            type: 'display',
-            columnIndex: 1,
-            stateKey: 'totalDays',
-            readOnly: true,
-        },
-        {
-            id: 'workDaysTotal',
-            label: '작업일수',
-            type: 'number',
-            defaultValue: 30,
-            columnIndex: 2,
-            stateKey: 'workDaysTotal',
-            colorClass: 'text-vermilion focus:border-vermilion focus:ring-vermilion',
-            title: '작업일수',
-        },
-        {
-            id: 'nonWorkDaysTotal',
-            label: '비작업일수',
-            type: 'number',
-            defaultValue: 10,
-            columnIndex: 3,
-            stateKey: 'nonWorkDaysTotal',
-            colorClass: 'text-teal focus:border-teal focus:ring-teal',
-            title: '비작업일수',
-        },
     ],
-    getInitialState: () => ({
-        name: '',
-        workDaysTotal: 30,
-        nonWorkDaysTotal: 10,
-    }),
+    getInitialState: () => ({ name: '' }),
     createTask: (formState, tasks) => {
         const cpTasks = tasks.filter(t => t.type === 'CP' && !t.parentId);
         const lastCP = cpTasks[cpTasks.length - 1];
         const startDate = lastCP ? addDays(lastCP.endDate, 1) : new Date();
-        const totalDays = (formState.workDaysTotal as number) + (formState.nonWorkDaysTotal as number);
-        const endDate = addDays(startDate, Math.max(totalDays - 1, 0));
 
         return {
             id: generateId(),
@@ -69,10 +35,10 @@ export const cpMasterFormConfig: FormConfig = {
             type: 'CP',
             name: (formState.name as string).trim(),
             startDate,
-            endDate,
+            endDate: startDate,
             cp: {
-                workDaysTotal: formState.workDaysTotal as number,
-                nonWorkDaysTotal: formState.nonWorkDaysTotal as number,
+                workDaysTotal: 0,
+                nonWorkDaysTotal: 0,
             },
             dependencies: [],
         };
@@ -100,51 +66,12 @@ export const cpUnifiedFormConfig: FormConfig = {
             columnIndex: 0,
             stateKey: 'name',
         },
-        {
-            id: 'duration',
-            label: '기간',
-            type: 'number',
-            defaultValue: 30,
-            columnIndex: 1,
-            stateKey: 'duration',
-            title: '기간 (일)',
-        },
-        {
-            id: 'startDate',
-            label: '시작일',
-            type: 'date',
-            columnIndex: 2,
-            stateKey: 'startDate',
-            title: '시작일',
-        },
-        {
-            id: 'endDate',
-            label: '종료일',
-            type: 'display',
-            columnIndex: 3,
-            stateKey: 'endDate',
-            readOnly: true,
-        },
     ],
-    getInitialState: (tasks) => {
+    getInitialState: () => ({ name: '' }),
+    createTask: (formState, tasks) => {
         const cpTasks = tasks.filter(t => t.type === 'CP' && !t.parentId);
         const lastCP = cpTasks[cpTasks.length - 1];
         const startDate = lastCP ? addDays(lastCP.endDate, 1) : new Date();
-
-        return {
-            name: '',
-            duration: 30,
-            startDate: format(startDate, 'yyyy-MM-dd'),
-        };
-    },
-    createTask: (formState) => {
-        const startDate = new Date(formState.startDate as string);
-        const duration = formState.duration as number;
-        const calculatedEndDate = addDays(startDate, Math.max(duration - 1, 0));
-
-        // CP의 작업일/비작업일 기본 비율 (약 3:1)
-        const workDays = Math.ceil(duration * 0.75);
-        const nonWorkDays = duration - workDays;
 
         return {
             id: generateId(),
@@ -153,10 +80,10 @@ export const cpUnifiedFormConfig: FormConfig = {
             type: 'CP',
             name: (formState.name as string).trim(),
             startDate,
-            endDate: calculatedEndDate,
+            endDate: startDate,
             cp: {
-                workDaysTotal: workDays,
-                nonWorkDaysTotal: nonWorkDays,
+                workDaysTotal: 0,
+                nonWorkDaysTotal: 0,
             },
             dependencies: [],
         };

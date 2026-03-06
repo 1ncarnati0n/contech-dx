@@ -1,7 +1,9 @@
 'use client';
 
+import { logger } from '@/lib/utils/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '@/lib/constants';
+import { getApiErrorMessage } from '@/lib/utils/api-error';
 import type { Message, ChatSession } from './types';
 
 interface UseChatSessionOptions {
@@ -32,11 +34,6 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
-  // 초기 로드
-  useEffect(() => {
-    loadAllSessions();
-  }, []);
-
   // 전체 세션 목록 로드
   const loadAllSessions = useCallback(() => {
     const savedSessions = localStorage.getItem('chat_sessions_all');
@@ -46,11 +43,16 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
         parsed.sort((a: ChatSession, b: ChatSession) => b.updatedAt - a.updatedAt);
         setSessions(parsed);
       } catch (e) {
-        console.error('Failed to parse sessions', e);
+        logger.error('Failed to parse sessions', e);
         setSessions([]);
       }
     }
   }, []);
+
+  // 초기 로드
+  useEffect(() => {
+    loadAllSessions();
+  }, [loadAllSessions]);
 
   // 메시지 로드 (세션 선택 시)
   useEffect(() => {
@@ -68,7 +70,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
         }));
         setMessages(parsed);
       } catch (e) {
-        console.error('Failed to parse messages', e);
+        logger.error('Failed to parse messages', e);
         setMessages([]);
       }
     } else {
@@ -174,7 +176,7 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
           role: 'model',
           content: data.success
             ? data.answer
-            : `오류가 발생했습니다: ${data.error || '알 수 없는 오류'}`,
+            : `오류가 발생했습니다: ${getApiErrorMessage(data.error, '알 수 없는 오류')}`,
           citations: data.success ? data.citations : undefined,
           timestamp: new Date(),
         };
@@ -273,4 +275,3 @@ export function useChatSession({ selectedStore, onStoreChange }: UseChatSessionO
 }
 
 export type ChatSessionState = ReturnType<typeof useChatSession>;
-

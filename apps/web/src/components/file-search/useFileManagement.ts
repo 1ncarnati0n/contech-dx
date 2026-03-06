@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS, FILE_SIZE_LIMITS } from '@/lib/constants';
 import { filterValidFiles, formatFileSize } from './utils';
+import { getApiErrorMessage } from '@/lib/utils/api-error';
 
 interface UseFileManagementOptions {
   selectedStore: string;
@@ -92,7 +93,7 @@ export function useFileManagement({ selectedStore, onUploadSuccess, onDeleteSucc
         onUploadSuccess?.();
         return true;
       } else {
-        setError(data.error || '업로드 실패');
+        setError(getApiErrorMessage(data.error, '업로드 실패'));
         return false;
       }
     } catch (err: unknown) {
@@ -125,7 +126,7 @@ export function useFileManagement({ selectedStore, onUploadSuccess, onDeleteSucc
         onDeleteSuccess?.();
         return true;
       } else {
-        setError(data.error || '파일 삭제 실패');
+        setError(getApiErrorMessage(data.error, '파일 삭제 실패'));
         return false;
       }
     } catch (err: unknown) {
@@ -160,4 +161,3 @@ export function useFileManagement({ selectedStore, onUploadSuccess, onDeleteSucc
 }
 
 export type FileManagementState = ReturnType<typeof useFileManagement>;
-

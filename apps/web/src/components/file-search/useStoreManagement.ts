@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '@/lib/constants';
+import { logger } from '@/lib/utils/logger';
+import { getApiErrorMessage } from '@/lib/utils/api-error';
 import type { FileSearchStore, UploadedFile } from './types';
 
 /**
@@ -33,7 +35,7 @@ export function useStoreManagement() {
         setStores(data.stores);
       }
     } catch (err) {
-      console.error('Error loading stores:', err);
+      logger.error('Error loading stores:', err);
     }
   }, []);
 
@@ -62,7 +64,7 @@ export function useStoreManagement() {
         setNextPageToken(filesData.nextPageToken || null);
       }
     } catch (err) {
-      console.error('Error loading store info:', err);
+      logger.error('Error loading store info:', err);
     }
   }, []);
 
@@ -97,7 +99,7 @@ export function useStoreManagement() {
         setNextPageToken(data.nextPageToken || null);
       }
     } catch (err) {
-      console.error('Error loading more files:', err);
+      logger.error('Error loading more files:', err);
     } finally {
       setIsLoadingMore(false);
     }
@@ -126,7 +128,7 @@ export function useStoreManagement() {
           await selectStore(data.store.name);
           return true;
         } else {
-          setError(data.error || '스토어 생성 실패');
+          setError(getApiErrorMessage(data.error, '스토어 생성 실패'));
           return false;
         }
       } catch (err: unknown) {
@@ -161,7 +163,7 @@ export function useStoreManagement() {
         await loadStores();
         return true;
       } else {
-        setError(data.error);
+        setError(getApiErrorMessage(data.error, '스토어 삭제 실패'));
         return false;
       }
     } catch (err: unknown) {
@@ -205,4 +207,3 @@ export function useStoreManagement() {
 }
 
 export type StoreManagementState = ReturnType<typeof useStoreManagement>;
-

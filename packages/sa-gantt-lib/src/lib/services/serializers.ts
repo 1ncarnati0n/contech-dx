@@ -177,16 +177,13 @@ export const serializeTasks = (tasks: ConstructionTask[]): string => {
  */
 export const deserializeTasks = (json: string): ConstructionTask[] | null => {
     try {
-        console.log('[deserializeTasks] Start parsing');
         const parsed = JSON.parse(json);
         if (!Array.isArray(parsed)) {
             console.error('Invalid tasks data format: expected array');
             return null;
         }
-        console.log('[deserializeTasks] Parsed count:', parsed.length);
 
         const validTasks = parsed.filter(isValidTaskData);
-        console.log('[deserializeTasks] Valid tasks:', validTasks.length);
         if (validTasks.length !== parsed.length) {
             console.warn(
                 `[deserializeTasks] ${parsed.length - validTasks.length}개의 유효하지 않은 Task가 필터링됨`
@@ -221,10 +218,8 @@ export const deserializeTasks = (json: string): ConstructionTask[] | null => {
             };
         });
 
-        console.log('[deserializeTasks] Before migration, tasks count:', tasks.length);
         // 자동 마이그레이션 적용 (Legacy GROUP → BLOCK)
         const migrated = migrateTaskTypes(tasks);
-        console.log('[deserializeTasks] After migration, tasks count:', migrated.length);
 
         return migrated;
     } catch (error) {

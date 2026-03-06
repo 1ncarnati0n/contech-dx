@@ -1,10 +1,23 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { createSupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
+import { addDays } from 'date-fns';
+import { createSupabaseGanttDataService, SupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
+import { getBuildings } from '@/lib/services/buildings';
+import { getProject } from '@/lib/services/projects';
+import {
+  convertProcessPlansToGanttTasks,
+  CATEGORY_ORDER,
+  getImportFloorLabelsForCategory,
+} from '@/lib/utils/process-to-gantt-converter';
+import type { ConversionResult } from '@/lib/utils/process-to-gantt-converter';
+import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
+import { getProcessModule } from '@/lib/data/process-modules';
+import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
 import { toast } from 'sonner';
 import {
   Loader2,
+  RefreshCw,
   ListTodo,
   Flag,
   CalendarDays,
@@ -13,8 +26,13 @@ import {
   Workflow,
   Link2,
   Undo2,
+  Upload,
+  X,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import type { ConstructionTask, Milestone, GroupDependency } from 'sa-gantt-lib';
+import { logger } from '@/lib/utils/logger';
 
 interface GanttChartPageProps {
   projectId: string;
@@ -60,12 +78,156 @@ function FeatureItem({ icon, text }: FeatureItemProps) {
   );
 }
 
+// 지하 공정 카테고리 Set
+const UNDERGROUND_CATEGORIES = new Set<ProcessCategory>([
+  '버림', '기초', '주동 지하층', '지하층(층고6.5m이상)', '지하주차장',
+]);
+
+interface CategoryPreview {
+  category: ProcessCategory;
+  netDays: number;
+  indirectDays: number;
+  totalDays: number;
+  processType: ProcessType;
+  floorLabelsDisplay: string;
+  group: 'underground' | 'aboveground';
+}
+
+interface CategoryDurationBreakdown {
+  netDays: number;
+  indirectDays: number;
+  totalDays: number;
+}
+
+type BuildingCategoryDurations = Map<string, Map<ProcessCategory, CategoryDurationBreakdown>>;
+
+/**
+ * 층 라벨 배열을 연속 범위로 압축
+ * ['4F','5F','6F',...,'15F'] → '4F~15F'
+ * ['B2','B1'] → 'B2, B1'
+ * [''] → ''
+ */
+function compressFloorLabels(labels: string[]): string {
+  if (labels.length === 0 || (labels.length === 1 && labels[0] === '')) return '';
+
+  // 라벨을 prefix + 숫자 + suffix로 파싱
+  const parsed = labels.map((label) => {
+    const match = label.match(/^([A-Za-z]*)(\d+)([A-Za-z]*)$/);
+    if (!match) return { raw: label, prefix: '', num: NaN, suffix: '' };
+    return { raw: label, prefix: match[1], num: parseInt(match[2], 10), suffix: match[3] };
+  });
+
+  // 같은 prefix+suffix 그룹 내 연속 숫자를 범위로 묶기
+  const parts: string[] = [];
+  let i = 0;
+  while (i < parsed.length) {
+    const cur = parsed[i];
+    if (isNaN(cur.num)) {
+      parts.push(cur.raw);
+      i++;
+      continue;
+    }
+
+    // 같은 그룹의 연속 숫자 찾기
+    let j = i + 1;
+    while (
+      j < parsed.length &&
+      parsed[j].prefix === cur.prefix &&
+      parsed[j].suffix === cur.suffix &&
+      parsed[j].num === parsed[j - 1].num + 1
+    ) {
+      j++;
+    }
+
+    const rangeLen = j - i;
+    if (rangeLen >= 3) {
+      const last = parsed[j - 1];
+      parts.push(`${cur.prefix}${cur.num}${cur.suffix}~${last.prefix}${last.num}${last.suffix}`);
+    } else {
+      for (let k = i; k < j; k++) parts.push(parsed[k].raw);
+    }
+    i = j;
+  }
+
+  return parts.join(', ');
+}
+
+function aggregateCategoryDurations(tasks: ConstructionTask[]): BuildingCategoryDurations {
+  const taskMap = new Map<string, ConstructionTask>();
+  tasks.forEach((task) => taskMap.set(task.id, task));
+
+  const categorySet = new Set<ProcessCategory>(CATEGORY_ORDER);
+  const durationsByBuilding: BuildingCategoryDurations = new Map();
+
+  for (const task of tasks) {
+    if (task.type !== 'TASK' || !task.task) continue;
+
+    let currentParentId: string | null = task.parentId;
+    let cpTask: ConstructionTask | null = null;
+    let blockTask: ConstructionTask | null = null;
+
+    while (currentParentId) {
+      const parent = taskMap.get(currentParentId);
+      if (!parent) break;
+
+      if (!cpTask && parent.type === 'CP') {
+        cpTask = parent;
+      }
+      if (parent.type === 'BLOCK') {
+        blockTask = parent;
+        break;
+      }
+
+      currentParentId = parent.parentId;
+    }
+
+    if (!cpTask || !blockTask) continue;
+
+    const category = cpTask.name as ProcessCategory;
+    if (!categorySet.has(category)) continue;
+
+    const buildingName = blockTask.name;
+    const netDays = task.task.netWorkDays ?? 0;
+    const indirectDays =
+      (task.task.indirectWorkDaysPre ?? 0) +
+      (task.task.indirectWorkDaysPost ?? 0);
+
+    const categoryDurations = durationsByBuilding.get(buildingName) || new Map<ProcessCategory, CategoryDurationBreakdown>();
+    const current = categoryDurations.get(category) || {
+      netDays: 0,
+      indirectDays: 0,
+      totalDays: 0,
+    };
+
+    current.netDays += netDays;
+    current.indirectDays += indirectDays;
+    current.totalDays = current.netDays + current.indirectDays;
+    categoryDurations.set(category, current);
+    durationsByBuilding.set(buildingName, categoryDurations);
+  }
+
+  return durationsByBuilding;
+}
+
 export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isRefreshingPreview, setIsRefreshingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<ConstructionTask[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [dependencies, setDependencies] = useState<GroupDependency[]>([]);
+
+  // 가져오기 모달 상태
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importStartDate, setImportStartDate] = useState('');
+  const [importPreview, setImportPreview] = useState<{
+    buildings: Building[];
+    processPlans: Map<string, BuildingProcessPlan>;
+    summary: ConversionResult['summary'];
+    categoryDurations: BuildingCategoryDurations;
+  } | null>(null);
+  const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
 
   // Supabase DataService 생성 (projectId 기반)
   const dataService = useMemo(
@@ -73,29 +235,30 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
     [projectId]
   );
 
+  // 간트차트 데이터 로드 함수
+  const loadGanttData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await dataService.loadAll();
+      setTasks(data.tasks);
+      setMilestones(data.milestones);
+      setDependencies(data.dependencies);
+    } catch (err) {
+      logger.error('Failed to load gantt data:', err);
+      setError('간트차트 데이터를 불러오는데 실패했습니다.');
+      toast.error('데이터 로드 실패', {
+        description: '간트차트 데이터를 불러오는데 실패했습니다.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataService]);
+
   // 초기 데이터 로드
   useEffect(() => {
-    async function loadData() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await dataService.loadAll();
-        setTasks(data.tasks);
-        setMilestones(data.milestones);
-        setDependencies(data.dependencies);
-      } catch (err) {
-        console.error('Failed to load gantt data:', err);
-        setError('간트차트 데이터를 불러오는데 실패했습니다.');
-        toast.error('데이터 로드 실패', {
-          description: '간트차트 데이터를 불러오는데 실패했습니다.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-  }, [dataService]);
+    loadGanttData();
+  }, [loadGanttData]);
 
   // 요약 통계 계산
   const stats = useMemo(() => {
@@ -153,6 +316,230 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
   const handleOpenFullscreen = useCallback(() => {
     window.open(`/projects/${projectNumber}/gantt`, '_blank', 'noopener,noreferrer');
   }, [projectNumber]);
+
+  // 동별 미리보기 계산 (날짜 변경 시 재계산)
+  const buildingPreviews = useMemo(() => {
+    if (!importPreview || !importStartDate) return [];
+
+    const selectedDate = new Date(importStartDate + 'T00:00:00');
+
+    return importPreview.buildings
+      .filter(b => importPreview.processPlans.has(b.id))
+      .map(building => {
+        const plan = importPreview.processPlans.get(building.id)!;
+        const preWorkDays =
+          (plan.temporaryWorkDays || 0) +
+          (plan.earthRetentionWorkDays || 0) +
+          (plan.earthworkWorkDays || 0);
+        const structureStartDate = preWorkDays > 0
+          ? addDays(selectedDate, preWorkDays)
+          : selectedDate;
+
+        // 카테고리별 상세 정보 추출
+        const categories: CategoryPreview[] = [];
+        for (const category of CATEGORY_ORDER) {
+          const processInfo = plan.processes[category];
+          const floorLabels = getImportFloorLabelsForCategory(building, plan, category);
+          const hasFloors = floorLabels.length > 0
+            && !(floorLabels.length === 1 && floorLabels[0] === '');
+
+          if (
+            (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
+            !hasFloors
+          ) {
+            continue;
+          }
+
+          const allowSpecialFallback =
+            (category === '지하주차장' || category === '지하층(층고6.5m이상)') &&
+            hasFloors;
+          if (!processInfo && !allowSpecialFallback) continue;
+
+          const processType = processInfo?.processType || '표준공정';
+          const computed =
+            importPreview.categoryDurations
+              .get(building.buildingName)
+              ?.get(category);
+
+          let netDays = computed?.netDays ?? 0;
+          let indirectDays = computed?.indirectDays ?? 0;
+          let totalDays = computed?.totalDays ?? 0;
+
+          // 변환 TASK가 없으면 기존 계산값으로 폴백 (버림/기초 등 예외 데이터 대응)
+          if (!computed) {
+            const mod = getProcessModule(category, processType);
+            let days = processInfo?.days || 0;
+
+            if (days === 0 && mod) {
+              if (
+                hasFloors &&
+                category !== '지하주차장' &&
+                category !== '지하층(층고6.5m이상)'
+              ) {
+                days = floorLabels.reduce((sum, fl) =>
+                  sum + calculateModuleWorkDaysForFloor(building, mod, category, fl), 0);
+              } else if (!hasFloors) {
+                days = calculateModuleWorkDays(building, mod, category);
+              }
+            }
+
+            netDays = days;
+            indirectDays = 0;
+            totalDays = days;
+          }
+
+          const mod = getProcessModule(category, processType);
+          if (!mod && totalDays === 0) continue;
+
+          const displayLabels = compressFloorLabels(floorLabels.filter(l => l !== ''));
+          categories.push({
+            category,
+            netDays,
+            indirectDays,
+            totalDays,
+            processType,
+            floorLabelsDisplay: displayLabels,
+            group: UNDERGROUND_CATEGORIES.has(category) ? 'underground' : 'aboveground',
+          });
+        }
+
+        return {
+          name: building.buildingName,
+          taskCount: importPreview.summary.taskCountByBuilding[building.buildingName] || 0,
+          preWorkDays,
+          temporaryWorkDays: plan.temporaryWorkDays || 0,
+          earthRetentionWorkDays: plan.earthRetentionWorkDays || 0,
+          earthworkWorkDays: plan.earthworkWorkDays || 0,
+          structureStartDate,
+          categories,
+        };
+      });
+  }, [importPreview, importStartDate]);
+
+  const loadImportPreview = useCallback(async (options?: {
+    openModal?: boolean;
+    preserveStartDate?: boolean;
+    notifyOnSuccess?: boolean;
+  }) => {
+    const {
+      openModal = false,
+      preserveStartDate = false,
+      notifyOnSuccess = false,
+    } = options || {};
+
+    try {
+      setIsRefreshingPreview(true);
+
+      // 1. 동 목록 로드
+      const buildings = await getBuildings(projectId);
+      if (buildings.length === 0) {
+        toast.error('등록된 동이 없습니다. 먼저 동을 추가해주세요.');
+        return;
+      }
+
+      // 2. 각 동의 localStorage에서 공정계획 로드
+      const processPlans = new Map<string, BuildingProcessPlan>();
+      for (const building of buildings) {
+        const storageKey = `contech_process_plan_${building.id}`;
+        const storedJson = localStorage.getItem(storageKey);
+        if (storedJson) {
+          try {
+            const plan = JSON.parse(storedJson) as BuildingProcessPlan;
+            if (plan.totalDays > 0) {
+              processPlans.set(building.id, plan);
+            }
+          } catch {
+            // 파싱 실패 항목은 건너뜀
+          }
+        }
+      }
+
+      if (processPlans.size === 0) {
+        toast.error('가져올 공정계획이 없습니다. 먼저 공정계획을 작성해주세요.');
+        return;
+      }
+
+      // 3. 프로젝트 시작일 가져오기
+      const project = await getProject(projectId);
+      if (!project) {
+        toast.error('프로젝트 정보를 불러올 수 없습니다.');
+        return;
+      }
+
+      // 4. 변환 미리보기 계산
+      const defaultStartDate = project.start_date;
+      const effectiveStartDate = preserveStartDate && importStartDate
+        ? importStartDate
+        : defaultStartDate;
+      const projectStartDate = new Date(effectiveStartDate + 'T00:00:00');
+      const { tasks: convertedTasks, summary } = convertProcessPlansToGanttTasks({
+        buildings,
+        processPlans,
+        projectStartDate,
+      });
+      const categoryDurations = aggregateCategoryDurations(convertedTasks);
+
+      // 5. 상태 업데이트
+      setImportStartDate(effectiveStartDate);
+      setImportPreview({ buildings, processPlans, summary, categoryDurations });
+      setExpandedBuildings(new Set(buildings.map(b => b.buildingName)));
+      if (openModal) {
+        setShowImportModal(true);
+      }
+
+      if (notifyOnSuccess) {
+        toast.success('세부공정을 재생성하여 최신 공정계획을 불러왔습니다.');
+      }
+    } catch (err) {
+      logger.error('Import preview reload failed:', err);
+      toast.error('최신 공정계획 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setIsRefreshingPreview(false);
+    }
+  }, [projectId, importStartDate]);
+
+  // 공정계획에서 가져오기 핸들러 (모달 오픈)
+  const handleImportFromProcessPlan = useCallback(async () => {
+    await loadImportPreview({
+      openModal: true,
+      preserveStartDate: false,
+      notifyOnSuccess: false,
+    });
+  }, [loadImportPreview]);
+
+  // 가져오기 확인 핸들러 (실제 변환 + 저장)
+  const handleConfirmImport = useCallback(async () => {
+    if (!importPreview || !importStartDate) return;
+
+    try {
+      setIsImporting(true);
+      const selectedDate = new Date(importStartDate + 'T00:00:00');
+
+      const { tasks: newTasks, summary } = convertProcessPlansToGanttTasks({
+        buildings: importPreview.buildings,
+        processPlans: importPreview.processPlans,
+        projectStartDate: selectedDate,
+      });
+
+      const service = new SupabaseGanttDataService(projectId);
+      await service.appendTasks(newTasks);
+
+      toast.success(`${summary.totalTaskCount}개 태스크가 간트차트에 추가되었습니다.`);
+
+      // 모달 닫기 + 상태 초기화
+      setShowImportModal(false);
+      setImportPreview(null);
+      setImportStartDate('');
+
+      // 간트차트 데이터 리로드
+      await loadGanttData();
+    } catch (err) {
+      logger.error('Import from process plan failed:', err);
+      toast.error('공정계획 가져오기에 실패했습니다.');
+    } finally {
+      setIsImporting(false);
+    }
+  }, [importPreview, importStartDate, projectId, loadGanttData]);
 
   // 날짜 포맷팅 헬퍼
   const formatShortDate = (date: Date | null) => {
@@ -239,13 +626,23 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
             </p>
           </div>
 
-          <button
-            onClick={handleOpenFullscreen}
-            className="flex items-center gap-2 px-8 py-3 bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
-          >
-            <Rocket className="w-5 h-5" />
-            간트앱 열기
-          </button>
+          <div className="flex flex-row items-center gap-3">
+            <button
+              onClick={handleImportFromProcessPlan}
+              disabled={isImporting || isRefreshingPreview}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-5 h-5" />
+              {isRefreshingPreview ? '불러오는 중...' : isImporting ? '가져오는 중...' : '공정계획에서 가져오기'}
+            </button>
+            <button
+              onClick={handleOpenFullscreen}
+              className="flex items-center gap-2 px-8 py-3 bg-zinc-900 hover:bg-black text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            >
+              <Rocket className="w-5 h-5" />
+              간트앱 열기
+            </button>
+          </div>
 
           {/* 기능 안내 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 w-full max-w-2xl">
@@ -264,6 +661,258 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           <span>
             현재 {stats.dependencyCount}개의 태스크 간 의존성이 설정되어 있습니다.
           </span>
+        </div>
+      )}
+
+      {/* 가져오기 모달 */}
+      {showImportModal && importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 오버레이 */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !isImporting && !isRefreshingPreview && setShowImportModal(false)}
+          />
+
+          {/* 모달 */}
+          <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-zinc-200 dark:border-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                공정계획에서 가져오기
+              </h2>
+              <button
+                onClick={() => !isImporting && !isRefreshingPreview && setShowImportModal(false)}
+                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                disabled={isImporting || isRefreshingPreview}
+              >
+                <X className="w-5 h-5 text-zinc-500" />
+              </button>
+            </div>
+
+            {/* 바디 */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
+              {/* 시작일 선택 + 요약 */}
+              <div className="flex items-end gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    시작일
+                  </label>
+                  <input
+                    type="date"
+                    value={importStartDate}
+                    onChange={(e) => setImportStartDate(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void loadImportPreview({
+                      openModal: false,
+                      preserveStartDate: true,
+                      notifyOnSuccess: true,
+                    });
+                  }}
+                  disabled={isImporting || isRefreshingPreview}
+                  className="h-[42px] inline-flex items-center gap-2 px-3.5 rounded-lg border border-zinc-300 dark:border-zinc-600 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRefreshingPreview ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      재생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      세부공정 재생성
+                    </>
+                  )}
+                </button>
+                <div className="flex gap-3">
+                  <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg px-4 py-2.5 text-center">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">대상 동</p>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {importPreview.summary.buildingCount}개
+                    </p>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg px-4 py-2.5 text-center">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">총 태스크</p>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">
+                      {importPreview.summary.totalTaskCount}개
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 동별 카테고리 상세 */}
+              {buildingPreviews.length > 0 && (
+                <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y divide-zinc-200 dark:divide-zinc-700">
+                  {buildingPreviews.map((bp) => {
+                    const isExpanded = expandedBuildings.has(bp.name);
+                    const undergroundCats = bp.categories.filter(c => c.group === 'underground');
+                    const abovegroundCats = bp.categories.filter(c => c.group === 'aboveground');
+
+                    return (
+                      <div key={bp.name}>
+                        {/* 동 헤더 — 클릭으로 펼치기/접기 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedBuildings(prev => {
+                              const next = new Set(prev);
+                              if (next.has(bp.name)) next.delete(bp.name);
+                              else next.add(bp.name);
+                              return next;
+                            });
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-2">
+                            {isExpanded
+                              ? <ChevronDown className="w-4 h-4 text-zinc-400" />
+                              : <ChevronRight className="w-4 h-4 text-zinc-400" />
+                            }
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+                              {bp.name}
+                            </span>
+                          </div>
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                            {bp.taskCount}개 태스크
+                          </span>
+                        </button>
+
+                        {/* 펼친 상태 — 상세 내용 */}
+                        {isExpanded && (
+                          <div className="px-4 pb-4 space-y-3">
+                            {/* 기본 정보 */}
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-0.5 pl-6">
+                              <p>
+                                구조체 시작:{' '}
+                                <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                  {bp.structureStartDate.toLocaleDateString('ko-KR', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                  })}
+                                </span>
+                              </p>
+                              <p>
+                                가설+흙막이+토공사: {bp.preWorkDays}일
+                                <span className="text-zinc-400 dark:text-zinc-500 ml-1">
+                                  ({bp.temporaryWorkDays}+{bp.earthRetentionWorkDays}+{bp.earthworkWorkDays})
+                                </span>
+                              </p>
+                            </div>
+
+                            {/* 지하 공정 */}
+                            {undergroundCats.length > 0 && (
+                              <div className="pl-6">
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <span className="w-2 h-2 rounded-sm bg-blue-500" />
+                                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                    지하 공정
+                                  </span>
+                                </div>
+                                <div className="space-y-1">
+                                  {undergroundCats.map(cat => (
+                                    <div
+                                      key={cat.category}
+                                      className="flex items-center text-xs text-zinc-700 dark:text-zinc-300 gap-2"
+                                    >
+                                      <span className="min-w-[100px] truncate">{cat.category}</span>
+                                      <span className="tabular-nums w-14 text-right font-medium">{cat.totalDays}일</span>
+                                      <span className="tabular-nums w-20 text-right text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        순 {cat.netDays} / 간 {cat.indirectDays}
+                                      </span>
+                                      <span className="text-zinc-500 dark:text-zinc-400 w-20 truncate">
+                                        {cat.processType}
+                                      </span>
+                                      {cat.floorLabelsDisplay && (
+                                        <span className="ml-auto text-zinc-400 dark:text-zinc-500 truncate">
+                                          {cat.floorLabelsDisplay}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 지상 공정 */}
+                            {abovegroundCats.length > 0 && (
+                              <div className="pl-6">
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <span className="w-2 h-2 rounded-sm bg-green-500" />
+                                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                    지상 공정
+                                  </span>
+                                </div>
+                                <div className="space-y-1">
+                                  {abovegroundCats.map(cat => (
+                                    <div
+                                      key={cat.category}
+                                      className="flex items-center text-xs text-zinc-700 dark:text-zinc-300 gap-2"
+                                    >
+                                      <span className="min-w-[100px] truncate">{cat.category}</span>
+                                      <span className="tabular-nums w-14 text-right font-medium">{cat.totalDays}일</span>
+                                      <span className="tabular-nums w-20 text-right text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        순 {cat.netDays} / 간 {cat.indirectDays}
+                                      </span>
+                                      <span className="text-zinc-500 dark:text-zinc-400 w-20 truncate">
+                                        {cat.processType}
+                                      </span>
+                                      {cat.floorLabelsDisplay && (
+                                        <span className="ml-auto text-zinc-400 dark:text-zinc-500 truncate">
+                                          {cat.floorLabelsDisplay}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 안내 */}
+              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                기존 간트차트 데이터에 추가됩니다.
+              </p>
+            </div>
+
+            {/* 푸터 */}
+            <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <button
+                onClick={() => setShowImportModal(false)}
+                disabled={isImporting || isRefreshingPreview}
+                className="px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmImport}
+                disabled={isImporting || isRefreshingPreview || !importStartDate}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    가져오는 중...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    가져오기
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

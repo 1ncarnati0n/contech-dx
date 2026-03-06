@@ -54,7 +54,6 @@ export const migrateTaskTypes = (tasks: ConstructionTask[]): ConstructionTask[] 
 
         // parentId가 null이면 최상위 → BLOCK
         if (task.parentId === null) {
-            console.log(`[Migration] GROUP → BLOCK: ${task.name} (parentId: null)`);
             return { ...task, type: 'BLOCK' as const };
         }
 
@@ -64,7 +63,6 @@ export const migrateTaskTypes = (tasks: ConstructionTask[]): ConstructionTask[] 
         // 부모가 CP가 아니면 BLOCK으로 변환
         // (부모가 존재하지 않거나 부모도 GROUP인 경우)
         if (!parent || parent.type !== 'CP') {
-            console.log(`[Migration] GROUP → BLOCK: ${task.name} (parent type: ${parent?.type ?? 'not found'})`);
             return { ...task, type: 'BLOCK' as const };
         }
 

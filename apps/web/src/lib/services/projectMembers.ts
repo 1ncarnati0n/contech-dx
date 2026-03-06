@@ -11,6 +11,7 @@ import type {
   UpdateProjectMemberRoleDTO,
 } from '@/lib/types';
 import { MemoryCache, SHORT_TTL, createCacheKey } from './cache';
+import { logger } from '@/lib/utils/logger';
 
 // Database record type with joined profile data
 interface ProjectMemberRecord {
@@ -123,7 +124,7 @@ function initializeMockMembers(): void {
   ];
 
   saveMockMembers(mockMembers);
-  console.log('✅ Mock Project Members initialized:', mockMembers.length);
+  logger.info('Mock Project Members initialized:', mockMembers.length);
 }
 
 // ============================================
@@ -159,7 +160,7 @@ export async function getProjectMembers(
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching project members:', error);
+      logger.error('Error fetching project members:', error);
       initializeMockMembers();
       const members = getMockMembers();
       return members.filter((m) => m.project_id === projectId);
@@ -204,7 +205,7 @@ export async function addProjectMember(
     members.push(newMember);
     saveMockMembers(members);
 
-    console.log('✅ Mock Project Member added:', newMember.id);
+    logger.info('Mock Project Member added:', newMember.id);
     return newMember;
   }
 
@@ -236,7 +237,7 @@ export async function addProjectMember(
 
   if (error) {
     // 상세 에러 정보 로깅
-    console.error('Error adding project member:', {
+    logger.error('Error adding project member:', {
       message: error.message,
       code: error.code,
       details: error.details,
@@ -303,7 +304,7 @@ export async function updateProjectMemberRole(
     };
 
     saveMockMembers(members);
-    console.log('✅ Mock Project Member role updated:', memberId);
+    logger.info('Mock Project Member role updated:', memberId);
     return members[index];
   }
 
@@ -323,7 +324,7 @@ export async function updateProjectMemberRole(
 
   if (error) {
     // 상세 에러 정보 로깅
-    console.error('Error updating member role:', {
+    logger.error('Error updating member role:', {
       message: error.message,
       code: error.code,
       details: error.details,
@@ -371,7 +372,7 @@ export async function removeProjectMember(memberId: string, projectId?: string):
     const members = getMockMembers();
     const filtered = members.filter((m) => m.id !== memberId);
     saveMockMembers(filtered);
-    console.log('✅ Mock Project Member removed:', memberId);
+    logger.info('Mock Project Member removed:', memberId);
     return;
   }
 
@@ -395,7 +396,7 @@ export async function removeProjectMember(memberId: string, projectId?: string):
 
   if (error) {
     // 상세 에러 정보 로깅
-    console.error('Error removing project member:', {
+    logger.error('Error removing project member:', {
       message: error.message,
       code: error.code,
       details: error.details,
@@ -448,14 +449,11 @@ export async function isProjectMember(
       .select('id')
       .eq('project_id', projectId)
       .eq('user_id', userId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found
-        return false;
-      }
-      console.error('Error checking project membership:', error);
+      logger.error('Error checking project membership:', error);
       return false;
     }
 
@@ -489,18 +487,14 @@ export async function getUserRoleInProject(
       .select('role')
       .eq('project_id', projectId)
       .eq('user_id', userId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Not found
-        return null;
-      }
-      console.error('Error fetching user role:', error);
+      logger.error('Error fetching user role:', error);
       return null;
     }
 
-    return data.role;
+    return data?.role || null;
   });
 }
-

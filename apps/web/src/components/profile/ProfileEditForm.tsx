@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
@@ -26,6 +26,15 @@ const profileSchema = z.object({
   displayName: z
     .string()
     .max(50, '표시 이름은 50자를 초과할 수 없습니다'),
+  position: z
+    .string()
+    .max(50, '직위는 50자를 초과할 수 없습니다'),
+  affiliation: z
+    .string()
+    .max(50, '소속은 50자를 초과할 수 없습니다'),
+  department: z
+    .string()
+    .max(50, '부서는 50자를 초과할 수 없습니다'),
   bio: z
     .string()
     .max(200, '자기소개는 200자를 초과할 수 없습니다'),
@@ -38,35 +47,22 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 // ============================================
 interface ProfileEditFormProps {
   profile: Profile;
-  signupName?: string | null;
-  signupPosition?: string | null;
 }
 
 // ============================================
 // 컴포넌트
 // ============================================
-export default function ProfileEditForm({ profile, signupName, signupPosition }: ProfileEditFormProps) {
+export default function ProfileEditForm({ profile }: ProfileEditFormProps) {
   const router = useRouter();
   const supabase = createClient();
-
-  // 초기 표시 이름 계산
-  const getInitialDisplayName = () => {
-    if (profile.display_name) {
-      return profile.display_name;
-    }
-    if (signupName && signupPosition) {
-      return `${signupName} ${signupPosition}`;
-    }
-    if (signupName) {
-      return signupName;
-    }
-    return '';
-  };
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      displayName: getInitialDisplayName(),
+      displayName: profile.display_name || '',
+      position: profile.position || '',
+      affiliation: profile.affiliation || '',
+      department: profile.department || '',
       bio: profile.bio || '',
     },
   });
@@ -77,6 +73,9 @@ export default function ProfileEditForm({ profile, signupName, signupPosition }:
         .from('profiles')
         .update({
           display_name: data.displayName || null,
+          position: data.position || null,
+          affiliation: data.affiliation || null,
+          department: data.department || null,
           bio: data.bio || null,
         })
         .eq('id', profile.id);
@@ -95,12 +94,18 @@ export default function ProfileEditForm({ profile, signupName, signupPosition }:
 
   const handleReset = () => {
     form.reset({
-      displayName: getInitialDisplayName(),
+      displayName: profile.display_name || '',
+      position: profile.position || '',
+      affiliation: profile.affiliation || '',
+      department: profile.department || '',
       bio: profile.bio || '',
     });
   };
 
-  const bioValue = form.watch('bio') || '';
+  const bioValue = useWatch({
+    control: form.control,
+    name: 'bio',
+  }) || '';
 
   return (
     <Form {...form}>
@@ -141,6 +146,64 @@ export default function ProfileEditForm({ profile, signupName, signupPosition }:
             </FormItem>
           )}
         />
+
+        {/* 소속 · 부서 · 직위 */}
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="affiliation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>소속</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="소속 입력"
+                    maxLength={50}
+                    {...field}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="department"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>부서</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="부서 입력"
+                    maxLength={50}
+                    {...field}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="position"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>직위</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="직위 입력"
+                    maxLength={50}
+                    {...field}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {/* 자기소개 */}
         <FormField

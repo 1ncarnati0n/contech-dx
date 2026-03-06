@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { format } from 'date-fns';
 import { ZOOM_CONFIG } from '../../types';
 import type { GanttHeaderProps } from './types';
+import { useGanttContextOptional } from '../../context/GanttContext';
 
 // ============================================
 // 버튼 스타일 상수 (통일성 부여)
@@ -35,8 +36,8 @@ const BTN_ACTION_HOVER = {
 };
 
 export const GanttHeader: React.FC<GanttHeaderProps> = ({
-    viewMode,
-    zoomLevel,
+    viewMode: viewModeProp,
+    zoomLevel: zoomLevelProp,
     isAddingTask,
     isAddingCP,
     hasUnsavedChanges,
@@ -60,6 +61,11 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
     canCreateTask,
     canCreateMilestone,
 }) => {
+    const ganttContext = useGanttContextOptional();
+    const viewMode = viewModeProp ?? ganttContext?.viewMode ?? 'MASTER';
+    const zoomLevel = zoomLevelProp ?? ganttContext?.zoomConfig.level ?? 'MONTH';
+    const handleZoomChange = onZoomChange ?? ganttContext?.zoomConfig.setLevel;
+
     const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
     const addDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -350,7 +356,7 @@ export const GanttHeader: React.FC<GanttHeaderProps> = ({
                     ).map((level) => (
                         <button
                             key={level}
-                            onClick={() => onZoomChange(level)}
+                            onClick={() => handleZoomChange?.(level)}
                             className={BTN_GROUP_ITEM}
                             style={{
                                 backgroundColor: zoomLevel === level ? 'var(--gantt-bg-primary)' : 'transparent',

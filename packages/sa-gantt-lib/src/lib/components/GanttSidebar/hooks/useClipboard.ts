@@ -75,10 +75,6 @@ export const useClipboard = ({
                 const tasksToCopy: ConstructionTask[] = [];
                 const currentAllTasks = allTasksRef.current;
 
-                // 디버그: allTasks 상태 확인
-                console.log('[Clipboard Debug] allTasks count:', currentAllTasks.length);
-                console.log('[Clipboard Debug] Selected IDs:', selectedIds);
-
                 const collectTasksRecursively = (taskId: string) => {
                     const task = currentAllTasks.find(t => t.id === taskId);
                     if (!task || tasksToCopy.some(t => t.id === task.id)) return;
@@ -88,20 +84,11 @@ export const useClipboard = ({
                     // 자식 찾기
                     const children = currentAllTasks.filter(t => t.parentId === taskId);
 
-                    // 디버그: 자식 수집 상태
-                    console.log(`[Clipboard Debug] "${task.name}" (${task.type}):`, {
-                        taskId: task.id,
-                        childrenFound: children.length,
-                        childrenNames: children.map(c => c.name)
-                    });
-
                     // 모든 자식 수집 (타입 조건 없음)
                     children.forEach(child => collectTasksRecursively(child.id));
                 };
 
                 selectedIds.forEach(id => collectTasksRecursively(id));
-                console.log('[Clipboard] Copied:', tasksToCopy.length, 'tasks');
-                console.log('[Clipboard Debug] Copied tasks:', tasksToCopy.map(t => ({ name: t.name, type: t.type, parentId: t.parentId })));
                 setClipboardTasks(tasksToCopy);
             }
 
@@ -112,8 +99,6 @@ export const useClipboard = ({
 
                 const currentClipboard = clipboardTasksRef.current;
                 const currentAllTasks = allTasksRef.current;
-
-                console.log('[Clipboard] Pasting:', currentClipboard.length, 'tasks');
 
                 // 현재 tasks의 최대 sortOrder 계산 (맨 뒤에 붙여넣기)
                 let nextSortOrder = currentAllTasks.length;
@@ -136,7 +121,12 @@ export const useClipboard = ({
                 while (remaining.size > 0) {
                     let foundAny = false;
                     for (const id of remaining) {
-                        const task = taskMap.get(id)!;
+                        const task = taskMap.get(id);
+                        if (!task) {
+                            remaining.delete(id);
+                            continue;
+                        }
+
                         // 부모가 없거나, 부모가 복사 대상에 없거나, 부모가 이미 정렬됨
                         const parentInCopy = task.parentId && copiedIds.has(task.parentId);
                         const parentAlreadySorted = task.parentId && sortedTasks.some(t => t.id === task.parentId);
@@ -150,13 +140,14 @@ export const useClipboard = ({
                     // 순환 참조 방지: 진전이 없으면 나머지 모두 추가
                     if (!foundAny) {
                         for (const id of remaining) {
-                            sortedTasks.push(taskMap.get(id)!);
+                            const fallbackTask = taskMap.get(id);
+                            if (fallbackTask) {
+                                sortedTasks.push(fallbackTask);
+                            }
                         }
                         break;
                     }
                 }
-
-                console.log('[Clipboard] Sorted order:', sortedTasks.map(t => `${t.name}(L${t.wbsLevel})`));
 
                 // 순차 실행: 부모 INSERT 완료 후 자식 INSERT (async IIFE)
                 (async () => {
@@ -164,36 +155,31 @@ export const useClipboard = ({
                         let newParentId: string | null;
 
                         if (task.parentId && idMap.has(task.parentId)) {
-                            newParentId = idMap.get(task.parentId)!;
+                            newParentId = idMap.get(task.parentId) ?? task.parentId;
                         } else if (copiedIds.has(task.id) && !currentClipboard.some(t => t.id === task.parentId)) {
                             newParentId = topLevelParentId ?? null;
                         } else {
                             newParentId = task.parentId;
                         }
 
+                        const mappedId = idMap.get(task.id);
+                        if (!mappedId) {
+                            continue;
+                        }
+
                         const isTopLevel = !task.parentId || !copiedIds.has(task.parentId);
                         const newTask: Partial<ConstructionTask> & { sortOrder?: number } = {
                             ...task,
-                            id: idMap.get(task.id),
+                            id: mappedId,
                             parentId: newParentId,
                             name: isTopLevel ? generateCopyName(task.name, currentAllTasks) : task.name,
                             dependencies: [],
                             sortOrder: nextSortOrder++,  // 순차적으로 sortOrder 할당
                         };
 
-                        // 디버그: 생성할 태스크 데이터 확인
-                        console.log('[Clipboard Debug] Creating task:', {
-                            name: newTask.name,
-                            type: newTask.type,
-                            id: newTask.id,
-                            parentId: newTask.parentId,
-                            wbsLevel: newTask.wbsLevel,
-                        });
-
                         // await로 순차 실행 보장 (부모가 DB에 INSERT된 후 자식 INSERT)
                         await onTaskCreate(newTask);
                     }
-                    console.log('[Clipboard] Paste completed:', sortedTasks.length, 'tasks');
                 })();
             }
         };

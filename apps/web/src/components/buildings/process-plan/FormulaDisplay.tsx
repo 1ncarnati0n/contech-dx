@@ -14,7 +14,7 @@ export interface FormulaStep {
   variables?: Array<{
     name: string;
     value: number | string;
-    source?: string; // 데이터 출처 (예: "물량입력표 D6")
+    source?: string; // 데이터 출처 (예: "버림 (형틀)", "3F (철근)")
   }>;
   result?: {
     value: number | string;
@@ -69,8 +69,8 @@ export function FormulaDisplay({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'flex items-center gap-1.5 text-xs font-medium',
-          'text-cyan-600 dark:text-cyan-400',
-          'hover:text-cyan-700 dark:hover:text-cyan-300',
+          'text-accent-600 dark:text-accent-400',
+          'hover:text-accent-700 dark:hover:text-accent-300',
           'transition-colors duration-150'
         )}
       >
@@ -88,8 +88,8 @@ export function FormulaDisplay({
         <div
           className={cn(
             'mt-2 p-3 rounded-lg',
-            'bg-slate-50 dark:bg-slate-800/50',
-            'border border-slate-200 dark:border-slate-700'
+            'bg-zinc-50 dark:bg-zinc-800/50',
+            'border border-zinc-200 dark:border-zinc-700'
           )}
         >
           <div className="space-y-3">
@@ -101,14 +101,14 @@ export function FormulaDisplay({
                     className={cn(
                       'inline-flex items-center justify-center',
                       'w-5 h-5 rounded-full',
-                      'bg-cyan-100 dark:bg-cyan-900/50',
-                      'text-cyan-700 dark:text-cyan-300',
+                      'bg-accent-100 dark:bg-accent-900/50',
+                      'text-accent-700 dark:text-accent-300',
                       'text-xs font-bold'
                     )}
                   >
                     {step.stepNumber}
                   </span>
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                     {step.title}
                   </span>
                 </div>
@@ -121,10 +121,10 @@ export function FormulaDisplay({
                         key={idx}
                         className="flex items-center gap-2 text-xs"
                       >
-                        <span className="text-slate-600 dark:text-slate-400">
+                        <span className="text-zinc-600 dark:text-zinc-400">
                           {variable.name} =
                         </span>
-                        <span className="font-mono text-slate-900 dark:text-white">
+                        <span className="font-mono text-zinc-900 dark:text-white">
                           {typeof variable.value === 'number'
                             ? variable.value.toFixed(2)
                             : variable.value}
@@ -150,9 +150,9 @@ export function FormulaDisplay({
                   <div
                     className={cn(
                       'ml-7 px-2 py-1 rounded',
-                      'bg-slate-100 dark:bg-slate-700/50',
+                      'bg-zinc-100 dark:bg-zinc-700/50',
                       'font-mono text-xs',
-                      'text-slate-700 dark:text-slate-300'
+                      'text-zinc-700 dark:text-zinc-300'
                     )}
                   >
                     {step.formula}
@@ -162,7 +162,7 @@ export function FormulaDisplay({
                 {/* 결과 */}
                 {step.result && (
                   <div className="ml-7 flex items-center gap-1 text-xs">
-                    <span className="text-slate-600 dark:text-slate-400">
+                    <span className="text-zinc-600 dark:text-zinc-400">
                       =
                     </span>
                     <span

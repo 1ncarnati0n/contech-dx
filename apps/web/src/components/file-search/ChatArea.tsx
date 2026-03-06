@@ -7,16 +7,21 @@ import {
   Bot,
   User,
   ExternalLink,
-  Loader2,
-  Sparkles,
-  Paperclip,
   Square,
-  FileSearch
+  FileSearch,
+  Copy,
+  Check,
+  HelpCircle,
+  ListChecks,
+  FileText,
+  Search,
 } from 'lucide-react';
 import { Button, Textarea } from '@/components/ui';
 import type { Message, FileSearchStore } from './types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -28,6 +33,11 @@ interface ChatAreaProps {
   onSearch: (query: string) => void;
   onStopSearch?: () => void;
 }
+
+type MarkdownCodeProps = React.HTMLAttributes<HTMLElement> & {
+  children?: React.ReactNode;
+  className?: string;
+};
 
 export default function ChatArea({
   messages,
@@ -96,7 +106,7 @@ export default function ChatArea({
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
         <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-8">
           {messages.length === 0 ? (
-            <EmptyState selectedStore={selectedStore} />
+            <EmptyState selectedStore={selectedStore} onSearch={onSearch} />
           ) : (
             messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
           )}
@@ -126,18 +136,7 @@ export default function ChatArea({
                 rows={1}
               />
 
-              <div className="flex justify-between items-center mt-2">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 h-auto rounded-full"
-                    disabled
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                </div>
+              <div className="flex justify-end items-center mt-2">
                 {isSearching && onStopSearch ? (
                   <Button
                     type="button"
@@ -175,14 +174,37 @@ export default function ChatArea({
   );
 }
 
+/** URI에서 파일명을 추출하는 헬퍼 */
+function extractFileName(uri: string): string | null {
+  try {
+    const parts = uri.split('/');
+    const last = parts[parts.length - 1];
+    if (last && last.includes('.')) {
+      return decodeURIComponent(last);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 /**
  * 빈 상태 컴포넌트
  */
 const EmptyState = memo(function EmptyState({
   selectedStore,
+  onSearch,
 }: {
   selectedStore: string;
+  onSearch: (query: string) => void;
 }) {
+  const suggestions = [
+    { icon: FileText, text: '이 문서의 핵심 내용을 요약해주세요' },
+    { icon: Search, text: '주요 결론이나 시사점은 무엇인가요?' },
+    { icon: HelpCircle, text: '이 문서에서 가장 중요한 데이터는?' },
+    { icon: ListChecks, text: '실행 가능한 액션 아이템을 정리해주세요' },
+  ];
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-xl shadow-cyan-500/20">
@@ -206,17 +228,19 @@ const EmptyState = memo(function EmptyState({
       )}
       {selectedStore && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full mt-4">
-          {[
-            '이 문서의 핵심 내용을 요약해주세요',
-            '주요 결론이나 시사점은 무엇인가요?',
-          ].map((suggestion, idx) => (
-            <button
-              key={idx}
-              className="text-left p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-            >
-              {suggestion}
-            </button>
-          ))}
+          {suggestions.map((suggestion, idx) => {
+            const Icon = suggestion.icon;
+            return (
+              <button
+                key={idx}
+                onClick={() => onSearch(suggestion.text)}
+                className="flex items-start gap-2.5 text-left p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              >
+                <Icon className="w-4 h-4 mt-0.5 shrink-0 text-cyan-600 dark:text-cyan-400" />
+                <span>{suggestion.text}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -232,6 +256,13 @@ const MessageBubble = memo(function MessageBubble({
   message: Message;
 }) {
   const isUser = message.role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className={`group flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -259,46 +290,45 @@ const MessageBubble = memo(function MessageBubble({
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                a: ({ node: _node, ...props }) => (
+                a: ({ ...props }) => (
                   <a target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 hover:underline break-all" {...props} />
                 ),
-                table: ({ node: _node, ...props }) => (
+                table: ({ ...props }) => (
                   <div className="overflow-x-auto my-4 rounded-lg border border-slate-200 dark:border-slate-700">
                     <table className="w-full text-sm text-left text-slate-700 dark:text-slate-300" {...props} />
                   </div>
                 ),
-                thead: ({ node: _node, ...props }) => (
+                thead: ({ ...props }) => (
                   <thead className="text-xs text-slate-700 dark:text-slate-300 uppercase bg-slate-50 dark:bg-slate-800/50" {...props} />
                 ),
-                tbody: ({ node: _node, ...props }) => (
+                tbody: ({ ...props }) => (
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800" {...props} />
                 ),
-                th: ({ node: _node, ...props }) => (
+                th: ({ ...props }) => (
                   <th className="px-4 py-3 font-semibold whitespace-nowrap" {...props} />
                 ),
-                td: ({ node: _node, ...props }) => (
+                td: ({ ...props }) => (
                   <td className="px-4 py-3" {...props} />
                 ),
-                tr: ({ node: _node, ...props }) => (
+                tr: ({ ...props }) => (
                   <tr className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" {...props} />
                 ),
-                ul: ({ node: _node, ...props }) => (
+                ul: ({ ...props }) => (
                   <ul className="list-disc list-outside ml-5 space-y-1 my-3" {...props} />
                 ),
-                ol: ({ node: _node, ...props }) => (
+                ol: ({ ...props }) => (
                   <ol className="list-decimal list-outside ml-5 space-y-1 my-3" {...props} />
                 ),
-                li: ({ node: _node, ...props }) => (
+                li: ({ ...props }) => (
                   <li className="pl-1" {...props} />
                 ),
-                blockquote: ({ node: _node, ...props }) => (
+                blockquote: ({ ...props }) => (
                   <blockquote className="border-l-4 border-slate-300 dark:border-slate-600 pl-4 italic text-slate-600 dark:text-slate-400 my-4" {...props} />
                 ),
-                h1: ({ node: _node, ...props }) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900 dark:text-white" {...props} />,
-                h2: ({ node: _node, ...props }) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 dark:text-white" {...props} />,
-                h3: ({ node: _node, ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800 dark:text-slate-200" {...props} />,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                code: ({ node: _node, className, children, ...props }: any) => {
+                h1: ({ ...props }) => <h1 className="text-xl font-bold mt-6 mb-4 text-slate-900 dark:text-white" {...props} />,
+                h2: ({ ...props }) => <h2 className="text-lg font-bold mt-5 mb-3 text-slate-900 dark:text-white" {...props} />,
+                h3: ({ ...props }) => <h3 className="text-base font-bold mt-4 mb-2 text-slate-800 dark:text-slate-200" {...props} />,
+                code: ({ className, children, ...props }: MarkdownCodeProps) => {
                   const match = /language-(\w+)/.exec(className || '');
                   const isInline = !match && !String(children).includes('\n');
 
@@ -319,8 +349,8 @@ const MessageBubble = memo(function MessageBubble({
                     </div>
                   );
                 },
-                p: ({ node: _node, ...props }) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
-                hr: ({ node: _node, ...props }) => <hr className="my-6 border-slate-200 dark:border-slate-700" {...props} />,
+                p: ({ ...props }) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+                hr: ({ ...props }) => <hr className="my-6 border-slate-200 dark:border-slate-700" {...props} />,
               }}
             >
               {message.content}
@@ -328,22 +358,48 @@ const MessageBubble = memo(function MessageBubble({
           )}
         </div>
 
+        {/* Copy button + Timestamp row for model messages */}
+        {!isUser && (
+          <div className="flex items-center gap-2 pl-1">
+            <button
+              onClick={handleCopy}
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              title="답변 복사"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ko })}
+            </span>
+          </div>
+        )}
+
+        {/* Timestamp for user messages */}
+        {isUser && (
+          <div className="text-xs text-slate-400 dark:text-slate-500 pr-1">
+            {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ko })}
+          </div>
+        )}
+
         {/* Citations */}
         {!isUser && message.citations && message.citations.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3 pl-1">
-            {message.citations.map((cit, idx) => (
-              <a
-                key={idx}
-                href={cit.uri}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 hover:text-cyan-600 dark:hover:text-cyan-400 transition-all border border-slate-200 dark:border-slate-700"
-                title={`위치: ${cit.startIndex}-${cit.endIndex}`}
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>출처 {idx + 1}</span>
-              </a>
-            ))}
+            {message.citations.map((cit, idx) => {
+              const fileName = cit.uri ? extractFileName(cit.uri) : null;
+              return (
+                <a
+                  key={idx}
+                  href={cit.uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 hover:text-cyan-600 dark:hover:text-cyan-400 transition-all border border-slate-200 dark:border-slate-700"
+                  title={`위치: ${cit.startIndex}-${cit.endIndex}`}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>{fileName || `출처 ${idx + 1}`}</span>
+                </a>
+              );
+            })}
           </div>
         )}
       </div>
@@ -352,7 +408,7 @@ const MessageBubble = memo(function MessageBubble({
 });
 
 /**
- * 로딩 버블 컴포넌트
+ * 로딩 버블 컴포넌트 — 3개 bounce 도트 애니메이션
  */
 const LoadingBubble = memo(function LoadingBubble() {
   return (
@@ -360,11 +416,14 @@ const LoadingBubble = memo(function LoadingBubble() {
       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
         <Bot className="w-5 h-5 text-white" />
       </div>
-      <div className="flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-md">
-        <Loader2 className="w-4 h-4 animate-spin text-cyan-600 dark:text-cyan-400" />
-        <span className="text-sm text-slate-600 dark:text-slate-400">
-          답변을 생성하고 있습니다...
-        </span>
+      <div className="flex items-center gap-1.5 px-5 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-tl-md">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="w-2 h-2 rounded-full bg-cyan-600 dark:bg-cyan-400 animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
       </div>
     </div>
   );

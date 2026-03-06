@@ -8,6 +8,15 @@
 
 export { TRADE_GROUPS, type TradeGroup, SPECIAL_FLOOR_GROUPS, type SpecialFloorGroup } from './utils/floorIdUtils';
 
+// 공정모듈 물량참조 타입
+export type {
+  TradeFieldKey,
+  TradeSubFieldKey,
+  QuantitySourceType,
+  SemanticQuantityReference,
+} from './types/process-quantity';
+export { TRADE_FIELD_MAP, TRADE_FIELD_TO_COLUMN } from './types/process-quantity';
+
 // ============================================
 // 기본 타입
 // ============================================
@@ -63,6 +72,9 @@ export interface Profile {
   email: string;
   role: UserRole;
   display_name?: string | null;
+  position?: string | null;
+  affiliation?: string | null;
+  department?: string | null;
   avatar_url?: string | null;
   bio?: string | null;
   created_at: string;
@@ -506,7 +518,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 알폼
   alForm?: {
     areaM2: number;
@@ -514,7 +526,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 형틀
   formwork?: {
     areaM2: number;
@@ -522,7 +534,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 유로폼
   euroForm?: {
     areaM2: number;
@@ -530,7 +542,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 해체/정리
   stripClean?: {
     areaM2: number;
@@ -538,7 +550,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 철근
   rebar?: {
     ton: number; // 기존 (합계용)
@@ -548,7 +560,7 @@ export interface TradeData {
     workers: number;
     cost: number;
   };
-  
+
   // 콘크리트
   concrete?: {
     volumeM3: number; // 기존 (합계용)
@@ -606,6 +618,7 @@ export interface CreateBuildingDTO {
 export interface UpdateBuildingDTO {
   buildingName?: string;
   meta?: Partial<BuildingMeta>;
+  forceRegenerateFloors?: boolean; // 층수/층고 변경 시 강제 재생성
 }
 
 /**
@@ -653,12 +666,12 @@ export type UnitRateType = 'planned' | 'executed';
 /**
  * 공정 구분 타입
  */
-export type ProcessCategory = '버림' | '기초' | '지하층' | '셋팅층' | '기준층' | 'PH층' | '옥탑층';
+export type ProcessCategory = '버림' | '기초' | '주동 지하층' | '지하층(층고6.5m이상)' | '셋팅층' | '기준층' | '최상층' | '옥탑층' | '지하주차장' | '일반층';
 
 /**
  * 공정 타입 (표준공정 또는 사이클)
  */
-export type ProcessType = 
+export type ProcessType =
   | '표준공정'
   | '5일 사이클'
   | '6일 사이클'
@@ -666,11 +679,30 @@ export type ProcessType =
   | '8일 사이클'
   | '지하외벽 합벽 적용'
   | '일체타설 적용'
+  | '피트층포함'
   | string; // 기타 커스텀 타입
 
 /**
  * 동별 공정 계획
  */
+/**
+ * 층별 공정 상세 정보
+ */
+export interface FloorProcessDetails {
+  floorLabel: string; // 층 라벨 (예: "3F", "PH1")
+  workDays: number; // 해당 층의 작업일수
+  processType?: ProcessType; // 층별 공정 타입 (옵션)
+  items?: Array<{
+    itemId: string; // 항목 ID
+    workItem: string; // 작업 항목명
+    quantity: number; // 물량
+    directWorkDays: number; // 직영 순작업일
+    dailyInputWorkers: number; // 1일 투입인원
+    indirectWorkers?: number; // 간접공사 인원
+    indirectEquipment?: number; // 간접공사 장비
+  }>; // 세부 항목 정보 (옵션)
+}
+
 export interface BuildingProcessPlan {
   id: string;
   buildingId: string;
@@ -681,6 +713,7 @@ export interface BuildingProcessPlan {
       days: number; // 공정일수 (간트차트에서 duration으로 사용)
       processType: ProcessType; // 선택된 공정 타입 (기본값, 층별 설정이 없을 때 사용)
       floors?: { [floorLabel: string]: { processType: ProcessType } }; // 층별 공정 타입 (지하층, PH층 등)
+      floorDetails?: { [floorLabel: string]: FloorProcessDetails }; // 층별 상세 정보 (일수, 항목별 계산 결과)
     };
   };
   totalDays: number; // 구분공정 합계일수 (간트차트에서 전체 일정 계산에 사용)
@@ -1158,3 +1191,59 @@ export type BuildingProcessPlanInsert = Omit<BuildingProcessPlanRow, 'id' | 'cre
  * PouringSection 생성용 Insert 타입
  */
 export type PouringSectionInsert = Omit<PouringSectionRow, 'id' | 'created_at' | 'updated_at'>;
+
+/**
+ * 검증 이슈 타입
+ */
+export type ValidationIssueType = 'negative' | 'zero' | 'extreme' | 'deviation' | 'missing';
+
+/**
+ * 검증 이슈 심각도
+ */
+export type ValidationIssueSeverity = 'error' | 'warning' | 'info';
+
+/**
+ * 검증 이슈
+ */
+export interface ValidationIssue {
+  type: ValidationIssueType;
+  severity: ValidationIssueSeverity;
+  message: string;
+  field: string;
+}
+
+/**
+ * 검증 결과
+ */
+export interface ValidationResult {
+  itemId: string;
+  itemName: string;
+  category: ProcessCategory;
+  issues: ValidationIssue[];
+  calculatedValue: number;
+  expectedValue?: number;  // Excel 값
+  deviation?: number;  // 편차 (%)
+}
+
+/**
+ * 계산 단계
+ */
+export interface CalculationStep {
+  step: number;
+  operation: string;
+  input: Record<string, number | string>;
+  output: number;
+  formula: string;
+}
+
+/**
+ * 계산 로그
+ */
+export interface CalculationLog {
+  itemId: string;
+  itemName: string;
+  steps: CalculationStep[];
+  finalValue: number;
+  timestamp: string;
+}
+

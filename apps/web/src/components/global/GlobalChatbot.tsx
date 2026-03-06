@@ -30,6 +30,7 @@ import type { GlobalChatMessage, ChatbotError } from '@/lib/services/global-chat
 import { GlobalQuickQuestions } from './GlobalQuickQuestions';
 import { useResizableSidebar } from '@/lib/hooks';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/utils/logger';
 import type { User } from '@supabase/supabase-js';
 
 interface GlobalChatbotProps {
@@ -65,7 +66,7 @@ export function GlobalChatbot({ isOpen, onOpenChange }: GlobalChatbotProps = {})
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
       } catch (error) {
-        console.error('Session check error:', error);
+        logger.error('Session check error:', error);
         setUser(null);
       } finally {
         setIsAuthLoading(false);

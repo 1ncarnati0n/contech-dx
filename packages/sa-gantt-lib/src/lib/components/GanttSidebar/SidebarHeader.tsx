@@ -40,7 +40,9 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         {canUngroup && (
           <button
             onClick={() => {
-              onTaskUngroup(selectedGroupTask!.id);
+              if (selectedGroupTask) {
+                onTaskUngroup?.(selectedGroupTask.id);
+              }
               onClearSelection();
             }}
             className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-white transition-colors"

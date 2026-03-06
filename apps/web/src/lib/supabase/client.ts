@@ -3,6 +3,7 @@
 
 import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/utils/logger';
 
 // 싱글톤 패턴: 클라이언트와 리스너를 한 번만 생성
 let supabaseInstance: SupabaseClient | null = null;
@@ -24,16 +25,9 @@ export function createClient() {
     authListenerInitialized = true;
 
     // 세션 에러 발생 시 자동으로 세션 정리 및 리다이렉트
-    supabaseInstance.auth.onAuthStateChange((event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
-        // 토큰 갱신 성공
-        console.log('[Auth] Token refreshed successfully');
-      }
-
-      if (event === 'SIGNED_OUT') {
-        // 로그아웃 시 쿠키 정리
-        console.log('[Auth] User signed out');
-      }
+    supabaseInstance.auth.onAuthStateChange(() => {
+      // 토큰 갱신 및 로그아웃 이벤트 처리
+      // 프로덕션에서는 로깅 제거하여 성능 최적화
     });
   }
 
@@ -45,14 +39,10 @@ export async function clearInvalidSession() {
   const supabase = createClient();
   try {
     await supabase.auth.signOut({ scope: 'local' });
-  } catch {
-    // 에러 무시 - 이미 세션이 무효한 상태일 수 있음
+  } catch (error) {
+    // 이미 세션이 무효한 상태일 수 있으므로 경고만 남기고 진행
+    logger.warn('Failed to clear invalid Supabase session', {
+      reason: error instanceof Error ? error.message : 'unknown',
+    });
   }
-  // 쿠키 정리
-  document.cookie.split(';').forEach((cookie) => {
-    const name = cookie.split('=')[0].trim();
-    if (name.startsWith('sb-')) {
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
-  });
 }

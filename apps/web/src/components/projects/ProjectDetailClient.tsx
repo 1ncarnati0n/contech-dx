@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   Calendar,
   DollarSign,
   MapPin,
+  Box,
   Building2,
-  Edit,
-  Trash2,
   Settings,
   LayoutDashboard,
   Calculator,
@@ -18,20 +17,65 @@ import {
   BarChart3,
   Users,
   FileText,
+  LayoutGrid,
+  Map,
   type LucideIcon,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
-import { Button, Card } from '@/components/ui';
-import type { Project, Profile } from '@/lib/types';
-import { deleteProject, getProject } from '@/lib/services/projects';
+import { Card, TabLoadingSkeleton } from '@/components/ui';
+import type { Project, Profile, ProjectMemberRole } from '@/lib/types';
 import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
+import { getUserRoleInProject } from '@/lib/services/projectMembers';
 import { ProjectSidebar } from './ProjectSidebar';
-import { ProjectEditModal } from './ProjectEditModal';
 import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { DataInputPage, BuildingBasicInfoPage, QuantityInputPage, DetailedQuantityInputPage, GeologicalDataPage, BuildingProcessPlanPage, BasementProcessPlanPage, PouringSectionReviewPage, ProcessLogicPage } from '@/components/buildings';
+import { BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
 import { ProjectTeamPage } from './ProjectTeamPage';
-import { GanttChartPage } from './GanttChartPage';
-import { formatCurrency, formatDate, getStatusLabel, getStatusColors, logger } from '@/lib/utils/index';
+import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
+
+// 🚀 Stage 2: Lazy load heavy tabs (2,000+ lines) for better performance
+// Target: Initial bundle -40%, Tab switch 2000ms → 1200ms
+
+// 🔥 CRITICAL FIX: Direct file imports for proper code splitting
+// ❌ 잘못된 방법: import('@/components/buildings').then(...) - index.ts를 거치면 전체 번들 포함
+// ✅ 올바른 방법: import('@/components/buildings/ComponentName') - 개별 파일 import로 코드 스플리팅
+const BuildingProcessPlanPage = dynamic(
+  () => import('@/components/buildings/BuildingProcessPlanPage').then(m => ({ default: m.BuildingProcessPlanPage })),
+  { loading: () => <TabLoadingSkeleton title="지상층 공정계획 로딩 중..." /> }
+);
+
+const BasementProcessPlanPage = dynamic(
+  () => import('@/components/buildings/BasementProcessPlanPage').then(m => ({ default: m.BasementProcessPlanPage })),
+  { loading: () => <TabLoadingSkeleton title="지하층 공정계획 로딩 중..." /> }
+);
+
+const DetailedQuantityInputPage = dynamic(
+  () => import('@/components/buildings/DetailedQuantityInputPage').then(m => ({ default: m.DetailedQuantityInputPage })),
+  { loading: () => <TabLoadingSkeleton title="상세물량 로딩 중..." /> }
+);
+
+const GanttChartPage = dynamic(
+  () => import('./GanttChartPage').then(m => ({ default: m.GanttChartPage })),
+  {
+    loading: () => <TabLoadingSkeleton title="간트차트 로딩 중..." />,
+    ssr: false  // 클라이언트 전용
+  }
+);
+
+const PouringSectionReviewPage = dynamic(
+  () => import('@/components/buildings/PouringSectionReviewPage').then(m => ({ default: m.PouringSectionReviewPage })),
+  { loading: () => <TabLoadingSkeleton title="타설구간검토 로딩 중..." /> }
+);
+
+const ProcessLogicPage = dynamic(
+  () => import('@/components/buildings/ProcessLogicPage').then(m => ({ default: m.ProcessLogicPage })),
+  { loading: () => <TabLoadingSkeleton title="공정로직 로딩 중..." /> }
+);
+
+const ProjectSettingsPage = dynamic(
+  () => import('./ProjectSettingsPage').then(m => ({ default: m.ProjectSettingsPage })),
+  { loading: () => <TabLoadingSkeleton title="설정 로딩 중..." /> }
+);
 
 interface Props {
   project: Project;
@@ -40,7 +84,8 @@ interface Props {
 // 탭별 제목 매핑
 const TAB_TITLES: Record<string, string> = {
   overview: '프로젝트 개요',
-  pouring_section_review: '타설구간 개략검토',
+  ifc_viewer: 'IFC 뷰어',
+  pouring_section_review: '타설구간검토',
   data_input: '동 기본 정보',
   quantity_input: '물량 입력',
   detailed_quantity_input: '상세물량입력',
@@ -48,7 +93,7 @@ const TAB_TITLES: Record<string, string> = {
   planned_unit_rate: '단가 입력',
   executed_unit_rate: '실행 단가',
   process_logic: '공정로직',
-  building_process_plan: '동별 공정계획',
+  building_process_plan: '지상층 공정계획',
   basement_process_plan: '지하층 공정계획',
   gantt_chart: '간트차트',
   team: '팀 관리',
@@ -59,6 +104,7 @@ const TAB_TITLES: Record<string, string> = {
 // 탭별 설명 매핑
 const TAB_DESCRIPTIONS: Record<string, string> = {
   overview: '',
+  ifc_viewer: 'IFC 모델 뷰어 페이지입니다.',
   pouring_section_review: '콘크리트 물량과 동수를 기반으로 타설구간을 개략 검토합니다.',
   data_input: '각 동의 기본 정보와 층 구성을 입력합니다.',
   quantity_input: '층별/공종별 물량 데이터를 입력합니다.',
@@ -67,7 +113,7 @@ const TAB_DESCRIPTIONS: Record<string, string> = {
   planned_unit_rate: '계획 단가를 입력합니다.',
   executed_unit_rate: '실행 단가를 입력합니다.',
   process_logic: '공정 계산 공식, 모듈, 사이클 정의를 관리합니다.',
-  building_process_plan: '동별 공정계획을 수립하고 일수를 계산합니다.',
+  building_process_plan: '지상층 공정계획을 수립하고 일수를 계산합니다.',
   basement_process_plan: '지하층 공정계획을 수립하고 일수를 계산합니다.',
   gantt_chart: '프로젝트 공정 현황을 한눈에 확인하세요.',
   team: '프로젝트에 참여하는 팀원을 관리합니다.',
@@ -85,6 +131,7 @@ function isValidTab(tab: string | null): tab is string {
 // 탭별 아이콘 매핑
 const TAB_ICONS: Record<string, LucideIcon> = {
   overview: LayoutDashboard,
+  ifc_viewer: Box,
   pouring_section_review: Calculator,
   data_input: Database,
   quantity_input: Package,
@@ -102,22 +149,33 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 };
 
 export function ProjectDetailClient({ project: initialProject }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [project, setProject] = useState<Project>(initialProject);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);  // 펼친 상태
+  const [sidebarPinned, setSidebarPinned] = useState(true);         // 고정 상태
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userRole, setUserRole] = useState<ProjectMemberRole | null>(null);
+  const [pouringSectionViewMode, setPouringSectionViewMode] = useState<'simple' | 'visual'>('visual');
 
-  // 프로필 로드
+  // 프로필 및 역할 로드
   useEffect(() => {
-    getCurrentUserProfile().then(setProfile);
-  }, []);
+    async function loadProfileAndRole() {
+      const currentProfile = await getCurrentUserProfile();
+      setProfile(currentProfile);
+
+      if (currentProfile) {
+        const role = await getUserRoleInProject(initialProject.id, currentProfile.id);
+        setUserRole(role as ProjectMemberRole);
+      }
+    }
+    loadProfileAndRole();
+  }, [initialProject.id]);
 
   // 관리자 권한 체크
   const isAdmin = isSystemAdmin(profile);
+
+  // 공정로직 페이지 접근 권한: 시스템 관리자 또는 프로젝트 PM
+  const canViewProcessLogic = isAdmin || userRole === 'pm';
 
   // URL에서 탭 초기값 읽기
   const tabFromUrl = searchParams.get('tab');
@@ -129,58 +187,48 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
 
     setActiveTab(tab);
 
-    // URL 쿼리 파라미터 업데이트
-    const params = new URLSearchParams(searchParams.toString());
+    // ✅ Client-side URL update (no server request)
+    // Uses History API instead of router.replace() to avoid 350-800ms server delay
+    const params = new URLSearchParams(window.location.search);
     if (tab === 'overview') {
       params.delete('tab');
     } else {
       params.set('tab', tab);
     }
-
-    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-    router.replace(newUrl, { scroll: false });
-  }, [searchParams, router]);
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, []); // ✅ No dependencies - pure client-side operation
 
   // 브라우저 뒤로가기/앞으로가기 시 탭 상태 동기화
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-    const validTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabFromUrl = params.get('tab');
+      const validTab = isValidTab(tabFromUrl) ? tabFromUrl : 'overview';
 
-    if (validTab !== activeTab) {
-      setActiveTab(validTab);
-    }
-  }, [searchParams, activeTab]);
+      if (validTab !== activeTab) {
+        setActiveTab(validTab);
+      }
+    };
 
-  // 비관리자가 process_logic 탭에 직접 접근 시 overview로 리다이렉트
+    // Listen to browser navigation events
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab]);
+
+  // 권한 없는 사용자가 process_logic 탭에 직접 접근 시 overview로 리다이렉트
   useEffect(() => {
-    if (activeTab === 'process_logic' && profile && !isAdmin) {
+    if (activeTab === 'process_logic' && profile && !canViewProcessLogic) {
       handleTabChange('overview');
     }
-  }, [activeTab, profile, isAdmin, handleTabChange]);
+  }, [activeTab, profile, canViewProcessLogic, handleTabChange]);
 
   // 프로젝트 데이터 동기화 (서버에서 업데이트된 데이터 반영)
   useEffect(() => {
     setProject(initialProject);
   }, [initialProject]);
-
-  const handleDelete = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    if (!window.confirm('정말 이 프로젝트를 삭제하시겠습니까?')) return;
-
-    try {
-      setIsDeleting(true);
-      await deleteProject(project.id);
-      toast.success('프로젝트가 삭제되었습니다.');
-      router.push('/projects');
-    } catch (error) {
-      logger.error('Failed to delete project:', error);
-      toast.error('프로젝트 삭제 실패', {
-        description: '프로젝트 삭제에 실패했습니다. 다시 시도해주세요.',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [project.id, router]);
 
   const handleTogglePin = useCallback(() => {
     setSidebarPinned(prev => {
@@ -232,23 +280,10 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
     };
   }, []);
 
-  const handleProjectUpdate = useCallback(async () => {
-    try {
-      // 프로젝트 데이터 다시 로드
-      const updatedProject = await getProject(project.id);
-      if (updatedProject) {
-        setProject(updatedProject);
-        toast.success('프로젝트 정보가 업데이트되었습니다.');
-      }
-      router.refresh();
-      setIsEditModalOpen(false);
-    } catch (error) {
-      logger.error('Failed to reload project:', error);
-      // 에러가 발생해도 모달은 닫기
-      router.refresh();
-      setIsEditModalOpen(false);
-    }
-  }, [project.id, router]);
+  const handleProjectUpdate = useCallback((updated: Project) => {
+    setProject(updated);
+    toast.success('프로젝트 정보가 업데이트되었습니다.');
+  }, []);
 
   return (
     <div className="fixed inset-0 top-16 flex bg-background overflow-hidden">
@@ -261,10 +296,15 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
         onTabChange={handleTabChange}
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
-        isAdmin={isAdmin}
+        canViewProcessLogic={canViewProcessLogic}
       />
 
-      <div className="flex-1 flex flex-col h-full ml-16" onClick={handleBodyClick}>
+      <div
+        className={`flex-1 flex flex-col h-full transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? 'ml-16' : 'ml-54'
+        }`}
+        onClick={handleBodyClick}
+      >
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
@@ -297,27 +337,30 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
                   </p>
                 </div>
               </div>
-              {activeTab === 'overview' && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setIsEditModalOpen(true)}
+              {activeTab === 'pouring_section_review' && (
+                <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setPouringSectionViewMode('simple')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pouringSectionViewMode === 'simple'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                    }`}
                   >
-                    <Edit className="w-4 h-4" />
-                    수정
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
+                    <LayoutGrid className="w-4 h-4" />
+                    Simple
+                  </button>
+                  <button
+                    onClick={() => setPouringSectionViewMode('visual')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pouringSectionViewMode === 'visual'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                    }`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                    {isDeleting ? '삭제 중...' : '삭제'}
-                  </Button>
+                    <Map className="w-4 h-4" />
+                    Visual
+                  </button>
                 </div>
               )}
             </div>
@@ -390,7 +433,15 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
 
 
             {activeTab === 'pouring_section_review' && (
-              <PouringSectionReviewPage projectId={project.id} />
+              <PouringSectionReviewPage
+                projectId={project.id}
+                viewMode={pouringSectionViewMode}
+                onViewModeChange={setPouringSectionViewMode}
+              />
+            )}
+
+            {activeTab === 'ifc_viewer' && (
+              <div className="min-h-[60vh] rounded-2xl border border-dashed border-zinc-200 bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/60" />
             )}
 
             {activeTab === 'data_input' && (
@@ -447,7 +498,11 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
               <ProjectTeamPage projectId={project.id} projectCreatedBy={project.created_by} />
             )}
 
-            {activeTab !== 'overview' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && (
+            {activeTab === 'settings' && (
+              <ProjectSettingsPage project={project} onUpdate={handleProjectUpdate} />
+            )}
+
+            {activeTab !== 'overview' && activeTab !== 'ifc_viewer' && activeTab !== 'pouring_section_review' && activeTab !== 'data_input' && activeTab !== 'quantity_input' && activeTab !== 'detailed_quantity_input' && activeTab !== 'geological_data' && activeTab !== 'planned_unit_rate' && activeTab !== 'executed_unit_rate' && activeTab !== 'process_logic' && activeTab !== 'building_process_plan' && activeTab !== 'basement_process_plan' && activeTab !== 'gantt_chart' && activeTab !== 'team' && activeTab !== 'settings' && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-400">
                 <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
                   <Settings className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
@@ -459,13 +514,6 @@ export function ProjectDetailClient({ project: initialProject }: Props) {
           </div>
         </main>
       </div>
-
-      <ProjectEditModal
-        project={project}
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onUpdate={handleProjectUpdate}
-      />
     </div>
   );
 }

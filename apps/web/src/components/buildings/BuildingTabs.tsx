@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useRef, useEffect } from 'react';
+import { ReactNode, useState, useRef, useEffect, memo } from 'react';
 import { X, Check, X as XIcon } from 'lucide-react';
 import type { Building } from '@/lib/types';
 import { useTabDragDrop } from '@/lib/hooks';
@@ -21,7 +21,8 @@ interface Props {
 // ============================================
 // 컴포넌트
 // ============================================
-export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, onUpdateBuildingName, onReorder, children }: Props) {
+// 🔥 Stage 1 Optimization: Memoize component to prevent unnecessary re-renders
+export const BuildingTabs = memo(function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, onUpdateBuildingName, onReorder, children }: Props) {
   // 편집 상태 관리
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -88,7 +89,7 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
   return (
     <div className="space-y-4">
       {/* 탭 헤더 */}
-      <div className="border-b border-slate-200 dark:border-slate-800">
+      <div className="border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {buildings.map((building, index) => (
             <div
@@ -100,11 +101,11 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
               className={`
-                flex items-center gap-1 px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors group
+                flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200 group
                 ${
                   index === activeIndex
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+                    ? 'border-accent-600 text-accent-600 dark:text-accent-400 bg-accent-50/50 dark:bg-accent-900/10'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:text-zinc-300 dark:hover:bg-zinc-800/50'
                 }
                 ${getDragStyles(index)}
               `}
@@ -117,7 +118,7 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, building.id)}
-                    className="flex-1 px-2 py-1 text-sm border border-primary-500 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 px-2 py-1 text-sm border border-primary-500 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     onClick={(e) => e.stopPropagation()}
                   />
                   <button
@@ -160,7 +161,7 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
                         e.stopPropagation();
                         onDelete(building.id, index);
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-600 dark:hover:text-red-400"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
                       title="동 삭제"
                     >
                       <X className="w-4 h-4" />
@@ -179,5 +180,5 @@ export function BuildingTabs({ buildings, activeIndex, onTabChange, onDelete, on
       </div>
     </div>
   );
-}
+});
 

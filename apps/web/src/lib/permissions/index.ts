@@ -6,7 +6,7 @@
  *   import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
  *
  * 클라이언트 컴포넌트에서:
- *   import { getRoleDisplayName, getRoleBadgeColor } from '@/lib/permissions/client';
+ *   import { getRoleDisplayName, getRoleBadgeVariant } from '@/lib/permissions/client';
  *
  * 공통 유틸리티만 필요할 때:
  *   import { hasMinimumRole, getAllRoles } from '@/lib/permissions/shared';
@@ -20,7 +20,7 @@ export {
   isVIP,
   hasMinimumRole,
   getRoleDisplayName,
-  getRoleBadgeColor,
+  getRoleBadgeVariant,
   getRoleLevel,
   isRoleHigherOrEqual,
   getAllRoles,

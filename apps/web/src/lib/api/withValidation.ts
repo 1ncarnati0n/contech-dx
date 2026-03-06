@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createApiError, ErrorCode, getHttpStatus } from '@/lib/types/error';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * 검증 소스
@@ -108,7 +109,7 @@ export function withValidation<T extends z.ZodSchema>(
       // 검증 성공 시 핸들러 실행
       return handler(req, result.data);
     } catch (error) {
-      console.error('API validation error:', error);
+      logger.error('API validation error:', error);
 
       const apiError = createApiError(
         ErrorCode.SERVER_ERROR,
@@ -193,7 +194,7 @@ export function withBodyAndQuery<TBody extends z.ZodSchema, TQuery extends z.Zod
 
       return handler(req, bodyResult.data, queryResult.data);
     } catch (error) {
-      console.error('API validation error:', error);
+      logger.error('API validation error:', error);
 
       const apiError = createApiError(
         ErrorCode.SERVER_ERROR,

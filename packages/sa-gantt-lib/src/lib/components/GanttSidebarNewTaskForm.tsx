@@ -8,6 +8,9 @@ import type { ConstructionTask } from '../types';
 interface GanttSidebarNewTaskFormProps {
     columns: Array<{ id: string; label: string; width: number; minWidth: number }>;
     tasks: ConstructionTask[];
+    allTasks?: ConstructionTask[];
+    selectedTaskIds?: Set<string>;
+    focusedTaskId?: string | null;
     activeCPId: string | null;
     onTaskCreate?: (task: Partial<ConstructionTask>) => void | Promise<void>;
     onCancel: () => void;

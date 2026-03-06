@@ -16,7 +16,6 @@ import { DxfParser } from 'dxf-json';
 import type {
   CommonDxfEntity,
   ParsedDxf,
-  DxfBlock as DxfJsonBlock,
   LineEntity,
   LWPolylineEntity,
   PolylineEntity,
@@ -205,9 +204,7 @@ async function parseDxfWithYield(
       if (entity.type === 'INSERT' && resolveBlocks) {
         const insertEntities = resolveInsertEntity(
           entity as InsertEntity,
-          blockMap,
-          simplifySplines,
-          splineSegments
+          blockMap
         );
         for (const insertEntity of insertEntities) {
           layer.entities.push(insertEntity);
@@ -313,9 +310,7 @@ function parseBlocks(dxf: ParsedDxf): DxfBlock[] {
  */
 function resolveInsertEntity(
   entity: InsertEntity,
-  blockMap: Map<string, DxfBlock>,
-  simplifySplines: boolean,
-  splineSegments: number
+  blockMap: Map<string, DxfBlock>
 ): DxfEntity[] {
   const blockName = entity.name;
   const block = blockMap.get(blockName);
@@ -1092,9 +1087,7 @@ export function parseDxfFile(fileContent: string): ParsedDxfData {
       if (entity.type === 'INSERT') {
         const insertEntities = resolveInsertEntity(
           entity as InsertEntity,
-          blockMap,
-          true,
-          32
+          blockMap
         );
         for (const insertEntity of insertEntities) {
           layer.entities.push(insertEntity);

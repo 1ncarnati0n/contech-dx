@@ -38,6 +38,10 @@ export interface CompactInputRowProps {
     color?: 'blue' | 'red';
     /** 작업명 입력 표시 여부 */
     showNameInput?: boolean;
+    /** 작업명 placeholder */
+    namePlaceholder?: string;
+    /** 작업명 필수 여부 */
+    nameRequired?: boolean;
 }
 
 /**
@@ -70,11 +74,14 @@ export const CompactInputRow: React.FC<CompactInputRowProps> = ({
     daysInputRef,
     color = 'blue',
     showNameInput = true,
+    namePlaceholder = '작업명 (선택사항)',
+    nameRequired = false,
 }) => {
     const focusClass = color === 'red' ? FOCUS_RED : FOCUS_BLUE;
     const labelColorClass = color === 'red'
         ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
         : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    const isNameInvalid = nameRequired && !nameValue.trim();
 
     return (
         <div className="flex items-center gap-3">
@@ -110,8 +117,16 @@ export const CompactInputRow: React.FC<CompactInputRowProps> = ({
                         value={nameValue}
                         onChange={(e) => onNameChange(e.target.value)}
                         onKeyDown={onKeyDown}
-                        placeholder="작업명 (선택사항)"
-                        className={cn('flex-1', INPUT_BASE, focusClass)}
+                        placeholder={namePlaceholder}
+                        required={nameRequired}
+                        aria-required={nameRequired}
+                        className={cn(
+                            'flex-1',
+                            INPUT_BASE,
+                            isNameInvalid
+                                ? 'border-red-500 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20'
+                                : focusClass
+                        )}
                         style={inputStyle}
                     />
                 )}

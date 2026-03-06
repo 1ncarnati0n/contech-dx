@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { addDays } from 'date-fns';
+import { addDays, differenceInDays } from 'date-fns';
 import { ConstructionTask, GANTT_COLORS } from '../types';
 import { dateToX } from '../utils/dateUtils';
-import { calculateGroupDateRange } from '../utils/groupUtils';
+import { calculateGroupDateRange, collectDescendantTasks } from '../utils/groupUtils';
 
 // 블록 바 상수
 const BLOCK_POINT_RADIUS = 4;       // 양 끝 포인트 반지름
@@ -17,6 +17,18 @@ interface BlockBarProps {
     minDate: Date;
     pixelsPerDay: number;
     currentDeltaDays?: number;
+    isDraggable?: boolean;
+    /** 그룹 드래그 정보 (스냅된 정밀한 날짜) - getTaskDragInfo에서 전달 */
+    groupDragInfo?: { startDate: Date; endDate: Date } | null;
+    onDragStart?: (
+        e: React.MouseEvent,
+        blockId: string,
+        taskData: {
+            startDate: Date;
+            endDate: Date;
+            affectedTaskIds: string[];
+        }
+    ) => void;
     onToggle?: (blockId: string) => void;
     onClick?: (e: React.MouseEvent, blockId: string) => void;
     isFocused?: boolean;
@@ -35,6 +47,9 @@ export const BlockBar: React.FC<BlockBarProps> = React.memo(({
     minDate,
     pixelsPerDay,
     currentDeltaDays = 0,
+    isDraggable = false,
+    groupDragInfo,
+    onDragStart,
     onToggle,
     onClick,
     isFocused = false,
@@ -45,20 +60,43 @@ export const BlockBar: React.FC<BlockBarProps> = React.memo(({
         [block.id, allTasks]
     );
 
+    // 하위 Task ID 목록 (드래그 시 영향받는 태스크들)
+    const affectedTaskIds = useMemo(
+        () => collectDescendantTasks(block.id, allTasks).map(t => t.id),
+        [block.id, allTasks]
+    );
+
     if (!dateRange) return null;
 
-    const { startDate, totalDays } = dateRange;
+    const { startDate, endDate, totalDays } = dateRange;
 
-    // 드래그 중이면 deltaDays 적용
-    const adjustedStartDate = currentDeltaDays !== 0
-        ? addDays(startDate, currentDeltaDays)
-        : startDate;
+    // 드래그 중이면 groupDragInfo 우선 사용 (정밀한 스냅된 날짜)
+    // groupDragInfo가 없으면 currentDeltaDays로 fallback
+    const adjustedStartDate = groupDragInfo?.startDate
+        ?? (currentDeltaDays !== 0 ? addDays(startDate, currentDeltaDays) : startDate);
+
+    // 드래그 정보가 있으면 너비도 드래그된 날짜 범위로 계산
+    const adjustedTotalDays = groupDragInfo
+        ? differenceInDays(groupDragInfo.endDate, groupDragInfo.startDate) + 1
+        : totalDays;
 
     const startX = dateToX(adjustedStartDate, minDate, pixelsPerDay);
-    const totalWidth = totalDays * pixelsPerDay;
+    const totalWidth = adjustedTotalDays * pixelsPerDay;
 
     // 바 Y 위치 (GanttTimeline에서 이미 중앙 정렬된 y 전달받음)
     const barY = 0;
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!isDraggable || !onDragStart) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        onDragStart(e, block.id, {
+            startDate,
+            endDate,
+            affectedTaskIds,
+        });
+    };
 
     const handleDoubleClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -69,7 +107,7 @@ export const BlockBar: React.FC<BlockBarProps> = React.memo(({
     return (
         <g
             transform={`translate(${startX}, ${y})`}
-            className="cursor-pointer"
+            className={isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
         >
             {/* Focus Highlight Effect */}
             {isFocused && (
@@ -131,18 +169,19 @@ export const BlockBar: React.FC<BlockBarProps> = React.memo(({
                 strokeWidth={1.5}
             />
 
-            {/* 히트 영역 (투명) - 클릭 및 더블클릭 */}
+            {/* 히트 영역 (투명) - 클릭, 더블클릭 및 드래그 */}
             <rect
                 x={-BLOCK_POINT_RADIUS}
                 y={0}
                 width={totalWidth + BLOCK_POINT_RADIUS * 2}
                 height={barY + BLOCK_POINT_RADIUS * 2 + 4}
                 fill="transparent"
-                className="cursor-pointer"
+                className={isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                 onClick={(e) => {
                     e.stopPropagation();
                     onClick?.(e, block.id);
                 }}
+                onMouseDown={handleMouseDown}
                 onDoubleClick={handleDoubleClick}
             />
         </g>

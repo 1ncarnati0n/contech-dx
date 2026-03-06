@@ -122,6 +122,7 @@ export interface TimelineDragHandlers {
     getGroupDragDeltaDays: (groupId: string) => number;
     getTaskGroupDragDeltaDays: (taskId: string) => number;
     getTaskDragInfo: (taskId: string) => { startDate: Date; endDate: Date } | null;
+    getBlockGhostInfo: () => { blockId: string; ghostDeltaDays: number } | null;
 
     // Group Connection
     groupConnectingFrom: GroupConnectingState | null;
@@ -291,7 +292,7 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             : fullData[fullData.length - 1].start + fullData[fullData.length - 1].size + BOTTOM_PADDING;
 
         // rowData: 가상화 시 virtualRows 사용, 아니면 fullData
-        const rowDataResult = isVirtualized ? virtualRows! : fullData;
+        const rowDataResult = (isVirtualized && virtualRows) ? virtualRows : fullData;
 
         return { rowData: rowDataResult, fullRowData: fullData, dynamicTotalHeight: dynamicHeight };
     }, [tasks, getRowHeight, isVirtualized, virtualRows]);
@@ -331,6 +332,7 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
         getGroupDragDeltaDays,
         getTaskGroupDragDeltaDays,
         getTaskDragInfo,
+        getBlockGhostInfo,
     } = useGroupDrag({
         pixelsPerDay,
         allTasks: allTasks || tasks,
@@ -445,6 +447,7 @@ export const useTimelineCore = (props: UseTimelineCoreProps): UseTimelineCoreRet
             getGroupDragDeltaDays,
             getTaskGroupDragDeltaDays,
             getTaskDragInfo,
+            getBlockGhostInfo,
             // Group Connection
             groupConnectingFrom,
             hoveredGroupEdge,

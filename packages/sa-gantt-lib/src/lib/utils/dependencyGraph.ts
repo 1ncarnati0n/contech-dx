@@ -81,7 +81,10 @@ export const collectConnectedGroupCluster = (
     const queue: string[] = [groupId];
 
     while (queue.length > 0) {
-        const currentId = queue.shift()!;
+        const currentId = queue.shift();
+        if (!currentId) {
+            break;
+        }
 
         if (visited.has(currentId)) continue;
         visited.add(currentId);

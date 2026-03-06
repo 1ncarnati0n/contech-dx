@@ -6,8 +6,8 @@
  * - CP별 시트: 각 공구의 Level 2 상세 공정
  */
 
-import ExcelJS from 'exceljs';
 import { format, eachDayOfInterval, differenceInDays, isSameDay } from 'date-fns';
+import type { Workbook } from 'exceljs';
 import type { ConstructionTask, Milestone } from '../types';
 
 // ============================================
@@ -185,7 +185,7 @@ const collectChildTasks = (parentId: string, allTasks: ConstructionTask[]): Cons
 // ============================================
 
 const addGanttSheet = (
-    workbook: ExcelJS.Workbook,
+    workbook: Workbook,
     options: SheetOptions
 ): void => {
     const { sheetName, tasks, milestones, showMilestones = true } = options;
@@ -481,6 +481,7 @@ const addGanttSheet = (
 
 export const exportToExcel = async (data: ExcelExportData): Promise<void> => {
     const { tasks, milestones, fileName } = data;
+    const { default: ExcelJS } = await import('exceljs');
 
     // 워크북 생성
     const workbook = new ExcelJS.Workbook();
@@ -527,7 +528,7 @@ export const exportToExcel = async (data: ExcelExportData): Promise<void> => {
 
         if (level2Tasks.length > 0) {
             // 시트명 정리 (Excel 시트명 제한: 31자, 특수문자 제한)
-            const baseName = cp.name.replace(/[\\/*?:\[\]]/g, '').substring(0, 28);
+            const baseName = cp.name.replace(/[\\/*?:[\]]/g, '').substring(0, 28);
 
             // 중복 시트명 처리: 이미 존재하면 (2), (3) 등 suffix 추가
             let finalName = baseName;
@@ -572,6 +573,4 @@ export const exportToExcel = async (data: ExcelExportData): Promise<void> => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-    console.log('Excel exported successfully:', defaultFileName);
 };

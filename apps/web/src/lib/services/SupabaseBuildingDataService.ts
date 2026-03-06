@@ -85,20 +85,6 @@ function rowToFloorTrade(row: FloorTradeRow): FloorTrade {
 }
 
 /**
- * Floor -> FloorInsert 변환
- */
-function floorToInsert(floor: Floor): FloorInsert {
-  return {
-    building_id: floor.buildingId,
-    floor_label: floor.floorLabel,
-    floor_number: floor.floorNumber,
-    level_type: floor.levelType,
-    floor_class: floor.floorClass,
-    height: floor.height,
-  };
-}
-
-/**
  * FloorTrade -> FloorTradeInsert 변환
  */
 function floorTradeToInsert(trade: FloorTrade): FloorTradeInsert {
@@ -121,9 +107,9 @@ function rowToProcessPlan(row: BuildingProcessPlanRow): BuildingProcessPlan {
     processes: row.processes,
     totalDays: row.total_days,
     itemDirectWorkDaysOverrides: row.item_direct_work_days_overrides || undefined,
-    temporaryWorkDays: row.temporary_work_days || undefined,
-    earthRetentionWorkDays: row.earth_retention_work_days || undefined,
-    earthworkWorkDays: row.earthwork_work_days || undefined,
+    temporaryWorkDays: row.temporary_work_days ?? undefined,
+    earthRetentionWorkDays: row.earth_retention_work_days ?? undefined,
+    earthworkWorkDays: row.earthwork_work_days ?? undefined,
     specialRowQuantities: row.special_row_quantities || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -337,7 +323,7 @@ export async function updateBuilding(
     .from('buildings')
     .select('*')
     .eq('id', buildingId)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !currentRow) {
     throw new Error(`Building not found: ${buildingId}`);
@@ -361,7 +347,7 @@ export async function updateBuilding(
   }
 
   // 업데이트 실행
-  const { data: updatedRow, error: updateError } = await supabase
+  const { error: updateError } = await supabase
     .from('buildings')
     .update(updateData)
     .eq('id', buildingId)
@@ -556,10 +542,8 @@ export async function saveFloorTrade(
     .eq('building_id', buildingId)
     .eq('floor_id', floorId)
     .eq('trade_group', tradeGroup)
-    .single();
-
-  // PGRST116은 정상 (레코드 없음), 다른 에러는 throw
-  if (selectError && selectError.code !== 'PGRST116') {
+    .maybeSingle();
+  if (selectError) {
     const errInfo = extractSupabaseError(selectError);
     logger.error('Floor trade lookup error:', {
       ...errInfo,
@@ -690,15 +674,15 @@ export async function getProcessPlan(buildingId: string): Promise<BuildingProces
     .from('building_process_plans')
     .select('*')
     .eq('building_id', buildingId)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      // No rows returned
-      return null;
-    }
     logger.error('Failed to fetch process plan:', error);
     throw new Error(`Failed to fetch process plan: ${error.message}`);
+  }
+
+  if (!row) {
+    return null;
   }
 
   return rowToProcessPlan(row);
@@ -716,9 +700,9 @@ export async function saveProcessPlan(plan: BuildingProcessPlan): Promise<Buildi
     processes: plan.processes,
     total_days: plan.totalDays,
     item_direct_work_days_overrides: plan.itemDirectWorkDaysOverrides || null,
-    temporary_work_days: plan.temporaryWorkDays || null,
-    earth_retention_work_days: plan.earthRetentionWorkDays || null,
-    earthwork_work_days: plan.earthworkWorkDays || null,
+    temporary_work_days: plan.temporaryWorkDays ?? null,
+    earth_retention_work_days: plan.earthRetentionWorkDays ?? null,
+    earthwork_work_days: plan.earthworkWorkDays ?? null,
     special_row_quantities: plan.specialRowQuantities || null,
   };
 
@@ -867,4 +851,3 @@ export function invalidateCache(projectId: string): void {
 export function invalidateAllCache(): void {
   buildingsCache.invalidateAll();
 }
-

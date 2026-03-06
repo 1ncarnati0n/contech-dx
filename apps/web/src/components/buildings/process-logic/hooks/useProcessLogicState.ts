@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PROCESS_MODULES, type ProcessModule } from '@/lib/data/process-modules';
+import {
+  migrateTopFloorModules,
+  migrateParkingModules,
+} from '@/lib/utils/process-module-migration';
+import { logger } from '@/lib/utils/logger';
 
 const STORAGE_KEY_PREFIX = 'contech-process-logic-';
 
@@ -34,23 +39,45 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as ProcessModule[];
-        setState((prev) => ({
-          ...prev,
-          modules: parsed,
-          isLoading: false,
-        }));
+
+        // 🔄 마이그레이션: 최상층에서 거푸집 해체/정리 제거
+        const { modules: migratedModules1, migrated: topFloorMigrated } = migrateTopFloorModules(parsed);
+
+        // 🔄 마이그레이션: 지하주차장에서 버림/기초 항목 제거
+        const { modules: migratedModules2, migrated: parkingMigrated } = migrateParkingModules(migratedModules1);
+
+        if (topFloorMigrated || parkingMigrated) {
+          logger.info('[Migration] 공정 모듈 자동 마이그레이션 완료:', {
+            최상층: topFloorMigrated ? '거푸집 해체/정리 제거 (7개→6개)' : '변경 없음',
+            지하주차장: parkingMigrated ? '버림/기초 항목 제거 (20개→14개)' : '변경 없음',
+          });
+          // 마이그레이션된 데이터를 localStorage에 다시 저장
+          localStorage.setItem(storageKey, JSON.stringify(migratedModules2));
+        }
+
+        queueMicrotask(() => {
+          setState((prev) => ({
+            ...prev,
+            modules: migratedModules2,
+            isLoading: false,
+          }));
+        });
       } else {
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-        }));
+        queueMicrotask(() => {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+          }));
+        });
       }
     } catch (error) {
-      console.error('Failed to load process logic settings:', error);
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-      }));
+      logger.error('Failed to load process logic settings:', error);
+      queueMicrotask(() => {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+        }));
+      });
     }
   }, [storageKey]);
 
@@ -84,7 +111,7 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       }));
       return true;
     } catch (error) {
-      console.error('Failed to save process logic settings:', error);
+      logger.error('Failed to save process logic settings:', error);
       return false;
     }
   }, [storageKey, state.modules]);
@@ -110,7 +137,7 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
         hasChanges: false,
       }));
     } catch (error) {
-      console.error('Failed to clear saved settings:', error);
+      logger.error('Failed to clear saved settings:', error);
     }
   }, [storageKey]);
 
@@ -122,9 +149,14 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved) as ProcessModule[];
+
+        // 마이그레이션 적용 (취소 시에도 최신 데이터 사용)
+        const { modules: migratedModules1 } = migrateTopFloorModules(parsed);
+        const { modules: migratedModules2 } = migrateParkingModules(migratedModules1);
+
         setState((prev) => ({
           ...prev,
-          modules: parsed,
+          modules: migratedModules2,
           hasChanges: false,
           isEditing: false,
         }));
@@ -137,7 +169,7 @@ export function useProcessLogicState({ projectId }: UseProcessLogicStateOptions)
         }));
       }
     } catch (error) {
-      console.error('Failed to cancel changes:', error);
+      logger.error('Failed to cancel changes:', error);
     }
   }, [storageKey]);
 

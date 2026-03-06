@@ -168,7 +168,7 @@ export const useSidebarColumns = ({
     const calculateOptimalWidth = useCallback((columnIndex: number) => {
         const minWidth = baseColumns[columnIndex].minWidth;
         const isNameColumn = columnIndex === 0;
-        const basePadding = isNameColumn ? 72 : 20;
+        const basePadding = isNameColumn ? 72 : (viewMode === 'DETAIL' ? 14 : 20);
 
         const headerText = baseColumns[columnIndex].label;
         let maxWidth = measureTextWidth(headerText, 12, '500') + 16;

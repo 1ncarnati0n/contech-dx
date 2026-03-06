@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/utils/logger';
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
 import { FileSpreadsheet, Download } from 'lucide-react';
 import type { CastBlock, VolumeExportRow } from '@/lib/types';
@@ -85,7 +86,7 @@ export function VolumeCalculationPanel({ blocks }: VolumeCalculationPanelProps) 
       // 파일 다운로드
       XLSX.writeFile(wb, `타설물량표_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (error) {
-      console.error('Excel 내보내기 오류:', error);
+      logger.error('Excel 내보내기 오류:', error);
     }
   };
 

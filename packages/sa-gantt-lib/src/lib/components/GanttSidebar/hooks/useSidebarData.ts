@@ -145,8 +145,8 @@ export const useSidebarData = ({
     // 행 데이터 (비가상화 시 동적 높이 누적 계산)
     // ========================================
     const rowData = useMemo((): VirtualRow[] => {
-        if (isVirtualized) {
-            return virtualRows!;
+        if (isVirtualized && virtualRows) {
+            return virtualRows;
         }
         // 비가상화: 각 행의 높이를 누적 계산
         let cumulativeStart = 0;

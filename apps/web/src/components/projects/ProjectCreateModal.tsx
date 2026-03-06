@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/Form';
 import { Input, Textarea } from '@/components/ui/Input';
 import { createProject } from '@/lib/services/projects';
-import type { ProjectStatus } from '@/lib/types';
 import { logger } from '@/lib/utils/logger';
 
 // ============================================
@@ -83,8 +82,6 @@ export function ProjectCreateModal({
 
   const onSubmit = useCallback(async (data: ProjectFormData) => {
     try {
-      logger.debug('Creating project:', { name: data.name, status: data.status });
-
       // 빈 문자열을 undefined로 변환
       const projectData = {
         ...data,
@@ -96,8 +93,6 @@ export function ProjectCreateModal({
       };
 
       const newProject = await createProject(projectData);
-
-      logger.info('Project created:', newProject.id);
 
       form.reset();
       onClose();
@@ -333,4 +328,3 @@ export function ProjectCreateModal({
     </div>
   );
 }
-

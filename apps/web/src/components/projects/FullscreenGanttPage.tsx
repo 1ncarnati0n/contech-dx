@@ -21,9 +21,10 @@ import {
 import 'sa-gantt-lib/style.css';
 import { createSupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
 import { toast } from 'sonner';
-import { Loader2, X, Undo2, Redo2, Sun, Moon } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { logger } from '@/lib/utils/logger';
+import { FullscreenGanttHeader } from './fullscreen-gantt/FullscreenGanttHeader';
 
 interface FullscreenGanttPageProps {
   projectId: string;
@@ -46,50 +47,12 @@ const CALENDAR_SETTINGS: CalendarSettings = {
 
 const HOLIDAYS = KOREAN_HOLIDAYS_ALL;
 
-// 커스텀 테마 토글 컴포넌트 (next-themes 기반)
-function CustomThemeToggle() {
-  const { setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <button
-        className="flex items-center justify-center rounded p-2 transition-colors"
-        style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}
-      >
-        <Sun className="h-4 w-4" style={{ color: 'var(--gantt-text-secondary)' }} />
-      </button>
-    );
-  }
-
-  const isDark = resolvedTheme === 'dark';
-
-  return (
-    <button
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="flex items-center justify-center rounded p-2 transition-colors hover:opacity-80"
-      style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}
-      title={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-    >
-      {isDark ? (
-        <Sun className="h-4 w-4" style={{ color: 'var(--gantt-text-secondary)' }} />
-      ) : (
-        <Moon className="h-4 w-4" style={{ color: 'var(--gantt-text-secondary)' }} />
-      )}
-    </button>
-  );
-}
-
 export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttPageProps) {
   const router = useRouter();
 
   // Supabase DataService 생성
   const dataService = useMemo(
-    () => createSupabaseGanttDataService(projectId, { debug: true }),
+    () => createSupabaseGanttDataService(projectId),
     [projectId]
   );
 
@@ -130,7 +93,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
           isInitialLoad.current = false;
         }, 100);
       } catch (err) {
-        console.error('Failed to load gantt data:', err);
+        logger.error('Failed to load gantt data:', err);
         setError('간트차트 데이터를 불러오는데 실패했습니다.');
         toast.error('데이터 로드 실패');
       } finally {
@@ -233,7 +196,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
     // 안전 장치: 데이터가 비어있으면 저장하지 않음
     if (tasks.length === 0) {
-      console.warn('[handleSave] Tasks array is empty. Skipping save to prevent data loss.');
+      logger.warn('[handleSave] Tasks array is empty. Skipping save to prevent data loss.');
       toast.error('저장할 데이터가 없습니다. 데이터 로드 상태를 확인하세요.');
       return;
     }
@@ -241,12 +204,6 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
     setSaveStatus('saving');
 
     try {
-      console.log('[handleSave] Saving data:', {
-        tasks: tasks.length,
-        milestones: milestones.length,
-        dependencies: groupDependencies.length,
-      });
-
       await dataService.saveAll({
         tasks,
         milestones,
@@ -259,7 +216,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         setTimeout(() => setSaveStatus('idle'), 3000);
       }, 300);
     } catch (error) {
-      console.error('Failed to save data:', error);
+      logger.error('Failed to save data:', error);
       setSaveStatus('idle');
       toast.error('저장 중 오류가 발생했습니다.');
     }
@@ -280,7 +237,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       setSaveStatus('idle');
       toast.success('데이터가 초기화되었습니다.');
     } catch (error) {
-      console.error('Failed to reset data:', error);
+      logger.error('Failed to reset data:', error);
       toast.error('초기화 중 오류가 발생했습니다.');
     }
   }, [dataService, resetHistory]);
@@ -308,7 +265,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('내보내기 완료');
     } catch (error) {
-      console.error('Failed to export data:', error);
+      logger.error('Failed to export data:', error);
       toast.error('내보내기 중 오류가 발생했습니다.');
     }
   }, [tasks, milestones, groupDependencies, projectName]);
@@ -323,7 +280,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       });
       toast.success('Excel 내보내기 완료');
     } catch (error) {
-      console.error('Failed to export Excel:', error);
+      logger.error('Failed to export Excel:', error);
       toast.error('Excel 내보내기 중 오류가 발생했습니다.');
     }
   }, [tasks, milestones, loadedFileName, projectName]);
@@ -353,7 +310,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       setHasUnsavedChanges(true);
       toast.success(`가져오기 완료: ${importedTasks.length}개 태스크`);
     } catch (error) {
-      console.error('Failed to import data:', error);
+      logger.error('Failed to import data:', error);
       toast.error(error instanceof Error ? error.message : '가져오기 오류');
     }
   }, [setAppState]);
@@ -382,8 +339,8 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       await dataService.updateTask(updatedTask.id, updatedTask);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      console.log('[handleTaskUpdate] ❌ Error:', errMsg);
-      console.log('[handleTaskUpdate] Full error:', error);
+      logger.error('[handleTaskUpdate] Error:', errMsg);
+      logger.error('[handleTaskUpdate] Full error:', error);
       toast.error(`태스크 업데이트 실패: ${errMsg}`);
     }
   }, [setAppState, recalculateCPData, dataService]);
@@ -410,7 +367,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       const createdTask = await (dataService as { createTask: (task: ConstructionTask & { sortOrder?: number }) => Promise<ConstructionTask> }).createTask({ ...taskToAdd, sortOrder });
 
       setAppState(prev => {
-        let newTasks = [...prev.tasks, { ...taskToAdd, id: createdTask.id }];
+        const insertIndex = Math.max(0, Math.min(sortOrder, prev.tasks.length));
+        let newTasks = [...prev.tasks];
+        newTasks.splice(insertIndex, 0, { ...taskToAdd, id: createdTask.id });
 
         newTasks = newTasks.map(t => {
           if (t.wbsLevel === 2 && t.task) {
@@ -429,15 +388,17 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // 에러 정보를 문자열로 추출
       const errMsg = error instanceof Error ? error.message : String(error);
       const errName = error instanceof Error ? error.name : 'Unknown';
-      console.log('[handleTaskCreate] ❌ Error:', errName, '-', errMsg);
-      console.log('[handleTaskCreate] Full error:', error);
+      logger.error('[handleTaskCreate] Error:', errName, '-', errMsg);
+      logger.error('[handleTaskCreate] Full error:', error);
       toast.error(`태스크 생성 실패: ${errMsg}`);
     }
-  }, [setAppState, recalculateCPData, dataService]);
+  }, [setAppState, recalculateCPData, dataService, tasks.length]);
 
   // 태스크 순서 변경 핸들러
   const handleTaskReorder = useCallback(async (taskId: string, newIndex: number) => {
     try {
+      let reorderedTasks: ConstructionTask[] | null = null;
+
       setAppState(prev => {
         const taskIndex = prev.tasks.findIndex(t => t.id === taskId);
         if (taskIndex === -1) return prev;
@@ -452,15 +413,18 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         const adjustedIndex = taskIndex < newIndex ? newIndex - 1 : newIndex;
         newTasks.splice(adjustedIndex, 0, task);
 
+        reorderedTasks = newTasks;
         return { ...prev, tasks: newTasks };
       });
 
-      // TODO: Supabase에 순서 정보 저장 (order 컬럼 필요 시)
+      if (reorderedTasks) {
+        await dataService.saveTasks(reorderedTasks);
+      }
     } catch (error) {
-      console.error('Failed to reorder task:', error);
+      logger.error('Failed to reorder task:', error);
       toast.error('순서 변경 실패');
     }
-  }, [setAppState]);
+  }, [setAppState, dataService]);
 
   // 태스크 이동 핸들러 (그룹 간 이동 지원)
   const handleTaskMove = useCallback(async (
@@ -509,7 +473,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       const newParentId = position === 'into' ? targetId : (targetTask?.parentId ?? null);
       await dataService.updateTask(taskId, { parentId: newParentId });
     } catch (error) {
-      console.error('Failed to move task:', error);
+      logger.error('Failed to move task:', error);
       toast.error('태스크 이동 실패');
     }
   }, [setAppState, tasks, dataService]);
@@ -540,7 +504,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('태스크가 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete task:', error);
+      logger.error('Failed to delete task:', error);
       toast.error('태스크 삭제 실패');
     }
   }, [setAppState, recalculateCPData, dataService]);
@@ -578,8 +542,6 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       const createdGroup = await dataService.createTask(newGroup as ConstructionTask);
       const newGroupId = createdGroup.id;
 
-      console.log('[handleTaskGroup] Created group with ID:', newGroupId);
-
       // 선택된 태스크들의 parentId를 새 그룹으로 업데이트 (DB)
       await Promise.all(
         taskIds.map(taskId =>
@@ -590,7 +552,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // 로컬 상태 업데이트
       setAppState(prev => {
         // 선택된 태스크들의 parentId를 새 그룹으로 변경
-        let newTasks = prev.tasks.map(t => {
+        const newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
             return { ...t, parentId: newGroupId };
           }
@@ -610,7 +572,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('그룹이 생성되었습니다.');
     } catch (error) {
-      console.error('Failed to group tasks:', error);
+      logger.error('Failed to group tasks:', error);
       toast.error('그룹화 실패');
     }
   }, [tasks, dataService, setAppState]);
@@ -641,17 +603,9 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         isExpanded: true,  // 기본값 추가
       };
 
-      console.log('[handleTaskBlockify] Creating block with data:', {
-        ...newBlock,
-        startDate: newBlock.startDate?.toString(),
-        endDate: newBlock.endDate?.toString(),
-      });
-
       // DB에 블럭 생성
       const createdBlock = await dataService.createTask(newBlock as ConstructionTask);
       const newBlockId = createdBlock.id;
-
-      console.log('[handleTaskBlockify] Created block with ID:', newBlockId);
 
       // 선택된 CP들의 parentId를 새 블럭으로 업데이트 (DB)
       await Promise.all(
@@ -663,7 +617,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       // 로컬 상태 업데이트
       setAppState(prev => {
         // 선택된 CP들의 parentId를 새 블럭으로 변경
-        let newTasks = prev.tasks.map(t => {
+        const newTasks = prev.tasks.map(t => {
           if (taskIds.includes(t.id)) {
             return { ...t, parentId: newBlockId };
           }
@@ -683,13 +637,13 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('블럭이 생성되었습니다.');
     } catch (error) {
-      console.error('Failed to blockify CPs:', error);
+      logger.error('Failed to blockify CPs:', error);
       // 에러 상세 로깅
       if (error instanceof Error) {
-        console.error('[handleTaskBlockify] Error message:', error.message);
-        console.error('[handleTaskBlockify] Error stack:', error.stack);
+        logger.error('[handleTaskBlockify] Error message:', error.message);
+        logger.error('[handleTaskBlockify] Error stack:', error.stack);
       } else {
-        console.error('[handleTaskBlockify] Non-Error thrown:', JSON.stringify(error, null, 2));
+        logger.error('[handleTaskBlockify] Non-Error thrown:', JSON.stringify(error, null, 2));
       }
       toast.error('블럭화 실패');
     }
@@ -706,12 +660,6 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       // 그룹의 자식들 찾기
       const children = tasks.filter(t => t.parentId === groupId);
-
-      console.log('[handleTaskUngroup] Ungrouping:', {
-        groupId,
-        groupParentId: group.parentId,
-        childrenCount: children.length,
-      });
 
       // 자식들의 parentId를 그룹의 parentId로 업데이트 (DB)
       if (children.length > 0) {
@@ -743,7 +691,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
 
       toast.success('그룹이 해제되었습니다.');
     } catch (error) {
-      console.error('Failed to ungroup tasks:', error);
+      logger.error('Failed to ungroup tasks:', error);
       toast.error('그룹 해제 실패');
     }
   }, [tasks, dataService, setAppState]);
@@ -772,7 +720,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         }),
       }));
     } catch (error) {
-      console.error('Failed to update tasks after group drag:', error);
+      logger.error('Failed to update tasks after group drag:', error);
       toast.error('그룹 업데이트 실패');
     }
   }, [dataService, setAppState]);
@@ -786,7 +734,7 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         groupDependencies: [...prev.groupDependencies, newDep],
       }));
     } catch (error) {
-      console.error('Failed to create dependency:', error);
+      logger.error('Failed to create dependency:', error);
       toast.error('종속성 생성 실패');
     }
   }, [dataService, setAppState]);
@@ -800,20 +748,25 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
         groupDependencies: prev.groupDependencies.filter(d => d.id !== depId),
       }));
     } catch (error) {
-      console.error('Failed to delete dependency:', error);
+      logger.error('Failed to delete dependency:', error);
       toast.error('종속성 삭제 실패');
     }
   }, [dataService, setAppState]);
 
   // 그룹 순환 종속성 감지 핸들러
   const handleGroupCycleDetected = useCallback((info: { sourceGroupId: string; targetGroupId: string }) => {
-    console.warn('Cycle detected between groups:', info.sourceGroupId, '->', info.targetGroupId);
+    logger.warn('Cycle detected between groups:', info.sourceGroupId, '->', info.targetGroupId);
     toast.error('순환 종속성이 감지되었습니다. 다른 그룹을 선택해주세요.');
   }, []);
 
   // 마일스톤 핸들러
   const handleMilestoneCreate = useCallback(async (milestone: Partial<Milestone>) => {
     try {
+      if (!milestone.name || !milestone.date) {
+        toast.error('마일스톤 생성 데이터가 올바르지 않습니다.');
+        return;
+      }
+
       const newMilestone = await dataService.createMilestone(
         milestone as Omit<Milestone, 'id'>
       );
@@ -823,20 +776,24 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       }));
       toast.success('마일스톤이 생성되었습니다.');
     } catch (error) {
-      console.error('Failed to create milestone:', error);
+      logger.error('Failed to create milestone:', error);
       toast.error('마일스톤 생성 실패');
     }
   }, [dataService, setAppState]);
 
   const handleMilestoneUpdate = useCallback(async (milestone: Milestone) => {
     try {
-      await dataService.updateMilestone(milestone.id, milestone);
+      const updatedMilestone = await dataService.updateMilestone(milestone.id, milestone);
+      if (!updatedMilestone) {
+        toast.error('마일스톤 업데이트 실패');
+        return;
+      }
       setAppState(prev => ({
         ...prev,
-        milestones: prev.milestones.map(m => m.id === milestone.id ? milestone : m),
+        milestones: prev.milestones.map(m => m.id === updatedMilestone.id ? updatedMilestone : m),
       }));
     } catch (error) {
-      console.error('Failed to update milestone:', error);
+      logger.error('Failed to update milestone:', error);
       toast.error('마일스톤 업데이트 실패');
     }
   }, [dataService, setAppState]);
@@ -850,14 +807,16 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
       }));
       toast.success('마일스톤이 삭제되었습니다.');
     } catch (error) {
-      console.error('Failed to delete milestone:', error);
+      logger.error('Failed to delete milestone:', error);
       toast.error('마일스톤 삭제 실패');
     }
   }, [dataService, setAppState]);
 
   // 뷰 전환 핸들러
   const handleViewChange = useCallback((view: ViewMode, activeCPId?: string) => {
-    console.log('View changed:', view, activeCPId);
+    void view;
+    void activeCPId;
+    // no-op: reserved for future view change handling
   }, []);
 
   // 창 닫기 핸들러
@@ -908,106 +867,17 @@ export function FullscreenGanttPage({ projectId, projectName }: FullscreenGanttP
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden sa-gantt-root"
          style={{ backgroundColor: 'var(--gantt-bg-secondary)' }}>
-      {/* 상단 헤더 바 - sa-gantt-lib 데모 앱 스타일 */}
-      <div
-        className="flex h-12 shrink-0 items-center justify-between px-4 shadow-sm"
-        style={{
-          backgroundColor: 'var(--gantt-bg-primary)',
-          borderBottom: '1px solid var(--gantt-border)'
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <h1
-            className="flex items-center gap-2 text-lg font-extrabold"
-            style={{ color: 'var(--gantt-text-primary)' }}
-          >
-            <span>
-              <span style={{ color: 'var(--gantt-teal)' }}>건설</span>{' '}
-              <span style={{ color: 'var(--gantt-vermilion)' }}>표준공정표</span>
-            </span>
-            <span className="text-sm font-normal" style={{ color: 'var(--gantt-text-secondary)' }}>
-              - {projectName}
-            </span>
-          </h1>
-
-          {/* Undo/Redo 버튼 */}
-          <div
-            className="flex items-center gap-1 pl-3"
-            style={{ borderLeft: '1px solid var(--gantt-border)' }}
-          >
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: canUndo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
-                color: canUndo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
-                cursor: canUndo ? 'pointer' : 'not-allowed',
-              }}
-              title="실행 취소 (Ctrl+Z / Cmd+Z)"
-            >
-              <Undo2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">실행취소</span>
-              {historyLength.past > 0 && (
-                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>
-                  ({historyLength.past})
-                </span>
-              )}
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: canRedo ? 'var(--gantt-bg-secondary)' : 'var(--gantt-bg-tertiary)',
-                color: canRedo ? 'var(--gantt-text-primary)' : 'var(--gantt-text-muted)',
-                cursor: canRedo ? 'pointer' : 'not-allowed',
-              }}
-              title="다시 실행 (Ctrl+Shift+Z / Cmd+Shift+Z)"
-            >
-              <Redo2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">다시실행</span>
-              {historyLength.future > 0 && (
-                <span className="ml-0.5 text-[10px]" style={{ color: 'var(--gantt-text-muted)' }}>
-                  ({historyLength.future})
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* 변경사항 표시 */}
-          {hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              변경사항 있음
-            </span>
-          )}
-
-          {/* 저장 완료 표시 */}
-          {saveStatus === 'saved' && !hasUnsavedChanges && (
-            <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              저장됨
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* 테마 토글 버튼 */}
-          <CustomThemeToggle />
-
-          {/* 닫기 버튼 */}
-          <button
-            onClick={handleClose}
-            className="flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
-            style={{ color: 'var(--gantt-text-secondary)' }}
-            title="닫기"
-          >
-            <X className="h-4 w-4" />
-            <span className="hidden sm:inline">닫기</span>
-          </button>
-        </div>
-      </div>
+      <FullscreenGanttHeader
+        projectName={projectName}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        historyLength={historyLength}
+        hasUnsavedChanges={hasUnsavedChanges}
+        saveStatus={saveStatus}
+        onUndo={undo}
+        onRedo={redo}
+        onClose={handleClose}
+      />
 
       {/* 간트 차트 영역 */}
       <div className="flex-1 overflow-hidden">

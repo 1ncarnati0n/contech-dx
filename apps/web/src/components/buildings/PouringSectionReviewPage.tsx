@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input, Button } from '@/components/ui';
-import { Calculator, Map, LayoutGrid, Construction } from 'lucide-react';
+import { Construction, Loader2 } from 'lucide-react';
 import { calculatePouringSectionDetailed } from '@/lib/utils/pouring-section-calculation';
 import type { PouringSectionCalculationResult } from '@/lib/types';
 import { toast } from 'sonner';
@@ -11,18 +11,31 @@ import dynamic from 'next/dynamic';
 // IFC 뷰어 컴포넌트 동적 import (SSR 비활성화)
 const IfcViewer = dynamic(
   () => import('@/components/ifc-viewer').then((mod) => mod.IfcViewer),
-  { ssr: false, loading: () => <div className="h-full bg-slate-900 rounded-lg animate-pulse" /> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full bg-slate-900 rounded-lg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-white text-sm font-medium">3D 뷰어 로딩 중...</span>
+        </div>
+      </div>
+    )
+  }
 );
 
 interface Props {
   projectId: string;
+  viewMode?: 'simple' | 'visual';
+  onViewModeChange?: (mode: 'simple' | 'visual') => void;
 }
 
-type ViewMode = 'simple' | 'visual';
-
-export function PouringSectionReviewPage({ projectId }: Props) {
-  // 모드 상태
-  const [viewMode, setViewMode] = useState<ViewMode>('simple');
+export function PouringSectionReviewPage({
+  projectId,
+  viewMode = 'visual',
+  onViewModeChange
+}: Props) {
+  void onViewModeChange;
 
   // ============================================
   // Simple 모드 상태
@@ -51,34 +64,6 @@ export function PouringSectionReviewPage({ projectId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* 모드 전환 버튼 */}
-      <div className="flex justify-end">
-        <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
-          <button
-            onClick={() => setViewMode('simple')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'simple'
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            Simple
-          </button>
-          <button
-            onClick={() => setViewMode('visual')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'visual'
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            <Map className="w-4 h-4" />
-            Visual
-          </button>
-        </div>
-      </div>
-
       {/* Simple 모드 */}
       {viewMode === 'simple' && (
         <>

@@ -170,7 +170,7 @@ function renderArc(entity: DxfEntity, color: string, strokeWidth: number) {
   if (!entity.center || !entity.radius) return null;
 
   // Konva Arc는 각도를 다르게 계산함
-  let startAngle = entity.startAngle || 0;
+  const startAngle = entity.startAngle || 0;
   let endAngle = entity.endAngle || 0;
 
   // 각도 정규화

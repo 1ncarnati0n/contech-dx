@@ -23,7 +23,7 @@ export default function LogoutButton() {
 
       router.push('/');
       router.refresh();
-    } catch (err) {
+    } catch {
       alert('로그아웃 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

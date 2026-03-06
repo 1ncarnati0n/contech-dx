@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui';
 import { HelpCircle, Calculator, AlertCircle, BookOpen, Lightbulb } from 'lucide-react';
-import type { QuickQuestion, QuickQuestionCategory, HighlightTargetKey } from './ProcessPlanChatbotTypes';
+import type { QuickQuestion, QuickQuestionCategory } from './ProcessPlanChatbotTypes';
 
 interface QuickQuestionButtonsProps {
   onQuestionClick: (question: string) => void;
@@ -65,8 +65,8 @@ const QUICK_QUESTIONS: Record<QuickQuestionCategory, QuickQuestion[]> = {
     {
       id: 'calc-4',
       category: 'calculation',
-      question: '5일 사이클과 6일 사이클의 차이점은?',
-      description: '사이클 비교',
+      question: '기준층 표준공정은 어떻게 구성되나요?',
+      description: '표준공정 구성',
       highlightTargets: ['standardCycle'],
     },
   ],
@@ -226,7 +226,7 @@ export function ContextualQuestions({
         return [
           '어떤 사이클을 선택해야 하나요?',
           '공정 타입 선택 기준이 뭔가요?',
-          '5일 사이클과 6일 사이클의 차이는?',
+          '기준층 표준공정은 어떻게 구성되나요?',
         ];
       case 'quantity_input':
         return [

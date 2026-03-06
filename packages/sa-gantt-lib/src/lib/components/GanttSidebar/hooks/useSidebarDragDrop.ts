@@ -21,12 +21,12 @@ export const DROP_ZONE_LAST = '__DROP_ZONE_LAST__';
 // 브라우저 환경에서만 생성, lazy initialization으로 SSR 호환
 let transparentDragImage: HTMLImageElement | null = null;
 const getTransparentDragImage = (): HTMLImageElement => {
-    if (!transparentDragImage && typeof window !== 'undefined') {
+    if (!transparentDragImage) {
         transparentDragImage = new Image();
         // 1x1 투명 GIF (Base64 인코딩)
         transparentDragImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     }
-    return transparentDragImage!;
+    return transparentDragImage;
 };
 
 export const useSidebarDragDrop = ({

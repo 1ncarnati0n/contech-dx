@@ -149,22 +149,6 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
         };
     }, [selectedTaskIds, tasks]);
 
-    // 🔍 DEBUG: 블럭화 버튼 조건 디버깅
-    console.log('[ContextMenu Debug]', {
-        selectedCount: selectedTaskIds.size,
-        hasCPSelected,
-        hasTaskSelected,
-        hasGroupSelected,
-        isMixed,
-        hasOnTaskBlockify: !!onTaskBlockify,
-        selectedIds: Array.from(selectedTaskIds),
-        // 선택된 task들의 실제 타입 확인
-        selectedTypes: Array.from(selectedTaskIds).map(id => {
-            const t = tasks.find(task => task.id === id);
-            return { id, type: t?.type, found: !!t };
-        }),
-    });
-
     const handleGroup = () => {
         // TASK 또는 GROUP만 선택된 경우 그룹화 가능 (CP, BLOCK 제외)
         if (selectedTaskIds.size >= 1 && (hasTaskSelected || hasGroupSelected) && !isMixed && onTaskGroup) {
@@ -329,4 +313,3 @@ export const GanttSidebarContextMenu: React.FC<GanttSidebarContextMenuProps> = (
         document.body
     );
 };
-

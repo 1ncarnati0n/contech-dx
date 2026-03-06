@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/utils/logger';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -7,11 +8,11 @@ import { createClient } from '@/lib/supabase/client';
 import {
   User,
   LogOut,
-  Shield,
   ChevronDown,
   Loader2
 } from 'lucide-react';
-import { getRoleBadgeColor, getRoleDisplayName } from '@/lib/permissions/client';
+import { getRoleBadgeVariant, getRoleDisplayName } from '@/lib/permissions/client';
+import { Badge } from '@/components/ui/Badge';
 import type { Profile } from '@/lib/types';
 
 interface UserDropdownProps {
@@ -21,6 +22,7 @@ interface UserDropdownProps {
 }
 
 export default function UserDropdown({ user, profile, isAdmin }: UserDropdownProps) {
+  void isAdmin;
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -68,7 +70,7 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
       router.push('/');
       router.refresh();
     } catch (error) {
-      console.error('Logout failed', error);
+      logger.error('Logout failed', error);
       alert('로그아웃 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -85,13 +87,9 @@ export default function UserDropdown({ user, profile, isAdmin }: UserDropdownPro
           }`}
       >
         {/* 등급 뱃지 */}
-        <span
-          className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${getRoleBadgeColor(
-            profile.role
-          )}`}
-        >
+        <Badge variant={getRoleBadgeVariant(profile.role)} className="text-[10px]">
           {getRoleDisplayName(profile.role)}
-        </span>
+        </Badge>
 
         {/* 사용자 이름 */}
         <span className="text-sm font-medium text-primary-600 dark:text-primary-300 group-hover:text-primary-900 dark:group-hover:text-primary-100 max-w-[120px] truncate">

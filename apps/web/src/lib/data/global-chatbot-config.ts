@@ -47,7 +47,7 @@ const BASE_SYSTEM_PROMPT = `당신은 ConTech-DX 플랫폼의 AI 도우미입니
 ConTech-DX는 건설 프로젝트 관리를 위한 스마트 건축 플랫폼입니다.
 주요 기능:
 - 프로젝트 관리: 건설 프로젝트 생성 및 관리
-- 동별 공정계획: 건물별 공정일수 계산 및 관리
+- 지상층 공정계획: 지상층 공정일수 계산 및 관리
 - 지하층 공정계획: 지하 구조물 공정 관리
 - 간트 차트: 프로젝트 일정 시각화
 - 게시판: 공지사항 및 정보 공유
@@ -127,22 +127,23 @@ export const PAGE_CHATBOT_CONFIGS: Record<PageType, PageChatbotConfig> = {
 
   'building-process-plan': {
     title: '공정계획 도우미',
-    description: '동별 공정계획 수립을 도와드립니다',
+    description: '지상층 공정계획 수립을 도와드립니다',
     welcomeMessage: '공정계획 수립에 관한 질문에 답변드리겠습니다!',
     systemPrompt: `${BASE_SYSTEM_PROMPT}
 
-## 현재 페이지: 동별 공정계획
-사용자가 건물의 공정계획 페이지에 있습니다.
+## 현재 페이지: 지상층 공정계획
+사용자가 건물의 지상층 공정계획 페이지에 있습니다.
 공정 타입 선택, 물량 입력, 공정일수 계산, 저장 방법 등을 상세히 안내해주세요.
 
 ### 공정계획 주요 개념
-- **공정 카테고리**: 버림, 기초, 지하층, 셋팅층, 기준층, 옥탑층
+- **공정 카테고리**: 셋팅층, 기준층, 옥탑층 (지하층, 기초, 버림은 별도 탭에서 관리)
 - **공정 타입**: 각 카테고리별 사이클 유형 (예: 5일사이클, 6일사이클)
 - **물량**: 형틀(갱폼/알폼), 철근, 콘크리트 물량
 - **공정일수**: 순작업일 + 간접일로 계산
 
 ### 자주 묻는 질문
-- 5일 사이클 vs 6일 사이클: 콘크리트 양생 기간에 따른 차이
+- 기준층/최상층 표준공정: 6일 사이클 기반 표준공정으로 통일
+- 사이클 공정: 셋팅층, 옥탑층, 일반층에서 5일/6일/7일/8일 사이클 선택 가능
 - 물량 참조: 건물의 층별 물량 데이터를 가져와서 계산에 활용
 - 순작업일: 실제 작업이 수행되는 일수
 - 간접일: 준비, 양생, 대기 등의 간접 작업일`,
@@ -150,7 +151,7 @@ export const PAGE_CHATBOT_CONFIGS: Record<PageType, PageChatbotConfig> = {
       { id: 'bpp-1', question: '공정 타입은 어떻게 선택하나요?', description: '타입 선택', category: 'guide' },
       { id: 'bpp-2', question: '물량 참조는 어떻게 하나요?', description: '물량 참조', category: 'guide' },
       { id: 'bpp-3', question: '공정일수 계산 방법은?', description: '계산 방법', category: 'help' },
-      { id: 'bpp-4', question: '5일 사이클과 6일 사이클의 차이는?', description: '사이클 비교', category: 'faq' },
+      { id: 'bpp-4', question: '기준층 표준공정은 어떻게 구성되나요?', description: '표준공정 구성', category: 'faq' },
     ],
   },
 
@@ -322,8 +323,8 @@ const PROCESS_PLAN_STEP_QUESTIONS: Record<
     },
     {
       id: 'step-type-2',
-      question: '5일 사이클과 6일 사이클의 차이는?',
-      description: '사이클 비교',
+      question: '기준층 표준공정은 어떻게 구성되나요?',
+      description: '표준공정 구성',
       category: 'faq',
       priority: 9,
     },
@@ -496,7 +497,11 @@ export function getDynamicQuickQuestions(
     .slice(0, maxQuestions);
 
   // 5. DynamicQuickQuestion을 QuickQuestion으로 변환
-  return sortedQuestions.map(({ priority, ...rest }) => rest);
+  return sortedQuestions.map((question) => {
+    const { priority, ...rest } = question;
+    void priority;
+    return rest;
+  });
 }
 
 /**

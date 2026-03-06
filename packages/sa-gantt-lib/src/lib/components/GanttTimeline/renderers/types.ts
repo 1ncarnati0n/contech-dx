@@ -103,6 +103,9 @@ export interface TaskAreaRendererProps {
     /** Group 바 edge 호버 핸들러 */
     handleGroupEdgeHover?: (groupId: string, edge: 'start' | 'end' | null) => void;
 
+    /** BLOCK 고스트 드래그 정보 (고스트 바 렌더링용) */
+    getBlockGhostInfo?: () => { blockId: string; ghostDeltaDays: number } | null;
+
     /** Y축 오프셋 (마일스톤 레인 높이) */
     offsetY?: number;
 }

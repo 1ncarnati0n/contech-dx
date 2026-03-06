@@ -1,80 +1,276 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Layers, Edit2, RotateCcw } from 'lucide-react';
-import { Card, Button } from '@/components/ui';
-import { PROCESS_MODULES, type ProcessModule, type ProcessItem } from '@/lib/data/process-modules';
+import { Layers, Info, Lock, Calculator, Truck, Settings } from 'lucide-react';
+import { Card, Button, Badge, Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui';
+import type { ProcessModule, ProcessItem } from '@/lib/data/process-modules';
 import type { ProcessCategory } from '@/lib/types';
+import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
 
 interface ProcessModuleSectionProps {
-  isEditing: boolean;
   modules: ProcessModule[];
-  onModuleChange?: (modules: ProcessModule[]) => void;
-  onResetToDefault?: () => void;
+  onOpenAdvancedModal?: (category: ProcessCategory, processType?: string) => void;
 }
 
-// 카테고리 탭 정의
-const CATEGORY_TABS: { id: ProcessCategory; label: string }[] = [
-  { id: '버림', label: '버림' },
-  { id: '기초', label: '기초' },
-  { id: '지하층', label: '지하층' },
-  { id: '셋팅층', label: '셋팅층' },
-  { id: '기준층', label: '기준층' },
-  { id: '옥탑층', label: '옥탑층' },
+// ============================================
+// Helper Functions
+// ============================================
+
+type CalculationMethod = 'fixed' | 'quantity-based' | 'equipment-based';
+
+/**
+ * ProcessItem의 계산 방식 판별
+ */
+function getCalculationMethod(item: ProcessItem): CalculationMethod {
+  if (item.directWorkDays !== undefined && item.directWorkDays > 0) {
+    return 'fixed';
+  }
+  if (item.equipmentCalculationBase !== undefined &&
+      item.equipmentWorkersPerUnit !== undefined) {
+    return 'equipment-based';
+  }
+  return 'quantity-based';
+}
+
+/**
+ * 계산 방식별 설정 반환
+ */
+function getCalculationMethodConfig(method: CalculationMethod) {
+  const configs = {
+    fixed: {
+      variant: 'info' as const,
+      icon: Lock,
+      label: '일수고정',
+    },
+    'quantity-based': {
+      variant: 'success' as const,
+      icon: Calculator,
+      label: '물량계산',
+    },
+    'equipment-based': {
+      variant: 'warning' as const,
+      icon: Truck,
+      label: '장비기반',
+    },
+  };
+  return configs[method];
+}
+
+/**
+ * 계산 단계 텍스트 생성
+ */
+function getCalculationSteps(method: CalculationMethod, item: ProcessItem): string[] {
+  switch (method) {
+    case 'fixed':
+      return [
+        '1. 순작업일: 고정값 사용',
+        '2. 총투입인원 = CEILING(수량 / 인당생산성)',
+        '3. 1일투입인원 = ROUNDUP(총투입인원 / 순작업일)',
+      ];
+
+    case 'equipment-based':
+      return [
+        '1. 장비대수 = CEILING(MIN(최대값, 수량/대당타설량))',
+        `2. 1일투입인원 = 장비대수 × ${item.equipmentWorkersPerUnit || 4}명`,
+        '3. 순작업일 = ROUND(수량 / (인당생산성 × 1일투입인원))',
+        '4. 총투입인원 = 1일투입인원 × 순작업일',
+      ];
+
+    case 'quantity-based':
+      return [
+        '1. 총투입인원 = CEILING(수량 / 인당생산성)',
+        '2. 1일투입인원 = CEILING(총투입인원 / 장비대수)',
+        '3. 순작업일 = ROUND(수량 / (인당생산성 × 1일투입인원))',
+      ];
+  }
+}
+
+/** 공종 필드 → 한국어 이름 */
+const TRADE_FIELD_NAMES: Record<string, string> = {
+  gangForm: '갱폼', alForm: '알폼', formwork: '형틀',
+  euroForm: '유로폼', stripClean: '해체/정리', rebar: '철근', concrete: '콘크리트',
+};
+
+/** 서브필드 → 단위 */
+const SUB_FIELD_UNITS: Record<string, string> = {
+  areaM2: '㎡', ton: 'ton', volumeM3: '㎥',
+};
+
+/**
+ * 시맨틱 참조 기반 뱃지/툴팁 생성. 레거시 참조 폴백 포함.
+ */
+function getSemanticReferenceDisplay(
+  quantityRef?: SemanticQuantityReference,
+  legacyRef?: string
+): { badge: string; tooltip: string } {
+  // 1. quantityRef 우선
+  if (quantityRef) {
+    const fieldName = TRADE_FIELD_NAMES[quantityRef.tradeField] || quantityRef.tradeField;
+    const unit = SUB_FIELD_UNITS[quantityRef.subField] || '';
+    const ratioStr = quantityRef.ratio !== 1 ? ` ×${quantityRef.ratio}` : '';
+
+    if (quantityRef.sourceType === 'category' && quantityRef.tradeGroup) {
+      return {
+        badge: `${quantityRef.tradeGroup} ${fieldName}`,
+        tooltip: `공종 참조: ${quantityRef.tradeGroup} ${fieldName}(${unit})${ratioStr}`,
+      };
+    }
+    if (quantityRef.sourceType === 'combined' && quantityRef.combineFloors) {
+      return {
+        badge: `${quantityRef.combineFloors.join('+')} ${fieldName}`,
+        tooltip: `공종 참조: ${quantityRef.combineFloors.join('+')} 합산 ${fieldName}(${unit})${ratioStr}`,
+      };
+    }
+    return {
+      badge: `${fieldName}`,
+      tooltip: `공종 참조: ${fieldName}(${unit})${ratioStr}`,
+    };
+  }
+
+  // 2. 레거시 파싱 폴백
+  if (legacyRef) {
+    const match = legacyRef.match(/^([A-Z])(\d+)(?:\*([\d.]+))?$/);
+    if (match) {
+      const [, col, row, ratio] = match;
+      const rowNum = parseInt(row, 10);
+      const colNames: Record<string, string> = { B: '갱폼', C: '알폼', D: '형틀', E: '해체/정리', F: '철근', G: '콘크리트' };
+      let rowName = '';
+      if (rowNum === 6) rowName = '버림';
+      else if (rowNum === 7) rowName = '기초';
+      else if (rowNum === 8) rowName = 'B2';
+      else if (rowNum === 9) rowName = 'B1';
+      else if (rowNum >= 11 && rowNum <= 25) rowName = `${rowNum - 10}F`;
+      else if (rowNum === 26) rowName = 'PH1';
+      else if (rowNum === 27) rowName = 'PH2';
+      else if (rowNum === 28) rowName = 'PH3';
+      const colName = colNames[col] || col;
+      const ratioStr = ratio ? ` ×${ratio}` : '';
+      const prefix = rowName ? `${rowName} ` : '';
+      return {
+        badge: `${prefix}${colName}`,
+        tooltip: `공종 참조: ${prefix}${colName}${ratioStr}`,
+      };
+    }
+  }
+
+  return { badge: legacyRef || '-', tooltip: legacyRef || '-' };
+}
+
+// 탭 ID 타입 확장 (지하층 변형 탭 추가)
+type TabId = ProcessCategory;
+
+// 카테고리 탭 정의 - moduleId로 명시적 모듈 지정, processType은 fallback
+const CATEGORY_TABS: { id: TabId; label: string; category: ProcessCategory; processType?: string; moduleId?: string }[] = [
+  { id: '버림', label: '버림', category: '버림', moduleId: 'blinding-standard' },
+  { id: '기초', label: '기초', category: '기초', moduleId: 'foundation-standard' },
+  { id: '지하주차장', label: '지하주차장', category: '지하주차장', moduleId: 'parking-standard' },
+  { id: '지하층(층고6.5m이상)', label: '지하층(층고6.5m이상)', category: '지하층(층고6.5m이상)', moduleId: 'basement-high-ceiling' },
+  { id: '주동 지하층', label: '주동 지하층', category: '주동 지하층', moduleId: 'basement-with-pit' },
+  { id: '일반층', label: '일반층', category: '일반층' },
+  { id: '셋팅층', label: '셋팅층', category: '셋팅층' },
+  { id: '기준층', label: '기준층', category: '기준층' },
+  { id: '최상층', label: '최상층', category: '최상층' },
+  { id: '옥탑층', label: '옥탑층', category: '옥탑층' },
 ];
 
+// 사이클 정렬 순서 (서브탭 표시 순서)
+const CYCLE_ORDER: Record<string, number> = {
+  '표준공정': 0, '5일 사이클': 1, '6일 사이클': 2, '7일 사이클': 3, '8일 사이클': 4,
+};
+
 export function ProcessModuleSection({
-  isEditing,
   modules,
-  onModuleChange,
-  onResetToDefault,
+  onOpenAdvancedModal,
 }: ProcessModuleSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<ProcessCategory>('버림');
+  const [activeTab, setActiveTab] = useState<TabId>('버림');
+  const [selectedCyclePerTab, setSelectedCyclePerTab] = useState<Record<string, string>>({});
 
-  // 현재 카테고리의 모듈들 필터링
+  // ============================================
+  // Internal Components
+  // ============================================
+
+  /**
+   * 계산 방식 뱃지 컴포넌트
+   */
+  function CalculationMethodBadge({ method }: { method: CalculationMethod }) {
+    const config = getCalculationMethodConfig(method);
+    const IconComponent = config.icon;
+
+    return (
+      <Badge variant={config.variant} className="text-xs">
+        <IconComponent className="w-3 h-3" />
+        {config.label}
+      </Badge>
+    );
+  }
+
+  /**
+   * 물량 참조 뱃지 컴포넌트
+   */
+  function QuantityReferenceBadge({ item }: { item: ProcessItem }) {
+    const { badge, tooltip } = getSemanticReferenceDisplay(item.quantityRef, item.quantityReference);
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="secondary" className="text-xs cursor-help">
+            {badge} 참조
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p className="text-xs">{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // 현재 탭에 해당하는 모듈들 필터링
   const categoryModules = useMemo(() => {
-    return modules.filter((m) => m.category === activeCategory);
-  }, [modules, activeCategory]);
+    const currentTab = CATEGORY_TABS.find(t => t.id === activeTab);
+    if (!currentTab) return [];
 
-  // 표준공정 모듈 찾기 (첫 번째 것 사용)
-  const primaryModule = categoryModules[0];
+    // moduleId가 지정된 경우 해당 모듈만 반환 (명시적 모듈 지정)
+    if (currentTab.moduleId) {
+      const mod = modules.find(m => m.id === currentTab.moduleId);
+      return mod ? [mod] : [];
+    }
 
-  // 셀 값 변경 핸들러
-  const handleCellChange = (
-    moduleId: string,
-    itemId: string,
-    field: keyof ProcessItem,
-    value: string | number
-  ) => {
-    if (!onModuleChange) return;
+    // moduleId가 없는 경우 기존 로직 사용
+    return modules.filter((m) => {
+      // 카테고리가 일치하지 않으면 제외
+      if (m.category !== currentTab.category) return false;
 
-    const updatedModules = modules.map((module) => {
-      if (module.id !== moduleId) return module;
+      // processType이 지정된 탭인 경우 해당 타입만 필터링
+      if (currentTab.processType) {
+        return m.name === currentTab.processType;
+      }
 
-      return {
-        ...module,
-        items: module.items.map((item) => {
-          if (item.id !== itemId) return item;
+      return true;
+    }).sort((a, b) => (CYCLE_ORDER[a.name] ?? 99) - (CYCLE_ORDER[b.name] ?? 99));
+  }, [modules, activeTab]);
 
-          return {
-            ...item,
-            [field]: typeof value === 'string' ? (isNaN(Number(value)) ? value : Number(value)) : value,
-          };
-        }),
-      };
-    });
+  // 선택된 사이클 모듈 (서브탭 선택 기반)
+  const primaryModule = useMemo(() => {
+    if (categoryModules.length === 0) return undefined;
+    const selectedId = selectedCyclePerTab[activeTab];
+    if (selectedId) {
+      const found = categoryModules.find(m => m.id === selectedId);
+      if (found) return found;
+    }
+    return categoryModules[0];
+  }, [categoryModules, selectedCyclePerTab, activeTab]);
 
-    onModuleChange(updatedModules);
-  };
+  // 현재 탭의 실제 카테고리 가져오기 (고급 편집용)
+  const currentCategory = useMemo(() => {
+    const currentTab = CATEGORY_TABS.find(t => t.id === activeTab);
+    return currentTab?.category || (activeTab as ProcessCategory);
+  }, [activeTab]);
 
   return (
-    <Card className="p-0 overflow-hidden">
+    <TooltipProvider>
+      <Card className="p-0 overflow-hidden">
       {/* 섹션 헤더 */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-      >
+      <div className="w-full flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <Layers className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -89,40 +285,32 @@ export function ProcessModuleSection({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isEditing && onResetToDefault && (
+          {/* 고급 편집 버튼 */}
+          {onOpenAdvancedModal && (
             <Button
               variant="outline"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onResetToDefault();
-              }}
+              onClick={() => onOpenAdvancedModal(currentCategory, primaryModule?.name)}
               className="gap-1"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              기본값
+              <Settings className="w-3.5 h-3.5" />
+              고급 편집
             </Button>
           )}
-          {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-zinc-400" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-zinc-400" />
-          )}
         </div>
-      </button>
+      </div>
 
       {/* 섹션 콘텐츠 */}
-      {isExpanded && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700">
+      <div className="border-t border-zinc-200 dark:border-zinc-700">
           {/* 카테고리 탭 */}
           <div className="flex items-center gap-1 p-2 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto">
             {CATEGORY_TABS.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveCategory(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeCategory === tab.id
-                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                  activeTab === tab.id
+                    ? 'bg-[#ffff1d] text-zinc-900 dark:bg-[#ffff1d] dark:text-zinc-900 shadow-sm'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700/50'
                 }`}
               >
@@ -130,6 +318,38 @@ export function ProcessModuleSection({
               </button>
             ))}
           </div>
+
+          {/* 공정타입 서브탭 (항상 표시) */}
+          {categoryModules.length === 1 ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100/50 dark:bg-zinc-800/30 border-b border-zinc-200 dark:border-zinc-700">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 shrink-0">공정타입:</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-600 text-white shadow-sm">
+                표준공정
+              </span>
+            </div>
+          ) : categoryModules.length > 1 ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-zinc-100/50 dark:bg-zinc-800/30 border-b border-zinc-200 dark:border-zinc-700">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 shrink-0">공정타입:</span>
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                {categoryModules.map((m) => {
+                  const isSelected = primaryModule?.id === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedCyclePerTab(prev => ({ ...prev, [activeTab]: m.id }))}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                        isSelected
+                          ? 'bg-violet-600 text-white shadow-sm'
+                          : 'bg-white dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:text-violet-700 dark:hover:text-violet-300 border border-zinc-200 dark:border-zinc-600'
+                      }`}
+                    >
+                      {m.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {/* 모듈 테이블 */}
           <div className="overflow-x-auto">
@@ -153,12 +373,12 @@ export function ProcessModuleSection({
                       순작업일
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
-                      간접일
+                      간접작업일
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
-                      간접작업
+                      간접작업명
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700 min-w-[280px]">
                       산정기준
                     </th>
                   </tr>
@@ -184,77 +404,65 @@ export function ProcessModuleSection({
                         {item.unit || '-'}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            value={item.dailyProductivity}
-                            onChange={(e) =>
-                              handleCellChange(
-                                primaryModule.id,
-                                item.id,
-                                'dailyProductivity',
-                                e.target.value
-                              )
-                            }
-                            className="w-20 px-2 py-1 text-right border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        ) : (
-                          <span className="text-zinc-900 dark:text-white">
-                            {item.dailyProductivity || '-'}
-                          </span>
-                        )}
+                        <span className="text-zinc-900 dark:text-white">
+                          {item.dailyProductivity || '-'}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            value={item.directWorkDays ?? ''}
-                            onChange={(e) =>
-                              handleCellChange(
-                                primaryModule.id,
-                                item.id,
-                                'directWorkDays',
-                                e.target.value
-                              )
-                            }
-                            className="w-20 px-2 py-1 text-right border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="계산"
-                          />
-                        ) : (
-                          <span className="text-zinc-900 dark:text-white">
-                            {item.directWorkDays ?? (
-                              <span className="text-blue-500 text-xs">계산</span>
-                            )}
-                          </span>
-                        )}
+                        <span className="text-zinc-900 dark:text-white">
+                          {item.directWorkDays ?? (
+                            <span className="text-blue-500 text-xs">계산</span>
+                          )}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={item.indirectDays}
-                            onChange={(e) =>
-                              handleCellChange(
-                                primaryModule.id,
-                                item.id,
-                                'indirectDays',
-                                e.target.value
-                              )
-                            }
-                            className="w-20 px-2 py-1 text-right border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        ) : (
-                          <span className="text-zinc-900 dark:text-white">
-                            {item.indirectDays}
-                          </span>
-                        )}
+                        <span className="text-zinc-900 dark:text-white">
+                          {item.indirectDays}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">
                         {item.indirectWorkItem || '-'}
                       </td>
-                      <td className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">
-                        {item.calculationBasis || '-'}
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* 계산 방식 뱃지 */}
+                          <CalculationMethodBadge method={getCalculationMethod(item)} />
+
+                          {/* 물량 참조 뱃지 (있을 경우만) */}
+                          {(item.quantityRef || item.quantityReference) && (
+                            <QuantityReferenceBadge item={item} />
+                          )}
+
+                          {/* 정보 아이콘 + 툴팁 */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                                aria-label="계산 과정 보기"
+                              >
+                                <Info className="w-4 h-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-sm">
+                              <div className="space-y-1">
+                                <p className="text-xs font-semibold mb-2">계산 단계:</p>
+                                {getCalculationSteps(getCalculationMethod(item), item).map((step, idx) => (
+                                  <p key={idx} className="text-xs text-zinc-600 dark:text-zinc-400">
+                                    {step}
+                                  </p>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          {/* 기존 산정기준 텍스트 */}
+                          {item.calculationBasis && (
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {item.calculationBasis}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -266,18 +474,8 @@ export function ProcessModuleSection({
               </div>
             )}
           </div>
-
-          {/* 편집 힌트 */}
-          {isEditing && (
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border-t border-zinc-200 dark:border-zinc-700">
-              <Edit2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-sm text-yellow-700 dark:text-yellow-300">
-                테이블의 숫자를 직접 클릭하여 수정할 수 있습니다.
-              </span>
-            </div>
-          )}
         </div>
-      )}
-    </Card>
+      </Card>
+    </TooltipProvider>
   );
 }

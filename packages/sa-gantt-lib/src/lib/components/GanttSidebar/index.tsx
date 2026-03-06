@@ -386,6 +386,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             <GanttSidebarNewCPForm
                                 columns={columns}
                                 tasks={tasks}
+                                allTasks={allTasks}
+                                selectedTaskIds={selectedTaskIds}
+                                focusedTaskId={focusedTaskId}
                                 onTaskCreate={onTaskCreate}
                                 onCancel={onCancelAddCP || (() => { })}
                                 isVirtualized={isVirtualized}
@@ -436,6 +439,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             <GanttSidebarNewCPFormUnified
                                 columns={columns}
                                 tasks={tasks}
+                                allTasks={allTasks}
+                                selectedTaskIds={selectedTaskIds}
+                                focusedTaskId={focusedTaskId}
                                 onTaskCreate={onTaskCreate}
                                 onCancel={onCancelAddCP || (() => { })}
                                 isVirtualized={isVirtualized}
@@ -447,6 +453,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                             <GanttSidebarNewTaskFormUnified
                                 columns={columns}
                                 tasks={tasks}
+                                allTasks={allTasks}
+                                selectedTaskIds={selectedTaskIds}
+                                focusedTaskId={focusedTaskId}
                                 activeCPId={activeCPId}
                                 onTaskCreate={onTaskCreate}
                                 onCancel={onCancelAddTask || (() => { })}
@@ -496,6 +505,9 @@ export const GanttSidebar = memo(forwardRef<HTMLDivElement, GanttSidebarProps>(
                         <GanttSidebarNewTaskForm
                             columns={columns}
                             tasks={tasks}
+                            allTasks={allTasks}
+                            selectedTaskIds={selectedTaskIds}
+                            focusedTaskId={focusedTaskId}
                             activeCPId={activeCPId}
                             onTaskCreate={onTaskCreate}
                             onCancel={onCancelAddTask || (() => { })}

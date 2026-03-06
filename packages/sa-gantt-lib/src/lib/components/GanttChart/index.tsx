@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useMemo, useState } from 'react';
+import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 import { KOREAN_HOLIDAYS_ALL } from '../../utils/dateUtils';
 import { GanttSidebar } from '../GanttSidebar';
 import { GanttTimeline, BarDragResult } from '../GanttTimeline';
@@ -18,6 +18,7 @@ import { useGanttVirtualization } from '../../hooks/useGanttVirtualization';
 import { useTaskFocus } from '../../hooks/useTaskFocus';
 import { useKeyboardNavigation } from '../../hooks/useKeyboardNavigation';
 import { calculateDateRange } from '../../utils/dateUtils';
+import { GanttProvider } from '../../context/GanttContext';
 import {
     GanttChartProps,
     ConstructionTask,
@@ -37,6 +38,7 @@ import {
     useSidebarColumns,
     useExpandCollapse,
     useGanttHandlers,
+    useVisibleTasks,
 } from './hooks';
 
 export type { BarDragResult };
@@ -113,6 +115,9 @@ export function GanttChart({
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [isAddingCP, setIsAddingCP] = useState(false);
     const [sidebarTotalWidth, setSidebarTotalWidth] = useState<number | null>(null);
+    const [isViewSwitching, setIsViewSwitching] = useState(false);
+    const viewSwitchRafRef = useRef<number | null>(null);
+    const viewSwitchResetRafRef = useRef<number | null>(null);
 
     // ========================================
     // Sidebar Columns Hook
@@ -184,6 +189,72 @@ export function GanttChart({
     });
 
     // ========================================
+    // View Transition Loading
+    // ========================================
+    const runViewSwitchTransition = useCallback((action: () => void) => {
+        if (typeof window === 'undefined') {
+            action();
+            return;
+        }
+
+        if (viewSwitchRafRef.current !== null) {
+            window.cancelAnimationFrame(viewSwitchRafRef.current);
+            viewSwitchRafRef.current = null;
+        }
+        if (viewSwitchResetRafRef.current !== null) {
+            window.cancelAnimationFrame(viewSwitchResetRafRef.current);
+            viewSwitchResetRafRef.current = null;
+        }
+
+        setIsViewSwitching(true);
+        viewSwitchRafRef.current = window.requestAnimationFrame(() => {
+            try {
+                action();
+            } finally {
+                viewSwitchResetRafRef.current = window.requestAnimationFrame(() => {
+                    setIsViewSwitching(false);
+                    viewSwitchRafRef.current = null;
+                    viewSwitchResetRafRef.current = null;
+                });
+            }
+        });
+    }, []);
+
+    const handleViewChangeWithLoading = useCallback((mode: 'MASTER' | 'DETAIL' | 'UNIFIED', cpId?: string) => {
+        const nextCPId = cpId ?? null;
+        const isSameMode = mode === viewMode;
+        const isSameTarget = mode !== 'DETAIL' || nextCPId === activeCPId;
+
+        if (isSameMode && isSameTarget) {
+            handleViewChange(mode, cpId);
+            return;
+        }
+
+        runViewSwitchTransition(() => {
+            handleViewChange(mode, cpId);
+        });
+    }, [activeCPId, handleViewChange, runViewSwitchTransition, viewMode]);
+
+    const handleTaskClickWithLoading = useCallback((task: ConstructionTask) => {
+        if (viewMode === 'MASTER' && task.type === 'CP') {
+            handleViewChangeWithLoading('DETAIL', task.id);
+            return;
+        }
+        handleTaskClick(task);
+    }, [viewMode, handleTaskClick, handleViewChangeWithLoading]);
+
+    useEffect(() => {
+        return () => {
+            if (viewSwitchRafRef.current !== null) {
+                window.cancelAnimationFrame(viewSwitchRafRef.current);
+            }
+            if (viewSwitchResetRafRef.current !== null) {
+                window.cancelAnimationFrame(viewSwitchResetRafRef.current);
+            }
+        };
+    }, []);
+
+    // ========================================
     // Scroll Sync Handler
     // ========================================
     const handleContentScroll = useCallback(() => {
@@ -207,91 +278,14 @@ export function GanttChart({
     });
 
     // ========================================
-    // Parent → Children Map
+    // Visible Tasks Calculation (분리 훅)
     // ========================================
-    const childrenMap = useMemo(() => {
-        const map = new Map<string | null, ConstructionTask[]>();
-        tasks.forEach(task => {
-            const parentId = task.parentId;
-            if (!map.has(parentId)) {
-                map.set(parentId, []);
-            }
-            map.get(parentId)!.push(task);
-        });
-        return map;
-    }, [tasks]);
-
-    // ========================================
-    // Visible Tasks Calculation
-    // ========================================
-    const visibleTasks = useMemo(() => {
-        if (viewMode === 'MASTER') {
-            const visible: ConstructionTask[] = [];
-            const collectVisible = (parentId: string | null) => {
-                const children = childrenMap.get(parentId) || [];
-                children.forEach(task => {
-                    // BLOCK은 wbsLevel 관계없이 표시 (최상위 레벨)
-                    if (task.type === 'BLOCK') {
-                        if (parentId === null || expandedTaskIds.has(parentId)) {
-                            visible.push(task);
-                            if (expandedTaskIds.has(task.id)) {
-                                collectVisible(task.id);  // BLOCK 하위 탐색
-                            }
-                        }
-                        return;
-                    }
-                    if (task.wbsLevel !== 1) return;
-                    if (parentId === null || expandedTaskIds.has(parentId)) {
-                        visible.push(task);
-                        if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
-                            collectVisible(task.id);
-                        }
-                    }
-                });
-            };
-            collectVisible(null);
-            return visible;
-        } else if (viewMode === 'DETAIL') {
-            const visible: ConstructionTask[] = [];
-            const collectVisible = (parentId: string | null) => {
-                const children = childrenMap.get(parentId) || [];
-                children.forEach(task => {
-                    if (task.wbsLevel !== 2) return;
-                    if (parentId === activeCPId || expandedTaskIds.has(parentId!)) {
-                        visible.push(task);
-                        if (task.type === 'GROUP') {
-                            collectVisible(task.id);
-                        }
-                    }
-                });
-            };
-            collectVisible(activeCPId!);
-            return visible;
-        } else {
-            // UNIFIED
-            const visible: ConstructionTask[] = [];
-            const collectUnified = (parentId: string | null) => {
-                const children = childrenMap.get(parentId) || [];
-                children.forEach(task => {
-                    if (task.wbsLevel === 1) {
-                        if (parentId === null || expandedTaskIds.has(parentId)) {
-                            visible.push(task);
-                            if (expandedTaskIds.has(task.id)) {
-                                collectUnified(task.id);
-                            }
-                        }
-                    } else if (task.wbsLevel === 2) {
-                        visible.push(task);
-                        if (task.type === 'GROUP' && expandedTaskIds.has(task.id)) {
-                            collectUnified(task.id);
-                        }
-                    }
-                });
-            };
-            collectUnified(null);
-            return visible;
-        }
-    }, [childrenMap, viewMode, activeCPId, expandedTaskIds]);
+    const visibleTasks = useVisibleTasks({
+        tasks,
+        viewMode,
+        activeCPId,
+        expandedTaskIds,
+    });
 
     // ========================================
     // Virtualization
@@ -356,10 +350,28 @@ export function GanttChart({
     useKeyboardNavigation({
         visibleTasks,
         viewMode,
-        onViewChange: handleViewChange,
+        onViewChange: handleViewChangeWithLoading,
         focusTask,
         onTaskEdit: handleTaskDoubleClick,
     });
+
+    const timelineConfig = useMemo(() => ({
+        holidays,
+        calendarSettings,
+    }), [holidays, calendarSettings]);
+
+    const zoomConfig = useMemo(() => ({
+        level: zoomLevel,
+        pixelsPerDay: ZOOM_CONFIG[zoomLevel].pixelsPerDay,
+        setLevel: setZoomLevel,
+    }), [zoomLevel, setZoomLevel]);
+
+    const sidebarConfig = useMemo(() => ({
+        width: sidebarWidth,
+        totalWidth: sidebarTotalWidth,
+        setWidth: setSidebarWidth,
+        setTotalWidth: setSidebarTotalWidth,
+    }), [sidebarWidth, sidebarTotalWidth, setSidebarWidth, setSidebarTotalWidth]);
 
     // ========================================
     // Shared Props for Sidebar
@@ -370,7 +382,7 @@ export function GanttChart({
         viewMode,
         expandedIds: expandedTaskIds,
         onToggle: toggleTask,
-        onTaskClick: handleTaskClick,
+        onTaskClick: handleTaskClickWithLoading,
         onTaskUpdate,
         onTaskCreate,
         onTaskReorder,
@@ -398,7 +410,7 @@ export function GanttChart({
         externalResizingIndex: sidebarResizingIndex,
         onOptimalColumnWidth: handleOptimalColumnWidth,
     }), [
-        visibleTasks, tasks, viewMode, expandedTaskIds, toggleTask, handleTaskClick,
+        visibleTasks, tasks, viewMode, expandedTaskIds, toggleTask, handleTaskClickWithLoading,
         onTaskUpdate, onTaskCreate, onTaskReorder, onTaskGroup, onTaskUngroup, onTaskBlockify,
         onTaskDelete, onTaskMove, activeCPId, holidays, calendarSettings,
         virtualRows, totalHeight, isAddingTask, isAddingCP, handleTaskDoubleClick,
@@ -447,22 +459,35 @@ export function GanttChart({
     // Render
     // ========================================
     return (
-        <div
-            ref={containerRef}
-            className={`flex h-full w-full flex-col ${className || ''}`}
-            style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
+        <GanttProvider
+            viewMode={viewMode}
+            activeCPId={activeCPId}
+            holidays={holidays}
+            calendarSettings={calendarSettings}
+            timelineConfig={timelineConfig}
+            zoomConfig={zoomConfig}
+            sidebarConfig={sidebarConfig}
+            onTaskUpdate={onTaskUpdate}
+            onTaskCreate={onTaskCreate}
+            onTaskDelete={onTaskDelete}
+            onTaskReorder={onTaskReorder}
+            onTaskGroup={onTaskGroup}
+            onTaskUngroup={onTaskUngroup}
+            onTaskMove={onTaskMove}
+            onTaskDoubleClick={handleTaskDoubleClick}
         >
+            <div
+                ref={containerRef}
+                className={`flex h-full w-full flex-col ${className || ''}`}
+                style={{ backgroundColor: 'var(--gantt-bg-secondary)', ...style }}
+            >
             <GanttHeader
-                viewMode={viewMode}
-                zoomLevel={zoomLevel}
-                activeCPId={activeCPId}
                 isAddingTask={isAddingTask}
                 isAddingCP={isAddingCP}
                 hasUnsavedChanges={hasUnsavedChanges}
                 saveStatus={saveStatus}
                 isCompactMode={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? isCompactMode : false}
-                onViewChange={handleViewChange}
-                onZoomChange={setZoomLevel}
+                onViewChange={handleViewChangeWithLoading}
                 onToggleCompact={(viewMode === 'DETAIL' || viewMode === 'UNIFIED') ? toggleCompactMode : undefined}
                 onStartAddTask={() => setIsAddingTask(true)}
                 onStartAddCP={() => setIsAddingCP(true)}
@@ -590,6 +615,34 @@ export function GanttChart({
                         <div className="fixed inset-0 z-50 cursor-col-resize" />
                     )}
                 </div>
+
+                {isViewSwitching && (
+                    <div
+                        className="absolute inset-0 z-[70] flex items-center justify-center"
+                        style={{
+                            backgroundColor: 'rgba(17, 24, 39, 0.18)',
+                            backdropFilter: 'blur(1px)',
+                        }}
+                    >
+                        <div
+                            className="flex items-center gap-2 rounded-lg px-3 py-2 shadow-sm"
+                            style={{
+                                backgroundColor: 'var(--gantt-bg-primary)',
+                                border: '1px solid var(--gantt-border)',
+                                color: 'var(--gantt-text-secondary)',
+                            }}
+                        >
+                            <span
+                                className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-transparent"
+                                style={{
+                                    borderTopColor: 'var(--gantt-focus)',
+                                    borderRightColor: 'var(--gantt-focus)',
+                                }}
+                            />
+                            <span className="text-xs font-medium">뷰 전환 중...</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <MilestoneEditModal
@@ -608,6 +661,7 @@ export function GanttChart({
                 onSave={handleTaskEditSave}
                 onDelete={onTaskDelete ? handleTaskEditDelete : undefined}
             />
-        </div>
+            </div>
+        </GanttProvider>
     );
 }

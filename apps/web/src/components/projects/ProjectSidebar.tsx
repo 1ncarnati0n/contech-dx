@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     LayoutDashboard,
+    Box,
     ListTodo,
     Users,
     FileText,
@@ -36,84 +37,29 @@ interface ProjectSidebarProps {
     onTabChange: (tab: string) => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
-    isAdmin?: boolean;
+    canViewProcessLogic?: boolean;  // 시스템 관리자 또는 프로젝트 PM
 }
 
-export function ProjectSidebar({
+interface MenuButtonProps {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    isActive: boolean;
+    onClick: () => void;
+    isCollapsed: boolean;
+    hasSubmenu?: boolean;
+    isExpanded?: boolean;
+}
+
+function MenuButton({
+    label,
+    icon: Icon,
+    isActive,
+    onClick,
     isCollapsed,
-    isPinned,
-    onTogglePin,
-    project,
-    activeTab,
-    onTabChange,
-    onMouseEnter,
-    onMouseLeave,
-    isAdmin = false,
-}: ProjectSidebarProps) {
-    const [isDataInputExpanded, setIsDataInputExpanded] = useState(
-        activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data'
-    );
-    const [isProcessPlanExpanded, setIsProcessPlanExpanded] = useState(
-        activeTab === 'process_logic' || activeTab === 'basement_process_plan' || activeTab === 'building_process_plan' || activeTab === 'gantt_chart'
-    );
-
-    const menuItems = [
-        { id: 'overview', label: '개요', icon: LayoutDashboard },
-        { id: 'process_plan', label: '공정계획', icon: ListTodo },
-        { id: 'team', label: '팀', icon: Users },
-        { id: 'documents', label: '문서', icon: FileText },
-        { id: 'settings', label: '설정', icon: Settings },
-    ];
-
-    const dataInputSubItems = [
-        { id: 'pouring_section_review', label: '타설구간 개략검토', icon: Calculator },
-        { id: 'data_input', label: '동 기본 정보', icon: Database },
-        { id: 'quantity_input', label: '물량 입력', icon: Package },
-        { id: 'detailed_quantity_input', label: '상세물량입력', icon: Package },
-        { id: 'geological_data', label: '지질 데이터 입력', icon: Layers },
-    ];
-
-    const processPlanSubItems = [
-        { id: 'process_logic', label: '공정로직', icon: Calculator, adminOnly: true },
-        { id: 'building_process_plan', label: '동별 공정계획', icon: Building, adminOnly: false },
-        { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building, adminOnly: false },
-        { id: 'gantt_chart', label: '간트차트', icon: BarChart3, adminOnly: false },
-    ];
-
-    const isDataInputActive = activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data';
-    const isProcessPlanActive = activeTab === 'process_logic' || activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
-    const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
-
-    // activeTab이 변경될 때 확장 상태 업데이트
-    useEffect(() => {
-        if (isDataInputActive && !isDataInputExpanded) {
-            setIsDataInputExpanded(true);
-        }
-        if (isProcessPlanActive && !isProcessPlanExpanded) {
-            setIsProcessPlanExpanded(true);
-        }
-    }, [activeTab, isDataInputActive, isDataInputExpanded, isProcessPlanActive, isProcessPlanExpanded]);
-
-    // 접힌 상태에서도 서브메뉴 확장 상태 유지 (제거됨)
-
-    // 메뉴 버튼 공통 컴포넌트
-    const MenuButton = ({
-        id,
-        label,
-        icon: Icon,
-        isActive,
-        onClick,
-        hasSubmenu = false,
-        isExpanded = false,
-    }: {
-        id: string;
-        label: string;
-        icon: React.ComponentType<{ className?: string }>;
-        isActive: boolean;
-        onClick: () => void;
-        hasSubmenu?: boolean;
-        isExpanded?: boolean;
-    }) => (
+    hasSubmenu = false,
+    isExpanded = false,
+}: MenuButtonProps) {
+    return (
         <button
             onClick={onClick}
             title={isCollapsed ? label : undefined}
@@ -140,6 +86,51 @@ export function ProjectSidebar({
             )}
         </button>
     );
+}
+
+export function ProjectSidebar({
+    isCollapsed,
+    isPinned,
+    onTogglePin,
+    project,
+    activeTab,
+    onTabChange,
+    onMouseEnter,
+    onMouseLeave,
+    canViewProcessLogic = false,
+}: ProjectSidebarProps) {
+    // 모든 서브메뉴를 디폴트로 펼친 상태로 설정
+    const [isDataInputExpandedByUser, setIsDataInputExpandedByUser] = useState(true);
+    const [isProcessPlanExpandedByUser, setIsProcessPlanExpandedByUser] = useState(true);
+
+    const menuItems = [
+        { id: 'overview', label: '개요', icon: LayoutDashboard },
+        { id: 'process_plan', label: '공정계획', icon: ListTodo },
+        { id: 'team', label: '팀', icon: Users },
+        { id: 'documents', label: '문서', icon: FileText },
+        { id: 'settings', label: '설정', icon: Settings },
+    ];
+
+    const dataInputSubItems = [
+        { id: 'pouring_section_review', label: '타설구간검토', icon: Calculator },
+        { id: 'data_input', label: '동 기본 정보', icon: Database },
+        { id: 'quantity_input', label: '물량 입력', icon: Package },
+        { id: 'detailed_quantity_input', label: '상세물량입력', icon: Package },
+        { id: 'geological_data', label: '지질 데이터 입력', icon: Layers },
+    ];
+
+    const processPlanSubItems = [
+        { id: 'process_logic', label: '공정로직', icon: Calculator, adminOnly: true },
+        { id: 'basement_process_plan', label: '지하층 공정계획', icon: Building, adminOnly: false },
+        { id: 'building_process_plan', label: '지상층 공정계획', icon: Building, adminOnly: false },
+        { id: 'gantt_chart', label: '간트차트', icon: BarChart3, adminOnly: false },
+    ];
+
+    const isDataInputActive = activeTab === 'pouring_section_review' || activeTab === 'data_input' || activeTab === 'quantity_input' || activeTab === 'detailed_quantity_input' || activeTab === 'geological_data';
+    const isProcessPlanActive = activeTab === 'process_logic' || activeTab === 'building_process_plan' || activeTab === 'basement_process_plan' || activeTab === 'gantt_chart';
+    const isUnitRateActive = activeTab === 'planned_unit_rate' || activeTab === 'executed_unit_rate';
+    const isDataInputExpanded = isDataInputActive || isDataInputExpandedByUser;
+    const isProcessPlanExpanded = isProcessPlanActive || isProcessPlanExpandedByUser;
 
     return (
         <div
@@ -157,7 +148,7 @@ export function ProjectSidebar({
                         title={isPinned ? '사이드바 고정 해제' : '사이드바 고정'}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                             isPinned
-                                ? 'bg-[#ffff1d]/50 text-zinc-900 dark:bg-[#ffff1d]/60 dark:text-zinc-900'
+                                ? 'text-zinc-700 dark:text-zinc-200'
                                 : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                     >
@@ -180,21 +171,29 @@ export function ProjectSidebar({
             <div className={`flex-1 overflow-y-auto py-4 space-y-1 ${isCollapsed ? 'px-2' : 'px-3'}`}>
                 {/* Overview */}
                 <MenuButton
-                    id="overview"
                     label="개요"
                     icon={LayoutDashboard}
                     isActive={activeTab === 'overview'}
                     onClick={() => onTabChange('overview')}
+                    isCollapsed={isCollapsed}
+                />
+
+                <MenuButton
+                    label="IFC 뷰어"
+                    icon={Box}
+                    isActive={activeTab === 'ifc_viewer'}
+                    onClick={() => onTabChange('ifc_viewer')}
+                    isCollapsed={isCollapsed}
                 />
 
                 {/* 데이터 입력 확장 메뉴 */}
                 <div className="space-y-1">
                     <MenuButton
-                        id="data_input_group"
                         label="데이터 입력"
                         icon={Database}
                         isActive={isDataInputActive}
-                        onClick={() => setIsDataInputExpanded(!isDataInputExpanded)}
+                        onClick={() => setIsDataInputExpandedByUser(!isDataInputExpanded)}
+                        isCollapsed={isCollapsed}
                         hasSubmenu={true}
                         isExpanded={isDataInputExpanded}
                     />
@@ -228,11 +227,11 @@ export function ProjectSidebar({
                 {/* 공정계획 확장 메뉴 */}
                 <div className="space-y-1">
                     <MenuButton
-                        id="process_plan_group"
                         label="공정계획"
                         icon={ListTodo}
                         isActive={isProcessPlanActive}
-                        onClick={() => setIsProcessPlanExpanded(!isProcessPlanExpanded)}
+                        onClick={() => setIsProcessPlanExpandedByUser(!isProcessPlanExpanded)}
+                        isCollapsed={isCollapsed}
                         hasSubmenu={true}
                         isExpanded={isProcessPlanExpanded}
                     />
@@ -241,11 +240,11 @@ export function ProjectSidebar({
                     {isProcessPlanExpanded && (
                         <div className={`space-y-1 ${isCollapsed ? 'pl-1' : 'ml-4 border-l border-zinc-200 dark:border-zinc-700 pl-2'}`}>
                             {processPlanSubItems
-                                .filter(item => !item.adminOnly || isAdmin)
+                                .filter(item => !item.adminOnly || canViewProcessLogic)
                                 .map((item) => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id;
-                                const isAdminItem = item.adminOnly;
+                                const isRestrictedItem = item.adminOnly;  // PM/관리자 전용 메뉴
                                 return (
                                     <button
                                         key={item.id}
@@ -253,20 +252,20 @@ export function ProjectSidebar({
                                         title={isCollapsed ? item.label : undefined}
                                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                             isActive
-                                                ? isAdminItem
+                                                ? isRestrictedItem
                                                     ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
                                                     : 'bg-[#ffff1d]/70 text-zinc-900 dark:bg-[#ffff1d]/80 dark:text-zinc-900'
-                                                : isAdminItem
+                                                : isRestrictedItem
                                                     ? 'text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-700 dark:hover:text-orange-300'
                                                     : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                                         } ${isCollapsed ? 'justify-center' : ''}`}
                                     >
                                         <Icon className={`w-4 h-4 shrink-0 ${
                                             isActive
-                                                ? isAdminItem
+                                                ? isRestrictedItem
                                                     ? 'text-orange-600 dark:text-orange-300'
                                                     : 'text-zinc-900 dark:text-zinc-900'
-                                                : isAdminItem
+                                                : isRestrictedItem
                                                     ? 'text-orange-500 dark:text-orange-400'
                                                     : 'text-zinc-400'
                                         }`} />
@@ -280,22 +279,22 @@ export function ProjectSidebar({
 
                 {/* 단가 입력 메뉴 */}
                 <MenuButton
-                    id="planned_unit_rate"
                     label="단가 입력"
                     icon={DollarSign}
                     isActive={isUnitRateActive}
                     onClick={() => onTabChange('planned_unit_rate')}
+                    isCollapsed={isCollapsed}
                 />
 
                 {/* 나머지 메뉴 아이템들 */}
                 {menuItems.slice(2).map((item) => (
                     <MenuButton
                         key={item.id}
-                        id={item.id}
                         label={item.label}
                         icon={item.icon}
                         isActive={activeTab === item.id}
                         onClick={() => onTabChange(item.id)}
+                        isCollapsed={isCollapsed}
                     />
                 ))}
             </div>

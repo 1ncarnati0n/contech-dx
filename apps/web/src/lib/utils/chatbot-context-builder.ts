@@ -2,7 +2,7 @@
  * 챗봇 컨텍스트 수집 및 구조화 유틸리티
  */
 
-import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
+import type { BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
 import type {
   ChatContextSnapshot,
   ProcessPlanChatContext,
@@ -10,7 +10,7 @@ import type {
   ValidationWarning,
 } from '@/components/buildings/ProcessPlanChatbotTypes';
 
-const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '지하층', '셋팅층', '기준층', 'PH층', '옥탑층'];
+const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '주동 지하층', '셋팅층', '기준층', '최상층', '옥탑층'];
 
 /**
  * 현재 공정계획 상태에서 컨텍스트 스냅샷을 생성합니다.
@@ -27,13 +27,13 @@ export function buildChatContext(
   // 건물 정보
   const buildingInfo = building
     ? {
-        name: building.buildingName,
-        totalUnits: building.meta?.totalUnits,
-        coreCount: building.meta?.coreCount,
-        coreType: building.meta?.coreType,
-        slabType: building.meta?.slabType,
-        floorCount: building.floors?.length || 0,
-      }
+      name: building.buildingName,
+      totalUnits: building.meta?.totalUnits,
+      coreCount: building.meta?.coreCount,
+      coreType: building.meta?.coreType,
+      slabType: building.meta?.slabType,
+      floorCount: building.floors?.length || 0,
+    }
     : {};
 
   // 물량 요약
@@ -133,21 +133,27 @@ function extractProcessPlanSummary(
   const selectedTypes: Record<ProcessCategory, ProcessType | null> = {
     '버림': null,
     '기초': null,
-    '지하층': null,
+    '주동 지하층': null,
+    '지하층(층고6.5m이상)': null,
     '셋팅층': null,
     '기준층': null,
-    'PH층': null,
+    '최상층': null,
     '옥탑층': null,
+    '지하주차장': null,
+    '일반층': null,
   };
 
   const calculatedDaysRecord: Record<ProcessCategory, number | null> = {
     '버림': null,
     '기초': null,
-    '지하층': null,
+    '주동 지하층': null,
+    '지하층(층고6.5m이상)': null,
     '셋팅층': null,
     '기준층': null,
-    'PH층': null,
+    '최상층': null,
     '옥탑층': null,
+    '지하주차장': null,
+    '일반층': null,
   };
 
   let totalDays = 0;

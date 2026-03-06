@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 
 export interface Dimensions {
   width: number;
@@ -71,10 +71,18 @@ export function useResizableSidebar(
     constraints: customConstraints = {},
   } = options;
 
-  const constraints: ResizeConstraints = {
-    ...DEFAULT_CONSTRAINTS,
-    ...customConstraints,
-  };
+  const constraints: ResizeConstraints = useMemo(
+    () => ({
+      ...DEFAULT_CONSTRAINTS,
+      ...customConstraints,
+      maxHeight:
+        customConstraints.maxHeight ??
+        (typeof window !== 'undefined'
+          ? window.innerHeight - HEADER_AND_MARGIN
+          : DEFAULT_CONSTRAINTS.maxHeight),
+    }),
+    [customConstraints]
+  );
 
   // 초기 크기를 localStorage에서 불러오기
   const getInitialDimensions = (): Dimensions => {
@@ -111,10 +119,10 @@ export function useResizableSidebar(
   // 크기 제약 업데이트 (화면 크기 변경 시)
   useEffect(() => {
     const handleWindowResize = () => {
-      constraints.maxHeight = window.innerHeight - HEADER_AND_MARGIN;
+      const maxHeight = window.innerHeight - HEADER_AND_MARGIN;
       setDimensions(prev => ({
         width: clamp(prev.width, constraints.minWidth, constraints.maxWidth),
-        height: clamp(prev.height, constraints.minHeight, constraints.maxHeight),
+        height: clamp(prev.height, constraints.minHeight, maxHeight),
       }));
     };
 

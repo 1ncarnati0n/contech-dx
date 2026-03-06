@@ -11,7 +11,9 @@ import { ProjectCreateModal } from './ProjectCreateModal';
 import type { Project, ProjectStatus } from '@/lib/types';
 import { getProjects } from '@/lib/services/projects';
 import { useAsyncList } from '@/lib/hooks';
-import { logger, getStatusOptions } from '@/lib/utils/index';
+import { getStatusOptions } from '@/lib/utils/index';
+import { projectsCache } from '@/lib/services/cache';
+import { useRealtimeCacheSync } from '@/lib/hooks/useRealtimeCacheSync';
 
 interface ProjectListProps {
   isAdmin?: boolean;
@@ -23,6 +25,12 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
 
   // useAsyncList 훅으로 데이터 fetching 단순화
   const { data: projects, loading, refetch: loadProjects } = useAsyncList<Project>(getProjects);
+
+  useRealtimeCacheSync({
+    table: 'projects',
+    cache: projectsCache,
+    onInvalidate: loadProjects,
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
@@ -49,12 +57,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
     if (!projects) return [];
     let filtered = [...projects];
 
-    logger.debug('🔍 ProjectList Filter:', {
-      isAdmin,
-      totalProjects: projects.length,
-    });
-
-
     // 검색 필터
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -72,9 +74,8 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
       filtered = filtered.filter((p) => p.status === statusFilter);
     }
 
-    logger.debug('  - Filtered projects:', filtered.length);
     return filtered;
-  }, [projects, searchQuery, statusFilter, isAdmin]);
+  }, [projects, searchQuery, statusFilter]);
 
   // 상태 옵션 (관리자는 테스트 상태 포함)
   const statusOptions = useMemo(() => {

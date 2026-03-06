@@ -196,7 +196,10 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
             if (prev.past.length === 0) return prev;
 
             const newPast = [...prev.past];
-            const lastEntry = newPast.pop()!;
+            const lastEntry = newPast.pop();
+            if (!lastEntry) {
+                return prev;
+            }
 
             // inversePatches 적용하여 이전 상태 복원
             const previousState = applyPatches(prev.present as object, lastEntry.undo) as T;
@@ -218,7 +221,10 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
             if (prev.future.length === 0) return prev;
 
             const newFuture = [...prev.future];
-            const nextEntry = newFuture.shift()!;
+            const nextEntry = newFuture.shift();
+            if (!nextEntry) {
+                return prev;
+            }
 
             // patches 적용하여 다음 상태 복원
             const nextState = applyPatches(prev.present as object, nextEntry.redo) as T;

@@ -4,6 +4,7 @@
  */
 
 import type { FileSearchStore, UploadedFile, SearchMessage } from '@/lib/types';
+import { getApiErrorMessage } from '@/lib/utils/api-error';
 
 // 타입 re-export (하위 호환성)
 export type { FileSearchStore, UploadedFile, SearchMessage };
@@ -17,7 +18,7 @@ export async function listStores(): Promise<FileSearchStore[]> {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '스토어 목록 조회 실패');
+    throw new Error(getApiErrorMessage(data.error, '스토어 목록 조회 실패'));
   }
 
   return data.stores || [];
@@ -40,7 +41,7 @@ export async function createStore(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '스토어 생성 실패');
+    throw new Error(getApiErrorMessage(data.error, '스토어 생성 실패'));
   }
 
   return data.store;
@@ -60,7 +61,7 @@ export async function deleteStore(storeName: string): Promise<void> {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '스토어 삭제 실패');
+    throw new Error(getApiErrorMessage(data.error, '스토어 삭제 실패'));
   }
 }
 
@@ -77,7 +78,7 @@ export async function getStore(storeName: string): Promise<FileSearchStore> {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '스토어 조회 실패');
+    throw new Error(getApiErrorMessage(data.error, '스토어 조회 실패'));
   }
 
   return data.store;
@@ -96,7 +97,7 @@ export async function listFiles(storeName: string): Promise<UploadedFile[]> {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '파일 목록 조회 실패');
+    throw new Error(getApiErrorMessage(data.error, '파일 목록 조회 실패'));
   }
 
   return data.files || [];
@@ -135,10 +136,15 @@ export async function uploadFile(
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         const data = JSON.parse(xhr.responseText);
-        resolve(data.file);
+        const uploaded = data.files?.[0] || data.file;
+        if (!uploaded) {
+          reject(new Error('업로드 결과를 확인할 수 없습니다.'));
+          return;
+        }
+        resolve(uploaded);
       } else {
         const data = JSON.parse(xhr.responseText);
-        reject(new Error(data.error || '파일 업로드 실패'));
+        reject(new Error(getApiErrorMessage(data.error, '파일 업로드 실패')));
       }
     });
 
@@ -177,12 +183,12 @@ export async function searchDocuments(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || '검색 실패');
+    throw new Error(getApiErrorMessage(data.error, '검색 실패'));
   }
 
   return {
     role: 'assistant',
-    content: data.response,
+    content: data.answer,
     citations: data.citations,
   };
 }

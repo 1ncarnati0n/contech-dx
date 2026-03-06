@@ -154,7 +154,7 @@ export function getPageTypeLabel(pageType: PageType): string {
     projects: '프로젝트 목록',
     'project-detail': '프로젝트 상세',
     'project-gantt': '간트 차트',
-    'building-process-plan': '동별 공정계획',
+    'building-process-plan': '지상층 공정계획',
     'basement-process-plan': '지하층 공정계획',
     posts: '게시판',
     'post-detail': '게시글',

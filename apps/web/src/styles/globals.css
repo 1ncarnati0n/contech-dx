@@ -281,6 +281,13 @@ body::before {
     @apply w-5 h-5 rounded-full border-2 border-zinc-200 border-t-accent-600 animate-spin;
   }
 
+  .route-loading-bar {
+    @apply h-full bg-black dark:bg-white;
+    width: 100%;
+    animation: routeLoading 800ms ease-out forwards;
+    will-change: transform, opacity;
+  }
+
   /* Prose Pre 스타일 리셋 - Typography 플러그인 기본 스타일 제거 */
   .prose pre {
     @apply bg-transparent p-0 m-0;
@@ -316,6 +323,21 @@ body::before {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes routeLoading {
+  0% {
+    transform: translateX(-100%);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
   }
 }
 

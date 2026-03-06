@@ -38,17 +38,12 @@ export default defineConfig({
     } : {
         lib: {
             entry: resolve(__dirname, 'src/lib/index.ts'),
-            name: 'SaGanttLib',
-            fileName: (format) => `index.${format}.js`,
+            formats: ['es', 'cjs'],
+            fileName: (format) => format === 'es' ? 'index.es.js' : 'index.cjs',
         },
         rollupOptions: {
             external: ['react', 'react-dom', 'tailwindcss'],
             output: {
-                globals: {
-                    react: 'React',
-                    'react-dom': 'ReactDOM',
-                    tailwindcss: 'tailwindcss'
-                },
                 banner: '"use client";',
             },
         },

@@ -83,6 +83,9 @@ export function getStatusIcon(status: ProjectStatus): string {
  * @returns 상태 배열
  */
 export function getAllProjectStatuses(includeTest = false): ProjectStatus[] {
+  if (includeTest) {
+    return ['announcement', 'bidding', 'award', 'construction_start', 'completion'];
+  }
   const statuses: ProjectStatus[] = ['announcement', 'bidding', 'award', 'construction_start', 'completion'];
   return statuses;
 }
@@ -98,4 +101,3 @@ export function getStatusOptions(includeTest = false): Array<{ value: ProjectSta
     label: getStatusLabel(status),
   }));
 }
-

@@ -4,7 +4,8 @@
  */
 
 import type { HighlightTarget, HighlightTargetKey } from '@/components/buildings/ProcessPlanChatbotTypes';
-import { HIGHLIGHT_REGISTRY, getHighlightTarget, getHighlightTargets } from './highlight-registry';
+import { getHighlightTarget, getHighlightTargets } from './highlight-registry';
+import { logger } from '@/lib/utils/logger';
 
 const HIGHLIGHT_CLASS = 'process-plan-highlight';
 const ACTIVE_HIGHLIGHT_CLASS = 'process-plan-highlight-active';
@@ -15,7 +16,7 @@ const ACTIVE_HIGHLIGHT_CLASS = 'process-plan-highlight-active';
 export function highlightElement(selector: string): HTMLElement | null {
   const element = document.querySelector(selector) as HTMLElement;
   if (!element) {
-    console.warn(`[highlightElement] Element not found: ${selector}`);
+    logger.warn(`[highlightElement] Element not found: ${selector}`);
     return null;
   }
 
@@ -81,7 +82,7 @@ export function highlightTargets(targets: HighlightTarget[]): HTMLElement[] {
 export function highlightByKey(key: HighlightTargetKey): HTMLElement | null {
   const target = getHighlightTarget(key);
   if (!target) {
-    console.warn(`[highlightByKey] Target not found in registry: ${key}`);
+    logger.warn(`[highlightByKey] Target not found in registry: ${key}`);
     return null;
   }
   return highlightElement(target.selector);

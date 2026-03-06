@@ -62,8 +62,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [indirectWorkDaysPostStr, setIndirectWorkDaysPostStr] = useState('0');
 
     // 작업명 상태
+    const [taskName, setTaskName] = useState('');
     const [indirectWorkNamePre, setIndirectWorkNamePre] = useState('');
     const [indirectWorkNamePost, setIndirectWorkNamePost] = useState('');
+
+    // 산출 근거 상태
+    const [quantityStr, setQuantityStr] = useState('');
+    const [unitStr, setUnitStr] = useState('');
+    const [dailyOutputStr, setDailyOutputStr] = useState('');
+    const [crewStr, setCrewStr] = useState('');
 
     // 작업일 설정 상태
     const [saturdayOff, setSaturdayOff] = useState(false);
@@ -92,11 +99,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     // Task 데이터로 폼 초기화
     useEffect(() => {
         if (task && task.task && isOpen) {
+            setTaskName(task.name);
             setIndirectWorkDaysPreStr(String(task.task.indirectWorkDaysPre));
             setNetWorkDaysStr(String(task.task.netWorkDays));
             setIndirectWorkDaysPostStr(String(task.task.indirectWorkDaysPost));
             setIndirectWorkNamePre(task.task.indirectWorkNamePre || '');
             setIndirectWorkNamePost(task.task.indirectWorkNamePost || '');
+
+            // 산출 근거 초기화
+            setQuantityStr(task.task.quantity != null ? String(task.task.quantity) : '');
+            setUnitStr(task.task.unit || '');
+            setDailyOutputStr(task.task.dailyOutput != null ? String(task.task.dailyOutput) : '');
+            setCrewStr(task.task.crew != null ? String(task.task.crew) : '');
 
             setSaturdayOff(task.task.workOnSaturdays === false);
             setSundayWork(task.task.workOnSundays === true);
@@ -109,7 +123,25 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 preInputRef.current?.focus();
             }, 100);
         }
-    }, [task?.id, isOpen]);
+    }, [
+        isOpen,
+        task,
+        task?.id,
+        task?.name,
+        task?.startDate,
+        task?.task?.indirectWorkDaysPre,
+        task?.task?.netWorkDays,
+        task?.task?.indirectWorkDaysPost,
+        task?.task?.indirectWorkNamePre,
+        task?.task?.indirectWorkNamePost,
+        task?.task?.quantity,
+        task?.task?.unit,
+        task?.task?.dailyOutput,
+        task?.task?.crew,
+        task?.task?.workOnSaturdays,
+        task?.task?.workOnSundays,
+        task?.task?.workOnHolidays,
+    ]);
 
     // ESC 키로 닫기
     useEffect(() => {
@@ -139,20 +171,38 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             currentPre !== task.task.indirectWorkDaysPre ||
             currentNet !== task.task.netWorkDays ||
             currentPost !== task.task.indirectWorkDaysPost ||
+            taskName.trim() !== task.name ||
             indirectWorkNamePre !== (task.task.indirectWorkNamePre || '') ||
             indirectWorkNamePost !== (task.task.indirectWorkNamePost || '') ||
             (saturdayOff !== (task.task.workOnSaturdays === false)) ||
             (sundayWork !== (task.task.workOnSundays === true)) ||
             (holidayWork !== (task.task.workOnHolidays === true)) ||
-            startDateStr !== format(task.startDate, 'yyyy-MM-dd')
+            startDateStr !== format(task.startDate, 'yyyy-MM-dd') ||
+            quantityStr !== (task.task.quantity != null ? String(task.task.quantity) : '') ||
+            dailyOutputStr !== (task.task.dailyOutput != null ? String(task.task.dailyOutput) : '') ||
+            crewStr !== (task.task.crew != null ? String(task.task.crew) : '')
         );
-    }, [task, isOpen, indirectWorkDaysPreStr, netWorkDaysStr, indirectWorkDaysPostStr,
-        indirectWorkNamePre, indirectWorkNamePost, saturdayOff, sundayWork, holidayWork, startDateStr]);
+    }, [task, isOpen, taskName, indirectWorkDaysPreStr, netWorkDaysStr, indirectWorkDaysPostStr,
+        indirectWorkNamePre, indirectWorkNamePost, saturdayOff, sundayWork, holidayWork, startDateStr,
+        quantityStr, dailyOutputStr, crewStr]);
 
     const handleSave = async () => {
         if (!task || !task.task || isSaving) return;
 
+        const trimmedTaskName = taskName.trim();
+        if (!trimmedTaskName) {
+            alert('순작업일 공정명을 입력해주세요.');
+            return;
+        }
+
         const newStartDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : task.startDate;
+
+        const parsedQuantity = quantityStr ? parseFloat(quantityStr) : undefined;
+        const parsedDailyOutput = dailyOutputStr ? parseFloat(dailyOutputStr) : undefined;
+        const parsedCrew = crewStr ? parseInt(crewStr, 10) : undefined;
+        const computedTotalWorkers = (parsedCrew && netWorkDays > 0)
+            ? Math.ceil(netWorkDays) * parsedCrew
+            : undefined;
 
         const updatedTaskData: TaskData = {
             ...task.task,
@@ -164,10 +214,16 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             workOnSaturdays: saturdayOff ? false : undefined,
             workOnSundays: sundayWork ? true : undefined,
             workOnHolidays: holidayWork ? true : undefined,
+            quantity: parsedQuantity,
+            unit: unitStr || undefined,
+            dailyOutput: parsedDailyOutput,
+            crew: parsedCrew,
+            totalWorkers: computedTotalWorkers,
         };
 
         const updatedTask: ConstructionTask = {
             ...task,
+            name: trimmedTaskName,
             startDate: newStartDate,
             task: updatedTaskData,
         };
@@ -222,6 +278,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     if (!isOpen || !task || !task.task) return null;
 
     const totalDays = indirectWorkDaysPre + netWorkDays + indirectWorkDaysPost;
+    const isTaskNameValid = taskName.trim().length > 0;
+
+    // 산출 근거가 있는지 확인 (하나라도 값이 있으면 섹션 표시)
+    const hasProductionBasis = task.task.quantity != null || task.task.dailyOutput != null || task.task.crew != null;
+    const parsedCrewDisplay = crewStr ? parseInt(crewStr, 10) : 0;
+    const computedTotalWorkersDisplay = (parsedCrewDisplay > 0 && netWorkDays > 0)
+        ? Math.ceil(netWorkDays) * parsedCrewDisplay
+        : 0;
 
     return (
         <>
@@ -257,7 +321,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 className="text-sm mt-0.5"
                                 style={{ color: 'var(--gantt-text-muted)' }}
                             >
-                                {task.name}
+                                {taskName || task.name}
                             </p>
                         </div>
                         <button
@@ -302,7 +366,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                             <h3 style={sectionTitleStyle}>⏱️ 작업 기간</h3>
                             <div className="space-y-3">
                                 <CompactInputRow
-                                    label="앞 간접"
+                                    label="선간접일"
                                     daysValue={indirectWorkDaysPreStr}
                                     nameValue={indirectWorkNamePre}
                                     onDaysChange={setIndirectWorkDaysPreStr}
@@ -313,16 +377,24 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                     color="blue"
                                 />
                                 <CompactInputRow
-                                    label="순작업"
+                                    label="순작업일"
                                     daysValue={netWorkDaysStr}
+                                    nameValue={taskName}
                                     onDaysChange={setNetWorkDaysStr}
+                                    onNameChange={setTaskName}
                                     onKeyDown={handleKeyDown}
                                     onNumberChange={handleNumberChange}
                                     color="red"
-                                    showNameInput={false}
+                                    namePlaceholder="공정명 (필수)"
+                                    nameRequired
                                 />
+                                {!isTaskNameValid && (
+                                    <p className="text-xs text-red-600">
+                                        순작업일 공정명은 필수 입력입니다.
+                                    </p>
+                                )}
                                 <CompactInputRow
-                                    label="뒤 간접"
+                                    label="후간접일"
                                     daysValue={indirectWorkDaysPostStr}
                                     nameValue={indirectWorkNamePost}
                                     onDaysChange={setIndirectWorkDaysPostStr}
@@ -333,6 +405,112 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 />
                             </div>
                         </div>
+
+                        {/* 산출 근거 섹션 (데이터가 있을 때만 표시) */}
+                        {hasProductionBasis && (
+                            <div style={sectionCardStyle}>
+                                <h3 style={sectionTitleStyle}>📊 산출 근거</h3>
+                                <div className="space-y-2.5">
+                                    {/* 수량 + 단위 */}
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className="text-sm w-20 shrink-0"
+                                            style={{ color: 'var(--gantt-text-secondary)' }}
+                                        >
+                                            수량
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={quantityStr}
+                                            onChange={(e) => handleNumberChange(setQuantityStr, e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className={`${INPUT_BASE} ${FOCUS_GREEN} w-28`}
+                                            style={inputStyle}
+                                            placeholder="0"
+                                        />
+                                        <span
+                                            className="text-sm shrink-0"
+                                            style={{ color: 'var(--gantt-text-muted)' }}
+                                        >
+                                            {unitStr || '-'}
+                                        </span>
+                                    </div>
+                                    {/* 인당생산성 */}
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className="text-sm w-20 shrink-0"
+                                            style={{ color: 'var(--gantt-text-secondary)' }}
+                                        >
+                                            인당생산성
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={dailyOutputStr}
+                                            onChange={(e) => handleNumberChange(setDailyOutputStr, e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className={`${INPUT_BASE} ${FOCUS_GREEN} w-28`}
+                                            style={inputStyle}
+                                            placeholder="0"
+                                        />
+                                        <span
+                                            className="text-xs shrink-0"
+                                            style={{ color: 'var(--gantt-text-muted)' }}
+                                        >
+                                            {unitStr ? `${unitStr}/인·일` : '-'}
+                                        </span>
+                                    </div>
+                                    {/* 1일투입인원 */}
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className="text-sm w-20 shrink-0"
+                                            style={{ color: 'var(--gantt-text-secondary)' }}
+                                        >
+                                            1일투입인원
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={crewStr}
+                                            onChange={(e) => handleNumberChange(setCrewStr, e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className={`${INPUT_BASE} ${FOCUS_GREEN} w-28`}
+                                            style={inputStyle}
+                                            placeholder="0"
+                                        />
+                                        <span
+                                            className="text-sm shrink-0"
+                                            style={{ color: 'var(--gantt-text-muted)' }}
+                                        >
+                                            명
+                                        </span>
+                                    </div>
+                                    {/* 총투입인원 (읽기전용, 자동계산) */}
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className="text-sm w-20 shrink-0"
+                                            style={{ color: 'var(--gantt-text-secondary)' }}
+                                        >
+                                            총투입인원
+                                        </span>
+                                        <div
+                                            className="w-28 rounded-md border px-3 py-2 text-sm"
+                                            style={{
+                                                backgroundColor: 'var(--gantt-bg-tertiary)',
+                                                borderColor: 'var(--gantt-border)',
+                                                color: 'var(--gantt-text-muted)',
+                                            }}
+                                        >
+                                            {computedTotalWorkersDisplay || '-'}
+                                        </div>
+                                        <span
+                                            className="text-xs shrink-0"
+                                            style={{ color: 'var(--gantt-text-muted)' }}
+                                        >
+                                            명 (자동계산)
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* 작업일 설정 섹션 */}
                         <div style={sectionCardStyle}>
@@ -415,8 +593,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         {/* 저장/닫기 버튼 */}
                         <button
                             onClick={hasChanges ? handleSave : onClose}
+                            disabled={hasChanges && (!isTaskNameValid || isSaving)}
                             className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-all shadow-sm ${hasChanges
-                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none'
                                 : 'bg-gray-600 text-white hover:bg-gray-700'
                                 }`}
                         >

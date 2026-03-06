@@ -104,8 +104,8 @@ describe('Button', () => {
       render(<Button icon={icon}>With Icon</Button>);
 
       const button = screen.getByRole('button');
-      const iconElement = screen.getByTestId('icon');
-      const text = screen.getByText('With Icon');
+      screen.getByTestId('icon');
+      screen.getByText('With Icon');
 
       // Icon should come before text
       expect(button.innerHTML.indexOf('icon')).toBeLessThan(

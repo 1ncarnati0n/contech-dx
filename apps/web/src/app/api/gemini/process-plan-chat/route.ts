@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { withValidation } from '@/lib/api/withValidation';
 import { buildFullSystemPrompt } from '@/lib/data/chatbot-prompts';
 import { parseHighlightMarkersEnhanced } from '@/lib/utils/highlight-registry';
 import { geminiModelRequest } from '@/lib/utils/geminiApi';
-import { checkAuth } from '@/lib/utils/apiAuth';
+import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
+import { logger } from '@/lib/utils/logger';
 import type {
   ChatContextSnapshot,
   ChatbotError,
-  ChatbotErrorType,
-  HighlightTarget,
 } from '@/components/buildings/ProcessPlanChatbotTypes';
 
 interface CitationSource {
@@ -32,6 +33,24 @@ interface ProcessPlanChatRequest {
     content: string;
   }>;
 }
+
+const historySchema = z.object({
+  role: z.enum(['user', 'model']),
+  content: z.string().trim().min(1),
+});
+
+const processPlanChatBodySchema = z.object({
+  query: z.string().trim().min(1, '질문을 입력해주세요.').max(3000),
+  context: z.object({
+    page: z.enum(['building', 'basement']),
+    buildingId: z.string().optional(),
+    projectId: z.string().trim().min(1, '프로젝트 ID가 필요합니다.'),
+    processPlan: z.unknown().optional(),
+    selectedProcessType: z.string().optional(),
+  }),
+  contextSnapshot: z.unknown().optional(),
+  history: z.array(historySchema).max(30).optional(),
+});
 
 /**
  * 에러 타입 분류
@@ -106,6 +125,22 @@ function classifyError(error: unknown, status?: number): ChatbotError {
   };
 }
 
+function mapChatbotErrorToApiCode(error: ChatbotError): ErrorCode {
+  switch (error.type) {
+    case 'API_RATE_LIMIT':
+      return ErrorCode.LIMIT_EXCEEDED;
+    case 'INVALID_RESPONSE':
+    case 'CONTEXT_TOO_LARGE':
+      return ErrorCode.INVALID_INPUT;
+    case 'NETWORK_ERROR':
+    case 'API_OVERLOADED':
+    case 'TIMEOUT':
+      return ErrorCode.EXTERNAL_API_ERROR;
+    default:
+      return ErrorCode.SERVER_ERROR;
+  }
+}
+
 /**
  * 컨텍스트 스냅샷을 프롬프트 텍스트로 변환
  */
@@ -148,7 +183,7 @@ function contextSnapshotToPromptText(snapshot?: ChatContextSnapshot): string {
   if (snapshot.processPlanSummary) {
     lines.push('');
     lines.push('### 공정계획 현황');
-    const categories = ['버림', '기초', '지하층', '셋팅층', '기준층', '옥탑층'] as const;
+    const categories = ['버림', '기초', '주동 지하층', '셋팅층', '기준층', '옥탑층'] as const;
     for (const category of categories) {
       const type = snapshot.processPlanSummary.selectedTypes[category];
       const days = snapshot.processPlanSummary.calculatedDays[category];
@@ -176,7 +211,7 @@ function contextSnapshotToPromptText(snapshot?: ChatContextSnapshot): string {
     if (snapshot.validationState.errors.length > 0) {
       lines.push('');
       lines.push('### 현재 오류');
-      snapshot.validationState.errors.forEach(err => {
+      snapshot.validationState.errors.forEach((err) => {
         lines.push(`- ❌ ${err.message}`);
       });
     }
@@ -185,7 +220,7 @@ function contextSnapshotToPromptText(snapshot?: ChatContextSnapshot): string {
     if (snapshot.validationState.warnings.length > 0) {
       lines.push('');
       lines.push('### 주의사항');
-      snapshot.validationState.warnings.forEach(warn => {
+      snapshot.validationState.warnings.forEach((warn) => {
         lines.push(`- ⚠️ ${warn.message}`);
       });
     }
@@ -198,154 +233,133 @@ function contextSnapshotToPromptText(snapshot?: ChatContextSnapshot): string {
  * 공정계획 전용 챗봇 API
  * 컨텍스트 정보를 포함하여 Gemini API에 요청합니다.
  */
-export async function POST(request: NextRequest) {
-  // 인증 확인
-  const authCheck = await checkAuth();
-  if (!authCheck.success) return authCheck.response;
+export const POST = withValidation(
+  { schema: processPlanChatBodySchema, source: 'body' },
+  async (_request: NextRequest, body) => {
+    // 인증 확인
+    const authCheck = await checkAuth();
+    if (!authCheck.success) return authCheck.response;
 
-  try {
-    const body: ProcessPlanChatRequest = await request.json();
-    const { query, context, contextSnapshot, history = [] } = body;
+    try {
+      const {
+        query,
+        context,
+        contextSnapshot,
+        history = [],
+      } = body as ProcessPlanChatRequest;
 
-    if (!query) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            type: 'INVALID_RESPONSE' as ChatbotErrorType,
-            message: '질문을 입력해주세요.',
-            retryable: false,
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!context.projectId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            type: 'INVALID_RESPONSE' as ChatbotErrorType,
-            message: '프로젝트 ID가 필요합니다.',
-            retryable: false,
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            type: 'INVALID_RESPONSE' as ChatbotErrorType,
-            message: 'Gemini API 키가 설정되지 않았습니다.',
-            retryable: false,
-          },
-        },
-        { status: 500 }
-      );
-    }
-
-    // 컨텍스트 정보를 프롬프트 텍스트로 변환
-    const contextInfo = contextSnapshotToPromptText(contextSnapshot);
-
-    // 에러 목록 추출
-    const errors = contextSnapshot?.validationState?.errors?.map(e => ({
-      field: e.field,
-      message: e.message,
-    })) || [];
-
-    // 확장된 시스템 프롬프트 생성
-    const systemPrompt = buildFullSystemPrompt({
-      page: context.page,
-      contextInfo,
-      currentStep: contextSnapshot?.validationState?.currentStep,
-      errors: errors.length > 0 ? errors : undefined,
-      includeGlossary: query.includes('용어') || query.includes('뜻') || query.includes('무엇'),
-    });
-
-    // 대화 히스토리 구성
-    const contents = [];
-
-    // 시스템 프롬프트를 첫 메시지로 추가
-    contents.push({
-      role: 'user',
-      parts: [{ text: systemPrompt }],
-    });
-    contents.push({
-      role: 'model',
-      parts: [{ text: '네, 공정계획 도우미입니다. 공정계획 수립에 관한 질문에 답변드리겠습니다. 무엇을 도와드릴까요?' }],
-    });
-
-    // 대화 히스토리 추가 (최근 10개만)
-    const recentHistory = history.slice(-10);
-    recentHistory.forEach(msg => {
-      contents.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
-      });
-    });
-
-    // 현재 질문 추가
-    contents.push({
-      role: 'user',
-      parts: [{ text: query }],
-    });
-
-    // Gemini API 호출
-    // API 키를 헤더로 전달하여 URL 노출 방지
-    const response = await geminiModelRequest(
-      'gemini-2.5-flash',
-      'generateContent',
-      apiKey,
-      {
-        contents,
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        },
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return apiError(ErrorCode.SERVER_ERROR, 'Gemini API 키가 설정되지 않았습니다.');
       }
-    );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = classifyError(
-        new Error(errorData.error?.message || 'API 요청 실패'),
-        response.status
+      // 컨텍스트 정보를 프롬프트 텍스트로 변환
+      const contextInfo = contextSnapshotToPromptText(contextSnapshot);
+
+      // 에러 목록 추출
+      const errors = contextSnapshot?.validationState?.errors?.map((e) => ({
+        field: e.field,
+        message: e.message,
+      })) || [];
+
+      // 확장된 시스템 프롬프트 생성
+      const systemPrompt = buildFullSystemPrompt({
+        page: context.page,
+        contextInfo,
+        currentStep: contextSnapshot?.validationState?.currentStep,
+        errors: errors.length > 0 ? errors : undefined,
+        includeGlossary: query.includes('용어') || query.includes('뜻') || query.includes('무엇'),
+      });
+
+      // 대화 히스토리 구성
+      const contents = [];
+
+      // 시스템 프롬프트를 첫 메시지로 추가
+      contents.push({
+        role: 'user',
+        parts: [{ text: systemPrompt }],
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: '네, 공정계획 도우미입니다. 공정계획 수립에 관한 질문에 답변드리겠습니다. 무엇을 도와드릴까요?' }],
+      });
+
+      // 대화 히스토리 추가 (최근 10개만)
+      const recentHistory = history.slice(-10);
+      recentHistory.forEach((msg) => {
+        contents.push({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.content }],
+        });
+      });
+
+      // 현재 질문 추가
+      contents.push({
+        role: 'user',
+        parts: [{ text: query }],
+      });
+
+      // Gemini API 호출
+      const response = await geminiModelRequest(
+        'gemini-2.5-flash',
+        'generateContent',
+        apiKey,
+        {
+          contents,
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          },
+        }
       );
-      return NextResponse.json({ success: false, error }, { status: response.status });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const chatbotError = classifyError(
+          new Error(errorData.error?.message || 'API 요청 실패'),
+          response.status
+        );
+        return apiError(
+          mapChatbotErrorToApiCode(chatbotError),
+          chatbotError.message,
+          {
+            chatbotError,
+            status: response.status,
+          }
+        );
+      }
+
+      const data = await response.json();
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts?.[0]?.text || '응답을 받지 못했습니다.';
+
+      // Citation 정보 추출
+      const citations = candidate?.citationMetadata?.citationSources || [];
+
+      // 확장된 하이라이트 마커 파싱 (12개 타겟)
+      const highlightTargets = parseHighlightMarkersEnhanced(text);
+
+      return NextResponse.json({
+        success: true,
+        answer: text,
+        citations: citations.map((citation: CitationSource) => ({
+          startIndex: citation.startIndex,
+          endIndex: citation.endIndex,
+          uri: citation.uri,
+          license: citation.license,
+        })),
+        highlightTargets,
+      });
+    } catch (error) {
+      logger.error('Error in process-plan-chat:', error);
+      const chatbotError = classifyError(error);
+      return apiError(
+        mapChatbotErrorToApiCode(chatbotError),
+        chatbotError.message,
+        { chatbotError }
+      );
     }
-
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const text = candidate?.content?.parts?.[0]?.text || '응답을 받지 못했습니다.';
-
-    // Citation 정보 추출
-    const citations = candidate?.citationMetadata?.citationSources || [];
-
-    // 확장된 하이라이트 마커 파싱 (12개 타겟)
-    const highlightTargets = parseHighlightMarkersEnhanced(text);
-
-    return NextResponse.json({
-      success: true,
-      answer: text,
-      citations: citations.map((citation: CitationSource) => ({
-        startIndex: citation.startIndex,
-        endIndex: citation.endIndex,
-        uri: citation.uri,
-        license: citation.license,
-      })),
-      highlightTargets,
-    });
-  } catch (error) {
-    console.error('Error in process-plan-chat:', error);
-    const chatbotError = classifyError(error);
-    return NextResponse.json({ success: false, error: chatbotError }, { status: 500 });
   }
-}
+);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui';
 
@@ -14,13 +15,24 @@ export default function Notification({
   success,
   onClose,
 }: NotificationProps) {
-  if (!error && !success) return null;
-
   const isError = !!error;
   const message = error || success;
 
+  useEffect(() => {
+    if (!message) return;
+    const ms = isError ? 6000 : 4000;
+    const timer = setTimeout(onClose, ms);
+    return () => clearTimeout(timer);
+  }, [message, isError, onClose]);
+
+  if (!message) return null;
+
   return (
-    <div className="fixed bottom-20 right-6 z-40 animate-in slide-in-from-bottom-5 fade-in duration-300">
+    <div
+      className="fixed bottom-20 right-6 z-40 animate-in slide-in-from-bottom-5 fade-in duration-300"
+      role="alert"
+      aria-live={isError ? 'assertive' : 'polite'}
+    >
       <Card
         className={`shadow-lg border ${isError
             ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
@@ -42,6 +54,7 @@ export default function Notification({
           <button
             onClick={onClose}
             className="ml-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+            aria-label="알림 닫기"
           >
             <X className="w-4 h-4" />
           </button>
