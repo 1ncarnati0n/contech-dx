@@ -100,13 +100,9 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         if (match) {
           return true;
         }
-        const rangeMatch = f.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
-        if (rangeMatch) {
-          return true;
-        }
         return false;
       });
-      
+
       core1Floors.forEach(floor => {
         // 개별 층 (예: "코어1-13F")
         const match = floor.floorLabel.match(/코어1-(\d+)F$/);
@@ -114,14 +110,6 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
           const floorNum = parseInt(match[1], 10);
           if (floorNum > core1MaxFloor) {
             core1MaxFloor = floorNum;
-          }
-        }
-        // 범위 형식 (예: "코어1-2~14F 기준층")
-        const rangeMatch = floor.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
-        if (rangeMatch) {
-          const end = parseInt(rangeMatch[2], 10);
-          if (end > core1MaxFloor) {
-            core1MaxFloor = end;
           }
         }
       });
@@ -144,44 +132,19 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       
       // 코어1의 지상층 기준으로 행 추가 (1F, 2F, ...)
       for (let i = 1; i <= core1MaxFloor; i++) {
-        // 코어1의 해당 층 찾기
-        let foundFloor = floors.find(f => {
-          // 개별 층 (예: "코어1-1F", "코어1-14F")
+        // 코어1의 해당 층 찾기 (개별 층만 매칭)
+        const foundFloor = floors.find(f => {
           const match = f.floorLabel.match(/코어1-(\d+)F$/);
-          if (match && parseInt(match[1], 10) === i) {
-            return true;
-          }
-          // 범위 형식의 기준층 (예: "코어1-2~14F 기준층")
-          const rangeMatch = f.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
-          if (rangeMatch) {
-            const start = parseInt(rangeMatch[1], 10);
-            const end = parseInt(rangeMatch[2], 10);
-            return i >= start && i <= end;
-          }
-          return false;
+          return match && parseInt(match[1], 10) === i;
         });
-        
+
         if (foundFloor) {
-          // 범위 형식인 경우 개별 층으로 변환
-          if (foundFloor.floorLabel.includes('~') && foundFloor.floorClass === '기준층') {
-            result.push({
-              type: 'floor',
-              label: `${i}F`,
-              floor: {
-                ...foundFloor,
-                id: `${foundFloor.id}-${i}F`,
-                floorLabel: `${i}F`,
-                floorNumber: i,
-              }
-            });
-          } else {
-            result.push({ type: 'floor', label: `${i}F`, floor: foundFloor });
-          }
+          result.push({ type: 'floor', label: `${i}F`, floor: foundFloor });
         } else {
           // 코어1에 해당 층이 없으면 더미 층 생성 (표시용)
-          result.push({ 
-            type: 'floor', 
-            label: `${i}F`, 
+          result.push({
+            type: 'floor',
+            label: `${i}F`,
             floor: {
               id: `dummy-${i}F`,
               buildingId: building.id,
@@ -213,20 +176,11 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
       // 실제 층 데이터에서 최대 층수 확인
       const groundFloors = floors.filter(f => f.levelType === '지상');
       groundFloors.forEach(floor => {
-        // 개별 층 (예: "13F")
         const match = floor.floorLabel.match(/^(\d+)F$/);
         if (match) {
           const floorNum = parseInt(match[1], 10);
           if (floorNum > groundFloorCount) {
             groundFloorCount = floorNum;
-          }
-        }
-        // 범위 형식 (예: "2~14F 기준층")
-        const rangeMatch = floor.floorLabel.match(/(\d+)~(\d+)F 기준층/);
-        if (rangeMatch) {
-          const end = parseInt(rangeMatch[2], 10);
-          if (end > groundFloorCount) {
-            groundFloorCount = end;
           }
         }
       });
@@ -247,40 +201,12 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         result.push({ type: 'floor', label: cleanLabel, floor });
       });
       
-      // 지상층 추가: 범위 형식의 기준층을 개별 층으로 확장
+      // 지상층 추가: 개별 층으로 직접 매칭
       for (let i = 1; i <= groundFloorCount; i++) {
-        // 해당 층 찾기
-        let foundFloor = floors.find(f => {
-          // 개별 층 (예: "1F", "14F")
-          if (f.floorLabel === `${i}F`) {
-            return true;
-          }
-          // 범위 형식의 기준층 (예: "2~14F 기준층")
-          const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F 기준층/);
-          if (rangeMatch) {
-            const start = parseInt(rangeMatch[1], 10);
-            const end = parseInt(rangeMatch[2], 10);
-            return i >= start && i <= end;
-          }
-          return false;
-        });
-        
+        const foundFloor = floors.find(f => f.floorLabel === `${i}F`);
+
         if (foundFloor) {
-          // 범위 형식인 경우 개별 층으로 변환
-          if (foundFloor.floorLabel.includes('~') && foundFloor.floorClass === '기준층') {
-            result.push({
-              type: 'floor',
-              label: `${i}F`,
-              floor: {
-                ...foundFloor,
-                id: `${foundFloor.id}-${i}F`,
-                floorLabel: `${i}F`,
-                floorNumber: i,
-              }
-            });
-          } else {
-            result.push({ type: 'floor', label: `${i}F`, floor: foundFloor });
-          }
+          result.push({ type: 'floor', label: `${i}F`, floor: foundFloor });
         } else {
           // 층이 없으면 더미 층 생성 (표시용)
           result.push({
