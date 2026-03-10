@@ -157,38 +157,6 @@ function applyFloorHeightsToAll(floors: Floor[], heights: BuildingMeta['heights'
 }
 
 /**
- * 층고 변경 감지 헬퍼 함수
- */
-function detectHeightChanges(
-  currentHeights: BuildingMeta['heights'],
-  newHeights?: Partial<BuildingMeta['heights']>
-): boolean {
-  if (!newHeights) return false;
-
-  // PH 높이 비교
-  const prevPhHeights = Array.isArray(currentHeights.ph)
-    ? currentHeights.ph
-    : [currentHeights.ph || 2650];
-  const newPhHeights = newHeights.ph !== undefined
-    ? (Array.isArray(newHeights.ph) ? newHeights.ph : [newHeights.ph || 2650])
-    : prevPhHeights;
-  const phHeightsChanged = JSON.stringify(prevPhHeights) !== JSON.stringify(newPhHeights);
-
-  return (
-    (newHeights.basement2 !== undefined && newHeights.basement2 !== currentHeights.basement2) ||
-    (newHeights.basement1 !== undefined && newHeights.basement1 !== currentHeights.basement1) ||
-    (newHeights.standard !== undefined && newHeights.standard !== currentHeights.standard) ||
-    (newHeights.floor1 !== undefined && newHeights.floor1 !== currentHeights.floor1) ||
-    (newHeights.floor2 !== undefined && newHeights.floor2 !== currentHeights.floor2) ||
-    (newHeights.floor3 !== undefined && newHeights.floor3 !== currentHeights.floor3) ||
-    (newHeights.floor4 !== undefined && newHeights.floor4 !== currentHeights.floor4) ||
-    (newHeights.floor5 !== undefined && newHeights.floor5 !== currentHeights.floor5) ||
-    (newHeights.top !== undefined && newHeights.top !== currentHeights.top) ||
-    phHeightsChanged
-  );
-}
-
-/**
  * 기존 FloorTrade를 새로운 Floor에 매칭하여 보존
  *
  * 주의: 특별 floorId (group-% 형식, 버림/기초)는 Floor 객체 없이 직접 저장되므로
@@ -422,15 +390,17 @@ function generateFloors(
 
       if (actualStandardStart <= coreFloorCount - 1) {
         const standardEnd = coreFloorCount - 1;
-        floors.push({
-          id: `floor-core${coreNumber}-${actualStandardStart}~${standardEnd}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          buildingId: '',
-          floorLabel: `코어${coreNumber}-${actualStandardStart}~${standardEnd}F 기준층`,
-          floorNumber: coreNumber * 1000 + actualStandardStart,
-          levelType: '지상',
-          floorClass: '기준층',
-          height: null,
-        });
+        for (let i = actualStandardStart; i <= standardEnd; i++) {
+          floors.push({
+            id: `floor-core${coreNumber}-${i}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            buildingId: '',
+            floorLabel: `코어${coreNumber}-${i}F`,
+            floorNumber: coreNumber * 1000 + i,
+            levelType: '지상',
+            floorClass: '기준층',
+            height: null,
+          });
+        }
       }
 
       // 최상층
@@ -511,15 +481,17 @@ function generateFloors(
 
       if (actualStandardStart <= groundFloorCount - 1) {
         const standardEnd = groundFloorCount - 1;
-        floors.push({
-          id: `floor-${actualStandardStart}~${standardEnd}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          buildingId: '',
-          floorLabel: `${actualStandardStart}~${standardEnd}F 기준층`,
-          floorNumber: actualStandardStart,
-          levelType: '지상',
-          floorClass: '기준층',
-          height: null,
-        });
+        for (let i = actualStandardStart; i <= standardEnd; i++) {
+          floors.push({
+            id: `floor-${i}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            buildingId: '',
+            floorLabel: `${i}F`,
+            floorNumber: i,
+            levelType: '지상',
+            floorClass: '기준층',
+            height: null,
+          });
+        }
       }
 
       // 최상층
@@ -726,24 +698,10 @@ export async function updateBuilding(
 
   // meta 업데이트 처리
   if (updates.meta) {
-    const heightsChanged = detectHeightChanges(building.meta.heights, updates.meta.heights);
-
-    // 층수 변경 또는 층고 변경 시 층 재생성
-    const floorCountChanged = updates.meta.floorCount !== undefined && (
-      updates.meta.floorCount.basement !== building.meta.floorCount.basement ||
-      updates.meta.floorCount.ground !== building.meta.floorCount.ground ||
-      updates.meta.floorCount.ph !== building.meta.floorCount.ph ||
-      updates.meta.floorCount.pilotisCount !== building.meta.floorCount.pilotisCount ||
-      JSON.stringify(updates.meta.floorCount.corePilotisCounts) !== JSON.stringify(building.meta.floorCount.corePilotisCounts) ||
-      JSON.stringify(updates.meta.floorCount.coreGroundFloors) !== JSON.stringify(building.meta.floorCount.coreGroundFloors) ||
-      JSON.stringify(updates.meta.floorCount.coreBasementFloors) !== JSON.stringify(building.meta.floorCount.coreBasementFloors) ||
-      JSON.stringify(updates.meta.floorCount.corePhFloors) !== JSON.stringify(building.meta.floorCount.corePhFloors)
-    );
-
+    // forceRegenerateFloors가 명시적으로 true일 때만 층 재생성
+    // 구성 저장(단위세대 등)에서는 층 재생성 없이 meta만 업데이트
     const shouldRegenerateFloors =
-      floorCountChanged ||
-      updates.forceRegenerateFloors === true ||
-      (heightsChanged && building.floors && building.floors.length > 0);
+      updates.forceRegenerateFloors === true;
 
     if (shouldRegenerateFloors) {
       const coreCount = updates.meta.coreCount ?? building.meta.coreCount;

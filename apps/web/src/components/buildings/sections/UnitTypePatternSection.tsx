@@ -3,7 +3,7 @@
 import { Button, Input, Badge } from '@/components/ui';
 import { Plus, Trash2, HelpCircle, Save } from 'lucide-react';
 import type { UnitTypePattern } from '@/lib/types';
-import { getCoreDisplayName, getPilotisIndex } from '../hooks/useBuildingAutoCalculations';
+import { getPilotisIndex } from '../hooks/useBuildingAutoCalculations';
 
 interface Heights {
   basement2: number;
@@ -163,8 +163,6 @@ export function UnitTypePatternSection({
           const coreNum = pattern.coreNumber || 1;
           const coreIndex = getCoreIndex(coreNum, index);
           const pilotisIndex = getPilotisIndex(coreNum, index, unitTypePattern);
-          const coreDisplayName = getCoreDisplayName(coreNum, index, unitTypePattern);
-
           // 현재 코어의 층수 값들
           const currentBasementFloors = coreBasementFloors.length > coreIndex
             ? coreBasementFloors[coreIndex] ?? basementCount ?? 0
@@ -196,8 +194,9 @@ export function UnitTypePatternSection({
                     onChange={(e) => handleUpdatePattern(index, 'coreNumber', Number(e.target.value))}
                     className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                   >
-                    <option value={1}>{coreDisplayName}</option>
+                    <option value={1}>코어1</option>
                     <option value={2}>코어2</option>
+                    <option value={3}>코어3</option>
                   </select>
 
                   <div className="w-px h-6 bg-blue-200 dark:bg-blue-700 mx-1" />

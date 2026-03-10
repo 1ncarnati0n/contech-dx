@@ -253,7 +253,6 @@ export const FloorTradeTable = forwardRef<FloorTradeTableHandle, Props>(
         addedLabels.add(cleanLabel);
         result.push({ type: 'floor', label: cleanLabel, floor });
       });
-
       // 지상층
       for (let i = 1; i <= groundFloorCount; i++) {
         const foundFloor = floors.find(f => {
