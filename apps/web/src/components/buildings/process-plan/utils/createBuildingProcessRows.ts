@@ -1,6 +1,9 @@
 import type { Building, ProcessCategory, Floor } from '@/lib/types';
 import type { ProcessPlanRow } from '../types';
 
+const FLOOR_RANGE_REGEX = /(?:코어\d+-)?(\d+)~(\d+)F/;
+const FLOOR_NUMBER_REGEX = /(?:코어\d+-)?(\d+)F$/;
+
 function toRooftopLabel(rawLabel: string): string {
   let cleanLabel = rawLabel.replace(/코어\d+-/, '');
   if (cleanLabel.match(/^PH\d+$/i)) {
@@ -10,6 +13,51 @@ function toRooftopLabel(rawLabel: string): string {
     }
   }
   return cleanLabel;
+}
+
+function isPrimaryCoreFloor(floor: Floor): boolean {
+  return floor.floorLabel.includes('코어1-') || !floor.floorLabel.includes('코어');
+}
+
+function getGroundFloorNumber(floor: Floor): number | null {
+  if (typeof floor.floorNumber === 'number' && floor.floorNumber > 0) {
+    return floor.floorNumber;
+  }
+
+  const match = floor.floorLabel.replace(/ 기준층$/, '').match(FLOOR_NUMBER_REGEX);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function getRangeFloorNumbers(floorLabel: string): number[] {
+  const match = floorLabel.match(FLOOR_RANGE_REGEX);
+  if (!match) return [];
+
+  const startFloor = parseInt(match[1], 10);
+  const endFloor = parseInt(match[2], 10);
+  return Array.from({ length: endFloor - startFloor + 1 }, (_, index) => startFloor + index);
+}
+
+function buildStandardFloorMap(floors: Floor[]): Map<number, Floor> {
+  const standardFloorMap = new Map<number, Floor>();
+  const sortedFloors = [...floors].sort((a, b) => {
+    const aIsRange = a.floorLabel.includes('~') ? 1 : 0;
+    const bIsRange = b.floorLabel.includes('~') ? 1 : 0;
+    return aIsRange - bIsRange;
+  });
+
+  sortedFloors.forEach((floor) => {
+    const floorNumbers = floor.floorLabel.includes('~')
+      ? getRangeFloorNumbers(floor.floorLabel)
+      : [getGroundFloorNumber(floor)].filter((value): value is number => value !== null);
+
+    floorNumbers.forEach((floorNumber) => {
+      if (!standardFloorMap.has(floorNumber)) {
+        standardFloorMap.set(floorNumber, floor);
+      }
+    });
+  });
+
+  return standardFloorMap;
 }
 
 export function createBuildingProcessRows(activeBuilding: Building | null): ProcessPlanRow[] {
@@ -51,23 +99,17 @@ export function createBuildingProcessRows(activeBuilding: Building | null): Proc
   // 3. 지상층 추가 (기준층, 일반층, 셋팅층 순서 - 역순)
   if (coreCount > 1 && coreGroundFloors && coreGroundFloors.length > 0) {
     const core1MaxFloor = coreGroundFloors[0] || 0;
-    const standardRangeFloor = floors.find(
-      (f) =>
-        f.floorClass === '기준층' &&
-        f.floorLabel.includes('~') &&
-        (f.floorLabel.includes('코어1-') || !f.floorLabel.includes('코어'))
-    );
+    const primaryCoreFloors = floors.filter(isPrimaryCoreFloor);
+    const standardFloors = primaryCoreFloors.filter((f) => f.floorClass === '기준층');
 
-    const topFloorsMultiCore = floors.filter((f) => {
-      if (f.floorClass !== '최상층') return false;
-      return f.floorLabel.includes('코어1-') || !f.floorLabel.includes('코어');
-    });
+    const topFloorsMultiCore = primaryCoreFloors
+      .filter((f) => f.floorClass === '최상층')
+      .sort((a, b) => (b.floorNumber || 0) - (a.floorNumber || 0));
 
     topFloorsMultiCore.forEach((floor) => {
-      const floorMatch = floor.floorLabel.match(/(\d+)F/);
-      if (!floorMatch) return;
+      const floorNum = getGroundFloorNumber(floor);
+      if (floorNum === null) return;
 
-      const floorNum = parseInt(floorMatch[1], 10);
       rows.push({
         category: '최상층' as ProcessCategory,
         floorLabel: `${floorNum}F`,
@@ -77,62 +119,34 @@ export function createBuildingProcessRows(activeBuilding: Building | null): Proc
       });
     });
 
-    if (standardRangeFloor) {
-      const rangeMatch = standardRangeFloor.floorLabel.match(/(\d+)~(\d+)F/);
-      if (rangeMatch) {
-        const startFloor = parseInt(rangeMatch[1], 10);
-        const endFloor = parseInt(rangeMatch[2], 10);
+    const topFloorNums = new Set<number>(
+      topFloorsMultiCore
+        .map(getGroundFloorNumber)
+        .filter((value): value is number => value !== null)
+    );
+    const standardFloorMap = buildStandardFloorMap(standardFloors);
+    const standardFloorNums = new Set<number>(standardFloorMap.keys());
 
-        const topFloorNums = new Set<number>();
-        topFloorsMultiCore.forEach((floor) => {
-          const floorMatch = floor.floorLabel.match(/(\d+)F/);
-          if (floorMatch) {
-            topFloorNums.add(parseInt(floorMatch[1], 10));
-          }
+    Array.from(standardFloorMap.entries())
+      .sort(([a], [b]) => b - a)
+      .forEach(([floorNum, floor]) => {
+        if (topFloorNums.has(floorNum)) return;
+
+        rows.push({
+          category: '기준층' as ProcessCategory,
+          floorLabel: `${floorNum}F`,
+          floor,
+          floorClass: '기준층',
+          rowIndex: rowIndex++,
         });
-
-        for (let i = endFloor; i >= startFloor; i--) {
-          if (topFloorNums.has(i)) continue;
-          rows.push({
-            category: '기준층' as ProcessCategory,
-            floorLabel: `${i}F`,
-            floor: standardRangeFloor,
-            floorClass: '기준층',
-            rowIndex: rowIndex++,
-          });
-        }
-      }
-    }
-
-    const standardRangeFloorNums = new Set<number>();
-    if (standardRangeFloor) {
-      const rangeMatch = standardRangeFloor.floorLabel.match(/(\d+)~(\d+)F/);
-      if (rangeMatch) {
-        const startFloor = parseInt(rangeMatch[1], 10);
-        const endFloor = parseInt(rangeMatch[2], 10);
-        for (let i = startFloor; i <= endFloor; i++) {
-          standardRangeFloorNums.add(i);
-        }
-      }
-    }
+      });
 
     const settingAndNormalFloors: Array<{ floor: Floor; floorNum: number }> = [];
     for (let i = 1; i <= core1MaxFloor; i++) {
-      const foundFloor = floors.find((f) => {
-        const exactMatch = f.floorLabel.match(/코어1-(\d+)F$/);
-        if (exactMatch && parseInt(exactMatch[1], 10) === i) {
-          return true;
-        }
-
-        const rangeMatch = f.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
-        if (!rangeMatch) return false;
-        const start = parseInt(rangeMatch[1], 10);
-        const end = parseInt(rangeMatch[2], 10);
-        return i >= start && i <= end;
-      });
+      const foundFloor = primaryCoreFloors.find((f) => getGroundFloorNumber(f) === i);
 
       if (foundFloor && (foundFloor.floorClass === '셋팅층' || foundFloor.floorClass === '일반층')) {
-        if (!standardRangeFloorNums.has(i)) {
+        if (!standardFloorNums.has(i)) {
           settingAndNormalFloors.push({ floor: foundFloor, floorNum: i });
         }
       }
@@ -149,16 +163,15 @@ export function createBuildingProcessRows(activeBuilding: Building | null): Proc
     });
   } else {
     const groundFloorCount = activeBuilding.meta.floorCount.ground || 0;
-    const standardRangeFloor = floors.find(
-      (f) => f.floorClass === '기준층' && f.floorLabel.includes('~')
-    );
+    const standardFloors = floors.filter((f) => f.floorClass === '기준층');
 
-    const topFloors = floors.filter((f) => f.floorClass === '최상층');
+    const topFloors = floors
+      .filter((f) => f.floorClass === '최상층')
+      .sort((a, b) => (b.floorNumber || 0) - (a.floorNumber || 0));
     topFloors.forEach((floor) => {
-      const floorMatch = floor.floorLabel.match(/(\d+)F/);
-      if (!floorMatch) return;
+      const floorNum = getGroundFloorNumber(floor);
+      if (floorNum === null) return;
 
-      const floorNum = parseInt(floorMatch[1], 10);
       rows.push({
         category: '최상층' as ProcessCategory,
         floorLabel: `${floorNum}F`,
@@ -168,60 +181,34 @@ export function createBuildingProcessRows(activeBuilding: Building | null): Proc
       });
     });
 
-    if (standardRangeFloor) {
-      const rangeMatch = standardRangeFloor.floorLabel.match(/(\d+)~(\d+)F/);
-      if (rangeMatch) {
-        const startFloor = parseInt(rangeMatch[1], 10);
-        const endFloor = parseInt(rangeMatch[2], 10);
+    const topFloorNums = new Set<number>(
+      topFloors
+        .map(getGroundFloorNumber)
+        .filter((value): value is number => value !== null)
+    );
+    const standardFloorMap = buildStandardFloorMap(standardFloors);
+    const standardFloorNumsSingleCore = new Set<number>(standardFloorMap.keys());
 
-        const topFloorNums = new Set<number>();
-        topFloors.forEach((floor) => {
-          const floorMatch = floor.floorLabel.match(/(\d+)F/);
-          if (floorMatch) {
-            topFloorNums.add(parseInt(floorMatch[1], 10));
-          }
+    Array.from(standardFloorMap.entries())
+      .sort(([a], [b]) => b - a)
+      .forEach(([floorNum, floor]) => {
+        if (topFloorNums.has(floorNum)) return;
+
+        rows.push({
+          category: '기준층' as ProcessCategory,
+          floorLabel: `${floorNum}F`,
+          floor,
+          floorClass: '기준층',
+          rowIndex: rowIndex++,
         });
-
-        for (let i = endFloor; i >= startFloor; i--) {
-          if (topFloorNums.has(i)) continue;
-          rows.push({
-            category: '기준층' as ProcessCategory,
-            floorLabel: `${i}F`,
-            floor: standardRangeFloor,
-            floorClass: '기준층',
-            rowIndex: rowIndex++,
-          });
-        }
-      }
-    }
-
-    const standardRangeFloorNumsSingleCore = new Set<number>();
-    if (standardRangeFloor) {
-      const rangeMatch = standardRangeFloor.floorLabel.match(/(\d+)~(\d+)F/);
-      if (rangeMatch) {
-        const startFloor = parseInt(rangeMatch[1], 10);
-        const endFloor = parseInt(rangeMatch[2], 10);
-        for (let i = startFloor; i <= endFloor; i++) {
-          standardRangeFloorNumsSingleCore.add(i);
-        }
-      }
-    }
+      });
 
     const settingAndNormalFloors: Array<{ floor: Floor; floorNum: number }> = [];
     for (let i = 1; i <= groundFloorCount; i++) {
-      const foundFloor = floors.find((f) => {
-        if (f.floorLabel === `${i}F` && (f.floorClass === '셋팅층' || f.floorClass === '일반층')) {
-          return true;
-        }
-        const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F 기준층/);
-        if (!rangeMatch) return false;
-        const start = parseInt(rangeMatch[1], 10);
-        const end = parseInt(rangeMatch[2], 10);
-        return i >= start && i <= end;
-      });
+      const foundFloor = floors.find((f) => getGroundFloorNumber(f) === i);
 
       if (foundFloor && (foundFloor.floorClass === '셋팅층' || foundFloor.floorClass === '일반층')) {
-        if (!standardRangeFloorNumsSingleCore.has(i)) {
+        if (!standardFloorNumsSingleCore.has(i)) {
           settingAndNormalFloors.push({ floor: foundFloor, floorNum: i });
         }
       }
