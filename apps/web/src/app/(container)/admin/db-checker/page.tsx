@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
+import { createClient } from '@/shared/lib/supabase/server';
+import { getCurrentUserProfile, isSystemAdmin } from '@/shared/lib/permissions/server';
 import { redirect } from 'next/navigation';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent } from '@/shared/components/ui/Card';
+import { Badge } from '@/shared/components/ui/Badge';
 import {
   CheckCircle2,
   XCircle,

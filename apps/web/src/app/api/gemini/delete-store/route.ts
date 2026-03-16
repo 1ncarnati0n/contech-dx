@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiStoreRequest } from '@/lib/utils/geminiApi';
-import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
-import { logger } from '@/lib/utils/logger';
-import { withValidation } from '@/lib/api/withValidation';
+import { geminiStoreRequest } from '@/features/ai-chat/service/geminiApi';
+import { apiError, checkAuth, ErrorCode } from '@/shared/utils/apiAuth';
+import { logger } from '@/shared/utils/logger';
+import { withValidation } from '@/shared/lib/api/withValidation';
 import { z } from 'zod';
 
 const deleteStoreBodySchema = z.object({

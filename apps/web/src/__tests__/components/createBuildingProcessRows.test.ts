@@ -1,5 +1,5 @@
-import type { Building, Floor } from '@/lib/types';
-import { createBuildingProcessRows } from '@/components/buildings/process-plan/utils/createBuildingProcessRows';
+import type { Building, Floor } from '@/shared/types';
+import { createBuildingProcessRows } from '@/features/building/process-plan/utils/createBuildingProcessRows';
 
 function createFloor(overrides: Partial<Floor>): Floor {
   return {

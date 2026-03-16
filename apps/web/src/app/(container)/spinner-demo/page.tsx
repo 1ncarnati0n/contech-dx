@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Spinner } from '@/components/ui/Spinner';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Spinner } from '@/shared/components/ui/Spinner';
+import { Button } from '@/shared/components/ui/Button';
+import { Card } from '@/shared/components/ui/Card';
 
 export default function SpinnerDemoPage() {
   const [showFullScreen, setShowFullScreen] = useState(false);
