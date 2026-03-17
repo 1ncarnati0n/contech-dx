@@ -1,5 +1,5 @@
-import { convertProcessPlansToGanttTasks } from '@/lib/utils/process-to-gantt-converter';
-import type { Building, BuildingProcessPlan, Floor, FloorTrade } from '@/lib/types';
+import { convertProcessPlansToGanttTasks } from '@/features/gantt/utils/process-to-gantt-converter';
+import type { Building, BuildingProcessPlan, Floor, FloorTrade } from '@/shared/types';
 
 function createBasementFloor(label: string, floorNumber: number): Floor {
   return {

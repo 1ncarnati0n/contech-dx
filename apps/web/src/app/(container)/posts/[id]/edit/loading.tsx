@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@/components/ui';
+import { Card, CardContent } from '@/shared/components/ui';
 
 export default function EditPostLoading() {
   return (

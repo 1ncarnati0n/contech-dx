@@ -17,8 +17,6 @@
 7. [빌드 & 배포 파이프라인](#7-빌드--배포-파이프라인)
 8. [주요 아키텍처 패턴](#8-주요-아키텍처-패턴)
 9. [물량 해석 시스템 (Quantity Resolution)](#9-물량-해석-시스템-quantity-resolution)
-10. [대형 파일 목록 (리팩토링 후보)](#10-대형-파일-목록-리팩토링-후보)
-11. [리팩토링/품질 현황](#11-리팩토링품질-현황)
 
 ---
 
@@ -46,17 +44,16 @@ contech-dx/
 ├── apps/
 │   └── web/                      # Next.js 16 웹 애플리케이션 (@contech/web)
 │       ├── public/               #   정적 자산 (IFC 모델, WASM)
-│       ├── scripts/              #   Python 분석 스크립트
 │       ├── sql/                  #   DB 스키마, 마이그레이션, 시드
 │       │   ├── schema/
 │       │   ├── migrations/
 │       │   └── seeds/
 │       └── src/
 │           ├── app/              #     App Router (페이지, API 라우트)
-│           ├── components/       #     React 컴포넌트 (~126 TSX)
-│           ├── lib/              #     서비스, 훅, 유틸, 스토어 (~80 TS)
+│           ├── features/         #     도메인별 기능 모듈 (10개 도메인)
+│           ├── shared/           #     전역 공유 모듈 (컴포넌트, 훅, 유틸)
 │           ├── styles/           #     글로벌 스타일
-│           └── types/            #     타입 정의
+│           └── types/            #     DB 생성 타입 (supabase generate)
 │
 ├── packages/
 │   └── sa-gantt-lib/             # 간트차트 라이브러리 (sa-gantt-lib 0.1.1)
@@ -76,8 +73,6 @@ contech-dx/
 ├── tsconfig.base.json            # 공유 TypeScript 설정
 └── package.json                  # npm workspaces 루트
 ```
-
-**소스 규모:** apps/web ~270 TS/TSX 파일, sa-gantt-lib ~139 TS/TSX 파일, 총 ~87,000 LOC
 
 ---
 
@@ -106,130 +101,270 @@ contech-dx/
 
 ## 4. apps/web 아키텍처
 
-### 4.1 라우팅 (Next.js App Router)
+### 4.1 설계 원칙
 
-두 개의 **Route Group**으로 레이아웃을 분리합니다:
+**Feature-based Architecture + View/Service/Repository 3-Layer 패턴**
+
+```
+src/
+├── app/              # 라우팅 전용 (thin pages — feature 모듈 조합)
+├── features/         # 도메인별 기능 모듈 (View/Service/Repository)
+└── shared/           # 전역 공유 코드 (UI, 인프라, 유틸)
+```
+
+- **app/**: Next.js App Router 페이지. 인증 확인 후 feature 컴포넌트를 렌더링하는 thin layer
+- **features/**: 도메인별로 격리된 기능 모듈. 각 모듈은 3-Layer 패턴을 따름
+- **shared/**: 여러 feature에서 공유하는 컴포넌트, 훅, 유틸리티, 인프라 코드
+
+### 4.2 Feature Module 3-Layer 패턴
+
+각 feature는 View/Service/Repository 관심사 분리를 적용합니다.
+향후 FastAPI 백엔드로 전환 시, Repository 레이어만 교체하면 됩니다.
+
+```
+features/<domain>/
+├── view/           # UI 렌더링 전용 (React 컴포넌트)
+│                   #   - 비즈니스 로직 없음 (Service 훅에 위임)
+│                   #   - Supabase/DB를 직접 호출하지 않음
+│
+├── service/        # 비즈니스 로직 + 상태 관리 훅 + 순수 함수
+│                   #   - useXxx() 커스텀 훅: 상태 + 오케스트레이션
+│                   #   - xxxHelpers.ts: 순수 계산/변환 함수
+│                   #   - Repository를 호출하여 데이터 접근
+│
+├── repository/     # 데이터 접근 (Supabase CRUD / API fetch)
+│                   #   - 순수 CRUD 함수만 제공
+│                   #   - DB Row 타입 ↔ 도메인 모델 매핑
+│                   #   - 교체 대상 (Supabase → FastAPI)
+│
+├── data/           # 정적 데이터 (선택적)
+└── types/          # 도메인 타입 (선택적)
+```
+
+| Layer | 역할 | 의존 방향 | 마이그레이션 시 |
+|-------|------|----------|---------------|
+| **View** | UI 렌더링, props 전달 | → Service | 변경 없음 |
+| **Service** | 비즈니스 로직, 상태 관리, 에러 처리 | → Repository | 그대로 이전 |
+| **Repository** | DB 통신, Row 매핑 | → Supabase | FastAPI 클라이언트로 교체 |
+
+### 4.3 Feature 도메인 목록
+
+```
+features/
+├── admin/            # 관리자 기능 (사용자 역할 관리)
+│   ├── view/         #   UpdateRoleButton
+│   ├── service/      #   changeUserRole, promoteCurrentUserToAdmin
+│   └── repository/   #   users.client (Supabase)
+│
+├── ai-chat/          # AI 챗봇 & 파일 검색
+│   ├── view/         #   GlobalChatbot, FileSearch, ProcessPlanChat
+│   │   ├── file-search/
+│   │   ├── global/
+│   │   └── process-plan-chat/
+│   ├── service/      #   gemini API, chatbot logic, context builder
+│   ├── data/         #   chatbot prompts, glossary
+│   └── types/        #   file-search, ProcessPlanChatbot types
+│
+├── auth/             # 인증 (로그인, 회원가입, 비밀번호 재설정)
+│   ├── view/         #   LoginForm, SignupForm, LogoutButton, ResetPasswordForm
+│   ├── service/      #   login, signup, logout, error mapping
+│   └── repository/   #   supabase.auth 래핑
+│
+├── building/         # 동(Building) 관리 — 가장 큰 도메인
+│   ├── basic-info/   #   건물 기본정보 (service/ + view/)
+│   ├── process-logic/#   공정로직 (service/ + view/)
+│   ├── process-plan/ #   공정계획 수립 (service/ + view/)
+│   ├── quantity/     #   물량 입력 (service/ + view/)
+│   ├── unit-rate/    #   단가 산출 (service/ + view/)
+│   ├── geological-data/# 지질 데이터 (view/)
+│   ├── pouring-section/# 타설구간 (service/ + view/)
+│   ├── shared/       #   동 공통 (repository/, service/, view/)
+│   ├── data/         #   공정 모듈 정적 데이터
+│   ├── hooks/        #   공통 훅
+│   └── components/   #   공통 컴포넌트
+│
+├── castplan/         # 콘크리트 타설 계획 (2D Konva 캔버스)
+│   ├── view/         #   CastPlanCanvas, layers, panels
+│   └── service/      #   DXF 파싱, 기하 계산, 하이라이트
+│
+├── dashboard/        # 대시보드
+│   ├── view/         #   ConstructionDashboard, KPICards, TaktView
+│   └── service/      #   loadBuildingsForDashboard
+│
+├── gantt/            # 간트차트
+│   ├── view/         #   FullscreenGanttPage, GanttChartPage, FullscreenGanttHeader
+│   ├── service/      #   useFullscreenGantt, useGanttChartPage, gantt-data.service
+│   │                 #   gantt-mapper, gantt-cp-calculator, gantt-chart-helpers
+│   │                 #   process-to-gantt-converter
+│   └── repository/   #   GanttRepository (순수 CRUD)
+│
+├── post/             # 게시판 CRUD
+│   ├── view/         #   PostForm, PostsList, PostsTable, CommentForm, CommentList
+│   ├── service/      #   post/comment service, usePostHashScroll, postFormatters
+│   └── repository/   #   posts.client/server, comments.client/server
+│
+├── profile/          # 사용자 프로필
+│   ├── view/         #   ProfileEditForm
+│   ├── service/      #   updateProfile
+│   └── repository/   #   profile.repository (Supabase)
+│
+└── project/          # 프로젝트 관리
+    ├── view/         #   ProjectList, ProjectCard, ProjectTeamPage, Settings 등
+    ├── service/      #   useProjectTeam, useProjectPermissions, project.constants
+    │                 #   number-formatting.utils, project-status
+    └── repository/   #   projects, projectMembers (Supabase)
+```
+
+### 4.4 Shared 모듈 구조
+
+여러 feature에서 공유하는 범용 코드입니다.
+
+```
+shared/
+├── components/
+│   ├── ui/               # 디자인 시스템 (Button, Card, Dialog, Spinner 등)
+│   ├── common/           # 범용 UI (PageHeader, ConfirmDialog, MarkdownRenderer)
+│   ├── layout/           # 레이아웃 (NavBar, MobileMenu, ThemeProvider, UserDropdown)
+│   ├── home/             # 홈/랜딩 페이지
+│   └── ifc-viewer/       # BIM 3D 뷰어
+│
+├── hooks/                # 공통 훅
+│   ├── useAsyncData      #   비동기 데이터 로딩 + 에러 처리
+│   ├── useRealtimeCacheSync  # Supabase Realtime 캐시 동기화
+│   ├── useErrorHandler   #   에러 핸들링 유틸
+│   └── ...
+│
+├── lib/                  # 인프라 코드
+│   ├── supabase/         #   client, server, middleware, withAuth
+│   ├── auth/             #   requireAuth, requireProjectMember
+│   ├── permissions/      #   역할 기반 권한 체크 (client/server/shared)
+│   ├── api/              #   withValidation (API 라우트 래퍼)
+│   ├── schemas/          #   Zod 검증 스키마
+│   ├── cache.ts          #   TTL 인메모리 캐시
+│   └── utils.ts          #   cn() 등 범용 유틸
+│
+├── stores/               # Zustand 전역 스토어
+│   └── useTabContextStore  # 탭 컨텍스트 + 챗봇 연동
+│
+├── constants/            # 상수 정의
+├── types/                # 공유 타입 (types.ts, process-quantity.ts, error.ts)
+└── utils/                # 유틸리티 (api-error, apiAuth, error-handler, logger, formatters)
+```
+
+### 4.5 라우팅 (Next.js App Router)
+
+세 개의 **Route Group**으로 레이아웃을 분리합니다:
 
 ```
 src/app/
 ├── layout.tsx                   # 루트 레이아웃 (ThemeProvider, NavBar, GlobalChatbot)
 ├── page.tsx                     # / (랜딩)
 │
+├── (auth)/                      # ← 인증 페이지 (NavBar 없음)
+│   ├── layout.tsx               #   최소 레이아웃
+│   ├── login/                   #   로그인
+│   ├── signup/                  #   회원가입
+│   └── reset-password/          #   비밀번호 재설정
+│
 ├── (container)/                 # ← 표준 컨테이너 레이아웃 (max-width + padding)
 │   ├── layout.tsx               #   ErrorBoundary + Container wrapper
+│   ├── home/                    #   대시보드 홈
 │   ├── posts/                   #   게시판 CRUD
-│   ├── projects/                #   프로젝트 목록 / 상세
 │   ├── profile/                 #   사용자 프로필
-│   └── admin/                   #   관리자 전용 (buildings, users, db-checker, promote)
+│   ├── admin/                   #   관리자 전용 (buildings, users, db-checker, promote)
+│   └── projects/
+│       ├── page.tsx             #   프로젝트 목록
+│       └── [id]/                #   프로젝트 상세 (nested layout)
+│           ├── layout.tsx       #     프로젝트 사이드바 + 탭 레이아웃
+│           ├── page.tsx         #     프로젝트 개요
+│           ├── basic-info/      #     건물 기본정보
+│           ├── quantity/        #     물량 입력
+│           ├── detailed-quantity/#    상세 물량 입력
+│           ├── process-logic/   #     공정로직
+│           ├── building-process-plan/ # 지상층 공정계획
+│           ├── basement-process-plan/ # 지하층 공정계획
+│           ├── gantt-chart/     #     간트차트 탭
+│           ├── unit-rate/       #     단가 산출
+│           ├── executed-unit-rate/#   실행 단가
+│           ├── geological-data/ #     지질 데이터
+│           ├── pouring-section/ #     타설구간
+│           ├── ifc-viewer/      #     BIM 3D 뷰어
+│           ├── documents/       #     문서 관리
+│           ├── team/            #     팀 관리
+│           └── settings/        #     프로젝트 설정
 │
 ├── (fullscreen)/                # ← 풀스크린 레이아웃 (제약 없음)
-│   └── projects/[id]/gantt/     #   간트차트 전체화면
+│   ├── projects/[id]/gantt/     #   간트차트 전체화면
+│   └── file-search/             #   AI 파일 검색
 │
 ├── api/                         # API 라우트
 │   ├── gemini/                  #   AI 엔드포인트 (10개)
 │   ├── admin/buildings/         #   건물 관리 API
 │   └── users/promote-to-admin/  #   역할 승격
 │
-├── auth/callback/               # OAuth 콜백
-├── login/, signup/              # 인증 페이지
-├── home/                        # 대시보드 홈
-└── file-search/                 # AI 파일 검색
+└── auth/callback/               # OAuth 콜백
 ```
 
-### 4.2 컴포넌트 계층
+### 4.6 데이터 플로우
 
 ```
-RootLayout
-├── ThemeProvider (다크/라이트 모드)
-├── LoadingBar (글로벌 페이지 전환 인디케이터)
-├── NavBar (서버 컴포넌트 → NavBarContent 클라이언트)
-│   ├── AdminDropdown
-│   ├── UserDropdown
-│   └── MobileMenu
-├── <main>
-│   ├── (container)/layout → ErrorBoundary → Container
-│   └── (fullscreen)/layout → ErrorBoundary
-├── GlobalChatbot (AI 어시스턴트, 페이지 인식)
-└── Toaster (sonner 알림)
-```
-
-**컴포넌트 디렉토리** (17개 주요 그룹):
-
-| 디렉토리 | 역할 |
-|-----------|------|
-| `buildings/` | 건물 관리, 공정표, 물량 입력 (가장 큰 모듈) |
-| `castplan/` | 2D 캔버스 타설 계획도 (Konva) |
-| `ifc-viewer/` | BIM/IFC 3D 뷰어 |
-| `projects/` | 프로젝트 CRUD, 간트차트 통합 |
-| `global/` | GlobalChatbot, QuickQuestions |
-| `dashboard/` | KPI 카드, 진척률 차트 |
-| `file-search/` | AI 기반 문서 검색 |
-| `ui/` | shadcn/ui 프리미티브 (22개) |
-| `common/` | PageHeader, ConfirmDialog, MarkdownRenderer |
-
-### 4.3 데이터 플로우
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Browser                               │
-│                                                              │
-│  Server Component ──(SSR)──→ requireAuth() → Supabase(서버)  │
-│       │                              ↓                       │
-│       └──→ Client Component ──→ Service Layer → Supabase(클) │
-│                │                     ↓                       │
-│                └──→ API Route ──→ Gemini AI                  │
-│                                                              │
-│  State:  Zustand Store ←──→ Custom Hooks ←──→ Components     │
-│  Cache:  TTL Memory Cache (5분) ← Service Layer              │
-│  Forms:  React Hook Form + Zod Schema ← Component           │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                          Browser                                      │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐│
+│  │  Server Component ──(SSR)──→ requireAuth() → Supabase(서버)       ││
+│  │       │                              ↓                            ││
+│  │       └──→ Client Component (View)                                ││
+│  │                │                                                  ││
+│  │                ├──→ Service Hook ──→ Repository ──→ Supabase      ││
+│  │                │                                                  ││
+│  │                └──→ API Route ──→ Gemini AI                       ││
+│  └──────────────────────────────────────────────────────────────────┘│
+│                                                                       │
+│  State:  Zustand Store ←──→ Custom Hooks ←──→ View Components        │
+│  Cache:  TTL Memory Cache (5분) ← Service/Repository Layer           │
+│  Forms:  React Hook Form + Zod Schema ← View Component               │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 **패턴 요약:**
 - **서버 컴포넌트**: 인증 확인 후 props 전달 (`requireAuth()`)
-- **클라이언트 컴포넌트**: Service Layer → Supabase 클라이언트 (싱글톤)
+- **View 컴포넌트**: Service 훅 호출 → Repository → Supabase (View에서 Supabase 직접 호출 없음)
 - **API 라우트**: AI 기능 전용 (Server Actions 미사용)
-- **캐시**: TTL 기반 인메모리 캐시 (`lib/services/cache.ts`)
+- **캐시**: TTL 기반 인메모리 캐시 (`shared/lib/cache.ts`)
 
-### 4.4 인증
+### 4.7 인증
 
 **Supabase Auth** 기반 3중 클라이언트 구조:
 
 | 클라이언트 | 파일 | 용도 |
 |-----------|------|------|
-| **Server** | `lib/supabase/server.ts` | 서버 컴포넌트에서 쿠키 기반 세션 |
-| **Middleware** | `lib/supabase/middleware.ts` | 요청마다 세션 갱신 |
-| **Browser** | `lib/supabase/client.ts` | 클라이언트 컴포넌트 (싱글톤) |
+| **Server** | `shared/lib/supabase/server.ts` | 서버 컴포넌트에서 쿠키 기반 세션 |
+| **Middleware** | `shared/lib/supabase/middleware.ts` | 요청마다 세션 갱신 |
+| **Browser** | `shared/lib/supabase/client.ts` | 클라이언트 컴포넌트 (싱글톤) |
 
-**미들웨어 흐름:**
-1. 모든 라우트에서 `updateSession()` 실행 (정적 자산/API 제외)
-2. 인증된 사용자: `/login` → `/home` 리다이렉트
-3. 미인증 사용자: 보호 라우트 → `/` 리다이렉트
-
-**권한 시스템** (`lib/permissions/`):
+**권한 시스템** (`shared/lib/permissions/`):
 - 역할: `admin` > `main_user` > `vip_user` > `user`
 - 유틸: `isSystemAdmin()`, `hasMinimumRole()`, `isRoleHigherOrEqual()`
 
-### 4.5 상태관리
+### 4.8 상태관리
 
 | 레이어 | 도구 | 범위 |
 |--------|------|------|
 | **글로벌 UI** | Zustand (`useTabContextStore`) | 탭 컨텍스트, 챗봇 연동 |
 | **폼** | React Hook Form + Zod | 컴포넌트 로컬 |
-| **서버 데이터** | Service Layer + Cache | 비동기 데이터 |
+| **서버 데이터** | Service/Repository Layer + Cache | 비동기 데이터 |
 | **커스텀 훅** | `useAsyncData`, `usePageContext` 등 | 재사용 로직 |
 
-### 4.6 AI 통합 (Google Gemini)
+### 4.9 AI 통합 (Google Gemini)
 
-**3개 AI 서비스:**
+**3개 AI 서비스** (`features/ai-chat/`에서 관리):
 
-| 서비스 | API 라우트 | 모델 | 역할 |
-|--------|-----------|------|------|
-| **글로벌 챗봇** | `/api/gemini/global-chat` | gemini-2.5-pro/flash | 14개 페이지별 컨텍스트 인식 |
-| **공정 상담** | `/api/gemini/process-plan-chat` | gemini-2.5-flash | 건물 데이터 기반 공정 상담 |
-| **파일 검색** | `/api/gemini/*` (7개) | gemini embedding | 벡터 스토어 기반 문서 검색 |
-
-**파일 업로드 보안:** MIME 검증, 매직 바이트 확인, 이중 확장자 차단, 10MB 제한
+| 서비스 | API 라우트 | 역할 |
+|--------|-----------|------|
+| **글로벌 챗봇** | `/api/gemini/global-chat` | 14개 페이지별 컨텍스트 인식 |
+| **공정 상담** | `/api/gemini/process-plan-chat` | 건물 데이터 기반 공정 상담 |
+| **파일 검색** | `/api/gemini/*` (7개) | 벡터 스토어 기반 문서 검색 |
 
 ---
 
@@ -241,8 +376,8 @@ RootLayout
 
 ```
 src/lib/
-├── index.ts              # Public API (290 lines)
-├── style.css             # 기본 스타일 (14KB)
+├── index.ts              # Public API
+├── style.css             # 기본 스타일
 │
 ├── components/           # UI 계층
 │   ├── GanttChart/       #   메인 오케스트레이터
@@ -250,7 +385,6 @@ src/lib/
 │   ├── GanttTimeline/    #   우측 패널 (SVG 바, 의존성)
 │   │   ├── renderers/    #     SVG 렌더러 (GridLines, TaskBars, Labels)
 │   │   └── hooks/        #     드래그 전략 (Strategy Pattern)
-│   │       └── dragStrategies/
 │   ├── forms/            #   모달 폼 (태스크/마일스톤 편집)
 │   └── ui/               #   재사용 프리미티브
 │
@@ -271,17 +405,14 @@ src/lib/
 │   ├── LocalStorageService.ts  # 구현체
 │   └── excelExport.ts    #   Excel 내보내기
 │
-├── types/                # 타입 정의 (6 파일)
+├── types/                # 타입 정의
 │   ├── core.ts           #   ConstructionTask, Milestone, Dependency
 │   ├── calendar.ts       #   CalendarSettings, Holiday
 │   ├── props.ts          #   GanttChartProps
 │   └── constants.ts      #   GANTT_COLORS, GANTT_LAYOUT
 │
-└── utils/                # 순수 함수 (15 모듈)
-    ├── date/             #   날짜 계산 엔진 (9 파일)
-    │   ├── workingDays.ts     # 영업일 계산 (공휴일 제외)
-    │   ├── dualCalendar.ts    # 이중 달력 (영업일 + 역일)
-    │   └── koreanHolidays.ts  # 2025-2027 한국 공휴일
+└── utils/                # 순수 함수
+    ├── date/             #   날짜 계산 엔진
     ├── criticalPath/     #   크리티컬 패스 알고리즘
     ├── dependencyGraph.ts #  순환 의존성 감지 (DFS)
     └── hierarchyValidation.ts  # 부모-자식 규칙 검증
@@ -300,16 +431,7 @@ ConstructionTask
 ├── dependencies: Dependency[]
 │
 ├── cp?: CPData           ← Level 1 전용
-│   ├── workDaysTotal         (Vermilion 색상)
-│   └── nonWorkDaysTotal      (Teal 색상)
-│
 ├── task?: TaskData       ← Level 2 전용
-│   ├── netWorkDays           (Red - 중앙 세그먼트)
-│   ├── indirectWorkDaysPre   (Blue - 좌측 세그먼트)
-│   ├── indirectWorkDaysPost  (Blue - 우측 세그먼트)
-│   ├── workOnSaturdays/Sundays/Holidays
-│   └── quantity, unit, dailyOutput, crew
-│
 └── group?: GroupData     ← GROUP 타입 전용
 ```
 
@@ -322,28 +444,13 @@ BLOCK (공구) ──→ CP 또는 BLOCK 포함 가능
         └── TASK (리프) ──→ 하위 불가
 ```
 
-#### 의존성 (Anchor Point 시스템)
-
-```
-Dependency
-├── type: FS | SS | FF | SF
-├── lag: number (양수/음수 가능)
-├── sourceAnchor: START | NET_WORK_START | NET_WORK_END | END
-└── targetAnchor: START | NET_WORK_START | NET_WORK_END | END
-```
-
-Detail View에서는 바의 **4개 앵커 포인트** 중 선택하여 의존성을 연결합니다:
-`[START]──[Blue]──[NET_WORK_START]──[Red]──[NET_WORK_END]──[Blue]──[END]`
-
 ### 5.3 뷰 모드
 
-| 뷰 모드 | 한글명 | 줌 기본값 | 표시 엔티티 |
-|---------|--------|----------|------------|
-| **MASTER** | 공구공정표 | MONTH (2px/day) | BLOCK, CP (wbsLevel=1) |
-| **DETAIL** | 주공정표 | DAY (20px/day) | GROUP, TASK (wbsLevel=2, activeCPId 하위) |
-| **UNIFIED** | 통합 뷰 | WEEK (10px/day) | 전체 레벨 |
-
-**Compact Mode** (DETAIL/UNIFIED): 행 높이 축소 (30px → 12px/21px)
+| 뷰 모드 | 한글명 | 표시 엔티티 |
+|---------|--------|------------|
+| **MASTER** | 공구공정표 | BLOCK, CP (wbsLevel=1) |
+| **DETAIL** | 주공정표 | GROUP, TASK (wbsLevel=2) |
+| **UNIFIED** | 통합 뷰 | 전체 레벨 |
 
 ### 5.4 렌더링
 
@@ -352,168 +459,80 @@ Detail View에서는 바의 **4개 앵커 포인트** 중 선택하여 의존성
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  GanttChart (오케스트레이터)                                │
-│                                                           │
 │  ┌─────────────┐  ┌──────────────────────────────────┐   │
-│  │ GanttSidebar │  │ GanttTimeline                    │   │
-│  │ (DOM)        │  │ (SVG)                            │   │
-│  │              │  │                                  │   │
-│  │ 태스크 목록   │  │ <svg>                            │   │
-│  │ 컬럼 헤더     │  │   <defs/> (그라디언트, 마커)       │   │
-│  │ 컨텍스트 메뉴 │  │   <GridLinesRenderer/>           │   │
-│  │ 인라인 편집   │  │   <TaskBarsRenderer/>            │   │
-│  │              │  │   <GroupDependencyLines/>        │   │
-│  │ @tanstack/   │  │   <MilestoneDashLines/>          │   │
-│  │ react-virtual│  │   <TaskLabelsRenderer/>          │   │
-│  │              │  │   <MilestoneMarker/>             │   │
-│  │              │  │   <DragGhost/>                   │   │
-│  │              │  │   <MultiSelectOverlay/>          │   │
-│  │              │  │ </svg>                           │   │
+│  │ GanttSidebar │  │ GanttTimeline (SVG)              │   │
+│  │ (DOM)        │  │   GridLines + TaskBars +          │   │
+│  │ @tanstack/   │  │   Dependencies + Milestones +     │   │
+│  │ react-virtual│  │   Labels + DragGhost              │   │
 │  └─────────────┘  └──────────────────────────────────┘   │
-│                                                           │
-│  스크롤 동기화: Sidebar ↔ Timeline (수직), Header ↔ Content (수평) │
+│  스크롤 동기화: Sidebar ↔ Timeline (수직/수평)              │
 └──────────────────────────────────────────────────────────┘
 ```
-
-**바 렌더링 방식:**
-- **Master View**: 2-세그먼트 (Vermilion 영업일 + Teal 비영업일)
-- **Detail View**: 3-세그먼트 (Blue 간접선행 + Red 순작업 + Blue 간접후행) + 공휴일 마스킹
-
-**드래그 전략 (Strategy Pattern):**
-- Move: 전체 바 이동
-- MoveNet: 순작업 세그먼트만 이동
-- ResizePre / ResizePost: 시작/종료일 조정
-- Boundary: 간접일수 조정
 
 ### 5.5 상태 패턴
 
 **2-Tier 아키텍처:**
 
-```
-Tier 1: 데이터 상태 (Props)          Tier 2: UI 상태 (Zustand)
-┌────────────────────────┐          ┌──────────────────────────┐
-│ tasks, milestones      │          │ viewMode, zoomLevel      │
-│ holidays, calendar     │          │ selectedTaskIds (Set)    │
-│ groupDependencies      │          │ expandedTaskIds (Set)    │
-│                        │          │ sidebarWidth             │
-│ ← 부모에서 props 전달    │          │ isDragging, dragType     │
-│ ← 콜백으로 변경 알림      │          │ isCompactMode            │
-│                        │          │                          │
-│ onTaskUpdate()         │          │ ← 라이브러리 내부 관리      │
-│ onTaskCreate()         │          │ ← Selector 훅으로 구독     │
-│ onMilestoneCreate()    │          │                          │
-└────────────────────────┘          └──────────────────────────┘
-```
-
-**왜 Context + Store 모두 사용하나?**
-- **Context**: 부모에서 전달된 props/콜백 (불변, 이벤트 기반)
-- **Store**: 일시적 UI 상태 (선택, 호버, 드래그 — 빈번한 업데이트)
+| Tier | 관리 주체 | 예시 |
+|------|----------|------|
+| **데이터** | Props (부모 제어) | tasks, milestones, groupDependencies |
+| **UI** | Zustand (라이브러리 내부) | viewMode, selectedIds, expandedIds, isDragging |
 
 ---
 
 ## 6. 연결 구조 (Web ↔ Library)
 
-### 통합 포인트
-
 ```
 apps/web                                   packages/sa-gantt-lib
 ──────────                                 ──────────────────────
 
-FullscreenGanttPage.tsx ──import──→ GanttChart, useHistory, types
+gantt/view/FullscreenGanttPage.tsx ──import──→ GanttChart, useHistory, types
         │
-        ├─ SupabaseGanttDataService.ts     DataService 인터페이스 구현
-        │   └─ Supabase ↔ ConstructionTask 매핑
+        ├─ gantt/service/
+        │   ├─ useFullscreenGantt.ts        20+ CRUD 핸들러 통합 훅
+        │   ├─ useGanttChartPage.ts         통계/import 미리보기 훅
+        │   ├─ gantt-data.service.ts        DataService 인터페이스 구현
+        │   ├─ gantt-mapper.ts              Row ↔ Domain 변환
+        │   ├─ gantt-cp-calculator.ts       CP 재계산 순수 함수
+        │   ├─ gantt-chart-helpers.ts       통계/층 라벨 압축 순수 함수
+        │   └─ process-to-gantt-converter   공정계획 → 간트 변환
         │
-        ├─ useHistory() ←─────────────────→ Immer 패치 기반 Undo/Redo
+        ├─ gantt/repository/
+        │   └─ gantt.repository.ts          순수 Supabase CRUD
         │
         └─ 콜백 연결:
-            onTaskUpdate → Supabase UPDATE
-            onTaskCreate → Supabase INSERT
-            onTaskDelete → Supabase DELETE
-            onMilestoneUpdate → Supabase UPDATE
-```
-
-### 데이터 변환 계층
-
-```
-Supabase DB (snake_case)
-    ↓ SupabaseGanttDataService
-ConstructionTask (camelCase, Date 객체)
-    ↓ props
-GanttChart 컴포넌트
-    ↓ 콜백 (onTaskUpdate 등)
-ConstructionTask (수정된 필드)
-    ↓ SupabaseGanttDataService
-Supabase DB
-```
-
-### Import 구조
-
-```typescript
-// apps/web에서의 사용
-import { GanttChart, useHistory } from 'sa-gantt-lib';
-import type { ConstructionTask, Milestone, GanttChartProps } from 'sa-gantt-lib';
-import 'sa-gantt-lib/style.css';
+            onTaskUpdate → useFullscreenGantt → Repository → Supabase
+            onTaskCreate → useFullscreenGantt → Repository → Supabase
+            onTaskDelete → useFullscreenGantt → Repository → Supabase
 ```
 
 ---
 
 ## 7. 빌드 & 배포 파이프라인
 
-### 빌드 순서 (⚠️ 필수)
+### 빌드 순서
 
 ```
 sa-gantt-lib (Vite)          @contech/web (Next.js)
 ──────────────────           ───────────────────────
-tsc                          next build
-  ↓                             ↓
-vite build                   .next/ 출력
-  ↓                             ↑
-dist/                        dist/ 참조
-├── index.es.js (ESM)        (이전 버전 참조 위험!)
-├── index.cjs (CommonJS)
-├── style.css
-└── index.d.ts
+tsc → vite build             next build → .next/
+  ↓
+dist/ (ESM + CJS + CSS + d.ts)
 
-✅ 올바른 순서: npm run build:lib → npm run build
-❌ 라이브러리 빌드 누락 시 web이 이전 dist/ 참조
-```
-
-### Turborepo 파이프라인
-
-```json
-// turbo.json
-{
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],          // 의존 패키지 먼저 빌드
-      "outputs": [".next/**", "dist/**"]  // 캐시 대상
-    }
-  }
-}
+올바른 순서: npm run build:lib → npm run build
 ```
 
 ### Vercel 배포
 
-```json
-// vercel.json
-{
-  "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "npm run build:lib && npm run build",
-  "outputDirectory": "apps/web/.next"
-}
 ```
-
-**배포 흐름:** Push → Vercel → `npm install` → `build:lib` → `build` → 배포
-
-### 주요 빌드 설정
+Push → Vercel → npm install → build:lib → build → 배포
+```
 
 | 설정 | 값 | 효과 |
 |------|-----|------|
 | React Compiler | `reactCompiler: true` | 자동 메모이제이션 |
 | Turbopack | `turbopack: {}` | 빠른 개발 서버 |
 | `"use client"` banner | Vite rollup output | Next.js App Router 호환 |
-| Peer Dependencies | react ^18/19 | 호스트 앱에서 제공 |
 
 ---
 
@@ -522,27 +541,9 @@ dist/                        dist/ 참조
 ### 에러 처리
 
 ```
-┌───────────────┐     ┌──────────────────┐     ┌─────────────┐
-│ ErrorBoundary │     │  handleError()   │     │  ApiError   │
-│ (컴포넌트)      │     │  (유틸)          │     │  (타입)     │
-│               │     │                  │     │             │
-│ React 에러     │     │ 1. toApiError()  │     │ code        │
-│ catch →       │     │ 2. logger.error  │     │ message     │
-│ 폴백 UI +      │     │ 3. toast.error   │     │ statusCode  │
-│ 재시도 버튼     │     │ 4. onAuthError?  │     │ details     │
-└───────────────┘     └──────────────────┘     └─────────────┘
-```
-
-### 검증 (Zod 스키마)
-
-```
-lib/schemas/index.ts
-├── loginSchema, signupSchema        ← 인증
-├── postSchema, commentSchema        ← 게시판
-├── projectSchema                    ← 프로젝트
-├── buildingBasicSchema             ← 건물
-├── floorHeightsSchema              ← 층별 높이
-└── ValidationMessages (한글)        ← 에러 메시지
+ErrorBoundary (컴포넌트) → 폴백 UI + 재시도
+handleError() (유틸)     → toApiError() → logger.error → toast.error
+ApiError (타입)          → code, message, statusCode, details
 ```
 
 ### 성능 최적화
@@ -552,34 +553,8 @@ lib/schemas/index.ts
 | **가상화** | GanttTimeline, GanttSidebar | 10,000+ 행 중 ~30행만 렌더링 |
 | **React Compiler** | Next.js 전체 | 자동 useMemo/useCallback |
 | **Zustand Selector** | useGanttViewState 등 | 불필요한 리렌더 방지 |
-| **React.memo** | 모든 바 컴포넌트 | 커스텀 비교 함수 |
-| **TTL Cache** | Service Layer | 5분 인메모리 캐시 |
-| **Supabase 싱글톤** | Browser Client | WebSocket 재사용 |
+| **TTL Cache** | Service/Repository Layer | 5분 인메모리 캐시 |
 | **Turbopack** | 개발 서버 | 빠른 HMR |
-
-### 서비스 레이어
-
-```
-lib/services/
-├── 범용 서비스
-│   ├── projects.ts              ← 프로젝트 CRUD
-│   ├── buildings.ts             ← 건물 관리
-│   ├── posts.client/server.ts   ← 게시판 (클라이언트/서버 분리)
-│   └── comments.client/server.ts
-│
-├── Supabase 특화
-│   ├── SupabaseBuildingDataService.ts  ← 건물 데이터 집약
-│   └── SupabaseGanttDataService.ts     ← 간트 ↔ DB 매핑
-│
-├── AI 서비스
-│   ├── gemini.ts               ← Gemini API 클라이언트
-│   ├── global-chatbot.ts       ← 챗봇 비즈니스 로직
-│   └── process-plan-chatbot.ts ← 공정 상담 로직
-│
-└── 유틸리티
-    ├── cache.ts                ← TTL 인메모리 캐시
-    └── unitRates.ts            ← 단가 데이터
-```
 
 ---
 
@@ -587,142 +562,28 @@ lib/services/
 
 ### 9.1 개요
 
-공정계획에서 각 세부공종의 **수량(물량)**을 산출하는 시스템입니다. 건물의 층별/공종별 물량 입력 데이터를 기반으로, 공정 모듈이 참조하는 수량을 자동으로 해석합니다.
-
-**Strangler Fig 패턴**으로 마이그레이션: 새로운 `resolveProcessQuantity`가 레거시 함수를 내부적으로 래핑하여 점진적 전환을 지원합니다.
+공정계획에서 각 세부공종의 **수량(물량)**을 산출하는 시스템입니다.
+**Strangler Fig 패턴**으로 마이그레이션: 새로운 `resolveProcessQuantity`가 레거시 함수를 내부적으로 래핑합니다.
 
 ### 9.2 아키텍처 레이어
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  UI 디스플레이 레이어                                          │
-│  BuildingProcessPlanPage / BasementProcessPlanPage          │
-│  DailyWorkerInputDashboard / process-row-helpers            │
-│                                                             │
-│  ↓ resolveProcessQuantity(building, ref, floorLabel?)       │
-├─────────────────────────────────────────────────────────────┤
-│  계산 레이어                                                  │
-│  process-days-calculator.ts / useProcessCalculation.ts      │
-│                                                             │
-│  ↓ resolveProcessQuantity(building, ref, floorLabel?)       │
-├─────────────────────────────────────────────────────────────┤
-│  통합 해석기 (Resolver)                                       │
-│  process-quantity-resolver.ts                               │
-│  ┌──────────────┬──────────────┬──────────────┐             │
-│  │ resolveBy    │ resolveBy    │ resolveBy    │             │
-│  │ Category     │ Floor        │ Combined     │             │
-│  └──────┬───────┴──────┬───────┴──────┬───────┘             │
-│         ↓              ↓              ↓                     │
-├─────────────────────────────────────────────────────────────┤
-│  레거시 데이터 접근 (내부 전용)                                 │
-│  quantity-reference.ts                                      │
-│  getQuantityByReference() / getQuantityFromFloor()          │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  UI 디스플레이 (features/building/*/view/)        │
+│  ↓ resolveProcessQuantity(building, ref, floor?) │
+├─────────────────────────────────────────────────┤
+│  통합 해석기 (process-quantity-resolver.ts)        │
+│  resolveByCategory / resolveByFloor / resolveByCombined │
+├─────────────────────────────────────────────────┤
+│  레거시 데이터 접근 (quantity-reference.ts)        │
+│  getQuantityByReference / getQuantityFromFloor    │
+└─────────────────────────────────────────────────┘
 ```
 
-### 9.3 타입 시스템
-
-```typescript
-// lib/types/process-quantity.ts
-
-interface SemanticQuantityReference {
-  tradeField: string;    // 'gangForm' | 'alForm' | 'formwork' | ...
-  subField: string;      // 'areaM2' | 'ton' | 'volumeM3'
-  ratio: number;         // 배율 (기본 1, stripClean은 2)
-  sourceType: string;    // 'category' | 'floor' | 'combined'
-  tradeGroup?: string;   // '버림' | '기초' (category용)
-  combineFloors?: string[]; // ['B1', 'B2'] (combined용)
-}
-
-// 컬럼→공종 매핑 (레거시 Excel 참조 변환용)
-const TRADE_FIELD_MAP: Record<string, string> = {
-  B: 'gangForm', C: 'alForm', D: 'formwork',
-  E: 'stripClean', F: 'rebar', G: 'concrete', U: 'euroForm',
-};
-```
-
-### 9.4 해석 전략 (Strategy)
+### 9.3 해석 전략
 
 | sourceType | 해석 전략 | 예시 |
 |-----------|----------|------|
 | `category` | 버림/기초 floorTrades에서 tradeGroup으로 조회 | 버림 갱폼 면적 |
 | `floor` | 특정 층 floorLabel로 조회 | 3F 철근 톤수 |
 | `combined` | 여러 층 합산 | B1+B2 콘크리트 |
-
-### 9.5 마이그레이션 브릿지
-
-```typescript
-// quantity-reference-migration.ts
-parseLegacyReference(reference: string, category: ProcessCategory)
-  → SemanticQuantityReference | null
-
-// 변환 예시:
-// 'D6'     → { tradeField: 'formwork', subField: 'areaM2', sourceType: 'floor' }
-// 'F7*0.45' → { tradeField: 'rebar', subField: 'ton', ratio: 0.45, sourceType: 'floor' }
-// 'F_B1B2_COMBINED' → { tradeField: 'rebar', sourceType: 'combined', combineFloors: ['B1','B2'] }
-```
-
-### 9.6 파일 구조
-
-```
-lib/
-├── types/
-│   └── process-quantity.ts          # SemanticQuantityReference 타입, TRADE_FIELD_MAP
-├── utils/
-│   ├── process-quantity-resolver.ts # 통합 해석기 (단일 진입점)
-│   ├── quantity-reference-migration.ts # 레거시 → 시맨틱 변환 브릿지
-│   ├── quantity-reference.ts        # 레거시 데이터 접근 (내부 전용)
-│   ├── process-calculation.ts       # 인원/일수/장비 계산 공식
-│   ├── process-days-calculator.ts   # 공정일수 계산 엔진
-│   └── process-row-helpers.ts       # UI 행별 물량 조회 헬퍼
-└── data/
-    └── process-modules.ts           # 공정 모듈 정의 (quantityRef 포함)
-```
-
----
-
-## 10. 대형 파일 목록 (리팩토링 후보)
-
-> 500 LOC 이상의 파일. 단일 책임 원칙(SRP) 관점에서 분리를 검토할 수 있습니다.
-
-| 파일 | LOC | 비고 |
-|------|-----|------|
-| `components/buildings/BasementProcessPlanPage.tsx` | 2,469 | 지하층 공정표 전체 |
-| `components/buildings/BuildingProcessPlanPage.tsx` | 2,249 | 지상층 공정표 전체 |
-| `components/buildings/FloorTradeTable.tsx` | 1,993 | 층별 공종 테이블 |
-| `components/buildings/DetailedFloorTradeTable.tsx` | 1,977 | 상세 층별 공종 |
-| `lib/types.ts` | 1,334 | DB 타입 전체 정의 |
-| `lib/data/process-modules.ts` | 1,171 | 공정 모듈 데이터 |
-| `lib/utils/dxf-parser.ts` | 1,137 | DXF 파싱 유틸 |
-| `sa-gantt-lib/src/App.tsx` | 1,065 | 데모 앱 (비배포) |
-| `components/projects/FullscreenGanttPage.tsx` | 1,047 | 간트 통합 페이지 |
-| `lib/services/SupabaseBuildingDataService.ts` | 870 | 건물 데이터 서비스 |
-| `components/buildings/FloorSettingsTable.tsx` | 868 | 층 설정 테이블 |
-| `lib/services/SupabaseGanttDataService.ts` | 836 | 간트 DB 서비스 |
-| `lib/services/buildings.ts` | 830 | 건물 서비스 |
-| `components/buildings/PlannedUnitRatePage.tsx` | 820 | 단가 산출 페이지 |
-| `components/buildings/process-logic/ProcessModuleEditModal.tsx` | 783 | 공정 모듈 편집 모달 |
-| `components/buildings/BuildingBasicInfo.tsx` | 753 | 건물 기본정보 |
-| `sa-gantt-lib/components/GanttTimeline/index.tsx` | 703 | 타임라인 메인 |
-| `sa-gantt-lib/components/GanttSidebar/index.tsx` | 688 | 사이드바 메인 |
-| `components/ifc-viewer/IfcViewer.tsx` | 659 | BIM 뷰어 |
-| `components/global/GlobalChatbot.tsx` | 657 | AI 챗봇 |
-| `lib/utils/quantity-reference.ts` | 626 | 물량 참조 로직 |
-| `sa-gantt-lib/components/GanttChart/index.tsx` | 613 | 간트 오케스트레이터 |
-| `components/projects/ProjectDetailClient.tsx` | 588 | 프로젝트 상세 |
-
----
-
-## 11. 리팩토링/품질 현황
-
-기준일: `2026-02-10`
-
-- 대상: `apps/web`
-- 결과: `npx eslint src` 기준 `errors: 0`, `warnings: 0`
-- 주요 반영 사항:
-  - 미사용 import/변수 및 dead code 정리
-  - `react-hooks/exhaustive-deps` 및 `set-state-in-effect` 패턴 정리
-  - `next/no-img-element`를 `next/image` 기반으로 전환
-  - 타입 안정성 보강(`no-explicit-any`, 빈 타입 선언 정리)
-
-상세 로그: `docs/refactoring_status.md`

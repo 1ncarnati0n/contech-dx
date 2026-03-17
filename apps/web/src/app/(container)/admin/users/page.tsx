@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
-import { getCurrentUserProfile, isSystemAdmin, getRoleDisplayName, getRoleBadgeVariant } from '@/lib/permissions/server';
+import { createClient } from '@/shared/lib/supabase/server';
+import { getCurrentUserProfile, isSystemAdmin, getRoleDisplayName, getRoleBadgeVariant } from '@/shared/lib/permissions/server';
 import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import UpdateRoleButton from '@/components/admin/UpdateRoleButton';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import UpdateRoleButton from '@/features/admin/view/UpdateRoleButton';
+import { Card, CardContent } from '@/shared/components/ui/Card';
+import { Badge } from '@/shared/components/ui/Badge';
 import {
   Shield,
   Users,
