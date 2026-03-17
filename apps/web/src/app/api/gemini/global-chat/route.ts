@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withValidation } from '@/lib/api/withValidation';
-import { getPageChatbotConfig } from '@/lib/data/global-chatbot-config';
-import { geminiModelRequest } from '@/lib/utils/geminiApi';
-import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
-import { logger } from '@/lib/utils/logger';
-import type { PageType } from '@/lib/hooks/usePageContext';
+import { withValidation } from '@/shared/lib/api/withValidation';
+import { getPageChatbotConfig } from '@/features/ai-chat/data/global-chatbot-config';
+import { geminiModelRequest } from '@/features/ai-chat/service/geminiApi';
+import { apiError, checkAuth, ErrorCode } from '@/shared/utils/apiAuth';
+import { logger } from '@/shared/utils/logger';
+import type { PageType } from '@/shared/hooks/usePageContext';
 
 /**
  * 에러 타입

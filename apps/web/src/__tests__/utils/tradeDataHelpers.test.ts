@@ -12,8 +12,8 @@ import {
   isTradeData,
   getQuantityValue,
   isValidQuantitySubField,
-} from '@/lib/utils/tradeDataHelpers';
-import type { TradeData } from '@/lib/types';
+} from '@/features/building/quantity/service/tradeDataHelpers';
+import type { TradeData } from '@/shared/types';
 
 describe('tradeDataHelpers', () => {
   // ============================================

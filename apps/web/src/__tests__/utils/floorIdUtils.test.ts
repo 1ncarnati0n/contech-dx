@@ -11,7 +11,7 @@ import {
   isUUID,
   isValidFloorId,
   getFloorIdType,
-} from '@/lib/utils/floorIdUtils';
+} from '@/features/building/utils/floorIdUtils';
 
 const SAMPLE_UUID = '123e4567-e89b-12d3-a456-426614174000';
 
