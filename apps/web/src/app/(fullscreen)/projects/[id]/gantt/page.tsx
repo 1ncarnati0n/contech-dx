@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { requireProjectMember } from '@/lib/auth/requireProjectMember';
-import { getProject } from '@/lib/services/projects';
-import { FullscreenGanttPage } from '@/components/projects/FullscreenGanttPage';
+import { createClient } from '@/shared/lib/supabase/server';
+import { requireProjectMember } from '@/shared/lib/auth/requireProjectMember';
+import { getProject } from '@/features/project/repository/projects';
+import { FullscreenGanttPage } from '@/features/gantt/view/FullscreenGanttPage';
 
 interface Props {
   params: Promise<{ id: string }>;

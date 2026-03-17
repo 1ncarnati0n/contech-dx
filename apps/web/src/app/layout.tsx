@@ -1,11 +1,7 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import '../styles/globals.css';
-import NavBar from '@/components/layout/NavBar';
-import { ThemeProvider } from '@/components/layout/ThemeProvider';
-import { Toaster } from '@/components/ui/Toaster';
-import LoadingBar from '@/components/ui/LoadingBar';
-import { GlobalChatbot } from '@/components/global/GlobalChatbot';
+import { ThemeProvider } from '@/shared/components/layout/ThemeProvider';
+import { Toaster } from '@/shared/components/ui/Toaster';
 
 export const metadata: Metadata = {
   title: 'ConTech-DX',
@@ -34,16 +30,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense fallback={null}>
-            <LoadingBar />
-          </Suspense>
-          <NavBar />
-          <main className="pt-16 min-h-screen text-foreground">
-            {children}
-          </main>
-          <Suspense fallback={null}>
-            <GlobalChatbot />
-          </Suspense>
+          {children}
           <Toaster />
         </ThemeProvider>
       </body>

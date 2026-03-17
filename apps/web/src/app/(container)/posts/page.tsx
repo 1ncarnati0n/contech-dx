@@ -1,14 +1,14 @@
-import { getPosts } from '@/lib/services/posts.server';
-import { requireAuth } from '@/lib/auth/requireAuth';
-import { logger } from '@/lib/utils/logger';
+import { getPosts } from '@/features/post/repository/posts.server';
+import { requireAuth } from '@/shared/lib/auth/requireAuth';
+import { logger } from '@/shared/utils/logger';
 import Link from 'next/link';
 import {
   PenSquare,
   FileText,
   FileWarning,
 } from 'lucide-react';
-import { Card, CardContent, Button } from '@/components/ui';
-import PostsTable from '@/components/posts/PostsTable';
+import { Card, CardContent, Button } from '@/shared/components/ui';
+import PostsTable from '@/features/post/view/PostsTable';
 
 export default async function PostsPage() {
   // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트

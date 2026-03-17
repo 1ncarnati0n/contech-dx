@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { promoteCurrentUserToAdmin } from '@/lib/services/users.client';
+import { promoteCurrentUserToAdmin } from '@/features/admin/service/admin.service';
 import { useRouter } from 'next/navigation';
 
 export default function PromoteToAdminClient() {

@@ -1,29 +1,9 @@
-import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { requireProjectMember } from '@/lib/auth/requireProjectMember';
-import { getProject } from '@/lib/services/projects';
-import { ProjectDetailClient } from '@/components/projects/ProjectDetailClient';
+'use client';
 
-interface Props {
-  params: Promise<{ id: string }>;
+import { useProject } from './ProjectContext';
+import { ProjectOverview } from './ProjectOverview';
+
+export default function ProjectOverviewPage() {
+  const { project } = useProject();
+  return <ProjectOverview project={project} />;
 }
-
-export default async function ProjectDetailPage({ params }: Props) {
-  const { id } = await params;
-
-  // 인증 + 멤버십 체크 - 비로그인 또는 비멤버 시 프로젝트 목록으로 리다이렉트
-  await requireProjectMember(id);
-
-  const supabase = await createClient();
-
-  // Load project data
-  const project = await getProject(id, supabase);
-
-  if (!project) {
-    notFound();
-  }
-
-  return <ProjectDetailClient project={project} />;
-}
-
-

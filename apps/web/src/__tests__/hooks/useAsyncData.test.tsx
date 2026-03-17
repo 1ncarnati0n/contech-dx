@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { useAsyncData } from '@/lib/hooks/useAsyncData';
+import { useAsyncData } from '@/shared/hooks/useAsyncData';
 
 describe('useAsyncData', () => {
   it('autoFetch=true일 때 마운트 시 fetcher를 호출하고 data를 설정한다', async () => {

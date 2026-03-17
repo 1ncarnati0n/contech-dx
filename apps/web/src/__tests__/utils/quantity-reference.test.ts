@@ -1,5 +1,5 @@
-import { getQuantityFromFloor, getQuantityByReference } from '@/lib/utils/quantity-reference';
-import type { Building } from '@/lib/types';
+import { getQuantityFromFloor, getQuantityByReference } from '@/features/building/process-plan/service/quantity-reference';
+import type { Building } from '@/shared/types';
 
 function createTestBuilding(overrides?: Partial<Building>): Building {
   return {
