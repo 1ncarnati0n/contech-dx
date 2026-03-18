@@ -1,4 +1,4 @@
-import { calculateFormula } from '@/components/buildings/TradeInputCell';
+import { calculateFormula } from '@/features/building/quantity/TradeInputCell';
 
 describe('calculateFormula', () => {
   describe('basic arithmetic', () => {

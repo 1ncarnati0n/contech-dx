@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logger } from '@/lib/utils/logger';
-import { geminiUploadStart } from '@/lib/utils/geminiApi';
-import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
+import { logger } from '@/shared/utils/logger';
+import { geminiUploadStart } from '@/features/ai-chat/service/geminiApi';
+import { apiError, checkAuth, ErrorCode } from '@/shared/utils/apiAuth';
 import { z } from 'zod';
 
 // 보안 설정

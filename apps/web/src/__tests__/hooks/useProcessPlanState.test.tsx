@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { useProcessPlanState, type ProcessPlanConfig } from '@/components/buildings/hooks/useProcessPlanState';
-import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
+import { useProcessPlanState, type ProcessPlanConfig } from '@/features/building/process-plan/hooks/useProcessPlanState';
+import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/shared/types';
 import { toast } from 'sonner';
 
 jest.mock('sonner', () => ({

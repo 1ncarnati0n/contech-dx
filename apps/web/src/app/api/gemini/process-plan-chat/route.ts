@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withValidation } from '@/lib/api/withValidation';
-import { buildFullSystemPrompt } from '@/lib/data/chatbot-prompts';
-import { parseHighlightMarkersEnhanced } from '@/lib/utils/highlight-registry';
-import { geminiModelRequest } from '@/lib/utils/geminiApi';
-import { apiError, checkAuth, ErrorCode } from '@/lib/utils/apiAuth';
-import { logger } from '@/lib/utils/logger';
+import { withValidation } from '@/shared/lib/api/withValidation';
+import { buildFullSystemPrompt } from '@/features/ai-chat/data/chatbot-prompts';
+import { parseHighlightMarkersEnhanced } from '@/features/castplan/service/highlight-registry';
+import { geminiModelRequest } from '@/features/ai-chat/service/geminiApi';
+import { apiError, checkAuth, ErrorCode } from '@/shared/utils/apiAuth';
+import { logger } from '@/shared/utils/logger';
 import type {
   ChatContextSnapshot,
   ChatbotError,
-} from '@/components/buildings/ProcessPlanChatbotTypes';
+} from '@/features/ai-chat/types/ProcessPlanChatbotTypes';
 
 interface CitationSource {
   startIndex?: number;
