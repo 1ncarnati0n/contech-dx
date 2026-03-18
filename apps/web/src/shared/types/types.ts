@@ -478,6 +478,7 @@ export interface BuildingMeta {
 export interface Floor {
   id: string;
   buildingId: string;
+  coreLabel: number; // 코어 번호 (1~4, 단일 코어는 1)
   floorLabel: string; // "B2", "B1", "1F", "PH1" 등
   floorNumber: number; // 정렬용 (-2, -1, 1, 2, ...)
   levelType: LevelType;
@@ -1106,6 +1107,7 @@ export interface BuildingRow {
 export interface FloorRow {
   id: string;
   building_id: string;
+  core_label: number;
   floor_label: string;
   floor_number: number;
   level_type: LevelType;

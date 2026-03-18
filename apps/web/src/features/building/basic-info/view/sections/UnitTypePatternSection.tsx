@@ -3,7 +3,6 @@
 import { Button, Input, Badge } from '@/shared/components/ui';
 import { Plus, Trash2, HelpCircle, Save } from 'lucide-react';
 import type { UnitTypePattern } from '@/shared/types';
-import { getPilotisIndex } from '../../service/useBuildingAutoCalculations';
 import type { Heights } from '../../types';
 
 interface UnitTypePatternSectionProps {
@@ -82,21 +81,26 @@ export function UnitTypePatternSection({
   onSave,
   isSaving = false,
 }: UnitTypePatternSectionProps) {
+  const MAX_CORES = 4;
+
   /**
-   * 새 단위세대 패턴 추가
+   * 새 단위세대 패턴 추가 (코어 추가, 최대 4개)
    */
   const handleAddPattern = () => {
+    if (unitTypePattern.length >= MAX_CORES) return;
     onUnitTypePatternChange([
       ...unitTypePattern,
-      { unitCount: 1, type: '', coreNumber: 1 },
+      { unitCount: 1, type: '', coreNumber: unitTypePattern.length + 1 },
     ]);
   };
 
   /**
-   * 단위세대 패턴 삭제
+   * 단위세대 패턴 삭제 (코어 번호 재정렬)
    */
   const handleRemovePattern = (index: number) => {
-    onUnitTypePatternChange(unitTypePattern.filter((_, i) => i !== index));
+    const filtered = unitTypePattern.filter((_, i) => i !== index);
+    const renumbered = filtered.map((p, i) => ({ ...p, coreNumber: i + 1 }));
+    onUnitTypePatternChange(renumbered);
   };
 
   /**
@@ -112,20 +116,6 @@ export function UnitTypePatternSection({
     onUnitTypePatternChange(updated);
   };
 
-  /**
-   * 코어 인덱스 계산
-   */
-  const getCoreIndex = (coreNum: number, index: number): number => {
-    if (coreNum === 1) {
-      return unitTypePattern
-        .slice(0, index + 1)
-        .filter(p => p.coreNumber === 1).length - 1;
-    } else if (coreNum === 2) {
-      return unitTypePattern.filter(p => p.coreNumber === 1).length;
-    }
-    return 0;
-  };
-
   return (
     <div className="space-y-4">
       {/* 헤더: 단위세대 구성 + 추가 버튼 */}
@@ -138,19 +128,19 @@ export function UnitTypePatternSection({
           variant="outline"
           size="sm"
           onClick={handleAddPattern}
+          disabled={unitTypePattern.length >= MAX_CORES}
           className="gap-1"
         >
           <Plus className="w-3 h-3" />
-          추가
+          코어 추가 {unitTypePattern.length}/{MAX_CORES}
         </Button>
       </div>
 
       {/* 패턴 목록 */}
       <div className="space-y-2">
         {unitTypePattern.map((pattern, index) => {
-          const coreNum = pattern.coreNumber || 1;
-          const coreIndex = getCoreIndex(coreNum, index);
-          const pilotisIndex = getPilotisIndex(coreNum, index, unitTypePattern);
+          const coreIndex = index;
+          const pilotisIndex = index;
           // 현재 코어의 층수 값들
           const currentBasementFloors = coreBasementFloors.length > coreIndex
             ? coreBasementFloors[coreIndex] ?? basementCount ?? 0
@@ -174,30 +164,23 @@ export function UnitTypePatternSection({
               className="p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50/50 dark:bg-slate-800/50"
             >
               <div className="flex items-start gap-3">
-                {/* ━━━ 그룹 1: 코어 & 호수 정보 ━━━ */}
+                {/* 코어 번호 뱃지 */}
+                <Badge variant="default" className="mt-2 whitespace-nowrap">
+                  코어{index + 1}
+                </Badge>
+
+                {/* ━━━ 그룹 1: 호수 & 타입 정보 ━━━ */}
                 <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800/30">
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">코어</span>
+                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">호수</span>
                   <select
-                    value={coreNum}
-                    onChange={(e) => handleUpdatePattern(index, 'coreNumber', Number(e.target.value))}
-                    className="w-20 px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                  >
-                    <option value={1}>코어1</option>
-                    <option value={2}>코어2</option>
-                    <option value={3}>코어3</option>
-                  </select>
-
-                  <div className="w-px h-6 bg-blue-200 dark:bg-blue-700 mx-1" />
-
-                  <Input
-                    type="number"
-                    placeholder="호수"
-                    min="1"
-                    value={(pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : '')) || ''}
+                    value={pattern.unitCount || 1}
                     onChange={(e) => handleUpdatePattern(index, 'unitCount', Number(e.target.value))}
-                    className="w-[60px]"
-                    style={{ width: '60px', minWidth: '60px', maxWidth: '60px' }}
-                  />
+                    className="w-16 px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  >
+                    <option value={1}>1</option>
+                    <option value={2}>2</option>
+                    <option value={3}>3</option>
+                  </select>
                   <span className="text-slate-500 text-sm">호</span>
 
                   <div className="w-px h-6 bg-blue-200 dark:bg-blue-700 mx-1" />
@@ -374,7 +357,7 @@ export function UnitTypePatternSection({
         {/* 빈 상태 메시지 */}
         {unitTypePattern.length === 0 && (
           <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-            단위세대 패턴을 추가해주세요.
+            코어를 추가해주세요. (최대 {MAX_CORES}개)
           </p>
         )}
       </div>
