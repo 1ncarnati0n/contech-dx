@@ -1,9 +1,9 @@
 'use client';
 
-import { logger } from '@/lib/utils/logger';
-import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
+import { logger } from '@/shared/utils/logger';
+import { Card, CardHeader, CardTitle, CardContent, Button } from '@/shared/components/ui';
 import { FileSpreadsheet, Download } from 'lucide-react';
-import type { CastBlock, VolumeExportRow } from '@/lib/types';
+import type { CastBlock, VolumeExportRow } from '@/shared/types';
 
 interface VolumeCalculationPanelProps {
   blocks: CastBlock[];

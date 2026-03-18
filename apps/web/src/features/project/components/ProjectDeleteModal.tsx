@@ -11,12 +11,12 @@ import {
   DialogFooter,
   Button,
   Input,
-} from '@/components/ui';
+} from '@/shared/components/ui';
 import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteProject } from '@/lib/services/projects';
-import type { Project } from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
+import { deleteProject } from '@/features/project/services/projects';
+import type { Project } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
 
 interface ProjectDeleteModalProps {
   project: Project;

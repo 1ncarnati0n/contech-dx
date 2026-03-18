@@ -3,8 +3,8 @@
  * 계획 내역 / 실행 내역 단가 관리
  */
 
-import type { UnitRateItem, UnitRateType } from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
+import type { UnitRateItem, UnitRateType } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
 
 // 메모리 스토리지 (임시)
 const unitRatesStore = new Map<string, Map<UnitRateType, UnitRateItem[]>>();

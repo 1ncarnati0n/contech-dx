@@ -151,6 +151,7 @@ function mergeConsecutiveStandardFloors(
           result.push({
             id: dummyId,
             buildingId,
+            coreLabel: 1,
             floorLabel: `${rangeStart}~${rangeEnd}F`,
             floorNumber: rangeStart,
             levelType: '지상',
@@ -175,6 +176,7 @@ function mergeConsecutiveStandardFloors(
         result.push({
           id: dummyId,
           buildingId,
+          coreLabel: 1,
           floorLabel: `${current.floorNum}F`,
           floorNumber: current.floorNum,
           levelType: '지상',
@@ -339,6 +341,7 @@ function transformSingleCore(floors: Floor[], buildingId: string): Floor[] {
             result.push({
               id: dummyId,
               buildingId,
+              coreLabel: 1,
               floorLabel: `${rangeStart}~${rangeEnd}F`,
               floorNumber: rangeStart,
               levelType: '지상',

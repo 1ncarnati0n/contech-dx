@@ -1,8 +1,8 @@
 'use client';
 
 import { Group, Line, Text } from 'react-konva';
-import type { CastBlock } from '@/lib/types';
-import { calculateFlatPolygonArea, flatPointsToPoints, calculatePolygonCentroid } from '@/lib/utils/geometry';
+import type { CastBlock } from '@/shared/types';
+import { calculateFlatPolygonArea, flatPointsToPoints, calculatePolygonCentroid } from '@/features/castplan/utils/geometry';
 
 interface BlockLayerProps {
   blocks: CastBlock[];

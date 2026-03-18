@@ -5,7 +5,7 @@
  * 클라이언트/서버 양쪽에서 사용 가능한 유니버설 서비스
  */
 
-import { createClient as createBrowserClient } from '@/lib/supabase/client';
+import { createClient as createBrowserClient } from '@/shared/lib/supabase/client';
 import type {
   Building,
   BuildingMeta,
@@ -22,9 +22,9 @@ import type {
   FloorInsert,
   FloorTradeInsert,
   TradeData,
-} from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
-import { MemoryCache, DEFAULT_TTL } from './cache';
+} from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
+import { MemoryCache, DEFAULT_TTL } from '@/shared/lib/cache';
 
 // ============================================
 // 캐시 인스턴스

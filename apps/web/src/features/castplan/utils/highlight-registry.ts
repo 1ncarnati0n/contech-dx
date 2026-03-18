@@ -3,7 +3,7 @@
  * UI 요소를 식별하기 위한 data-* 속성과 매핑 정의
  */
 
-import type { HighlightTarget, HighlightTargetKey } from '@/components/buildings/ProcessPlanChatbotTypes';
+import type { HighlightTarget, HighlightTargetKey } from '@/features/building/chatbot/ProcessPlanChatbotTypes';
 
 /**
  * 하이라이트 타겟 레지스트리 (12개 정의)

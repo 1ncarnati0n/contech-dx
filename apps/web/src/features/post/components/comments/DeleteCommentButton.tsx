@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteResourceButton } from '@/components/common/DeleteResourceButton';
+import { DeleteResourceButton } from '@/shared/components/common/DeleteResourceButton';
 
 interface DeleteCommentButtonProps {
   commentId: string;

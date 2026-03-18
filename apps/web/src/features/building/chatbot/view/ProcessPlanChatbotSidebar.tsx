@@ -12,7 +12,7 @@ import {
   Trash2,
   GripVertical,
 } from 'lucide-react';
-import { Button, Textarea } from '@/components/ui';
+import { Button, Textarea } from '@/shared/components/ui';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type {
@@ -21,11 +21,11 @@ import type {
   HighlightTarget,
   ChatContextSnapshot,
   ChatbotError,
-} from './ProcessPlanChatbotTypes';
-import { sendProcessPlanChat } from '@/lib/services/process-plan-chatbot';
-import { buildChatContext } from '@/lib/utils/chatbot-context-builder';
+} from '../ProcessPlanChatbotTypes';
+import { sendProcessPlanChat } from '@/features/ai-chat/service/process-plan-chatbot';
+import { buildChatContext } from '@/features/ai-chat/service/chatbot-context-builder';
 import { QuickQuestionButtons } from './QuickQuestionButtons';
-import { useResizableSidebar } from '@/lib/hooks';
+import { useResizableSidebar } from '@/shared/hooks';
 
 interface ProcessPlanChatbotSidebarProps {
   projectId: string;

@@ -1,11 +1,11 @@
 'use client';
 
-import { logger } from '@/lib/utils/logger';
+import { logger } from '@/shared/utils/logger';
 import { useRef, useState, useCallback } from 'react';
 import { Upload, X, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Button, Card, CardContent } from '@/components/ui';
-import { loadDxfFromFile } from '@/lib/utils/dxf-parser';
-import type { ParsedDxfData, DxfParseProgress, DxfStatistics } from '@/lib/types';
+import { Button, Card, CardContent } from '@/shared/components/ui';
+import { loadDxfFromFile } from '@/features/castplan/utils/dxf-parser';
+import type { ParsedDxfData, DxfParseProgress, DxfStatistics } from '@/shared/types';
 
 interface DxfUploaderProps {
   onDxfLoaded: (data: ParsedDxfData, fileName: string) => void;

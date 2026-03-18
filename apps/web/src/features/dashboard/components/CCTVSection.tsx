@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, Badge } from '@/components/ui';
+import { Card, Badge } from '@/shared/components/ui';
 import { Camera, Maximize2 } from 'lucide-react';
 import { DailyWorkerInputDashboard } from './DailyWorkerInputDashboard';
 

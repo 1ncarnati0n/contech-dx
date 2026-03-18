@@ -2,7 +2,7 @@
  * 타설구간 계산 유틸리티
  */
 
-import type { PouringSection, PouringSectionCalculationResult } from '@/lib/types';
+import type { PouringSection, PouringSectionCalculationResult } from '@/shared/types';
 
 /**
  * 프로젝트 전체 기초 콘크리트 물량과 동 개수를 기반으로 타설구간 개수 계산

@@ -8,8 +8,8 @@ import type {
   ProcessPlanChatResponse,
   ChatContextSnapshot,
   ChatbotError,
-} from '@/components/buildings/ProcessPlanChatbotTypes';
-import { getApiErrorMessage, getChatbotErrorDetails } from '@/lib/utils/api-error';
+} from '@/features/building/chatbot/ProcessPlanChatbotTypes';
+import { getApiErrorMessage, getChatbotErrorDetails } from '@/shared/utils/api-error';
 
 export interface ProcessPlanChatRequest {
   query: string;

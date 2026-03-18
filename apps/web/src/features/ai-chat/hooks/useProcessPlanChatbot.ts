@@ -13,9 +13,9 @@ import type {
   HighlightTarget,
   ChatbotError,
   ChatbotState,
-} from '@/components/buildings/ProcessPlanChatbotTypes';
-import { sendProcessPlanChat } from '@/lib/services/process-plan-chatbot';
-import { buildChatContext } from '@/lib/utils/chatbot-context-builder';
+} from '@/features/building/chatbot/ProcessPlanChatbotTypes';
+import { sendProcessPlanChat } from '@/features/ai-chat/service/process-plan-chatbot';
+import { buildChatContext } from '@/features/ai-chat/service/chatbot-context-builder';
 
 interface UseProcessPlanChatbotOptions {
   projectId: string;

@@ -42,7 +42,7 @@ import type {
   DxfEntityType,
   DxfStatistics,
   DxfParseProgress,
-} from '@/lib/types';
+} from '@/shared/types';
 
 // ============================================================================
 // 타입 정의

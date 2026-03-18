@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { ArrowRight } from 'lucide-react';
-import { Card, CardContent, Badge } from '@/components/ui';
-import { staggerContainer, staggerItem } from '@/lib/animations';
-import type { Post } from '@/lib/types';
+import { Card, CardContent, Badge } from '@/shared/components/ui';
+import { staggerContainer, staggerItem } from '@/shared/lib/animations';
+import type { Post } from '@/shared/types';
 
 interface PostsListProps {
   posts: (Post & { author: { email: string; display_name: string | null } | null })[];

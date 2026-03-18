@@ -4,16 +4,15 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, Search, Filter, FolderKanban } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card } from '@/components/ui';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Button, Card } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/Skeleton';
 import { ProjectCard } from './ProjectCard';
 import { ProjectCreateModal } from './ProjectCreateModal';
-import type { Project, ProjectStatus } from '@/lib/types';
-import { getProjects } from '@/lib/services/projects';
-import { useAsyncList } from '@/lib/hooks';
-import { getStatusOptions } from '@/lib/utils/index';
-import { projectsCache } from '@/lib/services/cache';
-import { useRealtimeCacheSync } from '@/lib/hooks/useRealtimeCacheSync';
+import type { Project, ProjectStatus } from '@/shared/types';
+import { getProjects } from '@/features/project/services/projects';
+import { useAsyncList } from '@/shared/hooks';
+import { getStatusOptions } from '@/shared/utils/index';
+import { useRealtimeCacheSync } from '@/shared/hooks/useRealtimeCacheSync';
 
 interface ProjectListProps {
   isAdmin?: boolean;
@@ -28,7 +27,6 @@ export function ProjectList({ isAdmin = false }: ProjectListProps) {
 
   useRealtimeCacheSync({
     table: 'projects',
-    cache: projectsCache,
     onInvalidate: loadProjects,
   });
 

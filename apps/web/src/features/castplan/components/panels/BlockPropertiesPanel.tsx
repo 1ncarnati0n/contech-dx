@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent, Input } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Input } from '@/shared/components/ui';
 import { Settings } from 'lucide-react';
-import type { CastBlock } from '@/lib/types';
+import type { CastBlock } from '@/shared/types';
 
 interface BlockPropertiesPanelProps {
   block: CastBlock;

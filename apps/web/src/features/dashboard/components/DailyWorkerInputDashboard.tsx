@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card } from '@/components/ui';
+import { Card } from '@/shared/components/ui';
 import { Users } from 'lucide-react';
-import type { Building } from '@/lib/types';
-import { getBuildingsForOverview } from '@/lib/services/buildings';
-import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
+import type { Building } from '@/shared/types';
+import { getBuildingsForOverview } from '@/features/building/shared/repository/buildings';
+import { resolveProcessQuantity } from '@/features/building/process-plan/service/process-quantity-resolver';
 import {
   calculateTotalWorkers,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
-} from '@/lib/utils/process-calculation';
-import { logger } from '@/lib/utils/logger';
+} from '@/features/building/process-plan/service/process-calculation';
+import { logger } from '@/shared/utils/logger';
 
 interface Props {
   projectId: string;
