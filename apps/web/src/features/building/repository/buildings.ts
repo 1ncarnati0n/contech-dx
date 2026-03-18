@@ -301,7 +301,8 @@ function generateFloors(
         floors.push({
           id: `floor-core${coreNumber}-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
-          floorLabel: `코어${coreNumber}-B${i}`,
+          coreLabel: coreNumber,
+          floorLabel: `B${i}`,
           floorNumber: -(coreNumber * 1000 + i),
           levelType: '지하',
           floorClass: '지하층',
@@ -324,6 +325,7 @@ function generateFloors(
       floors.push({
         id: `floor-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         buildingId: '',
+        coreLabel: 1,
         floorLabel: `B${i}`,
         floorNumber: -i,
         levelType: '지하',
@@ -367,7 +369,8 @@ function generateFloors(
         floors.push({
           id: `floor-core${coreNumber}-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
-          floorLabel: `코어${coreNumber}-${floorNum}F`,
+          coreLabel: coreNumber,
+          floorLabel: `${floorNum}F`,
           floorNumber: coreNumber * 1000 + floorNum,
           levelType: '지상',
           floorClass: isSettingFloor ? '셋팅층' : '일반층',
@@ -380,7 +383,8 @@ function generateFloors(
         floors.push({
           id: `floor-core${coreNumber}-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
-          floorLabel: `코어${coreNumber}-6F`,
+          coreLabel: coreNumber,
+          floorLabel: '6F',
           floorNumber: coreNumber * 1000 + 6,
           levelType: '지상',
           floorClass: '기준층',
@@ -394,7 +398,8 @@ function generateFloors(
           floors.push({
             id: `floor-core${coreNumber}-${i}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             buildingId: '',
-            floorLabel: `코어${coreNumber}-${i}F`,
+            coreLabel: coreNumber,
+            floorLabel: `${i}F`,
             floorNumber: coreNumber * 1000 + i,
             levelType: '지상',
             floorClass: '기준층',
@@ -408,7 +413,8 @@ function generateFloors(
         floors.push({
           id: `floor-core${coreNumber}-${coreFloorCount}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
-          floorLabel: `코어${coreNumber}-${coreFloorCount}F`,
+          coreLabel: coreNumber,
+          floorLabel: `${coreFloorCount}F`,
           floorNumber: coreNumber * 1000 + coreFloorCount,
           levelType: '지상',
           floorClass: '최상층',
@@ -424,6 +430,7 @@ function generateFloors(
       floors.push({
         id: `floor-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         buildingId: '',
+        coreLabel: 1,
         floorLabel: '1F',
         floorNumber: 1,
         levelType: '지상',
@@ -456,6 +463,7 @@ function generateFloors(
         floors.push({
           id: `floor-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
+          coreLabel: 1,
           floorLabel: `${floorNum}F`,
           floorNumber: floorNum,
           levelType: '지상',
@@ -471,6 +479,7 @@ function generateFloors(
         floors.push({
           id: `floor-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
+          coreLabel: 1,
           floorLabel: '6F',
           floorNumber: 6,
           levelType: '지상',
@@ -485,6 +494,7 @@ function generateFloors(
           floors.push({
             id: `floor-${i}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             buildingId: '',
+            coreLabel: 1,
             floorLabel: `${i}F`,
             floorNumber: i,
             levelType: '지상',
@@ -498,6 +508,7 @@ function generateFloors(
       floors.push({
         id: `floor-${groundFloorCount}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         buildingId: '',
+        coreLabel: 1,
         floorLabel: `${groundFloorCount}F`,
         floorNumber: groundFloorCount,
         levelType: '지상',
@@ -521,6 +532,7 @@ function generateFloors(
     floors.push({
       id: `floor-ph${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       buildingId: '',
+      coreLabel: 1,
       floorLabel: `PH${i}`,
       floorNumber: 1000 + i,
       levelType: '지상',
