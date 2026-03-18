@@ -1,14 +1,14 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/server';
-import { createClient } from '@/lib/supabase/server';
-import { Card, CardContent } from '@/components/ui/Card';
+import { getCurrentUserProfile, isSystemAdmin } from '@/shared/lib/permissions/server';
+import { createClient } from '@/shared/lib/supabase/server';
+import { Card, CardContent } from '@/shared/components/ui/Card';
 import AdminBuildingsClient, {
   type AdminStats,
   type RecentBuilding,
 } from './AdminBuildingsClient';
-import type { Project } from '@/lib/types';
-import { extractBuildingDisplayData } from '@/lib/utils/building-metadata';
-import { logger } from '@/lib/utils/logger';
+import type { Project } from '@/shared/types';
+import { extractBuildingDisplayData } from '@/features/building/shared/service/building-metadata';
+import { logger } from '@/shared/utils/logger';
 
 /**
  * 서버 사이드에서 프로젝트 목록 조회

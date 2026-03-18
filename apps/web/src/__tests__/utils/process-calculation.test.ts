@@ -8,7 +8,7 @@ import {
   calculateDailyInputWorkersByWorkDays,
   calculateIndirectWorkers,
   calculateIndirectEquipment,
-} from '@/lib/utils/process-calculation';
+} from '@/features/building/process-plan/utils/process-calculation';
 
 describe('process-calculation', () => {
   describe('calculateTotalWorkers', () => {

@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent } from '@/shared/components/ui/Card';
+import { Badge } from '@/shared/components/ui/Badge';
 import {
   Building2,
   Layers,
@@ -19,7 +19,7 @@ import {
   Loader2,
   RefreshCw,
 } from 'lucide-react';
-import type { Project } from '@/lib/types';
+import type { Project } from '@/shared/types';
 
 // 통계 데이터 타입
 export interface AdminStats {
