@@ -3,7 +3,7 @@
  * 프로젝트 상태별 색상, 라벨 등을 제공합니다.
  */
 
-import type { ProjectStatus } from '@/lib/types';
+import type { ProjectStatus } from '@/shared/types';
 
 /**
  * 프로젝트 상태 설정

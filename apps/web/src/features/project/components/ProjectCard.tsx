@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Calendar, DollarSign, MapPin } from 'lucide-react';
-import { ProjectImagePlaceholder } from '@/components/common/ProjectImagePlaceholder';
-import type { Project } from '@/lib/types';
-import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
+import { ProjectImagePlaceholder } from '@/shared/components/common/ProjectImagePlaceholder';
+import type { Project } from '@/shared/types';
+import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/shared/utils/index';
 
 interface ProjectCardProps {
   project: Project;

@@ -5,9 +5,9 @@
  * Supabase 테이블(gantt_tasks, gantt_milestones, gantt_dependencies)과 연동
  */
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { format } from 'date-fns';
-import { logger } from '@/lib/utils/logger';
+import { logger } from '@/shared/utils/logger';
 import type {
   DataService,
   GanttData,

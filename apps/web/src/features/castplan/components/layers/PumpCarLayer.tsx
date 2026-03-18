@@ -1,7 +1,7 @@
 'use client';
 
 import { Group, Rect, Circle, Text, Arrow } from 'react-konva';
-import type { PumpCar } from '@/lib/types';
+import type { PumpCar } from '@/shared/types';
 
 interface PumpCarLayerProps {
   pumpCars: PumpCar[];

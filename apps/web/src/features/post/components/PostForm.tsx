@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui';
+import { Button } from '@/shared/components/ui';
 import {
   Form,
   FormControl,
@@ -15,9 +15,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/Form';
-import { Input, Textarea } from '@/components/ui/Input';
-import MarkdownRenderer from '@/components/common/MarkdownRenderer';
+} from '@/shared/components/ui/Form';
+import { Input, Textarea } from '@/shared/components/ui/Input';
+import MarkdownRenderer from '@/shared/components/common/MarkdownRenderer';
 
 // ============================================
 // Zod 스키마 정의

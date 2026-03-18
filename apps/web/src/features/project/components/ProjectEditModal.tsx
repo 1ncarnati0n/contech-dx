@@ -19,11 +19,11 @@ import {
     Input,
     Button,
     Textarea,
-} from '@/components/ui';
+} from '@/shared/components/ui';
 import { toast } from 'sonner';
-import { updateProject } from '@/lib/services/projects';
-import type { Project } from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
+import { updateProject } from '@/features/project/services/projects';
+import type { Project } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
 
 const projectSchema = z.object({
     name: z.string().min(1, '프로젝트명을 입력해주세요'),

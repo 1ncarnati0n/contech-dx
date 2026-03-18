@@ -25,8 +25,8 @@ import {
     Pin,
     PinOff,
 } from 'lucide-react';
-import type { Project } from '@/lib/types';
-import { formatDate } from '@/lib/utils/index';
+import type { Project } from '@/shared/types';
+import { formatDate } from '@/shared/utils/index';
 
 interface ProjectSidebarProps {
     isCollapsed: boolean;

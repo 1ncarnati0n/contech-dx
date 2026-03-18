@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card } from '@/components/ui';
+import { Button, Card } from '@/shared/components/ui';
 import {
   Form,
   FormControl,
@@ -15,10 +15,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/Form';
-import { Input, Textarea } from '@/components/ui/Input';
-import { createProject } from '@/lib/services/projects';
-import { logger } from '@/lib/utils/logger';
+} from '@/shared/components/ui/Form';
+import { Input, Textarea } from '@/shared/components/ui/Input';
+import { createProject } from '@/features/project/services/projects';
+import { logger } from '@/shared/utils/logger';
 
 // ============================================
 // Zod 스키마 정의

@@ -2,8 +2,8 @@
 
 import { ReactNode, useState, useRef, useEffect, memo } from 'react';
 import { X, Check, X as XIcon } from 'lucide-react';
-import type { Building } from '@/lib/types';
-import { useTabDragDrop } from '@/lib/hooks';
+import type { Building } from '@/shared/types';
+import { useTabDragDrop } from '@/shared/hooks';
 
 // ============================================
 // Props 타입 정의

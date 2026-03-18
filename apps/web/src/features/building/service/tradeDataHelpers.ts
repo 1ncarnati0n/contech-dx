@@ -4,8 +4,8 @@
  * TradeData의 동적 카테고리/서브필드 접근을 타입 안전하게 처리합니다.
  */
 
-import type { TradeData, TradeFieldData } from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
+import type { TradeData, TradeFieldData } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
 
 export type { TradeData, TradeFieldData };
 

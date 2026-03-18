@@ -3,8 +3,8 @@
  * API 라우트를 통해 Gemini File Search API와 통신
  */
 
-import type { FileSearchStore, UploadedFile, SearchMessage } from '@/lib/types';
-import { getApiErrorMessage } from '@/lib/utils/api-error';
+import type { FileSearchStore, UploadedFile, SearchMessage } from '@/shared/types';
+import { getApiErrorMessage } from '@/shared/utils/api-error';
 
 // 타입 re-export (하위 호환성)
 export type { FileSearchStore, UploadedFile, SearchMessage };

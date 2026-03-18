@@ -2,13 +2,13 @@
  * 챗봇 컨텍스트 수집 및 구조화 유틸리티
  */
 
-import type { BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
+import type { BuildingProcessPlan, ProcessCategory, ProcessType } from '@/shared/types';
 import type {
   ChatContextSnapshot,
   ProcessPlanChatContext,
   ValidationError,
   ValidationWarning,
-} from '@/components/buildings/ProcessPlanChatbotTypes';
+} from '@/features/building/chatbot/ProcessPlanChatbotTypes';
 
 const PROCESS_CATEGORIES: ProcessCategory[] = ['버림', '기초', '주동 지하층', '셋팅층', '기준층', '최상층', '옥탑층'];
 

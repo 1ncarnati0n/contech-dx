@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent } from '@/shared/components/ui';
 import { Layers, Box, DoorOpen, Truck } from 'lucide-react';
-import type { CastPlanState, CastBlock } from '@/lib/types';
+import type { CastPlanState, CastBlock } from '@/shared/types';
 import { BlockPropertiesPanel } from './panels/BlockPropertiesPanel';
 import { VolumeCalculationPanel } from './panels/VolumeCalculationPanel';
 
