@@ -2,7 +2,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { MessageSquare } from 'lucide-react';
 import DeleteCommentButton from './DeleteCommentButton';
-import { fetchCommentsForPost, getCurrentUserId } from '../../service/comment.service';
+import { fetchCommentsForPost, getCurrentUserId } from '../../service/comment.server';
 import { getEmailInitial } from '../../service/postFormatters';
 
 interface CommentListProps {
