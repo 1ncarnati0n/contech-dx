@@ -1,7 +1,7 @@
 'use client';
 
 import { Group, Rect, Arrow, Text } from 'react-konva';
-import type { Gate } from '@/lib/types';
+import type { Gate } from '@/shared/types';
 
 interface GateLayerProps {
   gates: Gate[];

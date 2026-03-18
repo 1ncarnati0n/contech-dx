@@ -4,7 +4,7 @@
  * Supabase에서 반환되는 동적 데이터의 타입 안전 접근을 제공합니다.
  */
 
-import type { BuildingMeta, CoreType, SlabType } from '@/lib/types';
+import type { BuildingMeta, CoreType, SlabType } from '@/shared/types';
 
 // ============================================
 // 타입 가드

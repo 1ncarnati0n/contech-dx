@@ -629,6 +629,7 @@ export async function getBuildingsForOverview(projectId: string): Promise<Buildi
     floors: building.floors.map(floor => ({
       id: floor.id,
       buildingId: floor.buildingId,
+      coreLabel: floor.coreLabel,
       floorLabel: floor.floorLabel,
       floorNumber: floor.floorNumber,
       levelType: floor.levelType,

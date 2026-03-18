@@ -86,7 +86,7 @@ export function useBuildingSave({
       if (shouldRegenerate && onBeforeRegenerate) {
         onGenerationProgress?.(10, '물량 데이터 저장 중...');
         try {
-          await onBeforeRegenerate();
+          await onBeforeRegenerate(); 
         } catch (error) {
           logger.error('물량 저장 실패:', error);
           toast.error('물량 데이터 저장에 실패했습니다. 층 재생성을 중단합니다.');

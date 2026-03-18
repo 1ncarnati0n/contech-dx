@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { UserRole } from '@/lib/types';
-import { getRoleDisplayName } from '@/lib/permissions/client';
+import type { UserRole } from '@/shared/types';
+import { getRoleDisplayName } from '@/shared/lib/permissions/client';
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Button,
-} from '@/components/ui';
+} from '@/shared/components/ui/Dialog';
+import { Button } from '@/shared/components/ui/Button';
 
 interface UpdateRoleButtonProps {
   userId: string;

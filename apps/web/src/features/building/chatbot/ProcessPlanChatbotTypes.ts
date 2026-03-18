@@ -2,8 +2,8 @@
  * 공정계획 도우미 챗봇 타입 정의
  */
 
-import type { Building, BuildingProcessPlan, ProcessType, ProcessCategory } from '@/lib/types';
-import type { SearchCitation } from '@/lib/types';
+import type { Building, BuildingProcessPlan, ProcessType, ProcessCategory } from '@/shared/types';
+import type { SearchCitation } from '@/shared/types';
 
 /**
  * 챗봇 메시지 타입

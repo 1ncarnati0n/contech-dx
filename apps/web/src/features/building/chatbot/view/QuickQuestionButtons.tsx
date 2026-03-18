@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui';
+import { Button } from '@/shared/components/ui';
 import { HelpCircle, Calculator, AlertCircle, BookOpen, Lightbulb } from 'lucide-react';
-import type { QuickQuestion, QuickQuestionCategory } from './ProcessPlanChatbotTypes';
+import type { QuickQuestion, QuickQuestionCategory } from '../ProcessPlanChatbotTypes';
 
 interface QuickQuestionButtonsProps {
   onQuestionClick: (question: string) => void;

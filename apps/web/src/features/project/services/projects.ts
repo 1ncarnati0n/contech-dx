@@ -3,15 +3,15 @@
  * 프로젝트 CRUD 작업을 담당합니다.
  */
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Project,
   CreateProjectDTO,
   UpdateProjectDTO,
-} from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
-import { projectsCache, createCacheKey } from './cache';
+} from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
+import { projectsCache, createCacheKey } from '@/shared/lib/cache';
 
 // ============================================
 // 캐시 키 상수

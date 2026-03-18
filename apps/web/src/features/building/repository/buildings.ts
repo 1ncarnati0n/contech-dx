@@ -16,9 +16,9 @@ import type {
   TradeFieldData,
   UpdateFloorDTO,
   UpdateFloorTradeDTO,
-} from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
-import { isSpecialFloorId } from '@/lib/utils/floorIdUtils';
+} from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
+import { isSpecialFloorId } from '@/features/building/shared/service/floorIdUtils';
 import * as SupabaseBuildingService from './SupabaseBuildingDataService';
 
 // ============================================
@@ -647,6 +647,7 @@ export async function getBuildingsForOverview(projectId: string): Promise<Buildi
     floors: building.floors.map(floor => ({
       id: floor.id,
       buildingId: floor.buildingId,
+      coreLabel: floor.coreLabel,
       floorLabel: floor.floorLabel,
       floorNumber: floor.floorNumber,
       levelType: floor.levelType,

@@ -3,15 +3,15 @@
  * 프로젝트 멤버 관리 작업을 담당합니다.
  */
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import type {
   ProjectMember,
   ProjectMemberRole,
   AddProjectMemberDTO,
   UpdateProjectMemberRoleDTO,
-} from '@/lib/types';
-import { MemoryCache, SHORT_TTL, createCacheKey } from './cache';
-import { logger } from '@/lib/utils/logger';
+} from '@/shared/types';
+import { MemoryCache, SHORT_TTL, createCacheKey } from '@/shared/lib/cache';
+import { logger } from '@/shared/utils/logger';
 
 // Database record type with joined profile data
 interface ProjectMemberRecord {

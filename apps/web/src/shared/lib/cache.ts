@@ -3,7 +3,7 @@
  * 서버 사이드에서 데이터를 일시적으로 캐싱합니다.
  */
 
-import { logger } from '@/lib/utils/logger';
+import { logger } from '@/shared/utils/logger';
 
 // ============================================
 // 캐시 타입 정의

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import {
   Form,
   FormControl,
@@ -14,7 +14,7 @@ import {
   FormMessage,
   Input,
   Button,
-} from '@/components/ui';
+} from '@/shared/components/ui';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const schema = z.object({
