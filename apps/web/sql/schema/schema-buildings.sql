@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS floors (
     building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
 
     -- 층 기본 정보
+    core_label INTEGER NOT NULL DEFAULT 1 CHECK (core_label >= 1 AND core_label <= 4),  -- 코어 번호 (1~4)
     floor_label TEXT NOT NULL,           -- "B2", "B1", "1F", "PH1" 등
     floor_number INTEGER NOT NULL,       -- 정렬용 (-2, -1, 1, 2, ...)
     level_type TEXT NOT NULL CHECK (level_type IN ('지하', '지상')),
@@ -67,10 +68,12 @@ CREATE TABLE IF NOT EXISTS floors (
 
 -- 인덱스
 CREATE INDEX IF NOT EXISTS idx_floors_building ON floors(building_id);
+CREATE INDEX IF NOT EXISTS idx_floors_core_label ON floors(core_label);
 CREATE INDEX IF NOT EXISTS idx_floors_number ON floors(floor_number);
 
 -- 코멘트
 COMMENT ON TABLE floors IS '층(Floor) 정보';
+COMMENT ON COLUMN floors.core_label IS '코어 번호 (1~4, 단일 코어는 1)';
 COMMENT ON COLUMN floors.floor_label IS '층 표시명: B2, B1, 1F, 2~10F 기준층, PH1 등';
 COMMENT ON COLUMN floors.floor_class IS '층 분류: 지하층, 일반층, 셋팅층, 기준층, 최상층, PH층, 옥탑층';
 

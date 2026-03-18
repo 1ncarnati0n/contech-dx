@@ -1,6 +1,6 @@
-import { calculateModuleWorkDays } from '@/lib/utils/process-days-calculator';
-import type { Building } from '@/lib/types';
-import type { ProcessModule } from '@/lib/data/process-modules';
+import { calculateModuleWorkDays } from '@/features/building/process-plan/utils/process-days-calculator';
+import type { Building } from '@/shared/types';
+import type { ProcessModule } from '@/features/building/data/process-modules';
 
 function createTestBuilding(overrides?: Partial<Building>): Building {
   return {

@@ -1,5 +1,5 @@
-import { parseLegacyReference } from '@/lib/utils/quantity-reference-migration';
-import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
+import { parseLegacyReference } from '@/features/building/process-plan/service/quantity-reference-migration';
+import type { SemanticQuantityReference } from '@/shared/types/process-quantity';
 
 describe('parseLegacyReference', () => {
   describe('category references (버림, 기초)', () => {

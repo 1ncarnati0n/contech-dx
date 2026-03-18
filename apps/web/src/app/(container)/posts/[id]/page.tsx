@@ -1,16 +1,16 @@
-import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { createClient } from '@/shared/lib/supabase/server';
+import { requireAuth } from '@/shared/lib/auth/requireAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Edit, Share2, Bookmark } from 'lucide-react';
-import CommentList from '@/components/comments/CommentList';
-import CommentForm from '@/components/comments/CommentForm';
-import DeletePostButton from '@/components/posts/DeletePostButton';
-import MarkdownRenderer from '@/components/common/MarkdownRenderer';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Button, Badge } from '@/components/ui';
+import CommentList from '@/features/post/view/comments/CommentList';
+import CommentForm from '@/features/post/view/comments/CommentForm';
+import DeletePostButton from '@/features/post/view/DeletePostButton';
+import MarkdownRenderer from '@/shared/components/common/MarkdownRenderer';
+import { Card, CardContent } from '@/shared/components/ui/Card';
+import { Button, Badge } from '@/shared/components/ui';
 
 interface PageProps {
   params: Promise<{ id: string }>;

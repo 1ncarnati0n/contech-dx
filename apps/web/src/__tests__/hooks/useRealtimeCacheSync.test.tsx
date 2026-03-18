@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { useRealtimeCacheSync } from '@/lib/hooks/useRealtimeCacheSync';
-import { MemoryCache } from '@/lib/services/cache';
+import { useRealtimeCacheSync } from '@/shared/hooks/useRealtimeCacheSync';
 
 const removeChannelMock = jest.fn();
 const subscribeMock = jest.fn();
@@ -11,7 +10,7 @@ const channelMock = {
 };
 const createClientMock = jest.fn();
 
-jest.mock('@/lib/supabase/client', () => ({
+jest.mock('@/shared/lib/supabase/client', () => ({
   createClient: () => createClientMock(),
 }));
 
@@ -39,15 +38,12 @@ describe('useRealtimeCacheSync', () => {
     expect(onMock).not.toHaveBeenCalled();
   });
 
-  it('realtime 이벤트 발생 시 cache invalidate와 onInvalidate를 실행한다', () => {
-    const cache = new MemoryCache<{ id: string }>({ name: 'test' });
-    const invalidateSpy = jest.spyOn(cache, 'invalidateAll');
+  it('realtime 이벤트 발생 시 onInvalidate를 실행한다', () => {
     const onInvalidate = jest.fn();
 
     renderHook(() =>
       useRealtimeCacheSync({
         table: 'projects',
-        cache,
         onInvalidate,
       })
     );
@@ -58,7 +54,6 @@ describe('useRealtimeCacheSync', () => {
     const realtimeHandler = onMock.mock.calls[0][2] as () => void;
     realtimeHandler();
 
-    expect(invalidateSpy).toHaveBeenCalledTimes(1);
     expect(onInvalidate).toHaveBeenCalledTimes(1);
   });
 
