@@ -36,9 +36,8 @@ function addBasementFloors(floors: Floor[], result: Floor[], addedFloorIds: Set<
   const addedLabels = new Set<string>();
 
   basementFloors.forEach(f => {
-    const cleanLabel = f.floorLabel.replace(/코어\d+-/, '');
-    if (addedLabels.has(cleanLabel)) return;
-    addedLabels.add(cleanLabel);
+    if (addedLabels.has(f.floorLabel)) return;
+    addedLabels.add(f.floorLabel);
 
     if (!addedFloorIds.has(f.id)) {
       result.push(f);
@@ -62,7 +61,7 @@ function addPhFloors(floors: Floor[], result: Floor[], addedFloorIds: Set<string
 // ============================================
 
 function parseRangeLabel(label: string): { start: number; end: number } | null {
-  const match = label.match(/코어1-(\d+)~(\d+)F/) || label.match(/(\d+)~(\d+)F/);
+  const match = label.match(/(\d+)~(\d+)F/);
   if (!match) return null;
   return { start: parseInt(match[1], 10), end: parseInt(match[2], 10) };
 }
@@ -70,7 +69,6 @@ function parseRangeLabel(label: string): { start: number; end: number } | null {
 function buildExcludedSets(
   floors: Floor[],
   existingRangeFloors: Floor[],
-  coreCount: number,
 ): { excludedFloorNums: Set<number>; excludedFloorIds: Set<string> } {
   const excludedFloorNums = new Set<number>();
   const excludedFloorIds = new Set<string>();
@@ -84,12 +82,8 @@ function buildExcludedSets(
 
       const individualFloor = floors.find(f => {
         if (f.floorLabel.includes('~')) return false;
-        const coreMatch = f.floorLabel.match(/코어1-(\d+)F/);
-        if (coreMatch && parseInt(coreMatch[1], 10) === num) return true;
-        if (coreCount <= 1) {
-          const m = f.floorLabel.match(/^(\d+)F$/);
-          if (m && parseInt(m[1], 10) === num) return true;
-        }
+        const m = f.floorLabel.match(/^(\d+)F$/);
+        if (m && parseInt(m[1], 10) === num && f.coreLabel === 1) return true;
         return false;
       });
       if (individualFloor) {
@@ -200,7 +194,7 @@ function mergeConsecutiveStandardFloors(
 
 function transformMultiCore(
   floors: Floor[],
-  coreCount: number,
+  _coreCount: number,
   coreGroundFloors: number[],
   buildingId: string,
 ): Floor[] {
@@ -212,23 +206,23 @@ function transformMultiCore(
   // 지하층
   addBasementFloors(floors, result, addedFloorIds);
 
-  // 기존 범위 형식 기준층 찾기
+  // 기존 범위 형식 기준층 찾기 (코어1 기준)
   const existingRangeFloors = floors.filter(f =>
     f.floorClass === '기준층' &&
     f.floorLabel.includes('~') &&
-    (f.floorLabel.includes('코어1-') || !f.floorLabel.includes('코어'))
+    f.coreLabel === 1
   );
 
-  const { excludedFloorNums, excludedFloorIds } = buildExcludedSets(floors, existingRangeFloors, coreCount);
+  const { excludedFloorNums, excludedFloorIds } = buildExcludedSets(floors, existingRangeFloors);
 
-  // 셋팅층, 일반층, 개별 기준층 추가 (범위 포함 층 제외)
+  // 셋팅층, 일반층, 개별 기준층 추가 (범위 포함 층 제외, 코어1만)
   const settingAndNormalFloors = floors.filter(f => {
     if (f.floorClass !== '셋팅층' && f.floorClass !== '일반층' && f.floorClass !== '기준층') return false;
-    if (!f.floorLabel.includes('코어1-') && f.floorLabel.includes('코어')) return false;
+    if (f.coreLabel !== 1) return false;
     if (f.floorLabel.includes('~')) return false;
     if (excludedFloorIds.has(f.id)) return false;
 
-    const match = f.floorLabel.match(/코어1-(\d+)F/) || f.floorLabel.match(/^(\d+)F$/);
+    const match = f.floorLabel.match(/^(\d+)F$/);
     if (match) {
       const floorNum = parseInt(match[1], 10);
       if (excludedFloorNums.has(floorNum)) return false;
@@ -260,17 +254,13 @@ function transformMultiCore(
     const core1Floor = floors.find(f => {
       if (f.floorLabel.includes('~')) return false;
       if (excludedFloorIds.has(f.id)) return false;
+      if (f.coreLabel !== 1) return false;
 
-      let floorNum: number | null = null;
-      const coreMatch = f.floorLabel.match(/코어1-(\d+)F/);
-      if (coreMatch) {
-        floorNum = parseInt(coreMatch[1], 10);
-      } else if (coreCount <= 1) {
-        const m = f.floorLabel.match(/^(\d+)F$/);
-        if (m) floorNum = parseInt(m[1], 10);
-      }
+      const m = f.floorLabel.match(/^(\d+)F$/);
+      if (!m) return false;
+      const floorNum = parseInt(m[1], 10);
 
-      if (floorNum !== null && excludedFloorNums.has(floorNum)) return false;
+      if (excludedFloorNums.has(floorNum)) return false;
       return floorNum === i;
     });
 
