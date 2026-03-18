@@ -53,6 +53,7 @@ function rowToFloor(row: FloorRow): Floor {
   return {
     id: row.id,
     buildingId: row.building_id,
+    coreLabel: row.core_label,
     floorLabel: row.floor_label,
     floorNumber: row.floor_number,
     levelType: row.level_type,
@@ -254,6 +255,7 @@ export async function createBuilding(
   // 2. Floors 생성 (buildingId 설정)
   const floorInserts: FloorInsert[] = floors.map(floor => ({
     building_id: buildingRow.id,
+    core_label: floor.coreLabel,
     floor_label: floor.floorLabel,
     floor_number: floor.floorNumber,
     level_type: floor.levelType,
@@ -404,6 +406,7 @@ export async function replaceFloors(buildingId: string, projectId: string, floor
 
   const floorInserts: FloorInsert[] = floors.map(floor => ({
     building_id: buildingId,
+    core_label: floor.coreLabel,
     floor_label: floor.floorLabel,
     floor_number: floor.floorNumber,
     level_type: floor.levelType,
