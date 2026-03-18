@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
-import { getRoleDisplayName, getRoleBadgeVariant } from '@/lib/permissions/server';
-import { Badge } from '@/components/ui/Badge';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { createClient } from '@/shared/lib/supabase/server';
+import { getRoleDisplayName, getRoleBadgeVariant } from '@/shared/lib/permissions/server';
+import { Badge } from '@/shared/components/ui/Badge';
+import { requireAuth } from '@/shared/lib/auth/requireAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
-import ProfileEditForm from '@/components/profile/ProfileEditForm';
+import ProfileEditForm from '@/features/profile/view/ProfileEditForm';
 
 export default async function ProfilePage() {
   // 인증 체크 - 비로그인 시 랜딩 페이지로 리다이렉트

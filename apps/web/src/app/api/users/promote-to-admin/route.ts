@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/shared/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { isSystemAdmin } from '@/lib/permissions/shared';
-import { logger } from '@/lib/utils/logger';
-import { withValidation } from '@/lib/api/withValidation';
-import { apiError, ErrorCode } from '@/lib/utils/apiAuth';
+import { isSystemAdmin } from '@/shared/lib/permissions/shared';
+import { logger } from '@/shared/utils/logger';
+import { withValidation } from '@/shared/lib/api/withValidation';
+import { apiError, ErrorCode } from '@/shared/utils/apiAuth';
 
 const promoteBodySchema = z.object({
   targetUserId: z.string().trim().min(1).optional(),

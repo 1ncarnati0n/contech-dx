@@ -1,6 +1,6 @@
-import { ProjectList } from '@/components/projects';
-import { requireAuth } from '@/lib/auth/requireAuth';
-import { isSystemAdmin } from '@/lib/permissions/server';
+import { ProjectList } from '@/features/project/view';
+import { requireAuth } from '@/shared/lib/auth/requireAuth';
+import { isSystemAdmin } from '@/shared/lib/permissions/server';
 
 export const metadata = {
   title: '프로젝트 목록 - ConTech DX',

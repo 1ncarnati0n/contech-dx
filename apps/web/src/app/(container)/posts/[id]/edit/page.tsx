@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth/requireAuth';
+import { createClient } from '@/shared/lib/supabase/server';
+import { requireAuth } from '@/shared/lib/auth/requireAuth';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Edit } from 'lucide-react';
-import PostForm from '@/components/posts/PostForm';
-import { Card, CardContent } from '@/components/ui';
+import PostForm from '@/features/post/view/PostForm';
+import { Card, CardContent } from '@/shared/components/ui';
 
 interface PageProps {
   params: Promise<{ id: string }>;

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withValidation } from '@/lib/api/withValidation';
-import { createClient } from '@/lib/supabase/server';
-import { isSystemAdmin } from '@/lib/permissions/shared';
+import { withValidation } from '@/shared/lib/api/withValidation';
+import { createClient } from '@/shared/lib/supabase/server';
+import { isSystemAdmin } from '@/shared/lib/permissions/shared';
 import type { AdminStats, RecentBuilding } from '@/app/(container)/admin/buildings/AdminBuildingsClient';
-import { extractBuildingDisplayData } from '@/lib/utils/building-metadata';
-import { logger } from '@/lib/utils/logger';
-import { apiError, ErrorCode } from '@/lib/utils/apiAuth';
+import { extractBuildingDisplayData } from '@/features/building/shared/service/building-metadata';
+import { logger } from '@/shared/utils/logger';
+import { apiError, ErrorCode } from '@/shared/utils/apiAuth';
 
 const getAdminBuildingsQuerySchema = z.object({
   projectId: z.string().trim().min(1, '프로젝트 ID가 필요합니다.'),

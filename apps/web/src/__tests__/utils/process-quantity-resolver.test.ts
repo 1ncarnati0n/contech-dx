@@ -1,6 +1,6 @@
-import { resolveProcessQuantity } from '@/lib/utils/process-quantity-resolver';
-import type { Building } from '@/lib/types';
-import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
+import { resolveProcessQuantity } from '@/features/building/process-plan/utils/process-quantity-resolver';
+import type { Building } from '@/shared/types';
+import type { SemanticQuantityReference } from '@/shared/types/process-quantity';
 
 function createTestBuilding(overrides?: Partial<Building>): Building {
   return {

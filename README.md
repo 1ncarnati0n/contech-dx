@@ -5,12 +5,25 @@
 ## Quick Start
 
 ```bash
-npm install          # 의존성 설치
-npm run dev          # 개발 서버 (http://localhost:3000)
-npm run build:lib    # sa-gantt-lib 빌드 (라이브러리 수정 시 필수)
-npm run build        # web 앱 빌드
-npm run test         # 테스트 실행
+# 1. 의존성 설치
+npm install
+
+# 2. 환경변수 설정
+cp apps/web/.env.example apps/web/.env.local
+# .env.local에 Supabase URL, Anon Key, Gemini API Key 입력
+
+# 3. 개발 서버 실행
+npm run dev              # http://localhost:3000
+
+# 4. 빌드 (라이브러리 수정 시)
+npm run build:lib        # sa-gantt-lib 빌드
+npm run build            # web 앱 빌드
+
+# 5. 테스트
+npm run test
 ```
+
+> **빌드 순서**: 라이브러리 수정 시 반드시 `npm run build:lib` → `npm run build` 순서로 빌드
 
 ## Monorepo Structure
 
@@ -23,21 +36,20 @@ contech-dx/
 └── vercel.json            # Vercel 배포
 ```
 
-> **빌드 순서**: 라이브러리 수정 시 반드시 `npm run build:lib` → `npm run build` 순서로 빌드
-
 ## Tech Stack
 
 | 영역 | 기술 |
 |------|------|
-| Framework | Next.js 16 (App Router, Turbopack) |
+| Framework | Next.js 16 (App Router, Turbopack, React Compiler) |
 | Language | TypeScript 5 (Strict) |
-| Database | Supabase (PostgreSQL) |
-| Styling | Tailwind CSS 4 + Radix UI + shadcn/ui |
+| Database | Supabase (PostgreSQL + RLS + Realtime) |
+| Styling | Tailwind CSS 4 + Radix UI |
 | AI | Google Gemini API |
 | Gantt | sa-gantt-lib (자체 라이브러리) |
 | 3D/BIM | @thatopen/components + Three.js |
 | 2D Canvas | Konva (react-konva) |
 | Form | React Hook Form + Zod |
+| State | Zustand 5 + Immer |
 | Testing | Jest + React Testing Library |
 
 ## Features
@@ -53,7 +65,7 @@ contech-dx/
 - **AI 챗봇**: Gemini API 기반 공정계획 질의응답
 
 ### 간트차트 (sa-gantt-lib)
-Supabase 연동, 태스크/마일스톤 CRUD, 의존성 관리, 그룹 드래그, Undo/Redo
+Supabase 연동, 태스크/마일스톤 CRUD, 의존성 관리, 그룹 드래그, Undo/Redo, Excel 내보내기
 
 ### BIM/IFC 3D 뷰어
 IFC 파일 로드, 요소 선택, 속성 패널, 6방향 뷰 컨트롤, 투영 모드 전환
@@ -72,37 +84,61 @@ Supabase Auth, 4단계 역할 (admin, main_user, vip_user, user), 서버사이�
 
 ## Project Structure (apps/web/src)
 
-```
-app/                    # Next.js App Router
-├── (container)/        # 메인 레이아웃 (admin, projects, posts, profile)
-├── (fullscreen)/       # 전체화면 (간트차트)
-├── api/                # API Routes (gemini, users)
-├── auth/callback/      # Supabase Auth
-└── file-search/        # AI 파일 검색
+Feature-based 아키텍처와 **View/Service/Repository 3-Layer 패턴**을 적용합니다.
 
-components/
-├── ui/                 # 디자인 시스템 (Button, Card, Dialog 등)
-├── buildings/          # 동/층 관리, 공정계획
-├── castplan/           # 콘크리트 타설 계획
-├── ifc-viewer/         # BIM 3D 뷰어
-├── projects/           # 프로젝트 관리, 간트차트
-├── dashboard/          # 대시보드
-└── file-search/        # AI 파일 검색
-
-lib/
-├── types.ts            # 타입 정의 (Single Source of Truth)
-├── types/              # 도메인 타입 (SemanticQuantityReference 등)
-├── services/           # 비즈니스 로직 (buildings, projects, gantt 등)
-├── supabase/           # Supabase 클라이언트 (client/server)
-├── hooks/              # 커스텀 훅
-├── utils/              # 유틸리티 (물량해석, 공정계산, logger 등)
-└── data/               # 정적 데이터 (공정 모듈, 템플릿)
 ```
+src/
+├── app/                          # Next.js App Router (thin pages)
+│   ├── (auth)/                   #   인증 (login, signup, reset-password)
+│   ├── (container)/              #   표준 레이아웃 (admin, posts, profile, projects)
+│   │   └── projects/[id]/        #     프로젝트 상세 서브라우트 (17개 탭)
+│   ├── (fullscreen)/             #   전체화면 (간트차트, 파일 검색)
+│   └── api/                      #   API Routes (gemini, admin, users)
+│
+├── features/                     # 도메인별 기능 모듈
+│   ├── admin/                    #   관리자 기능
+│   ├── ai-chat/                  #   AI 챗봇 & 파일 검색
+│   ├── auth/                     #   인증
+│   ├── building/                 #   동 관리 (기본정보, 공정계획, 물량, 단가 등)
+│   ├── castplan/                 #   콘크리트 타설 계획
+│   ├── dashboard/                #   대시보드
+│   ├── gantt/                    #   간트차트
+│   ├── post/                     #   게시판
+│   ├── profile/                  #   프로필
+│   └── project/                  #   프로젝트 관리
+│
+└── shared/                       # 전역 공유 모듈
+    ├── components/               #   공통 컴포넌트 (ui, layout, common)
+    ├── hooks/                    #   공통 훅 (useAsyncData, useRealtimeCacheSync 등)
+    ├── lib/                      #   인프라 (supabase, auth, permissions, schemas)
+    ├── stores/                   #   Zustand 스토어
+    ├── types/                    #   타입 정의
+    └── utils/                    #   유틸리티
+```
+
+### Feature Module 내부 구조 (3-Layer)
+
+각 feature 모듈은 관심사를 분리하여 향후 백엔드 마이그레이션에 대비합니다.
+
+```
+features/<domain>/
+├── view/           # UI 렌더링 전용 (비즈니스 로직 없음)
+├── service/        # 비즈니스 로직 + 상태 관리 훅 + 순수 함수
+├── repository/     # Supabase CRUD (교체 대상)
+├── data/           # 정적 데이터 (선택적)
+└── types/          # 도메인 타입 (선택적)
+```
+
+| Layer | 역할 | 마이그레이션 시 |
+|-------|------|---------------|
+| **View** | UI 렌더링. Service 훅만 호출 | 변경 없음 |
+| **Service** | 비즈니스 로직, 에러 처리, 데이터 변환 | 그대로 이전 |
+| **Repository** | Supabase 직접 호출 | FastAPI 클라이언트로 교체 |
 
 ## Environment Variables
 
 ```bash
-# .env.local
+# apps/web/.env.local
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 GEMINI_API_KEY=your_gemini_api_key
@@ -112,59 +148,26 @@ GEMINI_API_KEY=your_gemini_api_key
 
 Supabase PostgreSQL. 스키마는 `sql/schema/` 참고.
 
-| 기능 | 저장소 | 비고 |
-|------|--------|------|
-| 프로젝트/간트/게시판/사용자 | Supabase | 운영 중 |
-| 동/층/물량 | localStorage | Supabase 이관 예정 |
+| 기능 | 저장소 |
+|------|--------|
+| 프로젝트/간트/게시판/사용자 | Supabase |
+| 동/층/층별 공종 데이터 | Supabase |
+| 공정로직/공정계획 일부 상태 | localStorage + Supabase 혼재 |
 
 ## Workspace Commands
 
 ```bash
-npm -w @contech/web run <script>    # web 앱
-npm -w sa-gantt-lib run <script>    # gantt 라이브러리
+npm run dev                         # 개발 서버
+npm run build:lib                   # sa-gantt-lib 빌드
+npm run build                       # web 앱 빌드
+npm run test                        # 테스트 실행
 npm run lint                        # 전체 lint
-npm run clean                       # node_modules 정리
+npm -w @contech/web run <script>    # web 앱 개별 실행
+npm -w sa-gantt-lib run <script>    # gantt 라이브러리 개별 실행
 ```
 
-## Code Quality Status
+## Documentation
 
-기준일: `2026-02-14`
-
-- `apps/web` 린트 상태: `errors: 0`, `warnings: 0`
-- 검증 명령:
-
-```bash
-cd apps/web
-npx eslint src
-```
-
-- 관련 진행 문서: `docs/refactoring_status.md`
-
-## Code Review Documentation
-
-### 최신 리뷰 (2026-02-14)
-
-| 문서 | 내용 |
-|------|------|
-| [code-review-2026-02-14.md](docs/code-review-2026-02-14.md) | 통합 코드리뷰 (보안 감사 + 리팩토링 추적 + 액션 아이템) |
-
-### 이전 리뷰 (2026-02-10)
-
-코드 리뷰 및 리팩토링 가이드가 `docs/code-review-2026-02-10/` 폴더에 제공됩니다:
-
-| 문서 | 내용 |
-|------|------|
-| [00-overview.md](docs/code-review-2026-02-10/00-overview.md) | 전체 개요 및 현황 요약 |
-| [01-apps-web-analysis.md](docs/code-review-2026-02-10/01-apps-web-analysis.md) | apps/web 상세 분석 |
-| [02-sa-gantt-lib-analysis.md](docs/code-review-2026-02-10/02-sa-gantt-lib-analysis.md) | sa-gantt-lib 상세 분석 |
-| [03-architecture-issues.md](docs/code-review-2026-02-10/03-architecture-issues.md) | 아키텍처 이슈 및 개선안 |
-| [04-refactoring-roadmap.md](docs/code-review-2026-02-10/04-refactoring-roadmap.md) | 우선순위 기반 리팩토링 로드맵 |
-| [05-implementation-guide.md](docs/code-review-2026-02-10/05-implementation-guide.md) | 구현 가이드 및 체크리스트 |
-| [06-process-to-gantt-converter-analysis.md](docs/code-review-2026-02-10/06-process-to-gantt-converter-analysis.md) | 공정→간트 컨버터 상세 분석 |
-
-### 핵심 이슈 요약 (02-14 기준)
-
-- 🔴 **Critical**: `admin/promote` 프로덕션 노출, `withValidation` 미적용 (0/12 라우트)
-- 🟠 **High**: `any` 타입 9개소, `new Function()` 사용, 대형 컴포넌트(2,000+ LOC) 잔존
-- 🟡 **Medium**: 테스트 20개 파일 (커버리지 확대 필요), localStorage 15개 파일 분산, 에러 처리 불일치
-- ✅ **Resolved**: GanttContext 확장 완료 (199 LOC), Realtime 캐시 동기화 구현, ESLint 0/0 유지
+- [Architecture.md](./Architecture.md) — 시스템 아키텍처 상세 설명
+- `docs/Sample/` — 샘플 데이터 파일
+- `sql/` — DB 스키마, 마이그레이션, 시드
