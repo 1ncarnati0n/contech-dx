@@ -3,7 +3,7 @@
  * 서버 컴포넌트에서만 사용 가능한 함수들
  */
 
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createClient as createServerClient } from '@/shared/lib/supabase/server';
 
 /**
  * 게시글 목록 조회 (서버 사이드)

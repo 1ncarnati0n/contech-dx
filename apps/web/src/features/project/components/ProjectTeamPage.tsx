@@ -17,16 +17,16 @@ import {
   Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card, Badge } from '@/components/ui';
+import { Button, Card, Badge } from '@/shared/components/ui';
 import {
   getProjectMembers,
   addProjectMember,
   updateProjectMemberRole,
   removeProjectMember,
-} from '@/lib/services/projectMembers';
-import type { ProjectMember, ProjectMemberRole } from '@/lib/types';
+} from '@/features/project/services/projectMembers';
+import type { ProjectMember, ProjectMemberRole } from '@/shared/types';
 import { AddMemberModal } from './AddMemberModal';
-import { logger } from '@/lib/utils/logger';
+import { logger } from '@/shared/utils/logger';
 
 interface ProjectTeamPageProps {
   projectId: string;

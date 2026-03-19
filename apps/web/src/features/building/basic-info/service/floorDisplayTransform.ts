@@ -151,6 +151,7 @@ function mergeConsecutiveStandardFloors(
           result.push({
             id: dummyId,
             buildingId,
+            coreLabel: 1,
             floorLabel: `${rangeStart}~${rangeEnd}F`,
             floorNumber: rangeStart,
             levelType: '지상',
@@ -175,6 +176,7 @@ function mergeConsecutiveStandardFloors(
         result.push({
           id: dummyId,
           buildingId,
+          coreLabel: 1,
           floorLabel: `${current.floorNum}F`,
           floorNumber: current.floorNum,
           levelType: '지상',
@@ -215,9 +217,9 @@ function transformMultiCore(
 
   const { excludedFloorNums, excludedFloorIds } = buildExcludedSets(floors, existingRangeFloors);
 
-  // 셋팅층, 일반층, 개별 기준층 추가 (범위 포함 층 제외, 코어1만)
+  // 셋팅층, 일반층 추가 (코어1만, 기준층은 아래 mergeConsecutiveStandardFloors에서 범위 병합 처리)
   const settingAndNormalFloors = floors.filter(f => {
-    if (f.floorClass !== '셋팅층' && f.floorClass !== '일반층' && f.floorClass !== '기준층') return false;
+    if (f.floorClass !== '셋팅층' && f.floorClass !== '일반층') return false;
     if (f.coreLabel !== 1) return false;
     if (f.floorLabel.includes('~')) return false;
     if (excludedFloorIds.has(f.id)) return false;
@@ -339,6 +341,7 @@ function transformSingleCore(floors: Floor[], buildingId: string): Floor[] {
             result.push({
               id: dummyId,
               buildingId,
+              coreLabel: 1,
               floorLabel: `${rangeStart}~${rangeEnd}F`,
               floorNumber: rangeStart,
               levelType: '지상',

@@ -3,19 +3,19 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Send } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/shared/components/ui';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormMessage,
-} from '@/components/ui/Form';
-import { Textarea } from '@/components/ui/Input';
+} from '@/shared/components/ui/Form';
+import { Textarea } from '@/shared/components/ui/Input';
 
 // ============================================
 // Zod 스키마 정의

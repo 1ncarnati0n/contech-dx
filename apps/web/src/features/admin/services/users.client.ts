@@ -9,9 +9,9 @@ import {
   withClientAuth,
   withOptionalAuth,
   type ServiceResult,
-} from '@/lib/supabase/withAuth';
-import { logger } from '@/lib/utils/logger';
-import type { UserRole, Profile } from '@/lib/types';
+} from '@/shared/lib/supabase/withAuth';
+import { logger } from '@/shared/utils/logger';
+import type { UserRole, Profile } from '@/shared/types';
 
 /**
  * 모든 사용자 목록 조회 (클라이언트 사이드)

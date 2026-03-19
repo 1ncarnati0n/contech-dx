@@ -23,15 +23,17 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
-import { Card, TabLoadingSkeleton } from '@/components/ui';
-import type { Project, Profile, ProjectMemberRole } from '@/lib/types';
-import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
-import { getUserRoleInProject } from '@/lib/services/projectMembers';
+import { Card, TabLoadingSkeleton } from '@/shared/components/ui';
+import type { Project, Profile, ProjectMemberRole } from '@/shared/types';
+import { getCurrentUserProfile, isSystemAdmin } from '@/shared/lib/permissions/client';
+import { getUserRoleInProject } from '@/features/project/services/projectMembers';
 import { ProjectSidebar } from './ProjectSidebar';
-import { ConstructionDashboard } from '@/components/dashboard/ConstructionDashboard';
-import { BuildingBasicInfoPage, QuantityInputPage, GeologicalDataPage } from '@/components/buildings';
+import { ConstructionDashboard } from '@/features/dashboard/components/ConstructionDashboard';
+import { BuildingBasicInfoPage } from '@/features/building/basic-info/view/BuildingBasicInfoPage';
+import { QuantityInputPage } from '@/features/building/quantity/view/QuantityInputPage';
+import { GeologicalDataPage } from '@/features/building/geological-data/view/GeologicalDataPage';
 import { ProjectTeamPage } from './ProjectTeamPage';
-import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/lib/utils/index';
+import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/shared/utils/index';
 
 // 🚀 Stage 2: Lazy load heavy tabs (2,000+ lines) for better performance
 // Target: Initial bundle -40%, Tab switch 2000ms → 1200ms
@@ -40,17 +42,17 @@ import { formatCurrency, formatDate, getStatusLabel, getStatusColors } from '@/l
 // ❌ 잘못된 방법: import('@/components/buildings').then(...) - index.ts를 거치면 전체 번들 포함
 // ✅ 올바른 방법: import('@/components/buildings/ComponentName') - 개별 파일 import로 코드 스플리팅
 const BuildingProcessPlanPage = dynamic(
-  () => import('@/components/buildings/BuildingProcessPlanPage').then(m => ({ default: m.BuildingProcessPlanPage })),
+  () => import('@/features/building/process-plan/view/BuildingProcessPlanPage').then(m => ({ default: m.BuildingProcessPlanPage })),
   { loading: () => <TabLoadingSkeleton title="지상층 공정계획 로딩 중..." /> }
 );
 
 const BasementProcessPlanPage = dynamic(
-  () => import('@/components/buildings/BasementProcessPlanPage').then(m => ({ default: m.BasementProcessPlanPage })),
+  () => import('@/features/building/process-plan/view/BasementProcessPlanPage').then(m => ({ default: m.BasementProcessPlanPage })),
   { loading: () => <TabLoadingSkeleton title="지하층 공정계획 로딩 중..." /> }
 );
 
 const DetailedQuantityInputPage = dynamic(
-  () => import('@/components/buildings/DetailedQuantityInputPage').then(m => ({ default: m.DetailedQuantityInputPage })),
+  () => import('@/features/building/quantity/view/DetailedQuantityInputPage').then(m => ({ default: m.DetailedQuantityInputPage })),
   { loading: () => <TabLoadingSkeleton title="상세물량 로딩 중..." /> }
 );
 
@@ -63,12 +65,12 @@ const GanttChartPage = dynamic(
 );
 
 const PouringSectionReviewPage = dynamic(
-  () => import('@/components/buildings/PouringSectionReviewPage').then(m => ({ default: m.PouringSectionReviewPage })),
+  () => import('@/features/building/pouring-section/view/PouringSectionReviewPage').then(m => ({ default: m.PouringSectionReviewPage })),
   { loading: () => <TabLoadingSkeleton title="타설구간검토 로딩 중..." /> }
 );
 
 const ProcessLogicPage = dynamic(
-  () => import('@/components/buildings/ProcessLogicPage').then(m => ({ default: m.ProcessLogicPage })),
+  () => import('@/features/building/process-logic/view/ProcessLogicPage').then(m => ({ default: m.ProcessLogicPage })),
   { loading: () => <TabLoadingSkeleton title="공정로직 로딩 중..." /> }
 );
 

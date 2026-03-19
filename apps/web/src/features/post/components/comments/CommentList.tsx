@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/shared/lib/supabase/server';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { MessageSquare } from 'lucide-react';

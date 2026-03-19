@@ -4,7 +4,7 @@
  * next/headers를 사용하는 createServerClient 의존
  */
 
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createClient as createServerClient } from '@/shared/lib/supabase/server';
 
 /**
  * 모든 사용자 목록 조회 (서버 사이드 - Admin 전용)

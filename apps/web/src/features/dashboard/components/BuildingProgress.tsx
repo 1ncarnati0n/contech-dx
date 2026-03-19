@@ -1,7 +1,7 @@
 'use client';
 
-import { Card } from '@/components/ui';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/Tooltip';
+import { Card } from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/Tooltip';
 
 export function BuildingProgress() {
     const buildings = Array.from({ length: 7 }, (_, i) => `${101 + i}동`); // 101~107동

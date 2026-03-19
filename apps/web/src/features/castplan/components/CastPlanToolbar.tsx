@@ -15,8 +15,8 @@ import {
   EyeOff,
   Grid3X3,
 } from 'lucide-react';
-import { Button } from '@/components/ui';
-import type { CastPlanTool, CastPlanState } from '@/lib/types';
+import { Button } from '@/shared/components/ui';
+import type { CastPlanTool, CastPlanState } from '@/shared/types';
 
 interface CastPlanToolbarProps {
   activeTool: CastPlanTool;

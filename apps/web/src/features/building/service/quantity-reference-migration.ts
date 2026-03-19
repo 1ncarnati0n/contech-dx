@@ -5,9 +5,9 @@
  * 점진적 마이그레이션 기간 동안 사용됩니다.
  */
 
-import type { ProcessCategory } from '@/lib/types';
-import type { SemanticQuantityReference } from '@/lib/types/process-quantity';
-import { TRADE_FIELD_MAP } from '@/lib/types/process-quantity';
+import type { ProcessCategory } from '@/shared/types';
+import type { SemanticQuantityReference } from '@/shared/types/process-quantity';
+import { TRADE_FIELD_MAP } from '@/shared/types/process-quantity';
 
 /**
  * Excel 행 번호 → tradeGroup 매핑

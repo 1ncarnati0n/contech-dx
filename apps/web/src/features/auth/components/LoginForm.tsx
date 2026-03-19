@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
   Form,
@@ -15,9 +15,9 @@ import {
   FormMessage,
   Input,
   Button,
-} from '@/components/ui';
+} from '@/shared/components/ui';
 import { AlertCircle } from 'lucide-react';
-import { Spinner } from '@/components/ui/Spinner';
+import { Spinner } from '@/shared/components/ui/Spinner';
 
 function getLoginErrorMessage(error: string): string {
   if (error.includes('Invalid login credentials')) {

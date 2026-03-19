@@ -2,8 +2,8 @@
 
 import { Group, Line, Circle, Arc, Text, Ellipse, Shape, Rect } from 'react-konva';
 import type Konva from 'konva';
-import type { ParsedDxfData, DxfEntity, Point2D } from '@/lib/types';
-import { dxfColorToHex } from '@/lib/utils/dxf-parser';
+import type { ParsedDxfData, DxfEntity, Point2D } from '@/shared/types';
+import { dxfColorToHex } from '@/features/castplan/utils/dxf-parser';
 import { useMemo, memo } from 'react';
 
 interface DxfLayerProps {
