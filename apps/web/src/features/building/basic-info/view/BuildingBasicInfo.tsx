@@ -1,14 +1,18 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/shared/components/ui';
+import { useCallback, useMemo } from 'react';
+import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/shared/components/ui';
 import type { Building } from '@/shared/types';
-import { Save, Building2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
-import { StructureInfoSection, UnitTypePatternSection, FloorHeightSection } from './sections';
+import { StructureInfoSection, FloorHeightSection } from './sections';
 import { useBuildingAutoCalculations } from '../service/useBuildingAutoCalculations';
 import { useBuildingFormState } from '../service/useBuildingFormState';
 import { useBuildingAutoSave } from '../service/useBuildingAutoSave';
 import { useBuildingSave } from '../service/useBuildingSave';
+import { StructureDiagramBuilder } from '../../structure-diagram/view/StructureDiagramBuilder';
+import { buildingMetaToCores } from '../../structure-diagram/service/convertCoreStructure';
+import type { CoreStructure } from '../../structure-diagram/types';
 
 interface BuildingBasicInfoProps {
   building: Building;
@@ -24,8 +28,8 @@ interface BuildingBasicInfoProps {
  * 빌딩 기본정보 컴포넌트
  *
  * 3개 섹션으로 구분:
- * 1. 구조 정보 - 코어 개수/타입, 구조형식
- * 2. 단위세대 구성 - 패턴 추가/삭제, 층수 설정, 필로티 설정
+ * 1. 구조 정보 - 코어 타입, 구조형식
+ * 2. 골구조도 - 코어/세대/층수/필로티 설정 + 실시간 미리보기 + 저장
  * 3. 층고 설정 - 지하/지상/옥탑층 층고 입력
  */
 export function BuildingBasicInfo({
@@ -46,7 +50,7 @@ export function BuildingBasicInfo({
     corePilotisHeights: building?.meta?.floorCount?.corePilotisHeights || [],
   });
 
-  // 폼 상태 관리 (18개 useState → 단일 formData 객체)
+  // 폼 상태 관리 (단일 formData 객체)
   const { formData, updateField, updateHeights } = useBuildingFormState(building, initialCoreCount);
 
   // formData 기반 자동 계산 (폼 변경 반영)
@@ -67,7 +71,7 @@ export function BuildingBasicInfo({
     onUpdate,
   });
 
-  // 수동 저장 (층정보 생성 / 단위세대 저장)
+  // 수동 저장 (층정보 생성 / 구성 저장)
   const { handleSave, handleSaveUnitType, isSaving: isManualSaving } = useBuildingSave({
     building,
     formData,
@@ -80,6 +84,60 @@ export function BuildingBasicInfo({
   });
 
   const isSaving = isAutoSaving || isManualSaving;
+
+  // 골구조도 초기 데이터 (building.meta → CoreStructure[])
+  const initialCores = useMemo(() => {
+    if (!building?.meta) return undefined;
+    return buildingMetaToCores(building.meta);
+  }, [building?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 코어별 단위세대 타입 배열
+  const unitTypes = useMemo(() =>
+    formData.unitTypePattern.map(p => p.type || ''),
+    [formData.unitTypePattern],
+  );
+
+  // 골구조도 변경 → formData 동기화
+  const handleCoresChange = useCallback((cores: CoreStructure[]) => {
+    const coreCount = cores.length;
+
+    // unitTypePattern 동기화 (기존 type 보존)
+    const newPatterns = cores.map((core, i) => ({
+      unitCount: core.unitsLeft + core.unitsRight,
+      type: formData.unitTypePattern[i]?.type ?? '',
+      coreNumber: core.id,
+    }));
+    updateField('unitTypePattern', newPatterns);
+
+    // 코어 개수
+    updateField('coreCount', coreCount);
+
+    // 층수 배열
+    updateField('coreGroundFloors', cores.map(c => c.groundFloors));
+    updateField('coreBasementFloors', cores.map(c => c.basementFloors));
+    updateField('corePhFloors', cores.map(c => c.rooftopFloors));
+
+    // 대표 값 (코어1 기준)
+    updateField('groundCount', cores[0]?.groundFloors ?? 0);
+    updateField('basementCount', cores[0]?.basementFloors ?? 0);
+    updateField('phCount', cores[0]?.rooftopFloors ?? 0);
+
+    // 필로티
+    updateField('corePilotisCounts', cores.map(c =>
+      c.piloti ? c.piloti.excludeUnits.length : 0
+    ));
+    updateField('corePilotisHeights', cores.map(c =>
+      c.piloti ? c.piloti.floor : 0
+    ));
+  }, [formData.unitTypePattern, updateField]);
+
+  // 단위세대 타입 변경
+  const handleUnitTypeChange = useCallback((coreId: number, type: string) => {
+    const newPatterns = formData.unitTypePattern.map((p, i) =>
+      i === coreId - 1 ? { ...p, type } : p
+    );
+    updateField('unitTypePattern', newPatterns);
+  }, [formData.unitTypePattern, updateField]);
 
   if (!building || !building.meta) {
     return <div className="p-4 text-red-500">Building data is missing</div>;
@@ -109,37 +167,22 @@ export function BuildingBasicInfo({
           />
         </div>
 
-        {/* 섹션 2: 단위세대 구성 */}
+        {/* 섹션 2: 골구조도 (단위세대 구성 대체) */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">단위세대 구성</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">골구조도</h3>
             {formTotalUnitCount > 0 && <Badge variant="info">{formTotalUnitCount} 세대</Badge>}
           </div>
-          <UnitTypePatternSection
-            unitTypePattern={formData.unitTypePattern}
-            basementCount={formData.basementCount}
-            groundCount={formData.groundCount}
-            phCount={formData.phCount}
-            coreBasementFloors={formData.coreBasementFloors}
-            coreGroundFloors={formData.coreGroundFloors}
-            corePhFloors={formData.corePhFloors}
-            corePilotisCounts={formData.corePilotisCounts}
-            corePilotisHeights={formData.corePilotisHeights}
-            hasHighCeilingEquipmentRoom={formData.hasHighCeilingEquipmentRoom}
+          <StructureDiagramBuilder
+            initialCores={initialCores}
+            onChange={handleCoresChange}
+            unitTypes={unitTypes}
+            onUnitTypeChange={handleUnitTypeChange}
             totalUnitCount={formTotalUnitCount}
-            heights={formData.heights}
-            onUnitTypePatternChange={(v) => updateField('unitTypePattern', v)}
-            onBasementCountChange={(v) => updateField('basementCount', v)}
-            onGroundCountChange={(v) => updateField('groundCount', v)}
-            onPhCountChange={(v) => updateField('phCount', v)}
-            onCoreBasementFloorsChange={(v) => updateField('coreBasementFloors', v)}
-            onCoreGroundFloorsChange={(v) => updateField('coreGroundFloors', v)}
-            onCorePhFloorsChange={(v) => updateField('corePhFloors', v)}
-            onCorePilotisCountsChange={(v) => updateField('corePilotisCounts', v)}
-            onCorePilotisHeightsChange={(v) => updateField('corePilotisHeights', v)}
+            hasHighCeilingEquipmentRoom={formData.hasHighCeilingEquipmentRoom}
             onHasHighCeilingEquipmentRoomChange={(v) => updateField('hasHighCeilingEquipmentRoom', v)}
-            onHeightsChange={updateHeights}
-            onSave={handleSaveUnitType}
+            onSaveConfig={handleSaveUnitType}
+            onSaveGenerate={handleSave}
             isSaving={isSaving}
           />
         </div>
@@ -152,24 +195,6 @@ export function BuildingBasicInfo({
             phCount={formData.phCount}
             onHeightsChange={updateHeights}
           />
-        </div>
-
-        {/* 저장 버튼 */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-          <p className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-            층정보 재생성시 물량 재입력이 필요합니다.
-          </p>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="gap-2"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? '생성 중...' : '층정보 생성'}
-          </Button>
         </div>
       </CardContent>
     </Card>
