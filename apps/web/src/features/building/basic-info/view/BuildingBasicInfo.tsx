@@ -91,9 +91,12 @@ export function BuildingBasicInfo({
     return buildingMetaToCores(building.meta);
   }, [building?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 코어별 단위세대 타입 배열
-  const unitTypes = useMemo(() =>
-    formData.unitTypePattern.map(p => p.type || ''),
+  // 코어별 세대 타입 배열 (2차원)
+  const coreUnitTypes = useMemo(() =>
+    formData.unitTypePattern.map(p => {
+      if (p.unitTypes && p.unitTypes.length > 0) return p.unitTypes;
+      return p.type ? [p.type] : [''];
+    }),
     [formData.unitTypePattern],
   );
 
@@ -101,12 +104,21 @@ export function BuildingBasicInfo({
   const handleCoresChange = useCallback((cores: CoreStructure[]) => {
     const coreCount = cores.length;
 
-    // unitTypePattern 동기화 (기존 type 보존)
-    const newPatterns = cores.map((core, i) => ({
-      unitCount: core.unitsLeft + core.unitsRight,
-      type: formData.unitTypePattern[i]?.type ?? '',
-      coreNumber: core.id,
-    }));
+    // unitTypePattern 동기화 (기존 unitTypes 보존, 세대수에 맞춤)
+    const newPatterns = cores.map((core, i) => {
+      const existing = formData.unitTypePattern[i];
+      const prevTypes = existing?.unitTypes && existing.unitTypes.length > 0
+        ? existing.unitTypes
+        : existing?.type ? [existing.type] : [''];
+      const totalUnits = core.unitsLeft + core.unitsRight;
+      const unitTypes = Array.from({ length: totalUnits }, (_, j) => prevTypes[j] ?? '');
+      return {
+        unitCount: totalUnits,
+        type: unitTypes[0] ?? '',
+        unitTypes,
+        coreNumber: core.id,
+      };
+    });
     updateField('unitTypePattern', newPatterns);
 
     // 코어 개수
@@ -117,10 +129,10 @@ export function BuildingBasicInfo({
     updateField('coreBasementFloors', cores.map(c => c.basementFloors));
     updateField('corePhFloors', cores.map(c => c.rooftopFloors));
 
-    // 대표 값 (코어1 기준)
-    updateField('groundCount', cores[0]?.groundFloors ?? 0);
-    updateField('basementCount', cores[0]?.basementFloors ?? 0);
-    updateField('phCount', cores[0]?.rooftopFloors ?? 0);
+    // 대표 값 (가장 높은 코어 기준)
+    updateField('groundCount', Math.max(...cores.map(c => c.groundFloors), 0));
+    updateField('basementCount', Math.max(...cores.map(c => c.basementFloors), 0));
+    updateField('phCount', Math.max(...cores.map(c => c.rooftopFloors), 0));
 
     // 필로티
     updateField('corePilotisCounts', cores.map(c =>
@@ -129,12 +141,19 @@ export function BuildingBasicInfo({
     updateField('corePilotisHeights', cores.map(c =>
       c.piloti ? c.piloti.floor : 0
     ));
+
+    // 3단 가시설
+    updateField('scaffoldingColumns', cores.map(c =>
+      c.scaffolding?.columns ?? []
+    ));
   }, [formData.unitTypePattern, updateField]);
 
-  // 단위세대 타입 변경
-  const handleUnitTypeChange = useCallback((coreId: number, type: string) => {
+  // 세대별 타입 변경
+  const handleCoreUnitTypesChange = useCallback((coreId: number, types: string[]) => {
     const newPatterns = formData.unitTypePattern.map((p, i) =>
-      i === coreId - 1 ? { ...p, type } : p
+      i === coreId - 1
+        ? { ...p, type: types[0] ?? '', unitTypes: types }
+        : p
     );
     updateField('unitTypePattern', newPatterns);
   }, [formData.unitTypePattern, updateField]);
@@ -176,8 +195,8 @@ export function BuildingBasicInfo({
           <StructureDiagramBuilder
             initialCores={initialCores}
             onChange={handleCoresChange}
-            unitTypes={unitTypes}
-            onUnitTypeChange={handleUnitTypeChange}
+            coreUnitTypes={coreUnitTypes}
+            onCoreUnitTypesChange={handleCoreUnitTypesChange}
             totalUnitCount={formTotalUnitCount}
             hasHighCeilingEquipmentRoom={formData.hasHighCeilingEquipmentRoom}
             onHasHighCeilingEquipmentRoomChange={(v) => updateField('hasHighCeilingEquipmentRoom', v)}

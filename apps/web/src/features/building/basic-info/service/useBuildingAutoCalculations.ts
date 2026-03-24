@@ -56,39 +56,16 @@ export function useBuildingAutoCalculations({
 
   /**
    * 코어 개수 계산
-   * - 코어1이 처음 나오는지 추적
-   * - 코어2가 있는지 추적
-   * - -1, -2, -3 접미사가 붙은 코어는 제외
+   * - 단위세대 패턴에서 고유한 코어 번호 수를 카운트 (1~4)
    */
   const calculatedCoreCount = useMemo(() => {
     if (unitTypePattern.length === 0) return 0;
 
-    let hasFirstCore1 = false;
-    let hasCore2 = false;
+    const uniqueCoreNumbers = new Set(
+      unitTypePattern.map(p => p.coreNumber || 1)
+    );
 
-    unitTypePattern.forEach((pattern, index) => {
-      const coreNum = pattern.coreNumber || 1;
-
-      if (coreNum === 1) {
-        if (!hasFirstCore1) {
-          const previousCore1Count = unitTypePattern
-            .slice(0, index)
-            .filter(p => p.coreNumber === 1).length;
-
-          if (previousCore1Count === 0) {
-            hasFirstCore1 = true;
-          }
-        }
-      } else if (coreNum === 2) {
-        hasCore2 = true;
-      }
-    });
-
-    let count = 0;
-    if (hasFirstCore1) count++;
-    if (hasCore2) count++;
-
-    return count;
+    return uniqueCoreNumbers.size;
   }, [unitTypePattern]);
 
   /**
@@ -110,24 +87,10 @@ export function useBuildingAutoCalculations({
 
       // 코어별 층수 가져오기
       let floorCount = groundCount;
+      const coreFloorIndex = getCoreFloorIndex(coreNum, index, unitTypePattern);
 
-      if (coreNum === 1) {
-        // 코어1: 인덱스 기반으로 층수 결정
-        const core1Index = unitTypePattern
-          .slice(0, index + 1)
-          .filter(p => p.coreNumber === 1).length - 1;
-
-        if (coreGroundFloors.length > core1Index) {
-          floorCount = coreGroundFloors[core1Index] ?? groundCount;
-        }
-      } else if (coreNum === 2) {
-        // 코어2: 코어1 개수 뒤에 위치
-        const core1Count = unitTypePattern.filter(p => p.coreNumber === 1).length;
-        const core2Index = core1Count;
-
-        if (coreGroundFloors.length > core2Index) {
-          floorCount = coreGroundFloors[core2Index] ?? groundCount;
-        }
+      if (coreGroundFloors.length > coreFloorIndex) {
+        floorCount = coreGroundFloors[coreFloorIndex] ?? groundCount;
       }
 
       total += unitCount * floorCount;
@@ -155,17 +118,7 @@ export function useBuildingAutoCalculations({
     if (corePilotisCounts.length > 0 && corePilotisHeights.length > 0) {
       unitTypePattern.forEach((pattern, index) => {
         const coreNum = pattern.coreNumber || 1;
-
-        let pilotisIndex = 0;
-        if (coreNum === 1) {
-          const core1Index = unitTypePattern
-            .slice(0, index + 1)
-            .filter(p => p.coreNumber === 1).length - 1;
-          pilotisIndex = core1Index;
-        } else if (coreNum === 2) {
-          const core1Count = unitTypePattern.filter(p => p.coreNumber === 1).length;
-          pilotisIndex = core1Count;
-        }
+        const pilotisIndex = getCoreFloorIndex(coreNum, index, unitTypePattern);
 
         const pilotisCnt = corePilotisCounts.length > pilotisIndex
           ? corePilotisCounts[pilotisIndex] ?? 0
@@ -242,12 +195,32 @@ export function getPilotisIndex(
   currentIndex: number,
   unitTypePattern: UnitTypePattern[]
 ): number {
-  if (coreNumber === 1) {
-    return unitTypePattern
-      .slice(0, currentIndex + 1)
-      .filter(p => p.coreNumber === 1).length - 1;
-  } else if (coreNumber === 2) {
-    return unitTypePattern.filter(p => p.coreNumber === 1).length;
-  }
-  return 0;
+  return getCoreFloorIndex(coreNumber, currentIndex, unitTypePattern);
+}
+
+/**
+ * 코어별 배열(coreGroundFloors, corePilotisCounts 등) 인덱스 계산
+ *
+ * coreNumber N, unitTypePattern 내 position index로부터
+ * coreGroundFloors 등 코어별 배열의 인덱스를 반환합니다.
+ *
+ * 예: [코어1, 코어1-1, 코어2, 코어3] → 인덱스 [0, 1, 2, 3]
+ */
+function getCoreFloorIndex(
+  coreNumber: number,
+  currentIndex: number,
+  unitTypePattern: UnitTypePattern[]
+): number {
+  // coreNumber보다 작은 코어의 패턴 수 (시작 오프셋)
+  const patternsBeforeThisCore = unitTypePattern
+    .filter(p => (p.coreNumber || 1) < coreNumber)
+    .length;
+
+  // 같은 coreNumber 내에서의 서브 인덱스
+  const subIndex = unitTypePattern
+    .slice(0, currentIndex + 1)
+    .filter(p => (p.coreNumber || 1) === coreNumber)
+    .length - 1;
+
+  return patternsBeforeThisCore + subIndex;
 }
