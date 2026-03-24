@@ -3,11 +3,11 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { Profile } from '@/lib/types';
-import { Button } from '@/components/ui';
+import type { Profile } from '@/shared/types';
+import { Button } from '@/shared/components/ui';
 import {
   Form,
   FormControl,
@@ -16,8 +16,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/Form';
-import { Input, Textarea } from '@/components/ui/Input';
+} from '@/shared/components/ui/Form';
+import { Input, Textarea } from '@/shared/components/ui/Input';
 
 // ============================================
 // Zod 스키마 정의

@@ -2,18 +2,18 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { addDays } from 'date-fns';
-import { createSupabaseGanttDataService, SupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
-import { getBuildings } from '@/lib/services/buildings';
-import { getProject } from '@/lib/services/projects';
+import { createSupabaseGanttDataService, SupabaseGanttDataService } from '@/features/gantt/services/SupabaseGanttDataService';
+import { getBuildings } from '@/features/building/shared/repository/buildings';
+import { getProject } from '@/features/project/services/projects';
 import {
   convertProcessPlansToGanttTasks,
   CATEGORY_ORDER,
   getImportFloorLabelsForCategory,
-} from '@/lib/utils/process-to-gantt-converter';
-import type { ConversionResult } from '@/lib/utils/process-to-gantt-converter';
-import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/lib/types';
-import { getProcessModule } from '@/lib/data/process-modules';
-import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/lib/utils/process-days-calculator';
+} from '@/features/gantt/utils/process-to-gantt-converter';
+import type { ConversionResult } from '@/features/gantt/utils/process-to-gantt-converter';
+import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/shared/types';
+import { getProcessModule } from '@/features/building/data/process-modules';
+import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/features/building/process-plan/service/process-days-calculator';
 import { toast } from 'sonner';
 import {
   Loader2,
@@ -32,7 +32,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import type { ConstructionTask, Milestone, GroupDependency } from 'sa-gantt-lib';
-import { logger } from '@/lib/utils/logger';
+import { logger } from '@/shared/utils/logger';
 
 interface GanttChartPageProps {
   projectId: string;

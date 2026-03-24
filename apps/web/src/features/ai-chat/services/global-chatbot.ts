@@ -3,8 +3,8 @@
  * 재시도 로직, AbortController 지원
  */
 
-import type { PageType } from '@/lib/hooks/usePageContext';
-import { getApiErrorMessage, getChatbotErrorDetails } from '@/lib/utils/api-error';
+import type { PageType } from '@/shared/hooks/usePageContext';
+import { getApiErrorMessage, getChatbotErrorDetails } from '@/shared/utils/api-error';
 
 /**
  * 에러 타입

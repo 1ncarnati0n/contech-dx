@@ -3,9 +3,9 @@
  * 물량입력 페이지의 데이터를 참조하여 수량을 가져옴
  */
 
-import type { Building, FloorTrade } from '@/lib/types';
+import type { Building, FloorTrade } from '@/shared/types';
 import { getQuantityValue } from './tradeDataHelpers';
-import { logger } from './logger';
+import { logger } from '@/shared/utils/logger';
 
 /**
  * 물량 데이터에서 값 가져오기

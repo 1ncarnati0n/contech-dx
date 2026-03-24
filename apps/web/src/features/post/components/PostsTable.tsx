@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Calendar, FileText } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import type { Post } from '@/lib/types';
+import { Card } from '@/shared/components/ui/Card';
+import { Badge } from '@/shared/components/ui/Badge';
+import type { Post } from '@/shared/types';
 
 interface PostsTableProps {
   posts: (Post & { author: { email: string; display_name: string | null } | null })[];

@@ -3,9 +3,9 @@
  * VisualGuideOverlay와 연동
  */
 
-import type { HighlightTarget, HighlightTargetKey } from '@/components/buildings/ProcessPlanChatbotTypes';
+import type { HighlightTarget, HighlightTargetKey } from '@/features/building/chatbot/ProcessPlanChatbotTypes';
 import { getHighlightTarget, getHighlightTargets } from './highlight-registry';
-import { logger } from '@/lib/utils/logger';
+import { logger } from '@/shared/utils/logger';
 
 const HIGHLIGHT_CLASS = 'process-plan-highlight';
 const ACTIVE_HIGHLIGHT_CLASS = 'process-plan-highlight-active';

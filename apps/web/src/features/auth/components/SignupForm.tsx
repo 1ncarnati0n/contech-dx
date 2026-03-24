@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
   Form,
@@ -14,7 +14,7 @@ import {
   FormMessage,
   Input,
   Button,
-} from '@/components/ui';
+} from '@/shared/components/ui';
 import { toast } from 'sonner';
 
 const signupSchema = z

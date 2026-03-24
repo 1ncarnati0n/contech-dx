@@ -6,7 +6,7 @@ import type Konva from 'konva';
 import type {
   CastPlanState,
   CastPlanTool,
-} from '@/lib/types';
+} from '@/shared/types';
 import { DxfLayer } from './layers/DxfLayer';
 import { BlockLayer } from './layers/BlockLayer';
 import { GateLayer } from './layers/GateLayer';

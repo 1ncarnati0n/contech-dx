@@ -10,9 +10,6 @@ export type RowInfo = {
 
 /**
  * 물량 입력 테이블의 행 목록을 생성하는 순수 함수.
- *
- * FloorTradeTable과 DetailedFloorTradeTable에서 동일하게 사용되는
- * 행 생성 로직을 한 곳에 통합.
  */
 export function buildTradeRows(building: Building, floors: Floor[]): RowInfo[] {
   const result: RowInfo[] = [];
@@ -41,34 +38,39 @@ function buildMultiCoreRows(
   floors: Floor[],
   coreGroundFloors: number[],
 ) {
-  let core1MaxFloor = coreGroundFloors[0] || 0;
+  // 가장 높은 코어 기준
+  const tallestCoreIndex = coreGroundFloors.indexOf(Math.max(...coreGroundFloors));
+  const tallestCoreLabel = tallestCoreIndex + 1;
+  let maxFloor = coreGroundFloors[tallestCoreIndex] || 0;
 
-  const core1Floors = floors.filter(f =>
-    f.floorLabel.match(/코어1-(\d+)F/) || f.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/)
+  // 가장 높은 코어의 지상층 필터 (coreLabel 기반)
+  const refCoreFloors = floors.filter(f =>
+    f.coreLabel === tallestCoreLabel && f.levelType === '지상' &&
+    f.floorClass !== '옥탑층' && f.floorClass !== 'PH층'
   );
 
-  core1Floors.forEach(floor => {
-    const match = floor.floorLabel.match(/코어1-(\d+)F$/);
+  refCoreFloors.forEach(floor => {
+    const match = floor.floorLabel.match(/^(\d+)F$/);
     if (match) {
       const floorNum = parseInt(match[1], 10);
-      if (floorNum > core1MaxFloor) core1MaxFloor = floorNum;
+      if (floorNum > maxFloor) maxFloor = floorNum;
     }
-    const rangeMatch = floor.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
+    const rangeMatch = floor.floorLabel.match(/(\d+)~(\d+)F/);
     if (rangeMatch) {
       const end = parseInt(rangeMatch[2], 10);
-      if (end > core1MaxFloor) core1MaxFloor = end;
+      if (end > maxFloor) maxFloor = end;
     }
   });
 
   // 지하층
   addBasementFloors(result, floors);
 
-  // 지상층 (코어1 기준)
-  for (let i = 1; i <= core1MaxFloor; i++) {
-    const foundFloor = floors.find(f => {
-      const match = f.floorLabel.match(/코어1-(\d+)F$/);
+  // 지상층 (가장 높은 코어 기준)
+  for (let i = 1; i <= maxFloor; i++) {
+    const foundFloor = refCoreFloors.find(f => {
+      const match = f.floorLabel.match(/^(\d+)F$/);
       if (match && parseInt(match[1], 10) === i) return true;
-      const rangeMatch = f.floorLabel.match(/코어1-(\d+)~(\d+)F 기준층/);
+      const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F/);
       if (rangeMatch) {
         const start = parseInt(rangeMatch[1], 10);
         const end = parseInt(rangeMatch[2], 10);
@@ -77,7 +79,7 @@ function buildMultiCoreRows(
       return false;
     });
 
-    addGroundFloor(result, building, foundFloor, i, core1MaxFloor);
+    addGroundFloor(result, building, foundFloor, i, maxFloor);
   }
 
   // 옥탑층
@@ -97,7 +99,7 @@ function buildSingleCoreRows(
       const floorNum = parseInt(match[1], 10);
       if (floorNum > groundFloorCount) groundFloorCount = floorNum;
     }
-    const rangeMatch = floor.floorLabel.match(/(\d+)~(\d+)F 기준층/);
+    const rangeMatch = floor.floorLabel.match(/(\d+)~(\d+)F/);
     if (rangeMatch) {
       const end = parseInt(rangeMatch[2], 10);
       if (end > groundFloorCount) groundFloorCount = end;
@@ -111,7 +113,7 @@ function buildSingleCoreRows(
   for (let i = 1; i <= groundFloorCount; i++) {
     const foundFloor = floors.find(f => {
       if (f.floorLabel === `${i}F`) return true;
-      const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F 기준층/);
+      const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F/);
       if (rangeMatch) {
         const start = parseInt(rangeMatch[1], 10);
         const end = parseInt(rangeMatch[2], 10);

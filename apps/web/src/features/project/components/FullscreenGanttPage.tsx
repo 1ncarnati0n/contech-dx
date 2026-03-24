@@ -19,12 +19,12 @@ import {
   exportToExcel,
 } from 'sa-gantt-lib';
 import 'sa-gantt-lib/style.css';
-import { createSupabaseGanttDataService } from '@/lib/services/SupabaseGanttDataService';
+import { createSupabaseGanttDataService } from '@/features/gantt/services/SupabaseGanttDataService';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { logger } from '@/lib/utils/logger';
-import { FullscreenGanttHeader } from './fullscreen-gantt/FullscreenGanttHeader';
+import { logger } from '@/shared/utils/logger';
+import { FullscreenGanttHeader } from '@/features/gantt/components/fullscreen-gantt/FullscreenGanttHeader';
 
 interface FullscreenGanttPageProps {
   projectId: string;

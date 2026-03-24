@@ -5,8 +5,8 @@
  * withClientAuth 래퍼를 사용하여 인증 로직을 추상화합니다.
  */
 
-import { withClientAuth, type ServiceResult } from '@/lib/supabase/withAuth';
-import type { Comment } from '@/lib/types';
+import { withClientAuth, type ServiceResult } from '@/shared/lib/supabase/withAuth';
+import type { Comment } from '@/shared/types';
 
 /**
  * 댓글 생성 (클라이언트 사이드)

@@ -28,23 +28,23 @@ import type {
   ProcessCategory,
   ProcessType,
   FloorProcessDetails,
-} from '@/lib/types';
-import { getProcessModule } from '@/lib/data/process-modules';
-import type { ProcessItem, ProcessModule } from '@/lib/data/process-modules';
-import { filterItemsForFloor, resolveFloorQuantity } from './process-days-calculator';
+} from '@/shared/types';
+import { getProcessModule } from '@/features/building/data/process-modules';
+import type { ProcessItem, ProcessModule } from '@/features/building/data/process-modules';
+import { filterItemsForFloor, resolveFloorQuantity } from '@/features/building/process-plan/service/process-days-calculator';
 import {
   getSpecialRowDeductions,
   resolveWithDeduction,
   type DeductionFields,
-} from './process-quantity-resolver';
-import { parseLegacyReference } from './quantity-reference-migration';
+} from '@/features/building/process-plan/service/process-quantity-resolver';
+import { parseLegacyReference } from '@/features/building/process-plan/service/quantity-reference-migration';
 import {
   calculateTotalWorkers,
   calculateDailyInputWorkers,
   calculateWorkDaysWithRounding,
   calculateEquipmentCount,
   calculateDailyInputWorkersByEquipment,
-} from './process-calculation';
+} from '@/features/building/process-plan/service/process-calculation';
 
 // ============================================
 // 타입 정의

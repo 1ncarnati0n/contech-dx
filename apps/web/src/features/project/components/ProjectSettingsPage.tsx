@@ -15,13 +15,13 @@ import {
   HardHat,
   ChevronRight,
 } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { Button, Card } from '@/shared/components/ui';
 import { ProjectSettingsForm } from './ProjectSettingsForm';
 import { ProjectDeleteModal } from './ProjectDeleteModal';
-import type { Project, ProjectMemberRole, Profile } from '@/lib/types';
-import { getUserRoleInProject } from '@/lib/services/projectMembers';
-import { getCurrentUserProfile, isSystemAdmin } from '@/lib/permissions/client';
-import { logger } from '@/lib/utils/logger';
+import type { Project, ProjectMemberRole, Profile } from '@/shared/types';
+import { getUserRoleInProject } from '@/features/project/services/projectMembers';
+import { getCurrentUserProfile, isSystemAdmin } from '@/shared/lib/permissions/client';
+import { logger } from '@/shared/utils/logger';
 
 interface ProjectSettingsPageProps {
   project: Project;

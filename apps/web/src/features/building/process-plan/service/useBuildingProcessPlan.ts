@@ -113,7 +113,10 @@ export function getBuildingInfo(building: Building) {
     .map(pattern => {
       const coreNum = pattern.coreNumber || 1;
       const unitCount = pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : 0);
-      return `코어${coreNum} ${unitCount}호 ${pattern.type}`;
+      const typeLabel = pattern.unitTypes && pattern.unitTypes.length > 0
+        ? pattern.unitTypes.filter(Boolean).join('+')
+        : pattern.type;
+      return `코어${coreNum} ${unitCount}호 ${typeLabel}`;
     })
     .join(', ');
 

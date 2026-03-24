@@ -69,6 +69,7 @@ function parseRangeLabel(label: string): { start: number; end: number } | null {
 function buildExcludedSets(
   floors: Floor[],
   existingRangeFloors: Floor[],
+  tallestCoreLabel: number = 1,
 ): { excludedFloorNums: Set<number>; excludedFloorIds: Set<string> } {
   const excludedFloorNums = new Set<number>();
   const excludedFloorIds = new Set<string>();
@@ -83,7 +84,7 @@ function buildExcludedSets(
       const individualFloor = floors.find(f => {
         if (f.floorLabel.includes('~')) return false;
         const m = f.floorLabel.match(/^(\d+)F$/);
-        if (m && parseInt(m[1], 10) === num && f.coreLabel === 1) return true;
+        if (m && parseInt(m[1], 10) === num && f.coreLabel === tallestCoreLabel) return true;
         return false;
       });
       if (individualFloor) {
@@ -151,6 +152,7 @@ function mergeConsecutiveStandardFloors(
           result.push({
             id: dummyId,
             buildingId,
+            coreLabel: 1,
             floorLabel: `${rangeStart}~${rangeEnd}F`,
             floorNumber: rangeStart,
             levelType: '지상',
@@ -175,6 +177,7 @@ function mergeConsecutiveStandardFloors(
         result.push({
           id: dummyId,
           buildingId,
+          coreLabel: 1,
           floorLabel: `${current.floorNum}F`,
           floorNumber: current.floorNum,
           levelType: '지상',
@@ -201,24 +204,28 @@ function transformMultiCore(
   const result: Floor[] = [];
   const addedFloorIds = new Set<string>();
 
-  const core1MaxFloor = coreGroundFloors[0] || 0;
+  // 가장 높은 코어 기준으로 층 표시
+  const maxGroundFloor = Math.max(...coreGroundFloors, 0);
+  // 가장 높은 코어의 coreLabel (1-based)
+  const tallestCoreIndex = coreGroundFloors.indexOf(maxGroundFloor);
+  const tallestCoreLabel = tallestCoreIndex + 1;
 
   // 지하층
   addBasementFloors(floors, result, addedFloorIds);
 
-  // 기존 범위 형식 기준층 찾기 (코어1 기준)
+  // 기존 범위 형식 기준층 찾기 (가장 높은 코어 기준)
   const existingRangeFloors = floors.filter(f =>
     f.floorClass === '기준층' &&
     f.floorLabel.includes('~') &&
-    f.coreLabel === 1
+    f.coreLabel === tallestCoreLabel
   );
 
-  const { excludedFloorNums, excludedFloorIds } = buildExcludedSets(floors, existingRangeFloors);
+  const { excludedFloorNums, excludedFloorIds } = buildExcludedSets(floors, existingRangeFloors, tallestCoreLabel);
 
-  // 셋팅층, 일반층, 개별 기준층 추가 (범위 포함 층 제외, 코어1만)
+  // 셋팅층, 일반층 추가 (가장 높은 코어 기준)
   const settingAndNormalFloors = floors.filter(f => {
-    if (f.floorClass !== '셋팅층' && f.floorClass !== '일반층' && f.floorClass !== '기준층') return false;
-    if (f.coreLabel !== 1) return false;
+    if (f.floorClass !== '셋팅층' && f.floorClass !== '일반층') return false;
+    if (f.coreLabel !== tallestCoreLabel) return false;
     if (f.floorLabel.includes('~')) return false;
     if (excludedFloorIds.has(f.id)) return false;
 
@@ -245,16 +252,16 @@ function transformMultiCore(
     }
   });
 
-  // 코어1 기준 지상층 수집 (범위 포함 층 제외)
+  // 가장 높은 코어 기준 지상층 수집 (범위 포함 층 제외)
   const groundFloors: Array<{ floor: Floor | null; floorNum: number }> = [];
 
-  for (let i = 1; i <= core1MaxFloor; i++) {
+  for (let i = 1; i <= maxGroundFloor; i++) {
     if (excludedFloorNums.has(i)) continue;
 
-    const core1Floor = floors.find(f => {
+    const refFloor = floors.find(f => {
       if (f.floorLabel.includes('~')) return false;
       if (excludedFloorIds.has(f.id)) return false;
-      if (f.coreLabel !== 1) return false;
+      if (f.coreLabel !== tallestCoreLabel) return false;
 
       const m = f.floorLabel.match(/^(\d+)F$/);
       if (!m) return false;
@@ -264,8 +271,8 @@ function transformMultiCore(
       return floorNum === i;
     });
 
-    if (core1Floor) {
-      groundFloors.push({ floor: core1Floor, floorNum: i });
+    if (refFloor) {
+      groundFloors.push({ floor: refFloor, floorNum: i });
     } else {
       groundFloors.push({ floor: null, floorNum: i });
     }
@@ -339,6 +346,7 @@ function transformSingleCore(floors: Floor[], buildingId: string): Floor[] {
             result.push({
               id: dummyId,
               buildingId,
+              coreLabel: 1,
               floorLabel: `${rangeStart}~${rangeEnd}F`,
               floorNumber: rangeStart,
               levelType: '지상',

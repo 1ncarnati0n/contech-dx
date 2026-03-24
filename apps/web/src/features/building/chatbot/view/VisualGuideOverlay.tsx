@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui';
-import type { HighlightTarget } from './ProcessPlanChatbotTypes';
+import { Button } from '@/shared/components/ui';
+import type { HighlightTarget } from '../ProcessPlanChatbotTypes';
 
 interface VisualGuideOverlayProps {
   targets: HighlightTarget[];

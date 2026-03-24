@@ -4,7 +4,7 @@
  * 폴리곤 면적 계산, 포인트 포함 판정 등의 기하학적 계산 제공
  */
 
-import type { Point2D } from '@/lib/types';
+import type { Point2D } from '@/shared/types';
 
 /**
  * Shoelace 공식을 사용한 폴리곤 면적 계산

@@ -13,13 +13,13 @@ import {
   FormMessage,
   Input,
   Textarea,
-} from '@/components/ui';
+} from '@/shared/components/ui';
 import * as LucideIcons from 'lucide-react';
 import { toast } from 'sonner';
-import { updateProject } from '@/lib/services/projects';
-import type { Project, UpdateProjectDTO } from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
-import { SaveStatusBar } from '@/components/buildings/SaveStatusBar';
+import { updateProject } from '@/features/project/services/projects';
+import type { Project, UpdateProjectDTO } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
+import { SaveStatusBar } from '@/features/building/shared/SaveStatusBar';
 
 /**
  * 숫자를 한글 금액으로 변환 (예: 123456789 → "1억 2,345만 6,789원")

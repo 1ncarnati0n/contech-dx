@@ -12,10 +12,10 @@ import {
   DialogFooter,
   Button,
   Input,
-} from '@/components/ui';
-import { getAllUsersClient } from '@/lib/services/users.client';
-import type { Profile, ProjectMemberRole } from '@/lib/types';
-import { logger } from '@/lib/utils/logger';
+} from '@/shared/components/ui';
+import { getAllUsersClient } from '@/features/admin/services/users.client';
+import type { Profile, ProjectMemberRole } from '@/shared/types';
+import { logger } from '@/shared/utils/logger';
 
 interface AddMemberModalProps {
   isOpen: boolean;
