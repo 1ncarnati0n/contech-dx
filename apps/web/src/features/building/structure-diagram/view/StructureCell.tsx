@@ -1,16 +1,7 @@
 'use client';
 
-import type { GridCell, FloorCategory } from '../types';
-
-const CATEGORY_STYLES: Record<FloorCategory, string> = {
-  setting: 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200',
-  standard: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300',
-  top: 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200',
-  rooftop: 'bg-purple-100 dark:bg-purple-900/40 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200',
-  basement: 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300',
-  foundation: 'bg-slate-400 dark:bg-slate-600 border-slate-500 dark:border-slate-500 text-white',
-  piloti: 'bg-teal-100 dark:bg-teal-900/40 border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200',
-};
+import type { GridCell } from '../types';
+import { CATEGORY_STYLES, CELL_LABELS } from '../constants';
 
 interface StructureCellProps {
   cell: GridCell;
@@ -23,7 +14,7 @@ export function StructureCell({ cell }: StructureCellProps) {
     );
   }
 
-  const style = CATEGORY_STYLES[cell.category];
+  const style = CATEGORY_STYLES[cell.category].cell;
 
   if (cell.type === 'foundation') {
     return (
@@ -31,7 +22,7 @@ export function StructureCell({ cell }: StructureCellProps) {
         className={`${style} border flex items-center justify-center font-semibold text-sm py-2`}
         style={cell.colSpan ? { gridColumn: `span ${cell.colSpan}` } : undefined}
       >
-        기초
+        {CELL_LABELS.FOUNDATION}
       </div>
     );
   }
@@ -45,7 +36,7 @@ export function StructureCell({ cell }: StructureCellProps) {
   }
 
   return (
-    <div className={`${style} border flex items-center justify-center text-xs font-medium min-h-[28px]`}>
+    <div className={`${style} border flex items-center justify-center text-xs font-medium min-h-7`}>
       {cell.unitLabel || ''}
     </div>
   );
