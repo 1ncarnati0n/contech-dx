@@ -9,16 +9,19 @@ export type CellType =
   | 'piloti'      // 필로티
   | 'rooftop'     // 옥탑
   | 'basement'    // 지하층
+  | 'scaffolding' // 3단 가시설
   | 'foundation'  // 기초
   | 'empty';      // 빈 셀 (코어 높이 차이로 인한 빈 공간)
 
 /** 층 분류 (색상 매핑용) */
 export type FloorCategory =
-  | 'setting'     // 셋팅층 (1~3F 또는 높이가 다른 층)
-  | 'standard'    // 기준층
+  | 'setting'     // 셋팅층 (필로티+2, 딱 한 층)
+  | 'standard'    // 일반층 (셋팅층 아래)
+  | 'basis'       // 기준층 (셋팅층 위 ~ 최상층 아래)
   | 'top'         // 최상층
   | 'rooftop'     // 옥탑
   | 'basement'    // 지하층
+  | 'scaffolding' // 3단 가시설
   | 'foundation'  // 기초
   | 'piloti';     // 필로티
 
@@ -33,6 +36,9 @@ export interface CoreStructure {
   piloti: {
     floor: number;             // 필로티 시작 층 (0이면 없음)
     excludeUnits: number[];    // 제외 세대 인덱스 (0-based, 왼→오른 순서)
+  } | null;
+  scaffolding: {
+    columns: number[];         // 적용 컬럼 인덱스 (0~N: 세대 인덱스, -1: 코어)
   } | null;
 }
 

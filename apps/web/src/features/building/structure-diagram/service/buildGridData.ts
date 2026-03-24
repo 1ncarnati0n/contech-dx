@@ -7,6 +7,7 @@ import type {
   CellType,
   FloorCategory,
 } from '../types';
+import { SETTING_FLOOR_OFFSET, CELL_LABELS } from '../constants';
 
 /**
  * CoreStructure[] → GridData 변환
@@ -21,7 +22,11 @@ import type {
  *   position 16 → 코어1: 16F,   코어2: PH1 (15F 바로 위)
  *   position 15 → 코어1: 15F,   코어2: 15F
  */
-export function buildGridData(cores: CoreStructure[]): GridData {
+interface BuildGridOptions {
+  hasHighCeilingEquipmentRoom?: boolean;
+}
+
+export function buildGridData(cores: CoreStructure[], options?: BuildGridOptions): GridData {
   if (cores.length === 0) {
     return { rows: [], totalColumns: 0, coreColumns: [] };
   }
@@ -37,6 +42,11 @@ export function buildGridData(cores: CoreStructure[]): GridData {
   const maxGround = Math.max(...cores.map(c => c.groundFloors));
   const maxBasement = Math.max(...cores.map(c => c.basementFloors));
 
+  // 전체 코어 중 최대 필로티 층 → 셋팅층 = 이 값 + 2 (딱 한 층)
+  // 필로티 없으면 2층이 셋팅층
+  const maxPilotiFloor = Math.max(...cores.map(c => c.piloti?.floor ?? 0));
+  const settingFloor = maxPilotiFloor + SETTING_FLOOR_OFFSET;
+
   // 3. 행 생성 (위→아래)
   const rows: GridRow[] = [];
 
@@ -48,10 +58,10 @@ export function buildGridData(cores: CoreStructure[]): GridData {
 
     // 행 라벨 결정: 해당 position이 지상층인 코어가 있으면 "NF", 아니면 "PHn"
     if (pos <= maxGround) {
-      rowLabel = `${pos}F`;
-      rowCategory = getGroundFloorCategory(pos, maxGround, 0);
+      rowLabel = CELL_LABELS.FLOOR(pos);
+      rowCategory = getGroundFloorCategory(pos, maxGround, settingFloor);
     } else {
-      rowLabel = `PH${pos - maxGround}`;
+      rowLabel = CELL_LABELS.PH(pos - maxGround);
       rowCategory = 'rooftop';
     }
 
@@ -68,8 +78,8 @@ export function buildGridData(cores: CoreStructure[]): GridData {
         const phNumber = pos - core.groundFloors;
         cells.push(...buildRooftopCells(core, colInfo, rowLabel, pos, phNumber));
       } else {
-        // 지상층 영역 — 셋팅층 기준은 해당 코어의 필로티 층 + 1
-        const category = getGroundFloorCategory(pos, core.groundFloors, core.piloti?.floor ?? 0);
+        // 지상층 영역 — 셋팅층은 전체 코어 기준 (maxPiloti + 2)
+        const category = getGroundFloorCategory(pos, core.groundFloors, settingFloor);
         cells.push(...buildGroundCells(core, colInfo, rowLabel, pos, category));
       }
     }
@@ -89,13 +99,13 @@ export function buildGridData(cores: CoreStructure[]): GridData {
       const core = cores[i];
       const colInfo = coreColumns[i];
       if (b <= core.basementFloors) {
-        cells.push(...buildBasementCells(core, colInfo, `B${b}`, -b));
+        cells.push(...buildBasementCells(core, colInfo, CELL_LABELS.BASEMENT(b), -b, options?.hasHighCeilingEquipmentRoom));
       } else {
-        cells.push(...buildEmptyCells(core, colInfo, `B${b}`, -b, 'basement'));
+        cells.push(...buildEmptyCells(core, colInfo, CELL_LABELS.BASEMENT(b), -b, 'basement'));
       }
     }
     rows.push({
-      floorLabel: `B${b}`,
+      floorLabel: CELL_LABELS.BASEMENT(b),
       floorNumber: -b,
       category: 'basement',
       cells,
@@ -104,16 +114,16 @@ export function buildGridData(cores: CoreStructure[]): GridData {
 
   // 기초
   rows.push({
-    floorLabel: '기초',
+    floorLabel: CELL_LABELS.FOUNDATION,
     floorNumber: -(maxBasement + 1),
     category: 'foundation',
     cells: [{
       type: 'foundation',
       category: 'foundation',
       coreId: 0,
-      floorLabel: '기초',
+      floorLabel: CELL_LABELS.FOUNDATION,
       floorNumber: -(maxBasement + 1),
-      unitLabel: '기초',
+      unitLabel: CELL_LABELS.FOUNDATION,
       colSpan: totalColumns,
     }],
   });
@@ -206,7 +216,7 @@ function buildRooftopCells(
     coreId: core.id,
     floorLabel,
     floorNumber,
-    unitLabel: `옥탑${phNumber}`,
+    unitLabel: CELL_LABELS.ROOFTOP(phNumber),
   });
 
   // 오른쪽 세대 → 빈칸
@@ -239,7 +249,7 @@ function buildGroundCells(
   // 왼쪽 세대
   for (let u = 0; u < colInfo.leftUnitCols; u++) {
     if (isPilotiUnit(core, floor, u)) {
-      cells.push({ type: 'piloti', category: 'piloti', coreId: core.id, floorLabel, floorNumber: floor, unitLabel: '필로티', unitIndex: u, side: 'left' });
+      cells.push({ type: 'piloti', category: 'piloti', coreId: core.id, floorLabel, floorNumber: floor, unitLabel: CELL_LABELS.PILOTI, unitIndex: u, side: 'left' });
     } else {
       const unitNumber = computeUnitNumber(core.id, floor, u, totalUnits);
       cells.push({ type: 'unit', category, coreId: core.id, floorLabel, floorNumber: floor, unitLabel: String(unitNumber), unitIndex: u, side: 'left' });
@@ -253,14 +263,14 @@ function buildGroundCells(
     coreId: core.id,
     floorLabel,
     floorNumber: floor,
-    unitLabel: `코어${core.id}`,
+    unitLabel: CELL_LABELS.CORE(core.id),
   });
 
   // 오른쪽 세대
   for (let u = 0; u < colInfo.rightUnitCols; u++) {
     const unitIndex = colInfo.leftUnitCols + u;
     if (isPilotiUnit(core, floor, unitIndex)) {
-      cells.push({ type: 'piloti', category: 'piloti', coreId: core.id, floorLabel, floorNumber: floor, unitLabel: '필로티', unitIndex, side: 'right' });
+      cells.push({ type: 'piloti', category: 'piloti', coreId: core.id, floorLabel, floorNumber: floor, unitLabel: CELL_LABELS.PILOTI, unitIndex, side: 'right' });
     } else {
       const unitNumber = computeUnitNumber(core.id, floor, unitIndex, totalUnits);
       cells.push({ type: 'unit', category, coreId: core.id, floorLabel, floorNumber: floor, unitLabel: String(unitNumber), unitIndex, side: 'right' });
@@ -270,24 +280,59 @@ function buildGroundCells(
   return cells;
 }
 
-/** 지하층 셀 생성 */
+/** 지하층 셀 생성 (3단 가시설 반영) */
 function buildBasementCells(
   core: CoreStructure,
   colInfo: CoreColumnInfo,
   floorLabel: string,
   floorNumber: number,
+  hasHighCeilingEquipmentRoom?: boolean,
 ): GridCell[] {
   const cells: GridCell[] = [];
-  const total = colInfo.leftUnitCols + 1 + colInfo.rightUnitCols;
-  for (let i = 0; i < total; i++) {
+  const scaffoldingCols = hasHighCeilingEquipmentRoom ? (core.scaffolding?.columns ?? []) : [];
+
+  // 왼쪽 세대
+  for (let u = 0; u < colInfo.leftUnitCols; u++) {
+    const isScaffolding = scaffoldingCols.includes(u);
     cells.push({
-      type: 'basement',
-      category: 'basement',
+      type: isScaffolding ? 'scaffolding' : 'basement',
+      category: isScaffolding ? 'scaffolding' : 'basement',
       coreId: core.id,
       floorLabel,
       floorNumber,
+      unitLabel: isScaffolding ? CELL_LABELS.SCAFFOLDING : undefined,
+      unitIndex: u,
+      side: 'left',
     });
   }
+
+  // 코어
+  const isCoreScaffolding = scaffoldingCols.includes(-1);
+  cells.push({
+    type: isCoreScaffolding ? 'scaffolding' : 'basement',
+    category: isCoreScaffolding ? 'scaffolding' : 'basement',
+    coreId: core.id,
+    floorLabel,
+    floorNumber,
+    unitLabel: isCoreScaffolding ? '3단' : undefined,
+  });
+
+  // 오른쪽 세대
+  for (let u = 0; u < colInfo.rightUnitCols; u++) {
+    const unitIndex = colInfo.leftUnitCols + u;
+    const isScaffolding = scaffoldingCols.includes(unitIndex);
+    cells.push({
+      type: isScaffolding ? 'scaffolding' : 'basement',
+      category: isScaffolding ? 'scaffolding' : 'basement',
+      coreId: core.id,
+      floorLabel,
+      floorNumber,
+      unitLabel: isScaffolding ? CELL_LABELS.SCAFFOLDING : undefined,
+      unitIndex,
+      side: 'right',
+    });
+  }
+
   return cells;
 }
 
@@ -316,12 +361,14 @@ function computeUnitNumber(
 /**
  * 지상층 카테고리 결정
  *
- * - 필로티 없음 → 셋팅층 없이 1F부터 기준층
- * - 필로티 N층 → 1F ~ (N+1)F 셋팅층
+ * - 최상층: 맨 위 층
+ * - 셋팅층: 전체 코어 중 최대 필로티 + 2 = 딱 그 한 층
+ * - 일반층: 셋팅층 아래
+ * - 기준층: 셋팅층 위 ~ 최상층 아래
  */
-function getGroundFloorCategory(floor: number, maxFloor: number, pilotiFloor: number): FloorCategory {
+function getGroundFloorCategory(floor: number, maxFloor: number, settingFloor: number): FloorCategory {
   if (floor === maxFloor) return 'top';
-  const settingCutoff = pilotiFloor > 0 ? pilotiFloor + 1 : 1;
-  if (floor <= settingCutoff) return 'setting';
-  return 'standard';
+  if (floor === settingFloor) return 'setting';
+  if (floor < settingFloor) return 'standard';
+  return 'basis';
 }

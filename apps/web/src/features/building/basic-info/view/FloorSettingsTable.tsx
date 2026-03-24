@@ -34,7 +34,13 @@ function findActualFloors(
   floor: Floor,
   allFloors: Floor[],
   coreCount: number,
+  coreGroundFloors?: number[],
 ): { actualFloor: Floor | null; actualFloors: Floor[] } {
+  // 가장 높은 코어 번호 (1-based)
+  const tallestCoreLabel = coreCount > 1 && coreGroundFloors && coreGroundFloors.length > 0
+    ? coreGroundFloors.indexOf(Math.max(...coreGroundFloors)) + 1
+    : 1;
+
   // 더미 범위 층
   if (floor.id.startsWith('dummy-range-')) {
     const rangeMatch = floor.floorLabel.match(/(\d+)~(\d+)F/);
@@ -44,7 +50,8 @@ function findActualFloors(
       const matched = allFloors.filter(f => {
         if (f.floorClass !== '기준층') return false;
         if (coreCount > 1) {
-          const m = f.floorLabel.match(/코어1-(\d+)F/);
+          const pattern = new RegExp(`코어${tallestCoreLabel}-(\\d+)F`);
+          const m = f.floorLabel.match(pattern);
           if (m) {
             const num = parseInt(m[1], 10);
             return num >= start && num <= end;
@@ -66,7 +73,8 @@ function findActualFloors(
   // 더미 단일 층
   if (floor.id.startsWith('dummy-')) {
     const found = allFloors.find(f => {
-      const coreMatch = f.floorLabel.match(/코어1-(\d+)F/);
+      const pattern = new RegExp(`코어${tallestCoreLabel}-(\\d+)F`);
+      const coreMatch = f.floorLabel.match(pattern);
       const floorMatch = floor.id.match(/dummy-(\d+)F/);
       return coreMatch && floorMatch && coreMatch[1] === floorMatch[1];
     });
@@ -131,7 +139,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
             </thead>
             <tbody>
               {displayFloors.map((floor) => {
-                const { actualFloor, actualFloors } = findActualFloors(floor, floors, building.meta.coreCount);
+                const { actualFloor, actualFloors } = findActualFloors(floor, floors, building.meta.coreCount, building.meta.floorCount.coreGroundFloors);
 
                 return (
                   <tr
