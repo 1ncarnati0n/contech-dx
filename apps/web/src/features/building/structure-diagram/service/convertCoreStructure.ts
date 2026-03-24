@@ -36,12 +36,19 @@ export function coresToBuildingMeta(
     return sum + (unitsPerFloor * core.groundFloors) - (pilotiUnits * pilotiHeight);
   }, 0);
 
-  // UnitTypePattern 생성
-  const unitTypePattern: UnitTypePattern[] = cores.map((core, i) => ({
-    unitCount: core.unitsLeft + core.unitsRight,
-    type: baseMeta.unitTypePattern[i]?.type ?? '',
-    coreNumber: core.id,
-  }));
+  // UnitTypePattern 생성 (기존 unitTypes 보존)
+  const unitTypePattern: UnitTypePattern[] = cores.map((core, i) => {
+    const existing = baseMeta.unitTypePattern[i];
+    const unitTypes = existing?.unitTypes && existing.unitTypes.length > 0
+      ? existing.unitTypes
+      : existing?.type ? [existing.type] : [''];
+    return {
+      unitCount: core.unitsLeft + core.unitsRight,
+      type: unitTypes[0] ?? '',
+      unitTypes,
+      coreNumber: core.id,
+    };
+  });
 
   return {
     ...baseMeta,
@@ -58,6 +65,9 @@ export function coresToBuildingMeta(
       corePhFloors,
       corePilotisCounts,
       corePilotisHeights,
+      scaffoldingColumns: cores.some(c => c.scaffolding)
+        ? cores.map(c => c.scaffolding?.columns ?? [])
+        : undefined,
     },
   };
 }
@@ -98,6 +108,12 @@ export function buildingMetaToCores(meta: BuildingMeta): CoreStructure[] {
       piloti = { floor: pilotisHeight, excludeUnits };
     }
 
+    // 3단 가시설
+    const scaffoldingCols = meta.floorCount.scaffoldingColumns?.[i];
+    const scaffolding: CoreStructure['scaffolding'] = scaffoldingCols && scaffoldingCols.length > 0
+      ? { columns: scaffoldingCols }
+      : null;
+
     cores.push({
       id: coreId,
       unitsLeft,
@@ -106,6 +122,7 @@ export function buildingMetaToCores(meta: BuildingMeta): CoreStructure[] {
       basementFloors,
       rooftopFloors,
       piloti,
+      scaffolding,
     });
   }
 
