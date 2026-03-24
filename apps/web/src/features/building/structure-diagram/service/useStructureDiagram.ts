@@ -1,8 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { CoreStructure, GridData } from '../types';
 import { buildGridData } from './buildGridData';
-
-const MAX_CORES = 4;
+import { MAX_CORES } from '../constants';
 
 /** 기본 코어 구조 생성 */
 function createDefaultCore(id: number): CoreStructure {
@@ -14,31 +13,22 @@ function createDefaultCore(id: number): CoreStructure {
     basementFloors: 2,
     rooftopFloors: 1,
     piloti: null,
+    scaffolding: null,
   };
 }
 
 /** CoreStructure 배열에서 세대 배치 규칙 검증 */
 function validateUnits(core: CoreStructure): CoreStructure {
-  const totalUnits = core.unitsLeft + core.unitsRight;
-
-  // 2세대 이상일 때 양쪽 최소 1세대씩
-  if (totalUnits >= 2) {
-    return {
-      ...core,
-      unitsLeft: Math.max(1, core.unitsLeft),
-      unitsRight: Math.max(1, core.unitsRight),
-    };
-  }
-
   return core;
 }
 
 interface UseStructureDiagramOptions {
   initialCores?: CoreStructure[];
+  hasHighCeilingEquipmentRoom?: boolean;
   onChange?: (cores: CoreStructure[]) => void;
 }
 
-export function useStructureDiagram({ initialCores, onChange }: UseStructureDiagramOptions) {
+export function useStructureDiagram({ initialCores, hasHighCeilingEquipmentRoom, onChange }: UseStructureDiagramOptions) {
   const [cores, setCores] = useState<CoreStructure[]>(
     initialCores ?? [createDefaultCore(1)]
   );
@@ -69,7 +59,10 @@ export function useStructureDiagram({ initialCores, onChange }: UseStructureDiag
   }, [initialCores]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** 그리드 데이터 (cores 변경 시 자동 재계산) */
-  const gridData: GridData = useMemo(() => buildGridData(cores), [cores]);
+  const gridData: GridData = useMemo(
+    () => buildGridData(cores, { hasHighCeilingEquipmentRoom }),
+    [cores, hasHighCeilingEquipmentRoom],
+  );
 
   /** 코어 개수 변경 */
   const setCoreCount = useCallback((count: number) => {

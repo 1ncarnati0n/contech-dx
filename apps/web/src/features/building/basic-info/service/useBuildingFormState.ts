@@ -28,6 +28,7 @@ function extractFormData(building: Building): BuildingFormData {
     corePilotisCounts: meta?.floorCount?.corePilotisCounts || [],
     corePilotisHeights: meta?.floorCount?.corePilotisHeights || [],
     hasHighCeilingEquipmentRoom: meta?.floorCount?.hasHighCeilingEquipmentRoom || false,
+    scaffoldingColumns: meta?.floorCount?.scaffoldingColumns || [],
     unitTypePattern: meta?.unitTypePattern || [],
     heights: {
       basement2: meta?.heights?.basement2 || 3500,
@@ -69,18 +70,11 @@ export function useBuildingFormState(
   useEffect(() => {
     if (!building || !building.meta) return;
 
-    // 같은 빌딩의 업데이트인지, 다른 빌딩으로 전환인지 구분
     const isBuildingSwitch = buildingIdRef.current !== building.id;
     buildingIdRef.current = building.id;
 
     try {
-      if (isBuildingSwitch) {
-        // 다른 빌딩으로 전환: 전체 동기화
-        setFormData(extractFormData(building));
-      } else {
-        // 같은 빌딩 업데이트: 전체 동기화 (서버 데이터 반영)
-        setFormData(extractFormData(building));
-      }
+      setFormData(extractFormData(building));
     } catch (error) {
       logger.error('Error syncing building data:', error);
     }
@@ -110,16 +104,21 @@ export function useBuildingFormState(
     });
   }, [formData.coreCount]);
 
-  // 단위세대 패턴 변경 시 코어 개수 자동 업데이트
+  // 빌딩 전환 시에만 코어 개수를 calculatedCoreCount로 동기화
+  // (골구조도 빌더에서는 handleCoresChange가 coreCount를 명시적으로 설정하므로
+  //  매 렌더마다 override하면 사용자의 코어 추가/삭제가 되돌려짐)
+  const prevCalculatedCoreCountRef = useRef(calculatedCoreCount);
   useEffect(() => {
     if (
       calculatedCoreCount !== undefined &&
-      formData.unitTypePattern.length > 0 &&
-      calculatedCoreCount !== formData.coreCount
+      calculatedCoreCount !== prevCalculatedCoreCountRef.current
     ) {
-      setFormData(prev => ({ ...prev, coreCount: calculatedCoreCount }));
+      prevCalculatedCoreCountRef.current = calculatedCoreCount;
+      if (formData.unitTypePattern.length > 0 && calculatedCoreCount !== formData.coreCount) {
+        setFormData(prev => ({ ...prev, coreCount: calculatedCoreCount }));
+      }
     }
-  }, [calculatedCoreCount, formData.coreCount, formData.unitTypePattern.length]);
+  }, [calculatedCoreCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateField = useCallback(<K extends keyof BuildingFormData>(
     field: K,

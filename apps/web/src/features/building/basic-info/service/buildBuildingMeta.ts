@@ -32,6 +32,7 @@ export function buildBuildingMeta(
     corePilotisCounts,
     corePilotisHeights,
     hasHighCeilingEquipmentRoom,
+    scaffoldingColumns,
     heights,
     standardFloorCycle,
   } = formData;
@@ -53,6 +54,7 @@ export function buildBuildingMeta(
     corePilotisCounts: corePilotisCounts.length > 0 ? corePilotisCounts : undefined,
     corePilotisHeights: corePilotisHeights.length > 0 ? corePilotisHeights : undefined,
     hasHighCeilingEquipmentRoom,
+    scaffoldingColumns: scaffoldingColumns.some(cols => cols.length > 0) ? scaffoldingColumns : undefined,
   };
 
   return {
