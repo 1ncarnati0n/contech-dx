@@ -431,7 +431,8 @@ export interface UnitTypePattern {
   unitCount: number;      // 한층당 세대수 (신규)
   from?: number;          // 기존 호환성 (optional)
   to?: number;            // 기존 호환성 (optional)
-  type: string;           // "59A", "84A" 등
+  type: string;           // 대표 타입 ("59A" 등, 기존 호환성)
+  unitTypes?: string[];   // 세대별 타입 배열 (["59A", "84A"] 등, 최대 3개)
   coreNumber?: number;    // 코어 번호 (1, 2, 3, 4... 높은층 순서)
 }
 
@@ -455,6 +456,7 @@ export interface BuildingMeta {
     corePilotisCounts?: number[]; // 코어별 필로티+ 부대시설 제외 세대수 (코어1, 코어2, ... 순서)
     corePilotisHeights?: number[]; // 코어별 필로티 높이 (개층) (코어1, 코어2, ... 순서)
     hasHighCeilingEquipmentRoom?: boolean; // 고천장 장비실 여부
+    scaffoldingColumns?: number[][]; // 코어별 3단 가시설 적용 컬럼 (세대 인덱스 0~N, 코어=-1)
   };
   heights: {
     basement2: number; // 지하2층 층고

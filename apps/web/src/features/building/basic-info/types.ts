@@ -28,6 +28,7 @@ export interface BuildingFormData {
   corePilotisCounts: number[];
   corePilotisHeights: number[];
   hasHighCeilingEquipmentRoom: boolean;
+  scaffoldingColumns: number[][];
   unitTypePattern: UnitTypePattern[];
   heights: Heights;
   standardFloorCycle: number;

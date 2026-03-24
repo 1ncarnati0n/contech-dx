@@ -25,22 +25,38 @@ interface UseTradeOperationsOptions {
  * Resolves a floor ID to an actual floor ID, handling dummy floors and
  * range-format standard floors (e.g., "2~14F 기준층").
  */
-function resolveFloorId(floorId: string, floors: Floor[]): string | null {
+function resolveFloorId(floorId: string, floors: Floor[], building?: Building): string | null {
   if (isDummyFloorId(floorId)) {
     const floorMatch = floorId.match(/dummy-(\d+)F/);
     if (floorMatch) {
       const floorNum = floorMatch[1];
-      const core1Floor = floors.find(f => {
-        const match = f.floorLabel.match(/코어1-(\d+)F/);
-        return match && match[1] === floorNum;
-      });
-      if (core1Floor) {
-        if (core1Floor.floorLabel.includes('~') && core1Floor.floorClass === '기준층') {
-          return `${core1Floor.id}-${floorNum}F`;
+      const floorNumInt = parseInt(floorNum, 10);
+      // 가장 높은 코어 기준으로 매칭 (coreLabel 기반)
+      const coreGroundFloors = building?.meta?.floorCount?.coreGroundFloors;
+      const tallestCoreLabel = coreGroundFloors && coreGroundFloors.length > 0
+        ? coreGroundFloors.indexOf(Math.max(...coreGroundFloors)) + 1
+        : 1;
+      const matchedFloor = floors.find(f => {
+        if (f.coreLabel !== tallestCoreLabel) return false;
+        // 단일 층 매칭
+        const match = f.floorLabel.match(/^(\d+)F$/);
+        if (match && parseInt(match[1], 10) === floorNumInt) return true;
+        // 범위 층 매칭
+        const rangeMatch = f.floorLabel.match(/(\d+)~(\d+)F/);
+        if (rangeMatch) {
+          const start = parseInt(rangeMatch[1], 10);
+          const end = parseInt(rangeMatch[2], 10);
+          return floorNumInt >= start && floorNumInt <= end;
         }
-        return core1Floor.id;
+        return false;
+      });
+      if (matchedFloor) {
+        if (matchedFloor.floorLabel.includes('~') && matchedFloor.floorClass === '기준층') {
+          return `${matchedFloor.id}-${floorNum}F`;
+        }
+        return matchedFloor.id;
       }
-      return null; // No matching core1 floor
+      return null;
     }
   } else {
     const individualMatch = floorId.match(/^(.+)-(\d+)F$/);
@@ -75,7 +91,7 @@ export function useTradeOperations({
 }: UseTradeOperationsOptions) {
 
   const getTrade = useCallback((floorId: string, tradeGroup: string): TradeData => {
-    const actualFloorId = resolveFloorId(floorId, floors);
+    const actualFloorId = resolveFloorId(floorId, floors, building);
     if (!actualFloorId) return {};
 
     const key = `${actualFloorId}-${tradeGroup}`;
@@ -89,7 +105,7 @@ export function useTradeOperations({
       return false;
     }
 
-    const actualFloorId = resolveFloorId(floorId, floors);
+    const actualFloorId = resolveFloorId(floorId, floors, building);
     if (!actualFloorId) return false;
 
     const key = `${actualFloorId}-${tradeGroup}`;
