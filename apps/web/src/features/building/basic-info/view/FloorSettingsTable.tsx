@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, Input } from '@/shared/compon
 import type { Building, Floor, FloorClass } from '@/shared/types';
 import { transformFloorsForDisplay } from '../service/floorDisplayTransform';
 import { useFloorUpdate } from '../service/useFloorUpdate';
-import { resolveFloorHeight } from '@/features/building/shared/service/floorHeightResolver';
+import { resolveFloorHeight, resolveFloorClass } from '@/features/building/shared/service/floorHeightResolver';
 
 const FLOOR_CLASSES: FloorClass[] = ['지하층', '일반층', '셋팅층', '기준층', '최상층', '옥탑층'];
 
@@ -141,6 +141,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
             <tbody>
               {displayFloors.map((floor) => {
                 const { actualFloor, actualFloors } = findActualFloors(floor, floors, building.meta.coreCount, building.meta.floorCount.coreGroundFloors);
+                const computedClass = resolveFloorClass(floor, building.meta);
 
                 return (
                   <tr
@@ -148,14 +149,14 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                     className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
                   >
                     <td className="px-2 py-1 text-sm text-slate-900 dark:text-white font-medium">
-                      {formatFloorLabel(floor.floorLabel, floor.floorClass)}
+                      {formatFloorLabel(floor.floorLabel, computedClass)}
                     </td>
                     <td className="px-2 py-1 text-sm text-slate-600 dark:text-slate-400">
                       {floor.levelType}
                     </td>
                     <td className="px-2 py-1">
                       <select
-                        value={floor.floorClass}
+                        value={computedClass}
                         onChange={async (e) => {
                           const newClass = e.target.value as FloorClass;
                           if (floor.id.startsWith('dummy-range-') && actualFloors.length > 0) {
@@ -179,7 +180,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         type="number"
                         step="1"
                         min="0"
-                        value={resolveFloorHeight(floor, building.meta.heights) ?? ''}
+                        value={resolveFloorHeight({ ...floor, floorClass: computedClass }, building.meta.heights) ?? ''}
                         disabled={true}
                         readOnly
                         className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white cursor-not-allowed"

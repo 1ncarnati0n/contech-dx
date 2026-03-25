@@ -1,6 +1,54 @@
-import type { BuildingMeta, Floor } from '@/shared/types';
+import type { BuildingMeta, Floor, FloorClass } from '@/shared/types';
 
 type Heights = BuildingMeta['heights'];
+
+/** 셋팅층 오프셋 (필로티 + 이 값 = 셋팅층 번호) */
+const SETTING_FLOOR_OFFSET = 2;
+
+/**
+ * BuildingMeta에서 셋팅층 번호를 계산
+ * 전체 코어 중 최대 필로티 층 + 2 (필로티 없으면 2)
+ */
+export function getSettingFloorNum(meta: BuildingMeta): number {
+  const pilotisHeights = meta.floorCount.corePilotisHeights;
+  const maxPiloti = pilotisHeights && pilotisHeights.length > 0
+    ? Math.max(...pilotisHeights, 0)
+    : 0;
+  return maxPiloti + SETTING_FLOOR_OFFSET;
+}
+
+/**
+ * 지상층의 floorClass를 동적으로 결정
+ *
+ * - 최상층: 맨 위 층
+ * - 셋팅층: 필로티+2 = 딱 한 층
+ * - 일반층: 셋팅층 아래
+ * - 기준층: 셋팅층 위 ~ 최상층 아래
+ */
+export function resolveFloorClass(
+  floor: Floor,
+  meta: BuildingMeta,
+): FloorClass {
+  // 지하층, 옥탑층은 그대로
+  if (floor.levelType === '지하') return '지하층';
+  if (floor.floorClass === '옥탑층' || floor.floorClass === 'PH층') return floor.floorClass;
+
+  const floorMatch = floor.floorLabel.match(/(\d+)F/);
+  if (!floorMatch) return floor.floorClass;
+
+  const floorNum = parseInt(floorMatch[1], 10);
+  const maxGround = Math.max(
+    meta.floorCount.ground || 0,
+    ...(meta.floorCount.coreGroundFloors || []),
+  );
+  const settingFloor = getSettingFloorNum(meta);
+  const effectiveSetting = Math.min(settingFloor, maxGround > 1 ? maxGround - 1 : maxGround);
+
+  if (maxGround > 1 && floorNum === maxGround) return '최상층';
+  if (effectiveSetting > 0 && floorNum === effectiveSetting) return '셋팅층';
+  if (floorNum < effectiveSetting) return '일반층';
+  return '기준층';
+}
 
 /**
  * meta.heights에서 층에 해당하는 층고를 조회하는 순수 함수
