@@ -1,20 +1,21 @@
-import type { BuildingMeta, Floor, FloorClass } from '@/shared/types';
-import { getSettingFloorNum } from '@/features/building/shared/service/floorHeightResolver';
+import type { Floor } from '@/shared/types';
 
 interface TransformOptions {
   floors: Floor[];
   coreCount: number;
   coreGroundFloors?: number[];
   buildingId: string;
-  meta: BuildingMeta;
 }
 
 /**
  * 층 목록을 화면 표시용으로 변환하는 순수 함수
  *
+ * DB에 저장된 floorClass를 그대로 사용합니다.
+ * (floorClass는 generateFloors에서 필로티+2 기반으로 올바르게 설정됨)
+ *
  * - 지하층: cleanLabel 기준 중복 제거
- * - 지상층: 연속된 기준층을 범위(예: 2~14F)로 묶음
- * - 다중 코어: 코어1 최대 층수를 기준으로 표 작성
+ * - 지상층: 연속된 기준층을 범위(예: 5~14F)로 묶음
+ * - 다중 코어: 가장 높은 코어 기준으로 표 작성
  * - 옥탑층: 마지막에 추가
  */
 export function transformFloorsForDisplay({
@@ -22,29 +23,11 @@ export function transformFloorsForDisplay({
   coreCount,
   coreGroundFloors,
   buildingId,
-  meta,
 }: TransformOptions): Floor[] {
-  const settingFloor = getSettingFloorNum(meta);
-  const maxGround = Math.max(
-    meta.floorCount.ground || 0,
-    ...(meta.floorCount.coreGroundFloors || []),
-  );
-
   if (coreCount > 1 && coreGroundFloors && coreGroundFloors.length > 0) {
-    return transformMultiCore(floors, coreCount, coreGroundFloors, buildingId, settingFloor, maxGround);
+    return transformMultiCore(floors, coreCount, coreGroundFloors, buildingId);
   }
-  return transformSingleCore(floors, buildingId, settingFloor, maxGround);
-}
-
-/**
- * 층 번호에서 동적 floorClass를 계산
- */
-function computeFloorClass(floorNum: number, settingFloor: number, maxGround: number): FloorClass {
-  const effectiveSetting = Math.min(settingFloor, maxGround > 1 ? maxGround - 1 : maxGround);
-  if (maxGround > 1 && floorNum === maxGround) return '최상층';
-  if (effectiveSetting > 0 && floorNum === effectiveSetting) return '셋팅층';
-  if (floorNum < effectiveSetting) return '일반층';
-  return '기준층';
+  return transformSingleCore(floors, buildingId);
 }
 
 // ============================================
@@ -126,31 +109,24 @@ function mergeConsecutiveStandardFloors(
   addedFloorIds: Set<string>,
   buildingId: string,
   result: Floor[],
-  settingFloor: number,
-  maxGround: number,
 ) {
   let i = 0;
   while (i < groundFloors.length) {
     const current = groundFloors[i];
     const currentFloor = current.floor;
-    const dynamicClass = computeFloorClass(current.floorNum, settingFloor, maxGround);
 
     // 셋팅층, 일반층, 최상층은 개별 추가
-    if (dynamicClass === '셋팅층' || dynamicClass === '일반층' || dynamicClass === '최상층') {
-      const floorToAdd = currentFloor
-        ? { ...currentFloor, floorClass: dynamicClass }
-        : { id: `dummy-${current.floorNum}F`, buildingId, coreLabel: 1, floorLabel: `${current.floorNum}F`, floorNumber: current.floorNum, levelType: '지상' as const, floorClass: dynamicClass, height: null };
-
-      if (!addedFloorIds.has(floorToAdd.id)) {
-        result.push(floorToAdd);
-        addedFloorIds.add(floorToAdd.id);
+    if (currentFloor && (currentFloor.floorClass === '셋팅층' || currentFloor.floorClass === '일반층' || currentFloor.floorClass === '최상층')) {
+      if (!addedFloorIds.has(currentFloor.id)) {
+        result.push(currentFloor);
+        addedFloorIds.add(currentFloor.id);
       }
       i++;
       continue;
     }
 
     // 기준층: 연속 범위 찾기
-    if (dynamicClass === '기준층') {
+    if (currentFloor && currentFloor.floorClass === '기준층') {
       if (excludedFloorNums.has(current.floorNum)) {
         i++;
         continue;
@@ -158,18 +134,18 @@ function mergeConsecutiveStandardFloors(
 
       const rangeStart = current.floorNum;
       let rangeEnd = current.floorNum;
-      const rangeFloors: Floor[] = currentFloor ? [currentFloor] : [];
+      const rangeFloors: Floor[] = [currentFloor];
 
       let j = i + 1;
       while (j < groundFloors.length) {
         const next = groundFloors[j];
-        const nextClass = computeFloorClass(next.floorNum, settingFloor, maxGround);
+        const nextFloor = next.floor;
 
         if (excludedFloorNums.has(next.floorNum)) break;
-        if (nextClass !== '기준층' || next.floorNum !== rangeEnd + 1) break;
+        if (!nextFloor || nextFloor.floorClass !== '기준층' || next.floorNum !== rangeEnd + 1) break;
 
         rangeEnd = next.floorNum;
-        if (next.floor) rangeFloors.push(next.floor);
+        rangeFloors.push(nextFloor);
         j++;
       }
 
@@ -189,18 +165,30 @@ function mergeConsecutiveStandardFloors(
           addedFloorIds.add(dummyId);
         }
       } else {
-        const floorToAdd = currentFloor
-          ? { ...currentFloor, floorClass: '기준층' as const }
-          : { id: `dummy-${current.floorNum}F`, buildingId, coreLabel: 1, floorLabel: `${current.floorNum}F`, floorNumber: current.floorNum, levelType: '지상' as const, floorClass: '기준층' as const, height: null };
-
-        if (!addedFloorIds.has(floorToAdd.id)) {
-          result.push(floorToAdd);
-          addedFloorIds.add(floorToAdd.id);
+        if (currentFloor && !addedFloorIds.has(currentFloor.id)) {
+          result.push(currentFloor);
+          addedFloorIds.add(currentFloor.id);
         }
       }
 
       i = j;
     } else {
+      // 층이 없거나 다른 분류
+      const isTopFloor = current.floor === null && current.floorNum === groundFloors[groundFloors.length - 1]?.floorNum;
+      const dummyId = `dummy-${current.floorNum}F`;
+      if (!addedFloorIds.has(dummyId)) {
+        result.push({
+          id: dummyId,
+          buildingId,
+          coreLabel: 1,
+          floorLabel: `${current.floorNum}F`,
+          floorNumber: current.floorNum,
+          levelType: '지상',
+          floorClass: isTopFloor ? '최상층' : '기준층',
+          height: null,
+        });
+        addedFloorIds.add(dummyId);
+      }
       i++;
     }
   }
@@ -215,8 +203,6 @@ function transformMultiCore(
   _coreCount: number,
   coreGroundFloors: number[],
   buildingId: string,
-  settingFloor: number,
-  maxGround: number,
 ): Floor[] {
   const result: Floor[] = [];
   const addedFloorIds = new Set<string>();
@@ -266,7 +252,7 @@ function transformMultiCore(
   }
 
   // 연속 기준층 범위 묶기
-  mergeConsecutiveStandardFloors(groundFloors, excludedFloorNums, addedFloorIds, buildingId, result, settingFloor, maxGround);
+  mergeConsecutiveStandardFloors(groundFloors, excludedFloorNums, addedFloorIds, buildingId, result);
 
   // 옥탑층
   addPhFloors(floors, result, addedFloorIds);
@@ -278,7 +264,7 @@ function transformMultiCore(
 // 단일 코어 변환
 // ============================================
 
-function transformSingleCore(floors: Floor[], buildingId: string, settingFloor: number, maxGround: number): Floor[] {
+function transformSingleCore(floors: Floor[], buildingId: string): Floor[] {
   const sortedFloors = [...floors].sort((a, b) => a.floorNumber - b.floorNumber);
   const result: Floor[] = [];
   const addedFloorIds = new Set<string>();
@@ -294,8 +280,7 @@ function transformSingleCore(floors: Floor[], buildingId: string, settingFloor: 
       return { floor: f, floorNum: match ? parseInt(match[1], 10) : f.floorNumber };
     });
 
-  // 동일한 mergeConsecutiveStandardFloors 로직 재사용
-  mergeConsecutiveStandardFloors(groundFloors, new Set(), addedFloorIds, buildingId, result, settingFloor, maxGround);
+  mergeConsecutiveStandardFloors(groundFloors, new Set(), addedFloorIds, buildingId, result);
 
   // 옥탑층
   addPhFloors(sortedFloors, result, addedFloorIds);
