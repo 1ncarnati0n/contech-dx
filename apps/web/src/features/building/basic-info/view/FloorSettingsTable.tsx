@@ -94,8 +94,9 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
       coreCount: building.meta.coreCount,
       coreGroundFloors: building.meta.floorCount.coreGroundFloors,
       buildingId: building.id,
+      meta: building.meta,
     }),
-    [floors, building.meta.coreCount, building.meta.floorCount.coreGroundFloors, building.id],
+    [floors, building.meta, building.id],
   );
 
   if (floors.length === 0) {
