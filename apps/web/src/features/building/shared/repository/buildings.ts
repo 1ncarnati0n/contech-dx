@@ -321,17 +321,25 @@ function generateFloors(
     }
   }
 
-  // 지상층 생성
+  // 지상층 생성 (세대별 층수 기반)
   if (coreCount && coreCount > 1 && floorCount.coreGroundFloors && floorCount.coreGroundFloors.length > 0) {
     for (let coreIndex = 0; coreIndex < coreCount; coreIndex++) {
       const coreNumber = coreIndex + 1;
-      const coreFloorCount = floorCount.coreGroundFloors[coreIndex] || 0;
-      if (coreFloorCount === 0) continue;
+      const coreMaxFloor = floorCount.coreGroundFloors[coreIndex] || 0;
+      if (coreMaxFloor === 0) continue;
 
-      const effectiveSetting = Math.min(settingFloorNum, coreFloorCount - 1);
-      for (let floorNum = 1; floorNum <= coreFloorCount; floorNum++) {
+      // 세대별 층수 (없으면 코어 최대값으로 fallback)
+      const unitFloors = floorCount.coreUnitGroundFloors?.[coreIndex];
+      const hasUnitFloors = unitFloors && unitFloors.length > 0;
+
+      // 세대별 최대층이 다른 경우, 각 세대의 최상층 번호를 기록
+      const unitMaxFloors = hasUnitFloors ? unitFloors : [coreMaxFloor];
+      const minUnitFloor = Math.min(...unitMaxFloors);
+
+      const effectiveSetting = Math.min(settingFloorNum, coreMaxFloor - 1);
+      for (let floorNum = 1; floorNum <= coreMaxFloor; floorNum++) {
         let floorClass: Floor['floorClass'];
-        if (coreFloorCount > 1 && floorNum === coreFloorCount) {
+        if (coreMaxFloor > 1 && floorNum === coreMaxFloor) {
           floorClass = '최상층';
         } else if (effectiveSetting > 0 && floorNum === effectiveSetting) {
           floorClass = '셋팅층';
