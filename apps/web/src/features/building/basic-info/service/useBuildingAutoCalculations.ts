@@ -8,6 +8,8 @@ interface UseBuildingAutoCalculationsParams {
   groundCount: number;
   /** 코어별 지상층 수 배열 */
   coreGroundFloors: number[];
+  /** 코어별 세대별 지상층 수 배열 (2차원) */
+  coreUnitGroundFloors: number[][];
   /** 기본 필로티 세대수 */
   pilotisCount: number;
   /** 코어별 필로티 부대시설 제외 세대수 배열 */
@@ -49,6 +51,7 @@ export function useBuildingAutoCalculations({
   unitTypePattern,
   groundCount,
   coreGroundFloors,
+  coreUnitGroundFloors,
   pilotisCount,
   corePilotisCounts,
   corePilotisHeights,
@@ -85,15 +88,21 @@ export function useBuildingAutoCalculations({
       // 신규 방식: unitCount 사용, 기존 데이터 호환: from/to 사용
       const unitCount = pattern.unitCount ?? (pattern.to && pattern.from ? pattern.to - pattern.from + 1 : 0);
 
-      // 코어별 층수 가져오기
-      let floorCount = groundCount;
+      // 코어별/세대별 층수 가져오기
       const coreFloorIndex = getCoreFloorIndex(coreNum, index, unitTypePattern);
+      let floorCount = groundCount;
 
-      if (coreGroundFloors.length > coreFloorIndex) {
-        floorCount = coreGroundFloors[coreFloorIndex] ?? groundCount;
+      // 세대별 층수가 있으면 합산, 없으면 코어 단위 × 세대수
+      const unitFloors = coreUnitGroundFloors[coreFloorIndex];
+      if (unitFloors && unitFloors.length > 0) {
+        floorCount = 0;
+        total += unitFloors.reduce((sum, f) => sum + f, 0);
+      } else {
+        if (coreGroundFloors.length > coreFloorIndex) {
+          floorCount = coreGroundFloors[coreFloorIndex] ?? groundCount;
+        }
+        total += unitCount * floorCount;
       }
-
-      total += unitCount * floorCount;
 
       // 디버그용 상세 정보
       const getCoreDisplayName = (cn: number, idx: number) => {
@@ -150,6 +159,7 @@ export function useBuildingAutoCalculations({
     unitTypePattern,
     groundCount,
     coreGroundFloors,
+    coreUnitGroundFloors,
     pilotisCount,
     corePilotisCounts,
     corePilotisHeights,
