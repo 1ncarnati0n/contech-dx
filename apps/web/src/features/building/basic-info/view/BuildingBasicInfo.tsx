@@ -8,7 +8,6 @@ import { Building2 } from 'lucide-react';
 import { StructureInfoSection, FloorHeightSection } from './sections';
 import { useBuildingAutoCalculations } from '../service/useBuildingAutoCalculations';
 import { useBuildingFormState } from '../service/useBuildingFormState';
-import { useBuildingAutoSave } from '../service/useBuildingAutoSave';
 import { useBuildingSave } from '../service/useBuildingSave';
 import { StructureDiagramBuilder } from '../../structure-diagram/view/StructureDiagramBuilder';
 import { buildingMetaToCores } from '../../structure-diagram/service/convertCoreStructure';
@@ -51,7 +50,7 @@ export function BuildingBasicInfo({
   });
 
   // 폼 상태 관리 (단일 formData 객체)
-  const { formData, updateField, updateHeights } = useBuildingFormState(building, initialCoreCount);
+  const { formData, updateField, updateHeights, requestServerSync } = useBuildingFormState(building, initialCoreCount);
 
   // formData 기반 자동 계산 (폼 변경 반영)
   const { totalUnitCount: formTotalUnitCount } = useBuildingAutoCalculations({
@@ -61,14 +60,6 @@ export function BuildingBasicInfo({
     pilotisCount: formData.pilotisCount,
     corePilotisCounts: formData.corePilotisCounts,
     corePilotisHeights: formData.corePilotisHeights,
-  });
-
-  // 자동 저장 (디바운스 500ms)
-  const { isSaving: isAutoSaving } = useBuildingAutoSave({
-    building,
-    formData,
-    totalUnitCount: formTotalUnitCount,
-    onUpdate,
   });
 
   // 수동 저장 (층정보 생성 / 구성 저장)
@@ -81,9 +72,10 @@ export function BuildingBasicInfo({
     onGenerationProgress,
     onGenerationComplete,
     onBeforeRegenerate,
+    onBeforeFetch: requestServerSync,
   });
 
-  const isSaving = isAutoSaving || isManualSaving;
+  const isSaving = isManualSaving;
 
   // 골구조도 초기 데이터 (building.meta → CoreStructure[])
   const initialCores = useMemo(() => {
@@ -212,6 +204,7 @@ export function BuildingBasicInfo({
           <FloorHeightSection
             heights={formData.heights}
             phCount={formData.phCount}
+            basementCount={formData.basementCount}
             onHeightsChange={updateHeights}
           />
         </div>
