@@ -24,6 +24,7 @@ export interface BuildingFormData {
   groundCount: number;
   phCount: number;
   coreGroundFloors: number[];
+  coreUnitGroundFloors: number[][];
   coreBasementFloors: number[];
   corePhFloors: number[];
   pilotisCount: number;

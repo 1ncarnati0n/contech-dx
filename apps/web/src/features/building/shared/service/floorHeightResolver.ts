@@ -3,7 +3,7 @@ import type { BuildingMeta, Floor, FloorClass } from '@/shared/types';
 type Heights = BuildingMeta['heights'];
 
 /** 셋팅층 오프셋 (필로티 + 이 값 = 셋팅층 번호) */
-const SETTING_FLOOR_OFFSET = 2;
+const SETTING_FLOOR_OFFSET = 1;
 
 /**
  * BuildingMeta에서 셋팅층 번호를 계산

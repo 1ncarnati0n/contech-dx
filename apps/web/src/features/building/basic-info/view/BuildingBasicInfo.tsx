@@ -44,6 +44,7 @@ export function BuildingBasicInfo({
     unitTypePattern: building?.meta?.unitTypePattern || [],
     groundCount: building?.meta?.floorCount?.ground || 0,
     coreGroundFloors: building?.meta?.floorCount?.coreGroundFloors || [],
+    coreUnitGroundFloors: building?.meta?.floorCount?.coreUnitGroundFloors || [],
     pilotisCount: building?.meta?.floorCount?.pilotisCount || 0,
     corePilotisCounts: building?.meta?.floorCount?.corePilotisCounts || [],
     corePilotisHeights: building?.meta?.floorCount?.corePilotisHeights || [],
@@ -57,6 +58,7 @@ export function BuildingBasicInfo({
     unitTypePattern: formData.unitTypePattern,
     groundCount: formData.groundCount,
     coreGroundFloors: formData.coreGroundFloors,
+    coreUnitGroundFloors: formData.coreUnitGroundFloors,
     pilotisCount: formData.pilotisCount,
     corePilotisCounts: formData.corePilotisCounts,
     corePilotisHeights: formData.corePilotisHeights,
@@ -116,8 +118,13 @@ export function BuildingBasicInfo({
     // 코어 개수
     updateField('coreCount', coreCount);
 
-    // 층수 배열
+    // 층수 배열 (groundFloors = 코어 최대값, unitGroundFloors = 세대별)
     updateField('coreGroundFloors', cores.map(c => c.groundFloors));
+    updateField('coreUnitGroundFloors', cores.map(c => {
+      const total = c.unitsLeft + c.unitsRight;
+      if (c.unitGroundFloors && c.unitGroundFloors.length === total) return c.unitGroundFloors;
+      return Array(total).fill(c.groundFloors);
+    }));
     updateField('coreBasementFloors', cores.map(c => c.basementFloors));
     updateField('corePhFloors', cores.map(c => c.rooftopFloors));
 
