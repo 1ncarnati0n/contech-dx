@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, Input } from '@/shared/compon
 import type { Building, Floor, FloorClass } from '@/shared/types';
 import { transformFloorsForDisplay } from '../service/floorDisplayTransform';
 import { useFloorUpdate } from '../service/useFloorUpdate';
+import { resolveFloorHeight } from '@/features/building/shared/service/floorHeightResolver';
 
 const FLOOR_CLASSES: FloorClass[] = ['지하층', '일반층', '셋팅층', '기준층', '최상층', '옥탑층'];
 
@@ -140,7 +141,6 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
             <tbody>
               {displayFloors.map((floor) => {
                 const { actualFloor, actualFloors } = findActualFloors(floor, floors, building.meta.coreCount, building.meta.floorCount.coreGroundFloors);
-
                 return (
                   <tr
                     key={floor.id}
@@ -178,7 +178,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         type="number"
                         step="1"
                         min="0"
-                        value={floor.height ?? ''}
+                        value={resolveFloorHeight(floor, building.meta.heights) ?? ''}
                         disabled={true}
                         readOnly
                         className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white cursor-not-allowed"
