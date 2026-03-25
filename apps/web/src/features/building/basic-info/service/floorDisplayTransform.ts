@@ -10,9 +10,12 @@ interface TransformOptions {
 /**
  * 층 목록을 화면 표시용으로 변환하는 순수 함수
  *
+ * DB에 저장된 floorClass를 그대로 사용합니다.
+ * (floorClass는 generateFloors에서 필로티+2 기반으로 올바르게 설정됨)
+ *
  * - 지하층: cleanLabel 기준 중복 제거
- * - 지상층: 연속된 기준층을 범위(예: 2~14F)로 묶음
- * - 다중 코어: 코어1 최대 층수를 기준으로 표 작성
+ * - 지상층: 연속된 기준층을 범위(예: 5~14F)로 묶음
+ * - 다중 코어: 가장 높은 코어 기준으로 표 작성
  * - 옥탑층: 마지막에 추가
  */
 export function transformFloorsForDisplay({
@@ -222,36 +225,6 @@ function transformMultiCore(
 
   const { excludedFloorNums, excludedFloorIds } = buildExcludedSets(floors, existingRangeFloors, tallestCoreLabel);
 
-  // 셋팅층, 일반층 추가 (가장 높은 코어 기준)
-  const settingAndNormalFloors = floors.filter(f => {
-    if (f.floorClass !== '셋팅층' && f.floorClass !== '일반층') return false;
-    if (f.coreLabel !== tallestCoreLabel) return false;
-    if (f.floorLabel.includes('~')) return false;
-    if (excludedFloorIds.has(f.id)) return false;
-
-    const match = f.floorLabel.match(/^(\d+)F$/);
-    if (match) {
-      const floorNum = parseInt(match[1], 10);
-      if (excludedFloorNums.has(floorNum)) return false;
-    }
-    return true;
-  }).sort((a, b) => a.floorNumber - b.floorNumber);
-
-  settingAndNormalFloors.forEach(f => {
-    if (!addedFloorIds.has(f.id)) {
-      result.push(f);
-      addedFloorIds.add(f.id);
-    }
-  });
-
-  // 기존 범위 형식 기준층 추가
-  existingRangeFloors.forEach(f => {
-    if (!addedFloorIds.has(f.id)) {
-      result.push(f);
-      addedFloorIds.add(f.id);
-    }
-  });
-
   // 가장 높은 코어 기준 지상층 수집 (범위 포함 층 제외)
   const groundFloors: Array<{ floor: Floor | null; floorNum: number }> = [];
 
@@ -299,79 +272,15 @@ function transformSingleCore(floors: Floor[], buildingId: string): Floor[] {
   // 지하층
   addBasementFloors(sortedFloors, result, addedFloorIds);
 
-  // 지상층 (옥탑 제외)
-  const groundFloors = sortedFloors.filter(
-    f => f.levelType === '지상' && f.floorClass !== '옥탑층' && f.floorClass !== 'PH층'
-  );
+  // 지상층 (옥탑 제외) → floorNum과 함께 배열 생성
+  const groundFloors: Array<{ floor: Floor | null; floorNum: number }> = sortedFloors
+    .filter(f => f.levelType === '지상' && f.floorClass !== '옥탑층' && f.floorClass !== 'PH층')
+    .map(f => {
+      const match = f.floorLabel.match(/(\d+)F/);
+      return { floor: f, floorNum: match ? parseInt(match[1], 10) : f.floorNumber };
+    });
 
-  let i = 0;
-  while (i < groundFloors.length) {
-    const current = groundFloors[i];
-
-    // 셋팅층, 일반층, 최상층 → 개별 추가
-    if (current.floorClass === '셋팅층' || current.floorClass === '일반층' || current.floorClass === '최상층') {
-      result.push(current);
-      i++;
-      continue;
-    }
-
-    // 기준층 → 연속 범위 묶기
-    if (current.floorClass === '기준층') {
-      const rangeStart = current.floorNumber;
-      let rangeEnd = current.floorNumber;
-      const rangeFloors: Floor[] = [current];
-
-      let j = i + 1;
-      while (j < groundFloors.length) {
-        const next = groundFloors[j];
-        if (next.floorClass !== '기준층' || next.floorNumber !== rangeEnd + 1) break;
-        rangeEnd = next.floorNumber;
-        rangeFloors.push(next);
-        j++;
-      }
-
-      if (rangeEnd > rangeStart) {
-        const existingRangeFloor = floors.find(
-          f => f.floorClass === '기준층' && f.floorLabel.includes('~')
-        );
-
-        if (existingRangeFloor) {
-          if (!addedFloorIds.has(existingRangeFloor.id)) {
-            result.push(existingRangeFloor);
-            addedFloorIds.add(existingRangeFloor.id);
-          }
-        } else {
-          const dummyId = `dummy-range-${rangeStart}~${rangeEnd}F`;
-          if (!addedFloorIds.has(dummyId)) {
-            result.push({
-              id: dummyId,
-              buildingId,
-              coreLabel: 1,
-              floorLabel: `${rangeStart}~${rangeEnd}F`,
-              floorNumber: rangeStart,
-              levelType: '지상',
-              floorClass: '기준층',
-              height: rangeFloors[0]?.height || null,
-            });
-            addedFloorIds.add(dummyId);
-          }
-        }
-      } else {
-        if (!addedFloorIds.has(current.id)) {
-          result.push(current);
-          addedFloorIds.add(current.id);
-        }
-      }
-
-      i = j;
-    } else {
-      if (!addedFloorIds.has(current.id)) {
-        result.push(current);
-        addedFloorIds.add(current.id);
-      }
-      i++;
-    }
-  }
+  mergeConsecutiveStandardFloors(groundFloors, new Set(), addedFloorIds, buildingId, result);
 
   // 옥탑층
   addPhFloors(sortedFloors, result, addedFloorIds);
