@@ -5,11 +5,13 @@ import { MAX_CORES } from '../constants';
 
 /** 기본 코어 구조 생성 */
 function createDefaultCore(id: number): CoreStructure {
+  const defaultGroundFloors = 15;
   return {
     id,
     unitsLeft: 1,
     unitsRight: 1,
-    groundFloors: 15,
+    groundFloors: defaultGroundFloors,
+    unitGroundFloors: [defaultGroundFloors, defaultGroundFloors],
     basementFloors: 2,
     rooftopFloors: 1,
     piloti: null,
