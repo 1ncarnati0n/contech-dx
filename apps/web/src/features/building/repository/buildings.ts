@@ -19,6 +19,7 @@ import type {
 } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
 import { isSpecialFloorId } from '@/features/building/shared/service/floorIdUtils';
+import { resolveFloorHeight } from '@/features/building/shared/service/floorHeightResolver';
 import * as SupabaseBuildingService from './SupabaseBuildingDataService';
 
 // ============================================
@@ -47,113 +48,18 @@ export function invalidateAllCache(): void {
  * 단일 층에 층고를 적용하는 헬퍼 함수
  * 지하층, 지상층, 옥탑층 등 모든 케이스를 처리
  */
-function applyFloorHeight(floor: Floor, heights: BuildingMeta['heights']): void {
-  if (!heights) return;
-
-  // 지하층 처리
-  if (floor.levelType === '지하') {
-    const basementMatch = floor.floorLabel.match(/B(\d+)/);
-    if (basementMatch) {
-      const basementNum = parseInt(basementMatch[1], 10);
-      const basementKey = `basement${basementNum}` as keyof typeof heights;
-      const basementHeight = heights[basementKey];
-      if (basementHeight !== undefined && basementHeight !== null && typeof basementHeight === 'number') {
-        floor.height = basementHeight;
-      }
-    }
-    return;
-  }
-
-  // 지상층 처리
-  if (floor.levelType === '지상') {
-    // 층 라벨로 먼저 확인 (코어별 층 포함)
-    const floorMatch = floor.floorLabel.match(/(\d+)F/);
-    if (floorMatch) {
-      const floorNum = parseInt(floorMatch[1], 10);
-      const heightByFloorNum = getHeightByFloorNumber(floorNum, heights);
-
-      if (heightByFloorNum !== null) {
-        floor.height = heightByFloorNum;
-        return;
-      }
-    }
-
-    // floorClass 기반 처리
-    const heightByClass = getHeightByFloorClass(floor, heights);
-    if (heightByClass !== null) {
-      floor.height = heightByClass;
-    }
-  }
-}
-
-/**
- * 층 번호에 따른 층고 반환 (1~5층 특수 처리)
- */
-function getHeightByFloorNumber(floorNum: number, heights: BuildingMeta['heights']): number | null {
-  if (floorNum === 1 && heights.floor1 !== undefined && heights.floor1 !== null) {
-    return heights.floor1;
-  }
-  if (floorNum === 2 && heights.floor2 !== undefined && heights.floor2 !== null) {
-    return heights.floor2;
-  }
-  if (floorNum === 3 && heights.floor3 !== undefined && heights.floor3 !== null) {
-    return heights.floor3;
-  }
-  if (floorNum === 4 && heights.floor4 !== undefined && heights.floor4 !== null) {
-    return heights.floor4;
-  }
-  if (floorNum === 5 && heights.floor5 !== undefined && heights.floor5 !== null) {
-    return heights.floor5;
-  }
-  return null;
-}
-
-/**
- * floorClass에 따른 층고 반환
- */
-function getHeightByFloorClass(floor: Floor, heights: BuildingMeta['heights']): number | null {
-  if (floor.floorClass === '셋팅층' && heights.floor1 !== undefined && heights.floor1 !== null) {
-    return heights.floor1;
-  }
-  if (floor.floorClass === '기준층' && heights.standard !== undefined && heights.standard !== null) {
-    return heights.standard;
-  }
-  if (floor.floorClass === '최상층' && heights.top !== undefined && heights.top !== null) {
-    return heights.top;
-  }
-  if (floor.floorClass === '옥탑층') {
-    return getPhHeight(floor.floorLabel, heights);
-  }
-  // 기본값: 기준층 높이
-  if (heights.standard !== undefined && heights.standard !== null) {
-    return heights.standard;
-  }
-  return null;
-}
-
-/**
- * 옥탑층 층고 반환 (PH1, PH2 등 인덱스 처리)
- */
-function getPhHeight(floorLabel: string, heights: BuildingMeta['heights']): number | null {
-  const phMatch = floorLabel.match(/(?:PH|옥탑)(\d+)/i);
-  if (phMatch && heights.ph !== undefined && heights.ph !== null) {
-    const phIndex = parseInt(phMatch[1], 10) - 1;
-    if (Array.isArray(heights.ph) && heights.ph[phIndex] !== undefined && heights.ph[phIndex] !== null) {
-      return heights.ph[phIndex];
-    }
-    if (!Array.isArray(heights.ph)) {
-      return heights.ph;
-    }
-  }
-  return null;
-}
-
 /**
  * 여러 층에 층고를 일괄 적용
+ * resolveFloorHeight로 조회한 값을 floor.height에 mutation 적용
  */
 function applyFloorHeightsToAll(floors: Floor[], heights: BuildingMeta['heights']): void {
   if (!heights || !floors || floors.length === 0) return;
-  floors.forEach(floor => applyFloorHeight(floor, heights));
+  floors.forEach(floor => {
+    const resolved = resolveFloorHeight(floor, heights);
+    if (resolved !== null) {
+      floor.height = resolved;
+    }
+  });
 }
 
 /**

@@ -2,9 +2,10 @@
 
 import { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Input } from '@/shared/components/ui';
-import type { Building, BuildingMeta, Floor, FloorClass } from '@/shared/types';
+import type { Building, Floor, FloorClass } from '@/shared/types';
 import { transformFloorsForDisplay } from '../service/floorDisplayTransform';
 import { useFloorUpdate } from '../service/useFloorUpdate';
+import { resolveFloorHeight } from '@/features/building/shared/service/floorHeightResolver';
 
 const FLOOR_CLASSES: FloorClass[] = ['지하층', '일반층', '셋팅층', '기준층', '최상층', '옥탑층'];
 
@@ -82,51 +83,6 @@ function findActualFloors(
   }
 
   return { actualFloor: floor, actualFloors: [] };
-}
-
-/** floor.height가 null일 때 meta.heights에서 fallback 조회 */
-function getFloorHeight(floor: Floor, heights: BuildingMeta['heights']): number | null {
-  if (floor.height !== null && floor.height !== undefined) return floor.height;
-  if (!heights) return null;
-
-  // 지하층: basementN 키로 조회
-  if (floor.levelType === '지하') {
-    const match = floor.floorLabel.match(/B(\d+)/);
-    if (match) {
-      const key = `basement${match[1]}` as keyof typeof heights;
-      const val = heights[key];
-      if (typeof val === 'number') return val;
-    }
-    return null;
-  }
-
-  // 지상층: floorN 키 또는 floorClass 기반
-  if (floor.levelType === '지상') {
-    const floorMatch = floor.floorLabel.match(/(\d+)F/);
-    if (floorMatch) {
-      const num = parseInt(floorMatch[1], 10);
-      if (num >= 1 && num <= 5) {
-        const key = `floor${num}` as keyof typeof heights;
-        const val = heights[key];
-        if (typeof val === 'number') return val;
-      }
-    }
-    if (floor.floorClass === '기준층' && heights.standard != null) return heights.standard;
-    if (floor.floorClass === '최상층' && heights.top != null) return heights.top;
-    if (heights.standard != null) return heights.standard;
-  }
-
-  // 옥탑층
-  if (floor.floorClass === '옥탑층' || floor.floorClass === 'PH층') {
-    const phMatch = floor.floorLabel.match(/PH(\d+)/i);
-    if (phMatch && heights.ph != null) {
-      const idx = parseInt(phMatch[1], 10) - 1;
-      if (Array.isArray(heights.ph)) return heights.ph[idx] ?? null;
-      return heights.ph;
-    }
-  }
-
-  return null;
 }
 
 export function FloorSettingsTable({ building, onUpdate }: Props) {
@@ -223,7 +179,7 @@ export function FloorSettingsTable({ building, onUpdate }: Props) {
                         type="number"
                         step="1"
                         min="0"
-                        value={getFloorHeight(floor, building.meta.heights) ?? ''}
+                        value={resolveFloorHeight(floor, building.meta.heights) ?? ''}
                         disabled={true}
                         readOnly
                         className="w-full px-2 py-1 text-sm border border-slate-200 dark:border-slate-700 rounded bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white cursor-not-allowed"
