@@ -22,6 +22,7 @@ function extractFormData(building: Building): BuildingFormData {
     groundCount: meta?.floorCount?.ground || 0,
     phCount: meta?.floorCount?.ph || 0,
     coreGroundFloors: meta?.floorCount?.coreGroundFloors || [],
+    coreUnitGroundFloors: meta?.floorCount?.coreUnitGroundFloors || [],
     coreBasementFloors: meta?.floorCount?.coreBasementFloors || [],
     corePhFloors: meta?.floorCount?.corePhFloors || [],
     pilotisCount: meta?.floorCount?.pilotisCount || 0,

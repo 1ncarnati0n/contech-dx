@@ -449,7 +449,8 @@ export interface BuildingMeta {
     basement: number;
     ground: number; // 전체 지상층 수 (코어별 입력이 없을 때 사용)
     ph: number;
-    coreGroundFloors?: number[]; // 코어별 지상층 수 (코어1, 코어2, ... 순서, 높은층 순서)
+    coreGroundFloors?: number[]; // 코어별 지상층 수 (코어1, 코어2, ... 순서, 최대값)
+    coreUnitGroundFloors?: number[][]; // 코어별 세대별 지상층 수 (코어 > 세대 순서)
     coreBasementFloors?: number[]; // 코어별 지하층 수 (코어1, 코어2, ... 순서)
     corePhFloors?: number[]; // 코어별 옥탑층 수 (코어1, 코어2, ... 순서)
     pilotisCount?: number; // 필로티 수량 (기존 호환성 유지)

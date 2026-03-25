@@ -26,6 +26,7 @@ export function buildBuildingMeta(
     groundCount,
     phCount,
     coreGroundFloors,
+    coreUnitGroundFloors,
     coreBasementFloors,
     corePhFloors,
     pilotisCount,
@@ -48,6 +49,7 @@ export function buildBuildingMeta(
   const floorCount = {
     ...baseFloorCount,
     coreGroundFloors: coreGroundFloors.length > 0 ? coreGroundFloors : undefined,
+    coreUnitGroundFloors: coreUnitGroundFloors.length > 0 ? coreUnitGroundFloors : undefined,
     coreBasementFloors: coreBasementFloors.length > 0 ? coreBasementFloors : undefined,
     corePhFloors: corePhFloors.length > 0 ? corePhFloors : undefined,
     pilotisCount: pilotisCount > 0 ? pilotisCount : undefined,
