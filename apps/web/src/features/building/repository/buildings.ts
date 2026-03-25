@@ -202,12 +202,13 @@ function generateFloors(
   const settingFloorNum = maxPilotiFloor + SETTING_FLOOR_OFFSET;
 
   // DEBUG: 셋팅층 계산 추적 (문제 해결 후 제거)
-  logger.debug('[generateFloors] settingFloor 계산:', {
+  console.log('[generateFloors] settingFloor 계산:', {
     corePilotisHeights: floorCount.corePilotisHeights,
     corePilotisCounts: floorCount.corePilotisCounts,
     pilotisCount: floorCount.pilotisCount,
     maxPilotiFloor,
     settingFloorNum,
+    coreCount,
   });
 
   // 지하층 생성 (B2, B1, ...)
