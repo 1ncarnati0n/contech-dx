@@ -11,9 +11,20 @@ const SETTING_FLOOR_OFFSET = 2;
  */
 export function getSettingFloorNum(meta: BuildingMeta): number {
   const pilotisHeights = meta.floorCount.corePilotisHeights;
-  const maxPiloti = pilotisHeights && pilotisHeights.length > 0
+  let maxPiloti = pilotisHeights && pilotisHeights.length > 0
     ? Math.max(...pilotisHeights, 0)
     : 0;
+
+  // corePilotisHeights가 전부 0이지만 corePilotisCounts에 필로티가 있으면 fallback
+  if (maxPiloti === 0) {
+    const counts = meta.floorCount.corePilotisCounts;
+    if (counts && counts.some(c => c > 0)) {
+      maxPiloti = 1;
+    } else if (meta.floorCount.pilotisCount && meta.floorCount.pilotisCount > 0) {
+      maxPiloti = 1;
+    }
+  }
+
   return maxPiloti + SETTING_FLOOR_OFFSET;
 }
 

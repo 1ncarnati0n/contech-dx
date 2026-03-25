@@ -184,15 +184,21 @@ function generateFloors(
   // 셋팅층 결정: 전체 코어 중 최대 필로티 층 + 2 (필로티 없으면 2층)
   const SETTING_FLOOR_OFFSET = 2;
   let maxPilotiFloor = 0;
+
+  // corePilotisHeights에서 최대값 추출
   if (floorCount.corePilotisHeights && floorCount.corePilotisHeights.length > 0) {
     maxPilotiFloor = Math.max(...floorCount.corePilotisHeights, 0);
-  } else if (floorCount.corePilotisCounts && floorCount.corePilotisCounts.length > 0) {
-    // corePilotisHeights가 없으면 corePilotisCounts > 0인 코어가 있는지 확인
-    // pilotisCounts가 있다면 pilotisHeights도 있어야 정상이지만, fallback으로 처리
-    maxPilotiFloor = floorCount.corePilotisCounts.some(c => c > 0) ? 1 : 0;
-  } else if (floorCount.pilotisCount && floorCount.pilotisCount > 0) {
-    maxPilotiFloor = 1;
   }
+
+  // corePilotisHeights가 전부 0이거나 없는데 corePilotisCounts에 필로티가 있으면 fallback
+  if (maxPilotiFloor === 0) {
+    if (floorCount.corePilotisCounts && floorCount.corePilotisCounts.some(c => c > 0)) {
+      maxPilotiFloor = 1;
+    } else if (floorCount.pilotisCount && floorCount.pilotisCount > 0) {
+      maxPilotiFloor = 1;
+    }
+  }
+
   const settingFloorNum = maxPilotiFloor + SETTING_FLOOR_OFFSET;
 
   // 지하층 생성 (B2, B1, ...)
