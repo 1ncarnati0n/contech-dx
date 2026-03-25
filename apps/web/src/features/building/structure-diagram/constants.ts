@@ -20,7 +20,7 @@ export const MAX_GROUND_FLOORS = 60;
 export const MAX_ROOFTOP_FLOORS = 5;
 
 /** 셋팅층 오프셋 (필로티 층 + 이 값 = 셋팅층) */
-export const SETTING_FLOOR_OFFSET = 2;
+export const SETTING_FLOOR_OFFSET = 1;
 
 // ============================================
 // 그리드 레이아웃

@@ -23,19 +23,42 @@ interface CoreConfigPanelProps {
   onUnitTypesChange: (coreId: number, types: string[]) => void;
 }
 
+/** 세대별 지상층 수 배열을 가져오거나 groundFloors로 채운 fallback */
+function getUnitFloors(core: CoreStructure): number[] {
+  const total = core.unitsLeft + core.unitsRight;
+  if (total === 0) return [];
+  if (core.unitGroundFloors && core.unitGroundFloors.length === total) {
+    return core.unitGroundFloors;
+  }
+  return Array(total).fill(core.groundFloors);
+}
+
 export function CoreConfigPanel({ core, unitTypes, onUpdate, onUnitTypesChange }: CoreConfigPanelProps) {
   const totalUnits = core.unitsLeft + core.unitsRight;
   const hasPiloti = core.piloti !== null && core.piloti.floor > 0;
+  const unitFloors = getUnitFloors(core);
 
   const handleUnitsChange = (field: 'unitsLeft' | 'unitsRight', value: number) => {
     const otherSide = field === 'unitsLeft' ? core.unitsRight : core.unitsLeft;
     const clamped = Math.max(0, Math.min(MAX_TOTAL_UNITS - otherSide, value));
     const newTotal = clamped + otherSide;
 
-    onUpdate(core.id, { [field]: clamped });
+    // unitGroundFloors 배열을 새 세대수에 맞춤
+    const newUnitFloors = Array.from({ length: newTotal }, (_, i) => unitFloors[i] ?? core.groundFloors);
+    onUpdate(core.id, { [field]: clamped, unitGroundFloors: newUnitFloors, groundFloors: Math.max(...newUnitFloors, core.groundFloors) });
 
     const adjusted = Array.from({ length: newTotal }, (_, i) => unitTypes[i] ?? '');
     onUnitTypesChange(core.id, adjusted);
+  };
+
+  const handleUnitGroundFloorsChange = (unitIndex: number, value: number) => {
+    const clamped = Math.max(1, Math.min(MAX_GROUND_FLOORS, value));
+    const newUnitFloors = [...unitFloors];
+    newUnitFloors[unitIndex] = clamped;
+    onUpdate(core.id, {
+      unitGroundFloors: newUnitFloors,
+      groundFloors: Math.max(...newUnitFloors),
+    });
   };
 
   const handleUnitTypeChange = (index: number, value: string) => {
@@ -112,18 +135,38 @@ export function CoreConfigPanel({ core, unitTypes, onUpdate, onUnitTypesChange }
             />
             <span className={SECTION_SUB_LABEL_STYLES.green}>지하</span>
           </div>
-          <div className="flex flex-col items-center gap-0.5">
-            <Input
-              type="number"
-              min="1"
-              max={MAX_GROUND_FLOORS}
-              value={core.groundFloors}
-              onChange={(e) => onUpdate(core.id, { groundFloors: Math.max(1, Number(e.target.value)) })}
-              className={INPUT_STYLES.number}
-              title="지상층 수"
-            />
-            <span className={SECTION_SUB_LABEL_STYLES.green}>지상</span>
-          </div>
+
+          {/* 세대별 지상층 수 */}
+          {totalUnits > 0 ? (
+            unitFloors.map((floors, i) => (
+              <div key={`gf-${i}`} className="flex flex-col items-center gap-0.5">
+                <Input
+                  type="number"
+                  min="1"
+                  max={MAX_GROUND_FLOORS}
+                  value={floors}
+                  onChange={(e) => handleUnitGroundFloorsChange(i, Number(e.target.value))}
+                  className={INPUT_STYLES.number}
+                  title={`${i + 1}호 지상층 수`}
+                />
+                <span className={SECTION_SUB_LABEL_STYLES.green}>{i + 1}호</span>
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center gap-0.5">
+              <Input
+                type="number"
+                min="1"
+                max={MAX_GROUND_FLOORS}
+                value={core.groundFloors}
+                onChange={(e) => onUpdate(core.id, { groundFloors: Math.max(1, Number(e.target.value)) })}
+                className={INPUT_STYLES.number}
+                title="지상층 수"
+              />
+              <span className={SECTION_SUB_LABEL_STYLES.green}>지상</span>
+            </div>
+          )}
+
           <div className="flex flex-col items-center gap-0.5">
             <Input
               type="number"

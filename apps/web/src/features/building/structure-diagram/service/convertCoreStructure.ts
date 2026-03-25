@@ -28,12 +28,20 @@ export function coresToBuildingMeta(
     return c.piloti.floor;
   });
 
-  // 총 세대수 계산
-  const totalUnits = cores.reduce((sum, core) => {
-    const unitsPerFloor = core.unitsLeft + core.unitsRight;
+  // 세대별 지상층 수 배열 (2차원: 코어별 > 세대별)
+  const coreUnitGroundFloors = cores.map(c => {
+    const total = c.unitsLeft + c.unitsRight;
+    if (c.unitGroundFloors && c.unitGroundFloors.length === total) return c.unitGroundFloors;
+    return Array(total).fill(c.groundFloors);
+  });
+
+  // 총 세대수 계산 (세대별 층수 기반)
+  const totalUnits = cores.reduce((sum, core, coreIdx) => {
+    const unitFloors = coreUnitGroundFloors[coreIdx];
     const pilotiUnits = core.piloti ? core.piloti.excludeUnits.length : 0;
     const pilotiHeight = core.piloti ? core.piloti.floor : 0;
-    return sum + (unitsPerFloor * core.groundFloors) - (pilotiUnits * pilotiHeight);
+    const unitTotal = unitFloors.reduce((s, floors) => s + floors, 0);
+    return sum + unitTotal - (pilotiUnits * pilotiHeight);
   }, 0);
 
   // UnitTypePattern 생성 (기존 unitTypes 보존)
@@ -61,6 +69,7 @@ export function coresToBuildingMeta(
       ground: Math.max(...coreGroundFloors, 0),
       ph: Math.max(...corePhFloors, 0),
       coreGroundFloors,
+      coreUnitGroundFloors,
       coreBasementFloors,
       corePhFloors,
       corePilotisCounts,
@@ -114,11 +123,17 @@ export function buildingMetaToCores(meta: BuildingMeta): CoreStructure[] {
       ? { columns: scaffoldingCols }
       : null;
 
+    // 세대별 지상층 수 복원
+    const unitGroundFloors = meta.floorCount.coreUnitGroundFloors?.[i];
+
     cores.push({
       id: coreId,
       unitsLeft,
       unitsRight,
       groundFloors,
+      unitGroundFloors: unitGroundFloors && unitGroundFloors.length === totalUnitsPerFloor
+        ? unitGroundFloors
+        : undefined,
       basementFloors,
       rooftopFloors,
       piloti,

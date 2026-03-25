@@ -78,9 +78,9 @@ export function buildGridData(cores: CoreStructure[], options?: BuildGridOptions
         const phNumber = pos - core.groundFloors;
         cells.push(...buildRooftopCells(core, colInfo, rowLabel, pos, phNumber));
       } else {
-        // 지상층 영역 — 셋팅층은 전체 코어 기준 (maxPiloti + 2)
+        // 지상층 영역 — 세대별 높이 차이 반영
         const category = getGroundFloorCategory(pos, core.groundFloors, settingFloor);
-        cells.push(...buildGroundCells(core, colInfo, rowLabel, pos, category));
+        cells.push(...buildGroundCellsWithUnitFloors(core, colInfo, rowLabel, pos, category, settingFloor));
       }
     }
 
@@ -235,7 +235,73 @@ function buildRooftopCells(
   return cells;
 }
 
-/** 지상층 셀 생성 */
+/** 세대별 지상층 수 배열 (unitGroundFloors fallback) */
+function getUnitGroundFloorsArray(core: CoreStructure): number[] {
+  const total = core.unitsLeft + core.unitsRight;
+  if (total === 0) return [];
+  if (core.unitGroundFloors && core.unitGroundFloors.length === total) {
+    return core.unitGroundFloors;
+  }
+  return Array(total).fill(core.groundFloors);
+}
+
+/** 지상층 셀 생성 (세대별 높이 차이 반영) */
+function buildGroundCellsWithUnitFloors(
+  core: CoreStructure,
+  colInfo: CoreColumnInfo,
+  floorLabel: string,
+  floor: number,
+  category: FloorCategory,
+  settingFloor: number,
+): GridCell[] {
+  const cells: GridCell[] = [];
+  const totalUnits = core.unitsLeft + core.unitsRight;
+  const unitFloors = getUnitGroundFloorsArray(core);
+
+  // 왼쪽 세대
+  for (let u = 0; u < colInfo.leftUnitCols; u++) {
+    const unitMaxFloor = unitFloors[u] ?? core.groundFloors;
+    if (floor > unitMaxFloor) {
+      // 이 세대의 범위 밖 → 빈칸
+      cells.push({ type: 'empty', category, coreId: core.id, floorLabel, floorNumber: floor, unitIndex: u, side: 'left' });
+    } else if (isPilotiUnit(core, floor, u)) {
+      cells.push({ type: 'piloti', category: 'piloti', coreId: core.id, floorLabel, floorNumber: floor, unitLabel: CELL_LABELS.PILOTI, unitIndex: u, side: 'left' });
+    } else {
+      const unitCategory = getGroundFloorCategory(floor, unitMaxFloor, settingFloor);
+      const unitNumber = computeUnitNumber(core.id, floor, u, totalUnits);
+      cells.push({ type: 'unit', category: unitCategory, coreId: core.id, floorLabel, floorNumber: floor, unitLabel: String(unitNumber), unitIndex: u, side: 'left' });
+    }
+  }
+
+  // 코어 (코어는 groundFloors=최대값 기준)
+  cells.push({
+    type: 'core',
+    category,
+    coreId: core.id,
+    floorLabel,
+    floorNumber: floor,
+    unitLabel: CELL_LABELS.CORE(core.id),
+  });
+
+  // 오른쪽 세대
+  for (let u = 0; u < colInfo.rightUnitCols; u++) {
+    const unitIndex = colInfo.leftUnitCols + u;
+    const unitMaxFloor = unitFloors[unitIndex] ?? core.groundFloors;
+    if (floor > unitMaxFloor) {
+      cells.push({ type: 'empty', category, coreId: core.id, floorLabel, floorNumber: floor, unitIndex, side: 'right' });
+    } else if (isPilotiUnit(core, floor, unitIndex)) {
+      cells.push({ type: 'piloti', category: 'piloti', coreId: core.id, floorLabel, floorNumber: floor, unitLabel: CELL_LABELS.PILOTI, unitIndex, side: 'right' });
+    } else {
+      const unitCategory = getGroundFloorCategory(floor, unitMaxFloor, settingFloor);
+      const unitNumber = computeUnitNumber(core.id, floor, unitIndex, totalUnits);
+      cells.push({ type: 'unit', category: unitCategory, coreId: core.id, floorLabel, floorNumber: floor, unitLabel: String(unitNumber), unitIndex, side: 'right' });
+    }
+  }
+
+  return cells;
+}
+
+/** 지상층 셀 생성 (하위호환 - 코어 단위) */
 function buildGroundCells(
   core: CoreStructure,
   colInfo: CoreColumnInfo,

@@ -30,8 +30,9 @@ export interface CoreStructure {
   id: number;                  // 코어 번호 (1~4)
   unitsLeft: number;           // 왼쪽 세대수 (0~3)
   unitsRight: number;          // 오른쪽 세대수 (0~3)
-  groundFloors: number;        // 지상 층수
-  basementFloors: number;      // 지하 층수
+  groundFloors: number;        // 지상 층수 (코어 최대값, 하위호환용)
+  unitGroundFloors?: number[]; // 세대별 지상 층수 (왼→오른 순서, 없으면 groundFloors 동일)
+  basementFloors: number;      // 지하 층수 (코어 단위)
   rooftopFloors: number;       // 옥탑 층수
   piloti: {
     floor: number;             // 필로티 시작 층 (0이면 없음)
