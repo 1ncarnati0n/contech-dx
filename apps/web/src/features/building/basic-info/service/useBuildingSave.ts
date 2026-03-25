@@ -17,6 +17,7 @@ interface UseBuildingSaveOptions {
   onGenerationProgress?: (progress: number, message: string) => void;
   onGenerationComplete?: () => void;
   onBeforeRegenerate?: () => Promise<void>;
+  onBeforeFetch?: () => void;
 }
 
 async function findLatestBuilding(building: Building, onUpdate: () => void) {
@@ -47,6 +48,7 @@ export function useBuildingSave({
   onGenerationProgress,
   onGenerationComplete,
   onBeforeRegenerate,
+  onBeforeFetch,
 }: UseBuildingSaveOptions) {
   const [isSaving, setIsSaving] = useState(false);
 
@@ -102,6 +104,8 @@ export function useBuildingSave({
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
+      // 서버 데이터로 formData 동기화 예약 후 building 재조회
+      onBeforeFetch?.();
       await onUpdate();
 
       if (shouldRegenerate) {
@@ -118,7 +122,7 @@ export function useBuildingSave({
     } finally {
       setIsSaving(false);
     }
-  }, [building, formData, totalUnitCount, onUpdate, onStartGeneration, onGenerationProgress, onGenerationComplete, onBeforeRegenerate]);
+  }, [building, formData, totalUnitCount, onUpdate, onStartGeneration, onGenerationProgress, onGenerationComplete, onBeforeRegenerate, onBeforeFetch]);
 
   const handleSaveUnitType = useCallback(async () => {
     setIsSaving(true);
@@ -144,6 +148,7 @@ export function useBuildingSave({
         meta,
       });
 
+      onBeforeFetch?.();
       await onUpdate();
       toast.success('단위세대 구성이 저장되었습니다.');
     } catch (error) {

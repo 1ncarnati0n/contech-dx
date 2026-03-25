@@ -50,7 +50,7 @@ export function BuildingBasicInfo({
   });
 
   // 폼 상태 관리 (단일 formData 객체)
-  const { formData, updateField, updateHeights } = useBuildingFormState(building, initialCoreCount);
+  const { formData, updateField, updateHeights, requestServerSync } = useBuildingFormState(building, initialCoreCount);
 
   // formData 기반 자동 계산 (폼 변경 반영)
   const { totalUnitCount: formTotalUnitCount } = useBuildingAutoCalculations({
@@ -72,6 +72,7 @@ export function BuildingBasicInfo({
     onGenerationProgress,
     onGenerationComplete,
     onBeforeRegenerate,
+    onBeforeFetch: requestServerSync,
   });
 
   const isSaving = isManualSaving;
