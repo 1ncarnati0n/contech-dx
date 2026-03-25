@@ -58,32 +58,19 @@ export function useBuildingSave({
         return;
       }
 
-      onStartGeneration?.();
-
       const latestBuilding = await findLatestBuilding(building, onUpdate);
       if (!latestBuilding) {
         toast.error('동 정보를 찾을 수 없어 저장하지 못했습니다.');
         return;
       }
 
-      // 층수 또는 층고 변경 여부 판단
-      const floorCountChanged =
-        formData.basementCount !== latestBuilding.meta.floorCount.basement ||
-        formData.groundCount !== latestBuilding.meta.floorCount.ground ||
-        formData.phCount !== latestBuilding.meta.floorCount.ph ||
-        formData.pilotisCount !== (latestBuilding.meta.floorCount.pilotisCount || 0) ||
-        JSON.stringify(formData.corePilotisCounts) !== JSON.stringify(latestBuilding.meta.floorCount.corePilotisCounts || []) ||
-        JSON.stringify(formData.coreGroundFloors) !== JSON.stringify(latestBuilding.meta.floorCount.coreGroundFloors || []) ||
-        JSON.stringify(formData.coreBasementFloors) !== JSON.stringify(latestBuilding.meta.floorCount.coreBasementFloors || []) ||
-        JSON.stringify(formData.corePhFloors) !== JSON.stringify(latestBuilding.meta.floorCount.corePhFloors || []);
+      // "층정보 생성" 버튼은 항상 재생성 수행
+      const shouldRegenerate = true;
 
-      const heightsChanged =
-        JSON.stringify(formData.heights) !== JSON.stringify(latestBuilding.meta.heights);
-
-      const shouldRegenerate = floorCountChanged || (heightsChanged && latestBuilding.floors?.length > 0);
+      onStartGeneration?.();
 
       // 재생성 전 물량 데이터 저장
-      if (shouldRegenerate && onBeforeRegenerate) {
+      if (onBeforeRegenerate) {
         onGenerationProgress?.(10, '물량 데이터 저장 중...');
         try {
           await onBeforeRegenerate(); 
