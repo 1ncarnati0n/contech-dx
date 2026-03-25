@@ -182,7 +182,7 @@ function generateFloors(
   const floors: Floor[] = [];
 
   // 셋팅층 결정: 전체 코어 중 최대 필로티 층 + 2 (필로티 없으면 2층)
-  const SETTING_FLOOR_OFFSET = 2;
+  const SETTING_FLOOR_OFFSET = 1;
   let maxPilotiFloor = 0;
 
   // corePilotisHeights에서 최대값 추출
