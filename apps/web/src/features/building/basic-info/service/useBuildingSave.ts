@@ -83,7 +83,21 @@ export function useBuildingSave({
         }
       }
 
+      // DEBUG: formData 필로티 값 확인 (문제 해결 후 제거)
+      console.log('[handleSave] formData piloti:', {
+        corePilotisHeights: formData.corePilotisHeights,
+        corePilotisCounts: formData.corePilotisCounts,
+        pilotisCount: formData.pilotisCount,
+      });
+
       const meta = buildBuildingMeta(formData, totalUnitCount);
+
+      // DEBUG: 생성된 meta.floorCount 확인 (문제 해결 후 제거)
+      console.log('[handleSave] meta.floorCount piloti:', {
+        corePilotisHeights: meta.floorCount.corePilotisHeights,
+        corePilotisCounts: meta.floorCount.corePilotisCounts,
+        pilotisCount: meta.floorCount.pilotisCount,
+      });
 
       if (shouldRegenerate) {
         onGenerationProgress?.(30, '데이터 저장 중...');

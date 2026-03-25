@@ -201,6 +201,15 @@ function generateFloors(
 
   const settingFloorNum = maxPilotiFloor + SETTING_FLOOR_OFFSET;
 
+  // DEBUG: 셋팅층 계산 추적 (문제 해결 후 제거)
+  logger.debug('[generateFloors] settingFloor 계산:', {
+    corePilotisHeights: floorCount.corePilotisHeights,
+    corePilotisCounts: floorCount.corePilotisCounts,
+    pilotisCount: floorCount.pilotisCount,
+    maxPilotiFloor,
+    settingFloorNum,
+  });
+
   // 지하층 생성 (B2, B1, ...)
   if (coreCount && coreCount > 1 && floorCount.coreBasementFloors && floorCount.coreBasementFloors.length > 0) {
     // 코어별 지하층 생성
