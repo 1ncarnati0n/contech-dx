@@ -1,14 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Input } from '@/shared/components/ui';
 import type { Heights } from '../../types';
 
 interface FloorHeightSectionProps {
-  /** 층고 설정 값 */
   heights: Heights;
-  /** 옥탑층 수 */
   phCount: number;
-  /** 층고 변경 핸들러 */
+  basementCount: number;
   onHeightsChange: (heights: Heights) => void;
 }
 
@@ -18,9 +17,14 @@ interface HeightField {
   defaultValue: number;
 }
 
-const HEIGHT_FIELDS: HeightField[] = [
+const BASEMENT_FIELDS: { key: keyof Omit<Heights, 'ph'>; label: string; defaultValue: number }[] = [
+  { key: 'basement4', label: 'B4층', defaultValue: 3500 },
+  { key: 'basement3', label: 'B3층', defaultValue: 3500 },
   { key: 'basement2', label: 'B2층', defaultValue: 3500 },
   { key: 'basement1', label: 'B1층', defaultValue: 5400 },
+];
+
+const GROUND_FIELDS: HeightField[] = [
   { key: 'floor1', label: '1층', defaultValue: 3050 },
   { key: 'floor2', label: '2층', defaultValue: 2850 },
   { key: 'floor3', label: '3층', defaultValue: 2850 },
@@ -33,23 +37,24 @@ const HEIGHT_FIELDS: HeightField[] = [
 /**
  * 층고 설정 섹션
  *
- * 지하층, 지상층 1~5층, 기준층, 최상층, 옥탑층의 층고를 입력합니다.
+ * 지하층(basementCount에 따라 동적), 지상층, 기준층, 최상층, 옥탑층의 층고를 입력합니다.
  */
 export function FloorHeightSection({
   heights,
   phCount,
+  basementCount,
   onHeightsChange,
 }: FloorHeightSectionProps) {
-  /**
-   * 일반 층고 필드 변경 핸들러
-   */
+  // basementCount에 따라 지하층 필드 동적 생성 (B1부터 위로)
+  const basementFields = useMemo(() => {
+    const clamped = Math.max(0, Math.min(basementCount, BASEMENT_FIELDS.length));
+    return BASEMENT_FIELDS.slice(BASEMENT_FIELDS.length - clamped);
+  }, [basementCount]);
+
   const handleFieldChange = (key: keyof Omit<Heights, 'ph'>, value: number) => {
     onHeightsChange({ ...heights, [key]: value });
   };
 
-  /**
-   * 옥탑층 층고 변경 핸들러
-   */
   const handlePhHeightChange = (index: number, value: number) => {
     const phArray = Array.isArray(heights.ph)
       ? [...heights.ph]
@@ -59,17 +64,14 @@ export function FloorHeightSection({
     onHeightsChange({ ...heights, ph: phArray });
   };
 
-  /**
-   * 단일 옥탑층 층고 변경 핸들러
-   */
   const handleSinglePhHeightChange = (value: number) => {
     onHeightsChange({ ...heights, ph: [value] });
   };
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {/* 기본 층고 필드들 (B2 → B1 → 1층 → ... → 기준층 → 최상층 순서) */}
-      {HEIGHT_FIELDS.map((field) => (
+      {/* 지하층 (basementCount에 따라 동적) */}
+      {basementFields.map((field) => (
         <div key={field.key} className="flex-shrink-0">
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
             {field.label}
@@ -85,7 +87,24 @@ export function FloorHeightSection({
         </div>
       ))}
 
-      {/* 옥탑층 층고 - 맨 뒤에 배치 */}
+      {/* 지상층 (1~5층, 기준층, 최상층) */}
+      {GROUND_FIELDS.map((field) => (
+        <div key={field.key} className="flex-shrink-0">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            {field.label}
+          </label>
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            className="w-20"
+            value={(heights[field.key] as number) || field.defaultValue}
+            onChange={(e) => handleFieldChange(field.key, Number(e.target.value))}
+          />
+        </div>
+      ))}
+
+      {/* 옥탑층 */}
       {phCount > 0 && (
         phCount === 1 ? (
           <div className="flex-shrink-0">

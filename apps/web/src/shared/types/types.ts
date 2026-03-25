@@ -459,6 +459,8 @@ export interface BuildingMeta {
     scaffoldingColumns?: number[][]; // 코어별 3단 가시설 적용 컬럼 (세대 인덱스 0~N, 코어=-1)
   };
   heights: {
+    basement4?: number; // 지하4층 층고
+    basement3?: number; // 지하3층 층고
     basement2: number; // 지하2층 층고
     basement1: number; // 지하1층 층고
     standard: number; // 기준층 층고

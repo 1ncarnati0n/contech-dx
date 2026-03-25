@@ -212,6 +212,7 @@ export function BuildingBasicInfo({
           <FloorHeightSection
             heights={formData.heights}
             phCount={formData.phCount}
+            basementCount={formData.basementCount}
             onHeightsChange={updateHeights}
           />
         </div>

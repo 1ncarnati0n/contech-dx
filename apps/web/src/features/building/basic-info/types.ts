@@ -1,6 +1,8 @@
 import type { CoreType, SlabType, UnitTypePattern } from '@/shared/types';
 
 export interface Heights {
+  basement4?: number;
+  basement3?: number;
   basement2: number;
   basement1: number;
   standard: number;

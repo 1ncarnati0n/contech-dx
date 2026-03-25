@@ -55,10 +55,10 @@ function applyFloorHeight(floor: Floor, heights: BuildingMeta['heights']): void 
     const basementMatch = floor.floorLabel.match(/B(\d+)/);
     if (basementMatch) {
       const basementNum = parseInt(basementMatch[1], 10);
-      if (basementNum === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
-        floor.height = heights.basement2;
-      } else if (basementNum === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
-        floor.height = heights.basement1;
+      const basementKey = `basement${basementNum}` as keyof typeof heights;
+      const basementHeight = heights[basementKey];
+      if (basementHeight !== undefined && basementHeight !== null && typeof basementHeight === 'number') {
+        floor.height = basementHeight;
       }
     }
     return;
@@ -299,10 +299,10 @@ function generateFloors(
       for (let i = coreBasementCount; i >= 1; i--) {
         let basementHeight: number | null = null;
         if (heights) {
-          if (i === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
-            basementHeight = heights.basement2;
-          } else if (i === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
-            basementHeight = heights.basement1;
+          const bKey = `basement${i}` as keyof typeof heights;
+          const bVal = heights[bKey];
+          if (bVal !== undefined && bVal !== null && typeof bVal === 'number') {
+            basementHeight = bVal;
           }
         }
 
@@ -323,10 +323,10 @@ function generateFloors(
     for (let i = floorCount.basement; i >= 1; i--) {
       let basementHeight: number | null = null;
       if (heights) {
-        if (i === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
-          basementHeight = heights.basement2;
-        } else if (i === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
-          basementHeight = heights.basement1;
+        const bKey = `basement${i}` as keyof typeof heights;
+        const bVal = heights[bKey];
+        if (bVal !== undefined && bVal !== null && typeof bVal === 'number') {
+          basementHeight = bVal;
         }
       }
 

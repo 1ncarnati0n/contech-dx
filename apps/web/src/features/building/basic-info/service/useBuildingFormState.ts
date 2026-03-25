@@ -31,6 +31,8 @@ function extractFormData(building: Building): BuildingFormData {
     scaffoldingColumns: meta?.floorCount?.scaffoldingColumns || [],
     unitTypePattern: meta?.unitTypePattern || [],
     heights: {
+      basement4: meta?.heights?.basement4 || 3500,
+      basement3: meta?.heights?.basement3 || 3500,
       basement2: meta?.heights?.basement2 || 3500,
       basement1: meta?.heights?.basement1 || 5400,
       standard: meta?.heights?.standard || 2850,
