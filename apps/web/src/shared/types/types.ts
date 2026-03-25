@@ -449,7 +449,8 @@ export interface BuildingMeta {
     basement: number;
     ground: number; // 전체 지상층 수 (코어별 입력이 없을 때 사용)
     ph: number;
-    coreGroundFloors?: number[]; // 코어별 지상층 수 (코어1, 코어2, ... 순서, 높은층 순서)
+    coreGroundFloors?: number[]; // 코어별 지상층 수 (코어1, 코어2, ... 순서, 최대값)
+    coreUnitGroundFloors?: number[][]; // 코어별 세대별 지상층 수 (코어 > 세대 순서)
     coreBasementFloors?: number[]; // 코어별 지하층 수 (코어1, 코어2, ... 순서)
     corePhFloors?: number[]; // 코어별 옥탑층 수 (코어1, 코어2, ... 순서)
     pilotisCount?: number; // 필로티 수량 (기존 호환성 유지)
@@ -459,6 +460,8 @@ export interface BuildingMeta {
     scaffoldingColumns?: number[][]; // 코어별 3단 가시설 적용 컬럼 (세대 인덱스 0~N, 코어=-1)
   };
   heights: {
+    basement4?: number; // 지하4층 층고
+    basement3?: number; // 지하3층 층고
     basement2: number; // 지하2층 층고
     basement1: number; // 지하1층 층고
     standard: number; // 기준층 층고

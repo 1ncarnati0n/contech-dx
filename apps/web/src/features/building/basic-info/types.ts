@@ -1,6 +1,8 @@
 import type { CoreType, SlabType, UnitTypePattern } from '@/shared/types';
 
 export interface Heights {
+  basement4?: number;
+  basement3?: number;
   basement2: number;
   basement1: number;
   standard: number;
@@ -22,6 +24,7 @@ export interface BuildingFormData {
   groundCount: number;
   phCount: number;
   coreGroundFloors: number[];
+  coreUnitGroundFloors: number[][];
   coreBasementFloors: number[];
   corePhFloors: number[];
   pilotisCount: number;

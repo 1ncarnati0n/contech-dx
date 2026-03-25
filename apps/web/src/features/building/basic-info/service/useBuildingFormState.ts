@@ -22,6 +22,7 @@ function extractFormData(building: Building): BuildingFormData {
     groundCount: meta?.floorCount?.ground || 0,
     phCount: meta?.floorCount?.ph || 0,
     coreGroundFloors: meta?.floorCount?.coreGroundFloors || [],
+    coreUnitGroundFloors: meta?.floorCount?.coreUnitGroundFloors || [],
     coreBasementFloors: meta?.floorCount?.coreBasementFloors || [],
     corePhFloors: meta?.floorCount?.corePhFloors || [],
     pilotisCount: meta?.floorCount?.pilotisCount || 0,
@@ -31,6 +32,8 @@ function extractFormData(building: Building): BuildingFormData {
     scaffoldingColumns: meta?.floorCount?.scaffoldingColumns || [],
     unitTypePattern: meta?.unitTypePattern || [],
     heights: {
+      basement4: meta?.heights?.basement4 || 3500,
+      basement3: meta?.heights?.basement3 || 3500,
       basement2: meta?.heights?.basement2 || 3500,
       basement1: meta?.heights?.basement1 || 5400,
       standard: meta?.heights?.standard || 2850,
@@ -50,6 +53,7 @@ interface UseBuildingFormStateResult {
   formData: BuildingFormData;
   updateField: <K extends keyof BuildingFormData>(field: K, value: BuildingFormData[K]) => void;
   updateHeights: (heights: Heights) => void;
+  requestServerSync: () => void;
 }
 
 /**
@@ -66,17 +70,24 @@ export function useBuildingFormState(
   const [formData, setFormData] = useState<BuildingFormData>(() => extractFormData(building));
   const buildingIdRef = useRef(building?.id);
 
-  // building prop 변경 시 상태 동기화
+  // building 전환 시에만 formData 전체 동기화
+  // 같은 빌딩 내에서는 formData가 source of truth (사용자 수정 보존)
+  // 수동 저장 후에는 syncFromServerRef를 통해 명시적으로 동기화
+  const syncFromServerRef = useRef(false);
+
   useEffect(() => {
     if (!building || !building.meta) return;
 
     const isBuildingSwitch = buildingIdRef.current !== building.id;
     buildingIdRef.current = building.id;
 
-    try {
-      setFormData(extractFormData(building));
-    } catch (error) {
-      logger.error('Error syncing building data:', error);
+    if (isBuildingSwitch || syncFromServerRef.current) {
+      syncFromServerRef.current = false;
+      try {
+        setFormData(extractFormData(building));
+      } catch (error) {
+        logger.error('Error syncing building data:', error);
+      }
     }
   }, [building]);
 
@@ -131,5 +142,10 @@ export function useBuildingFormState(
     setFormData(prev => ({ ...prev, heights }));
   }, []);
 
-  return { formData, updateField, updateHeights };
+  /** 다음 building prop 변경 시 서버 데이터로 동기화하도록 예약 */
+  const requestServerSync = useCallback(() => {
+    syncFromServerRef.current = true;
+  }, []);
+
+  return { formData, updateField, updateHeights, requestServerSync };
 }

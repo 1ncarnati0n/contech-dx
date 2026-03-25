@@ -251,35 +251,41 @@ function preserveFloorTrades(
  * 층 자동 생성
  */
 function generateFloors(
-  floorCount: {
-    basement: number;
-    ground: number;
-    ph: number;
-    coreGroundFloors?: number[];
-    coreBasementFloors?: number[];
-  },
+  floorCount: BuildingMeta['floorCount'],
   coreCount?: number,
   heights?: BuildingMeta['heights']
 ): Floor[] {
   const floors: Floor[] = [];
 
-  // 지하층 생성 (B2, B1, ...)
+  // 셋팅층 결정: 전체 코어 중 최대 필로티 층 + 2 (필로티 없으면 2층)
+  const SETTING_FLOOR_OFFSET = 1;
+  let maxPilotiFloor = 0;
+  if (floorCount.corePilotisHeights && floorCount.corePilotisHeights.length > 0) {
+    maxPilotiFloor = Math.max(...floorCount.corePilotisHeights, 0);
+  }
+  if (maxPilotiFloor === 0) {
+    if (floorCount.corePilotisCounts && floorCount.corePilotisCounts.some(c => c > 0)) {
+      maxPilotiFloor = 1;
+    } else if (floorCount.pilotisCount && floorCount.pilotisCount > 0) {
+      maxPilotiFloor = 1;
+    }
+  }
+  const settingFloorNum = maxPilotiFloor + SETTING_FLOOR_OFFSET;
+
+  // 지하층 생성
   if (coreCount && coreCount > 1 && floorCount.coreBasementFloors && floorCount.coreBasementFloors.length > 0) {
-    // 코어별 지하층 생성
     for (let coreIndex = 0; coreIndex < coreCount; coreIndex++) {
       const coreNumber = coreIndex + 1;
       const coreBasementCount = floorCount.coreBasementFloors[coreIndex] || 0;
-
       for (let i = coreBasementCount; i >= 1; i--) {
         let basementHeight: number | null = null;
         if (heights) {
-          if (i === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
-            basementHeight = heights.basement2;
-          } else if (i === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
-            basementHeight = heights.basement1;
+          const bKey = `basement${i}` as keyof typeof heights;
+          const bVal = heights[bKey];
+          if (bVal !== undefined && bVal !== null && typeof bVal === 'number') {
+            basementHeight = bVal;
           }
         }
-
         floors.push({
           id: `floor-core${coreNumber}-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
@@ -293,17 +299,15 @@ function generateFloors(
       }
     }
   } else {
-    // 전체 지하층 수로 생성 (기존 방식)
     for (let i = floorCount.basement; i >= 1; i--) {
       let basementHeight: number | null = null;
       if (heights) {
-        if (i === 2 && heights.basement2 !== undefined && heights.basement2 !== null) {
-          basementHeight = heights.basement2;
-        } else if (i === 1 && heights.basement1 !== undefined && heights.basement1 !== null) {
-          basementHeight = heights.basement1;
+        const bKey = `basement${i}` as keyof typeof heights;
+        const bVal = heights[bKey];
+        if (bVal !== undefined && bVal !== null && typeof bVal === 'number') {
+          basementHeight = bVal;
         }
       }
-
       floors.push({
         id: `floor-b${i}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         buildingId: '',
@@ -317,37 +321,33 @@ function generateFloors(
     }
   }
 
-  // 지상층 생성
+  // 지상층 생성 (세대별 층수 기반)
   if (coreCount && coreCount > 1 && floorCount.coreGroundFloors && floorCount.coreGroundFloors.length > 0) {
-    // 코어별 지상층 생성
     for (let coreIndex = 0; coreIndex < coreCount; coreIndex++) {
       const coreNumber = coreIndex + 1;
-      const coreFloorCount = floorCount.coreGroundFloors[coreIndex] || 0;
+      const coreMaxFloor = floorCount.coreGroundFloors[coreIndex] || 0;
+      if (coreMaxFloor === 0) continue;
 
-      if (coreFloorCount === 0) continue;
+      // 세대별 층수 (없으면 코어 최대값으로 fallback)
+      const unitFloors = floorCount.coreUnitGroundFloors?.[coreIndex];
+      const hasUnitFloors = unitFloors && unitFloors.length > 0;
 
-      const settingFloors = determineSettingFloors(coreFloorCount, heights);
-      const highestSettingFloor = settingFloors.length > 0 ? Math.max(...settingFloors) : null;
+      // 세대별 최대층이 다른 경우, 각 세대의 최상층 번호를 기록
+      const unitMaxFloors = hasUnitFloors ? unitFloors : [coreMaxFloor];
+      const minUnitFloor = Math.min(...unitMaxFloors);
 
-      // 기준층 시작점을 먼저 계산 (중복 방지)
-      let actualStandardStart = highestSettingFloor ? highestSettingFloor + 1 : (coreFloorCount >= 2 ? 2 : 1);
-
-      // 5층이 셋팅층이고 6층 이상이면, 6층은 개별 생성하고 기준층은 7층부터
-      if (settingFloors.includes(5) && coreFloorCount >= 6) {
-        actualStandardStart = 7;
-      }
-
-      // 1~5층 개별 처리 (기준층 범위에 포함되는 층은 제외)
-      for (let floorNum = 5; floorNum >= 1; floorNum--) {
-        if (coreFloorCount < floorNum) continue;
-
-        // 기준층 범위에 포함되는 층은 개별 생성하지 않음
-        if (floorNum >= actualStandardStart && floorNum <= coreFloorCount - 1) {
-          continue;
+      const effectiveSetting = Math.min(settingFloorNum, coreMaxFloor - 1);
+      for (let floorNum = 1; floorNum <= coreMaxFloor; floorNum++) {
+        let floorClass: Floor['floorClass'];
+        if (coreMaxFloor > 1 && floorNum === coreMaxFloor) {
+          floorClass = '최상층';
+        } else if (effectiveSetting > 0 && floorNum === effectiveSetting) {
+          floorClass = '셋팅층';
+        } else if (floorNum < effectiveSetting + 1) {
+          floorClass = '일반층';
+        } else {
+          floorClass = '기준층';
         }
-
-        const isSettingFloor = settingFloors.includes(floorNum);
-
         floors.push({
           id: `floor-core${coreNumber}-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
@@ -355,51 +355,7 @@ function generateFloors(
           floorLabel: `${floorNum}F`,
           floorNumber: coreNumber * 1000 + floorNum,
           levelType: '지상',
-          floorClass: isSettingFloor ? '셋팅층' : '일반층',
-          height: null,
-        });
-      }
-
-      // 5층이 셋팅층이고 6층이 있는 경우, 6층 개별 생성
-      if (settingFloors.includes(5) && coreFloorCount >= 6) {
-        floors.push({
-          id: `floor-core${coreNumber}-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          buildingId: '',
-          coreLabel: coreNumber,
-          floorLabel: '6F',
-          floorNumber: coreNumber * 1000 + 6,
-          levelType: '지상',
-          floorClass: '기준층',
-          height: null,
-        });
-      }
-
-      if (actualStandardStart <= coreFloorCount - 1) {
-        const standardEnd = coreFloorCount - 1;
-        for (let i = actualStandardStart; i <= standardEnd; i++) {
-          floors.push({
-            id: `floor-core${coreNumber}-${i}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            coreLabel: coreNumber,
-            floorLabel: `${i}F`,
-            floorNumber: coreNumber * 1000 + i,
-            levelType: '지상',
-            floorClass: '기준층',
-            height: null,
-          });
-        }
-      }
-
-      // 최상층
-      if (coreFloorCount > 1) {
-        floors.push({
-          id: `floor-core${coreNumber}-${coreFloorCount}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          buildingId: '',
-          coreLabel: coreNumber,
-          floorLabel: `${coreFloorCount}F`,
-          floorNumber: coreNumber * 1000 + coreFloorCount,
-          levelType: '지상',
-          floorClass: '최상층',
+          floorClass,
           height: null,
         });
       }
@@ -407,41 +363,19 @@ function generateFloors(
   } else {
     // 단일 코어 지상층 생성
     const groundFloorCount = floorCount.ground || 0;
-
-    if (groundFloorCount === 1) {
-      floors.push({
-        id: `floor-1f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        buildingId: '',
-        coreLabel: 1,
-        floorLabel: '1F',
-        floorNumber: 1,
-        levelType: '지상',
-        floorClass: '셋팅층',
-        height: null,
-      });
-    } else if (groundFloorCount > 1) {
-      const settingFloors = determineSettingFloors(groundFloorCount, heights);
-      const highestSettingFloor = settingFloors.length > 0 ? Math.max(...settingFloors) : null;
-
-      // 기준층 시작점을 먼저 계산 (중복 방지)
-      let actualStandardStart = highestSettingFloor ? highestSettingFloor + 1 : (groundFloorCount >= 2 ? 2 : 1);
-
-      // 5층이 셋팅층이고 6층 이상이면, 6층은 개별 생성하고 기준층은 7층부터
-      if (settingFloors.includes(5) && groundFloorCount >= 6) {
-        actualStandardStart = 7;
-      }
-
-      // 1~5층 개별 처리 (기준층 범위에 포함되는 층은 제외)
-      for (let floorNum = 5; floorNum >= 1; floorNum--) {
-        if (groundFloorCount < floorNum) continue;
-
-        // 기준층 범위에 포함되는 층은 개별 생성하지 않음
-        if (floorNum >= actualStandardStart && floorNum <= groundFloorCount - 1) {
-          continue;
+    if (groundFloorCount > 0) {
+      const effectiveSetting = Math.min(settingFloorNum, groundFloorCount > 1 ? groundFloorCount - 1 : groundFloorCount);
+      for (let floorNum = 1; floorNum <= groundFloorCount; floorNum++) {
+        let floorClass: Floor['floorClass'];
+        if (groundFloorCount > 1 && floorNum === groundFloorCount) {
+          floorClass = '최상층';
+        } else if (effectiveSetting > 0 && floorNum === effectiveSetting) {
+          floorClass = '셋팅층';
+        } else if (floorNum < effectiveSetting + 1) {
+          floorClass = '일반층';
+        } else {
+          floorClass = '기준층';
         }
-
-        const isSettingFloor = settingFloors.includes(floorNum);
-
         floors.push({
           id: `floor-${floorNum}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           buildingId: '',
@@ -449,54 +383,10 @@ function generateFloors(
           floorLabel: `${floorNum}F`,
           floorNumber: floorNum,
           levelType: '지상',
-          floorClass: isSettingFloor ? '셋팅층' : '일반층',
+          floorClass,
           height: null,
         });
       }
-
-      // 기준층 범위 (actualStandardStart는 이미 계산됨)
-
-      // 5층이 셋팅층이고 6층이 있는 경우, 6층 개별 생성
-      if (settingFloors.includes(5) && groundFloorCount >= 6) {
-        floors.push({
-          id: `floor-6f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          buildingId: '',
-          coreLabel: 1,
-          floorLabel: '6F',
-          floorNumber: 6,
-          levelType: '지상',
-          floorClass: '기준층',
-          height: null,
-        });
-      }
-
-      if (actualStandardStart <= groundFloorCount - 1) {
-        const standardEnd = groundFloorCount - 1;
-        for (let i = actualStandardStart; i <= standardEnd; i++) {
-          floors.push({
-            id: `floor-${i}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            buildingId: '',
-            coreLabel: 1,
-            floorLabel: `${i}F`,
-            floorNumber: i,
-            levelType: '지상',
-            floorClass: '기준층',
-            height: null,
-          });
-        }
-      }
-
-      // 최상층
-      floors.push({
-        id: `floor-${groundFloorCount}f-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        buildingId: '',
-        coreLabel: 1,
-        floorLabel: `${groundFloorCount}F`,
-        floorNumber: groundFloorCount,
-        levelType: '지상',
-        floorClass: '최상층',
-        height: null,
-      });
     }
   }
 
