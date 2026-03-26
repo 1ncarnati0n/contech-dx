@@ -32,6 +32,7 @@ export function buildBuildingMeta(
     pilotisCount,
     corePilotisCounts,
     corePilotisHeights,
+    corePilotisExcludeUnits,
     hasHighCeilingEquipmentRoom,
     scaffoldingColumns,
     heights,
@@ -55,6 +56,7 @@ export function buildBuildingMeta(
     pilotisCount: pilotisCount > 0 ? pilotisCount : undefined,
     corePilotisCounts: corePilotisCounts.length > 0 ? corePilotisCounts : undefined,
     corePilotisHeights: corePilotisHeights.length > 0 ? corePilotisHeights : undefined,
+    corePilotisExcludeUnits: corePilotisExcludeUnits.some(u => u.length > 0) ? corePilotisExcludeUnits : undefined,
     hasHighCeilingEquipmentRoom,
     scaffoldingColumns: scaffoldingColumns.some(cols => cols.length > 0) ? scaffoldingColumns : undefined,
   };

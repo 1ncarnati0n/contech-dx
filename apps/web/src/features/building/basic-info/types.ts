@@ -30,6 +30,7 @@ export interface BuildingFormData {
   pilotisCount: number;
   corePilotisCounts: number[];
   corePilotisHeights: number[];
+  corePilotisExcludeUnits: number[][];
   hasHighCeilingEquipmentRoom: boolean;
   scaffoldingColumns: number[][];
   unitTypePattern: UnitTypePattern[];

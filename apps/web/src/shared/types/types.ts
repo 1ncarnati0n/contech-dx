@@ -456,6 +456,7 @@ export interface BuildingMeta {
     pilotisCount?: number; // 필로티 수량 (기존 호환성 유지)
     corePilotisCounts?: number[]; // 코어별 필로티+ 부대시설 제외 세대수 (코어1, 코어2, ... 순서)
     corePilotisHeights?: number[]; // 코어별 필로티 높이 (개층) (코어1, 코어2, ... 순서)
+    corePilotisExcludeUnits?: number[][]; // 코어별 필로티 제외 세대 인덱스 배열 (코어1, 코어2, ... 순서)
     hasHighCeilingEquipmentRoom?: boolean; // 고천장 장비실 여부
     scaffoldingColumns?: number[][]; // 코어별 3단 가시설 적용 컬럼 (세대 인덱스 0~N, 코어=-1)
   };
