@@ -187,8 +187,11 @@ export function calculateItemDirectWorkDays({
     return item.directWorkDays;
   }
 
+  // 물량 기반 항목: 물량이 없으면 최소 1일 (공정이 생성되도록)
+  const isQuantityBased = item.quantityReference || item.quantityRef || item.equipmentCalculationBase !== undefined;
+
   if (quantity <= 0 || item.dailyProductivity <= 0) {
-    return 0;
+    return isQuantityBased ? 1 : 0;
   }
 
   if (useEquipmentFormula && item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined) {
