@@ -138,42 +138,5 @@ export function useBuildingSave({
     }
   }, [building, formData, totalUnitCount, onUpdate, onStartGeneration, onGenerationProgress, onGenerationComplete, onBeforeRegenerate, onBeforeFetch]);
 
-  const handleSaveUnitType = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      if (!building?.id || !building?.projectId) {
-        toast.error('동 정보를 찾을 수 없습니다.');
-        return;
-      }
-
-      const latestBuilding = await findLatestBuilding(building, onUpdate);
-      if (!latestBuilding) {
-        toast.error('동 정보를 찾을 수 없어 저장하지 못했습니다.');
-        return;
-      }
-
-      const meta = {
-        ...latestBuilding.meta,
-        ...buildBuildingMeta(formData, totalUnitCount),
-      };
-
-      await updateBuilding(latestBuilding.id, latestBuilding.projectId, {
-        buildingName: formData.buildingName,
-        meta,
-      });
-
-      onBeforeFetch?.();
-      await onUpdate();
-      toast.success('단위세대 구성이 저장되었습니다.');
-    } catch (error) {
-      logger.error('단위세대 구성 저장 오류:', error);
-      toast.error('저장에 실패했습니다.', {
-        description: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [building, formData, totalUnitCount, onUpdate]);
-
-  return { handleSave, handleSaveUnitType, isSaving };
+  return { handleSave, isSaving };
 }

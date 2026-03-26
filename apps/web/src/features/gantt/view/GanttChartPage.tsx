@@ -66,6 +66,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
     setImportStartDate,
     handleOpenFullscreen,
     handleImportFromProcessPlan,
+    handleAutoGenerateAndImport,
     handleConfirmImport,
     loadImportPreview,
     toggleBuildingExpanded,
@@ -153,6 +154,14 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
           </div>
 
           <div className="flex flex-row items-center gap-3">
+            <button
+              onClick={handleAutoGenerateAndImport}
+              disabled={isImporting || isRefreshingPreview}
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Workflow className="w-5 h-5" />
+              {isImporting ? '생성 중...' : '공정계획 자동 생성'}
+            </button>
             <button
               onClick={handleImportFromProcessPlan}
               disabled={isImporting || isRefreshingPreview}

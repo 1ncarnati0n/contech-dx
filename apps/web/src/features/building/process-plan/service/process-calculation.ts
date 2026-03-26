@@ -3,6 +3,7 @@
  * 엑셀의 "골조표준공정 일수고정 산식표" 수식을 JavaScript로 구현
  */
 
+import type { ProcessItem } from '@/features/building/data/process-modules';
 import { logger } from '@/shared/utils/logger';
 
 /**
@@ -162,4 +163,49 @@ export function calculateIndirectEquipment(
   return Math.ceil(directEquipment * ratio);
 }
 
+interface CalculateItemDirectWorkDaysParams {
+  item: ProcessItem;
+  quantity: number;
+  maxPumpCarCount?: number;
+  useEquipmentFormula?: boolean;
+}
+
+/**
+ * 세부공종 항목의 순작업일 계산
+ *
+ * 1. directWorkDays 고정값이 있으면 그대로 반환
+ * 2. 장비 기반 공식: 장비대수 → 일투입인원 → 순작업일
+ * 3. 물량 참조 기반: 총인원 → 일투입인원 → 순작업일
+ */
+export function calculateItemDirectWorkDays({
+  item,
+  quantity,
+  maxPumpCarCount = 2,
+  useEquipmentFormula = true,
+}: CalculateItemDirectWorkDaysParams): number {
+  if (item.directWorkDays !== undefined) {
+    return item.directWorkDays;
+  }
+
+  if (quantity <= 0 || item.dailyProductivity <= 0) {
+    return 0;
+  }
+
+  if (useEquipmentFormula && item.equipmentCalculationBase !== undefined && item.equipmentWorkersPerUnit !== undefined) {
+    const equipmentCount = calculateEquipmentCount(quantity, item.equipmentCalculationBase, maxPumpCarCount);
+    const dailyInputWorkers = calculateDailyInputWorkersByEquipment(equipmentCount, item.equipmentWorkersPerUnit);
+    if (dailyInputWorkers <= 0) {
+      return 0;
+    }
+    return calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+  }
+
+  if (item.quantityReference) {
+    const totalWorkers = calculateTotalWorkers(quantity, item.dailyProductivity);
+    const dailyInputWorkers = calculateDailyInputWorkers(totalWorkers, item.equipmentCount);
+    return calculateWorkDaysWithRounding(quantity, item.dailyProductivity, dailyInputWorkers);
+  }
+
+  return 0;
+}
 
