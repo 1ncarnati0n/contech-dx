@@ -140,6 +140,9 @@ export function BuildingBasicInfo({
     updateField('corePilotisHeights', cores.map(c =>
       c.piloti ? c.piloti.floor : 0
     ));
+    updateField('corePilotisExcludeUnits', cores.map(c =>
+      c.piloti ? [...c.piloti.excludeUnits] : []
+    ));
 
     // 3단 가시설
     updateField('scaffoldingColumns', cores.map(c =>
