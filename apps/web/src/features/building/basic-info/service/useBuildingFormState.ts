@@ -28,6 +28,7 @@ function extractFormData(building: Building): BuildingFormData {
     pilotisCount: meta?.floorCount?.pilotisCount || 0,
     corePilotisCounts: meta?.floorCount?.corePilotisCounts || [],
     corePilotisHeights: meta?.floorCount?.corePilotisHeights || [],
+    corePilotisExcludeUnits: meta?.floorCount?.corePilotisExcludeUnits || [],
     hasHighCeilingEquipmentRoom: meta?.floorCount?.hasHighCeilingEquipmentRoom || false,
     scaffoldingColumns: meta?.floorCount?.scaffoldingColumns || [],
     unitTypePattern: meta?.unitTypePattern || [],
