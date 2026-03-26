@@ -11,7 +11,7 @@ interface UseBuildingOperationsOptions {
   setProcessPlans: React.Dispatch<React.SetStateAction<Map<string, BuildingProcessPlan>>>;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setActiveBuildingIndex: React.Dispatch<React.SetStateAction<number>>;
-  initializePlans: (data: Building[], prevPlans: Map<string, BuildingProcessPlan>) => Map<string, BuildingProcessPlan>;
+  initializePlans: (data: Building[], prevPlans: Map<string, BuildingProcessPlan>) => Promise<Map<string, BuildingProcessPlan>>;
 }
 
 /**
@@ -42,7 +42,8 @@ export function useBuildingOperations({
         return prev;
       });
 
-      setProcessPlans(prevPlans => initializePlans(data, prevPlans));
+      const plans = await initializePlans(data, new Map());
+      setProcessPlans(plans);
     } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     } finally {

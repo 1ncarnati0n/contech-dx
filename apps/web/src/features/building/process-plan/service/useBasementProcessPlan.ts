@@ -10,7 +10,7 @@ import { resolveProcessQuantity, getSpecialRowDeductions, resolveWithDeduction, 
 import { parseLegacyReference } from '@/features/building/process-plan/service/quantity-reference-migration';
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor } from '@/features/building/process-plan/service/process-days-calculator';
 import { useProcessPlanState } from './useProcessPlanState';
-import { calculateItemDirectWorkDays } from './calculateItemDirectWorkDays';
+import { calculateItemDirectWorkDays } from './process-calculation';
 import { createBasementProcessRows } from './createBasementProcessRows';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -278,11 +278,12 @@ export function useBasementProcessPlan(projectId: string) {
         return prev;
       });
 
-      setProcessPlans(prevPlans => initializePlans(data, prevPlans));
+      const plans = await initializePlans(data, processPlans);
+      setProcessPlans(plans);
     } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     }
-  }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans]);
+  }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans, processPlans]);
 
   // ─── Initial load ────────────────────────────────────────────────────────
 

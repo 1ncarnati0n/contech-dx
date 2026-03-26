@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Building, BuildingProcessPlan, ProcessCategory } from '@/shared/types';
 import { logger } from '@/shared/utils/logger';
+import { getProcessPlan } from '@/features/building/shared/repository/SupabaseBuildingDataService';
 
 const DEFAULT_PROCESS_TYPES = {
   '버림': '표준공정' as const,
@@ -14,53 +15,35 @@ const DEFAULT_PROCESS_TYPES = {
 /**
  * 공정계획 상태 관리 커스텀 훅
  *
- * 🎯 Purpose: Manages process plans state with localStorage persistence
- * Replaces ~150 lines of state management logic in BuildingProcessPlanPage
- *
- * 📦 Features:
- * - Automatic localStorage load/save with debouncing (500ms)
- * - Default plan generation for new buildings
- * - Type-safe Map-based state management
- * - Optimized update pattern (no full Map copy)
- *
- * 💾 Storage Key Pattern: `contech_process_plan_{buildingId}`
+ * DB(building_process_plans)에서 공정계획을 로드하고 상태를 관리합니다.
  *
  * @param projectId - Project ID for plan association
  * @param buildings - Array of buildings to manage plans for
  * @returns Object with processPlans Map and updatePlan function
- *
- * @example
- * const { processPlans, updatePlan } = useProcessPlans(projectId, buildings);
- *
- * // Get plan for a building
- * const plan = processPlans.get(building.id);
- *
- * // Update a plan
- * updatePlan(building.id, { ...plan, totalDays: 100 });
  */
 export function useProcessPlans(projectId: string, buildings: Building[]) {
   const [processPlans, setProcessPlans] = useState<Map<string, BuildingProcessPlan>>(new Map());
 
-  // 🔄 Load plans from localStorage on mount or when buildings change
+  // Load plans from DB on mount or when buildings change
   useEffect(() => {
-    const plans = new Map<string, BuildingProcessPlan>();
+    let cancelled = false;
 
-    buildings.forEach(building => {
-      const storageKey = `contech_process_plan_${building.id}`;
-      const storedPlanJson = localStorage.getItem(storageKey);
+    async function loadPlans() {
+      const plans = new Map<string, BuildingProcessPlan>();
 
-      if (storedPlanJson) {
+      await Promise.all(buildings.map(async (building) => {
         try {
-          const storedPlan = JSON.parse(storedPlanJson);
-          plans.set(building.id, storedPlan);
+          const plan = await getProcessPlan(building.id);
+          if (plan) {
+            plans.set(building.id, plan);
+            return;
+          }
         } catch (error) {
           logger.error(`Failed to load process plan for building ${building.id}:`, error);
         }
-      } else {
-        // 🏗️ Generate default plan for new building
-        const defaultProcesses: BuildingProcessPlan['processes'] = {};
 
-        // Initialize all process categories with default types
+        // Generate default plan for buildings without a saved plan
+        const defaultProcesses: BuildingProcessPlan['processes'] = {};
         Object.entries(DEFAULT_PROCESS_TYPES).forEach(([category, processType]) => {
           defaultProcesses[category as ProcessCategory] = {
             processType,
@@ -75,36 +58,20 @@ export function useProcessPlans(projectId: string, buildings: Building[]) {
           processes: defaultProcesses,
           totalDays: 0,
         });
-      }
-    });
+      }));
 
-    queueMicrotask(() => {
-      setProcessPlans(plans);
-    });
+      if (!cancelled) {
+        setProcessPlans(plans);
+      }
+    }
+
+    if (buildings.length > 0) {
+      loadPlans();
+    }
+
+    return () => { cancelled = true; };
   }, [projectId, buildings]);
 
-  // 💾 Auto-save to localStorage with debouncing
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      processPlans.forEach((plan, buildingId) => {
-        const storageKey = `contech_process_plan_${buildingId}`;
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(plan));
-        } catch (error) {
-          logger.error(`Failed to save process plan for building ${buildingId}:`, error);
-        }
-      });
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [processPlans]);
-
-  /**
-   * Update a specific building's process plan
-   *
-   * Uses efficient Map update pattern: create new Map, update entry, return
-   * Avoids full Map copy for better performance
-   */
   const updatePlan = useCallback((buildingId: string, updatedPlan: BuildingProcessPlan) => {
     setProcessPlans(prev => {
       const newPlans = new Map(prev);
