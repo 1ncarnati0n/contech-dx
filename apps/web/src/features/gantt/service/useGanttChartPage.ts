@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { addDays } from 'date-fns';
 import { createSupabaseGanttDataService, SupabaseGanttDataService } from '@/features/gantt/service/gantt-data.service';
 import { getBuildings } from '@/features/building/shared/repository/buildings';
+import { getProcessPlan } from '@/features/building/shared/repository/SupabaseBuildingDataService';
+import { autoGenerateAllProcessPlans } from '@/features/building/process-plan/service/autoGenerateProcessPlans';
 import { getProject } from '@/features/project/repository/projects';
 import {
   convertProcessPlansToGanttTasks,
@@ -200,14 +202,10 @@ export function useGanttChartPage(projectId: string, projectNumber: number) {
 
       const processPlans = new Map<string, BuildingProcessPlan>();
       for (const building of buildings) {
-        const storageKey = `contech_process_plan_${building.id}`;
-        const storedJson = localStorage.getItem(storageKey);
-        if (storedJson) {
-          try {
-            const plan = JSON.parse(storedJson) as BuildingProcessPlan;
-            if (plan.totalDays > 0) processPlans.set(building.id, plan);
-          } catch { /* skip */ }
-        }
+        try {
+          const plan = await getProcessPlan(building.id);
+          if (plan && plan.totalDays > 0) processPlans.set(building.id, plan);
+        } catch { /* skip */ }
       }
 
       if (processPlans.size === 0) { toast.error('가져올 공정계획이 없습니다. 먼저 공정계획을 작성해주세요.'); return; }
@@ -241,6 +239,35 @@ export function useGanttChartPage(projectId: string, projectNumber: number) {
   const handleImportFromProcessPlan = useCallback(async () => {
     await loadImportPreview({ openModal: true, preserveStartDate: false, notifyOnSuccess: false });
   }, [loadImportPreview]);
+
+  // ── 자동 생성 후 가져오기 (원클릭) ──
+  const handleAutoGenerateAndImport = useCallback(async () => {
+    try {
+      setIsImporting(true);
+      toast.info('공정계획 자동 생성 중...');
+
+      const result = await autoGenerateAllProcessPlans(projectId);
+
+      if (result.generatedCount === 0) {
+        toast.error(`공정계획을 생성할 수 없습니다. 동 기본정보(물량)를 먼저 입력해주세요. (${result.skippedCount}개 동 건너뜀)`);
+        return;
+      }
+
+      if (result.errors.length > 0) {
+        toast.warning(`${result.generatedCount}개 동 생성 완료, ${result.errors.length}개 오류 발생`);
+      } else {
+        toast.success(`${result.generatedCount}개 동의 공정계획이 자동 생성되었습니다.`);
+      }
+
+      // 생성 후 바로 가져오기 모달 열기
+      await loadImportPreview({ openModal: true, preserveStartDate: false });
+    } catch (err) {
+      logger.error('Auto-generate process plans failed:', err);
+      toast.error('공정계획 자동 생성에 실패했습니다.');
+    } finally {
+      setIsImporting(false);
+    }
+  }, [projectId, loadImportPreview]);
 
   const handleConfirmImport = useCallback(async () => {
     if (!importPreview || !importStartDate) return;
@@ -293,6 +320,7 @@ export function useGanttChartPage(projectId: string, projectNumber: number) {
     // handlers
     handleOpenFullscreen,
     handleImportFromProcessPlan,
+    handleAutoGenerateAndImport,
     handleConfirmImport,
     loadImportPreview,
     toggleBuildingExpanded,

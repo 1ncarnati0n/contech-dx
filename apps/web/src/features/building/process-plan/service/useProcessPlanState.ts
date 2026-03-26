@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Building, BuildingProcessPlan, ProcessCategory, ProcessType } from '@/shared/types';
 import { toast } from 'sonner';
 import { logger } from '@/shared/utils/logger';
+import { getProcessPlan, saveProcessPlan } from '@/features/building/shared/repository/SupabaseBuildingDataService';
 
 export interface ProcessPlanConfig {
   processCategories: ProcessCategory[];
@@ -25,9 +26,11 @@ export interface UseProcessPlanStateReturn {
   updateProcessPlan: (buildingId: string, updatedPlan: BuildingProcessPlan) => void;
   updateExpandedModules: (buildingId: string, newExpanded: Set<string>) => void;
   markDirty: (buildingId: string) => void;
+  /** @deprecated Use savePlan instead */
   saveToLocalStorage: (buildingId: string) => void;
+  savePlan: (buildingId: string) => void;
   discardChanges: (buildingId: string) => void;
-  initializePlans: (data: Building[], prevPlans: Map<string, BuildingProcessPlan>) => Map<string, BuildingProcessPlan>;
+  initializePlans: (data: Building[], prevPlans: Map<string, BuildingProcessPlan>) => Promise<Map<string, BuildingProcessPlan>>;
 }
 
 /**
@@ -78,33 +81,34 @@ export function useProcessPlanState(
     });
   }, []);
 
-  const saveToLocalStorage = useCallback((buildingId: string) => {
-    const storageKey = `contech_process_plan_${buildingId}`;
+  const savePlan = useCallback(async (buildingId: string) => {
     const currentPlan = processPlans.get(buildingId);
     if (!currentPlan) return;
 
     setIsSaving(true);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(currentPlan));
+      await saveProcessPlan(currentPlan);
       setDirtyBuildings(prev => {
         const next = new Set(prev);
         next.delete(buildingId);
         return next;
       });
       toast.success('공정계획이 저장되었습니다.');
-    } catch {
+    } catch (error) {
+      logger.error('Failed to save process plan:', error);
       toast.error('저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
   }, [processPlans]);
 
-  const discardChanges = useCallback((buildingId: string) => {
-    const storageKey = `contech_process_plan_${buildingId}`;
+  // saveToLocalStorage는 savePlan의 별칭 (기존 호출부 호환)
+  const saveToLocalStorage = savePlan;
+
+  const discardChanges = useCallback(async (buildingId: string) => {
     try {
-      const storedJson = localStorage.getItem(storageKey);
-      if (storedJson) {
-        const restoredPlan = JSON.parse(storedJson) as BuildingProcessPlan;
+      const restoredPlan = await getProcessPlan(buildingId);
+      if (restoredPlan) {
         updateProcessPlan(buildingId, restoredPlan);
       }
       setDirtyBuildings(prev => {
@@ -131,25 +135,22 @@ export function useProcessPlanState(
 
   /**
    * Initialize process plans for a list of buildings.
-   * Loads from localStorage if available, otherwise creates defaults.
+   * Loads from DB if available, otherwise creates defaults.
    */
-  const initializePlans = useCallback((
+  const initializePlans = useCallback(async (
     data: Building[],
     prevPlans: Map<string, BuildingProcessPlan>,
-  ): Map<string, BuildingProcessPlan> => {
+  ): Promise<Map<string, BuildingProcessPlan>> => {
     const plans = new Map<string, BuildingProcessPlan>();
-    data.forEach(building => {
+
+    await Promise.all(data.map(async (building) => {
       let existingPlan = prevPlans.get(building.id);
 
-      if (!existingPlan && typeof window !== 'undefined') {
+      if (!existingPlan) {
         try {
-          const storageKey = `contech_process_plan_${building.id}`;
-          const storedPlanJson = localStorage.getItem(storageKey);
-          if (storedPlanJson) {
-            existingPlan = JSON.parse(storedPlanJson) as BuildingProcessPlan;
-          }
+          existingPlan = await getProcessPlan(building.id) ?? undefined;
         } catch (error) {
-          logger.error('Failed to load process plan from localStorage:', error);
+          logger.error('Failed to load process plan from DB:', error);
         }
       }
 
@@ -172,7 +173,8 @@ export function useProcessPlanState(
       } else {
         plans.set(building.id, existingPlan);
       }
-    });
+    }));
+
     return plans;
   }, [projectId, processCategories, defaultProcessTypes]);
 
@@ -192,6 +194,7 @@ export function useProcessPlanState(
     updateExpandedModules,
     markDirty,
     saveToLocalStorage,
+    savePlan,
     discardChanges,
     initializePlans,
   };

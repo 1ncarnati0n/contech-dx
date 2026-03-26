@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { addDays } from 'date-fns';
 import { createSupabaseGanttDataService, SupabaseGanttDataService } from '@/features/gantt/services/SupabaseGanttDataService';
 import { getBuildings } from '@/features/building/shared/repository/buildings';
+import { getProcessPlan } from '@/features/building/shared/repository/SupabaseBuildingDataService';
 import { getProject } from '@/features/project/services/projects';
 import {
   convertProcessPlansToGanttTasks,
@@ -437,20 +438,16 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
         return;
       }
 
-      // 2. 각 동의 localStorage에서 공정계획 로드
+      // 2. 각 동의 공정계획 로드 (DB)
       const processPlans = new Map<string, BuildingProcessPlan>();
       for (const building of buildings) {
-        const storageKey = `contech_process_plan_${building.id}`;
-        const storedJson = localStorage.getItem(storageKey);
-        if (storedJson) {
-          try {
-            const plan = JSON.parse(storedJson) as BuildingProcessPlan;
-            if (plan.totalDays > 0) {
-              processPlans.set(building.id, plan);
-            }
-          } catch {
-            // 파싱 실패 항목은 건너뜀
+        try {
+          const plan = await getProcessPlan(building.id);
+          if (plan && plan.totalDays > 0) {
+            processPlans.set(building.id, plan);
           }
+        } catch {
+          // 로드 실패 항목은 건너뜀
         }
       }
 
