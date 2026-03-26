@@ -51,14 +51,13 @@ export function generateProcessPlanForBuilding(
 export interface AutoGenerateResult {
   totalBuildings: number;
   generatedCount: number;
-  skippedCount: number;
   errors: string[];
 }
 
 /**
  * 프로젝트의 모든 동에 대해 공정계획을 자동 생성하고 DB에 저장합니다.
  *
- * 물량 데이터가 없는 동(floorTrades가 비어있는 경우)은 건너뜁니다.
+ * 물량 데이터가 없는 동도 고정일수 항목 기반으로 생성됩니다.
  */
 export async function autoGenerateAllProcessPlans(
   projectId: string,
@@ -68,26 +67,12 @@ export async function autoGenerateAllProcessPlans(
   const result: AutoGenerateResult = {
     totalBuildings: buildings.length,
     generatedCount: 0,
-    skippedCount: 0,
     errors: [],
   };
 
   for (const building of buildings) {
-    // 물량 데이터가 없는 동은 건너뜀
-    if (!building.floorTrades || building.floorTrades.length === 0) {
-      result.skippedCount++;
-      continue;
-    }
-
     try {
       const plan = generateProcessPlanForBuilding(building, projectId);
-
-      // totalDays가 0이면 의미 없으므로 건너뜀
-      if (plan.totalDays === 0) {
-        result.skippedCount++;
-        continue;
-      }
-
       await saveProcessPlan(plan);
       result.generatedCount++;
     } catch (error) {

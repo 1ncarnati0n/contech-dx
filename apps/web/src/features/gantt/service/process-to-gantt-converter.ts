@@ -554,7 +554,10 @@ function computeFloorItems(
       deductionFields
     );
 
-    // 3-way 계산 로직 (process-days-calculator.ts:136-181 동일)
+    // 물량 기반 항목 여부 판별
+    const isQuantityBased = item.quantityReference || item.quantityRef || item.equipmentCalculationBase !== undefined;
+
+    // 3-way 계산 로직 (process-days-calculator.ts 동일)
     if (item.directWorkDays !== undefined) {
       // 1. 고정일수 항목
       directWorkDays = item.directWorkDays;
@@ -583,6 +586,10 @@ function computeFloorItems(
           );
         }
       }
+      if (directWorkDays === 0 && isQuantityBased) {
+        directWorkDays = 1;
+        dailyInputWorkers = 1;
+      }
     } else if (
       (item.quantityRef || item.quantityReference) &&
       item.dailyProductivity > 0
@@ -596,15 +603,18 @@ function computeFloorItems(
           item.dailyProductivity,
           dailyInputWorkers
         );
+      } else {
+        directWorkDays = 1;
+        dailyInputWorkers = 1;
       }
+    } else if (isQuantityBased) {
+      directWorkDays = 1;
+      dailyInputWorkers = 1;
     }
 
     // 오버라이드 적용
     const overrideKey = `${category}-${floorLabel}-${item.id}`;
     directWorkDays = plan.itemDirectWorkDaysOverrides?.[overrideKey] ?? directWorkDays;
-
-    // directWorkDays가 0이면 스킵 (물량 없는 항목)
-    if (directWorkDays <= 0 && quantity <= 0) continue;
 
     results.push({
       itemId: item.id,
