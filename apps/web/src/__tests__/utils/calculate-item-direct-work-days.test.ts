@@ -1,5 +1,5 @@
 import type { ProcessItem } from '@/features/building/data/process-modules';
-import { calculateItemDirectWorkDays } from '@/features/building/process-plan/utils/calculateItemDirectWorkDays';
+import { calculateItemDirectWorkDays } from '@/features/building/process-plan/service/process-calculation';
 
 function createBaseItem(overrides: Partial<ProcessItem> = {}): ProcessItem {
   return {

@@ -10,7 +10,7 @@ import { resolveProcessQuantity } from './process-quantity-resolver';
 import { parseLegacyReference } from './quantity-reference-migration';
 import { calculateModuleWorkDays, calculateModuleWorkDaysForFloor, calculateModuleIndirectDaysForFloor, calculateModuleIndirectDays } from './process-days-calculator';
 import { useSyncTabContext } from '@/shared/hooks/useSyncTabContext';
-import { calculateItemDirectWorkDays } from './calculateItemDirectWorkDays';
+import { calculateItemDirectWorkDays } from './process-calculation';
 import { createBuildingProcessRows } from './createBuildingProcessRows';
 import {
   isProcessItemMatchedToBuildingRow,
@@ -352,11 +352,12 @@ export function useBuildingProcessPlan(projectId: string) {
         return prev;
       });
 
-      setProcessPlans(prevPlans => initializePlans(data, prevPlans));
+      const plans = await initializePlans(data, processPlans);
+      setProcessPlans(plans);
     } catch {
       toast.error('동 목록을 불러오는데 실패했습니다.');
     }
-  }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans]);
+  }, [projectId, setBuildings, setActiveBuildingIndex, setProcessPlans, initializePlans, processPlans]);
 
   // ─── handlePumpCarCountChange ────────────────────────────────────────────
 
