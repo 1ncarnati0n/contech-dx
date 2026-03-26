@@ -204,7 +204,7 @@ export function useGanttChartPage(projectId: string, projectNumber: number) {
       for (const building of buildings) {
         try {
           const plan = await getProcessPlan(building.id);
-          if (plan && plan.totalDays > 0) processPlans.set(building.id, plan);
+          if (plan) processPlans.set(building.id, plan);
         } catch { /* skip */ }
       }
 
@@ -249,7 +249,7 @@ export function useGanttChartPage(projectId: string, projectNumber: number) {
       const result = await autoGenerateAllProcessPlans(projectId);
 
       if (result.generatedCount === 0) {
-        toast.error(`공정계획을 생성할 수 없습니다. 동 기본정보(물량)를 먼저 입력해주세요. (${result.skippedCount}개 동 건너뜀)`);
+        toast.error('공정계획을 생성할 수 없습니다. 먼저 동을 추가해주세요.');
         return;
       }
 

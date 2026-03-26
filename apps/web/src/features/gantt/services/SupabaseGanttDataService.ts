@@ -233,20 +233,36 @@ export class SupabaseGanttDataService implements DataService {
 
   async loadTasks(): Promise<ConstructionTask[]> {
     this.log('loadTasks');
-    const { data, error } = await this.supabase
-      .from('gantt_tasks')
-      .select('*')
-      .eq('project_id', this.projectId)
-      .order('sort_order', { ascending: true });
 
-    if (error) {
-      logger.error('Failed to load tasks:', error);
-      throw error;
+    // Supabase 기본 1000행 제한 대응: 페이지네이션으로 전체 로드
+    const PAGE_SIZE = 1000;
+    const allRows: typeof data = [];
+    let offset = 0;
+    let data: any[] = [];
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data: pageData, error } = await this.supabase
+        .from('gantt_tasks')
+        .select('*')
+        .eq('project_id', this.projectId)
+        .order('sort_order', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        logger.error('Failed to load tasks:', error);
+        throw error;
+      }
+
+      if (!pageData || pageData.length === 0) break;
+      allRows.push(...pageData);
+      if (pageData.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
 
-    this.log('loadTasks raw data count:', data?.length || 0);
+    this.log('loadTasks raw data count:', allRows.length);
 
-    const tasks = (data || []).map((row, index) => {
+    const tasks = allRows.map((row, index) => {
       try {
         return rowToTask(row);
       } catch (e) {
@@ -297,24 +313,35 @@ export class SupabaseGanttDataService implements DataService {
     }
     this.log('saveTasks deleted count:', deletedData?.length ?? 0);
 
-    // 새 태스크 삽입
-    this.log('saveTasks inserting tasks:', rows.length, 'for project:', this.projectId);
-    const { data: insertedData, error: insertError } = await this.supabase
-      .from('gantt_tasks')
-      .insert(rows)
-      .select();
+    // 새 태스크 삽입 (배치 처리: Supabase 기본 제한 대응)
+    const BATCH_SIZE = 500;
+    let totalInserted = 0;
 
-    if (insertError) {
-      logger.error('Failed to insert tasks:', {
-        message: insertError.message,
-        code: insertError.code,
-        details: insertError.details,
-        hint: insertError.hint,
-      });
-      throw insertError;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      this.log(`saveTasks inserting batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(rows.length / BATCH_SIZE)}: ${batch.length} rows`);
+
+      const { data: insertedData, error: insertError } = await this.supabase
+        .from('gantt_tasks')
+        .insert(batch)
+        .select('id');
+
+      if (insertError) {
+        logger.error('Failed to insert tasks batch:', {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint,
+          batchStart: i,
+          batchSize: batch.length,
+        });
+        throw insertError;
+      }
+
+      totalInserted += insertedData?.length || 0;
     }
 
-    this.log('saveTasks inserted count:', insertedData?.length || 0);
+    this.log('saveTasks inserted count:', totalInserted);
     this.log('saveTasks completed successfully');
   }
 
