@@ -53,6 +53,9 @@ export function calculateModuleWorkDays(
     const ref = item.quantityRef ?? parseLegacyReference(item.quantityReference, category);
     const quantity = ref ? resolveProcessQuantity(building, ref) : 0;
 
+    // 물량 기반 항목 여부 판별
+    const isQuantityBased = item.quantityReference || item.quantityRef || item.equipmentCalculationBase !== undefined;
+
     // 1. Fixed work days (highest priority)
     if (item.directWorkDays !== undefined) {
       directWorkDays = item.directWorkDays;
@@ -81,6 +84,8 @@ export function calculateModuleWorkDays(
             dailyInputWorkers
           );
         }
+      } else if (isQuantityBased) {
+        directWorkDays = 1;
       }
     }
     // 3. Quantity-based calculation (standard case)
@@ -93,7 +98,13 @@ export function calculateModuleWorkDays(
           item.dailyProductivity,
           dailyInputWorkers
         );
+      } else {
+        directWorkDays = 1;
       }
+    }
+    // 4. 물량 기반이지만 위 조건에 안 걸린 경우도 최소 1일
+    else if (isQuantityBased) {
+      directWorkDays = 1;
     }
 
     totalDays += directWorkDays + item.indirectDays;
@@ -139,7 +150,10 @@ export function calculateModuleWorkDaysForFloor(
     // 2. 층별 물량 해석
     const quantity = resolveFloorQuantity(building, item, category, floorLabel);
 
-    // 3. 일수 계산 (calculateModuleWorkDays와 동일한 3-way 로직)
+    // 물량 기반 항목 여부 판별
+    const isQuantityBased = item.quantityReference || item.quantityRef || item.equipmentCalculationBase !== undefined;
+
+    // 3. 일수 계산 (calculateModuleWorkDays와 동일한 로직)
     if (item.directWorkDays !== undefined) {
       directWorkDays = item.directWorkDays;
     } else if (
@@ -165,6 +179,8 @@ export function calculateModuleWorkDaysForFloor(
             dailyInputWorkers
           );
         }
+      } else if (isQuantityBased) {
+        directWorkDays = 1;
       }
     } else if (item.quantityReference && item.dailyProductivity > 0) {
       if (quantity > 0) {
@@ -175,7 +191,11 @@ export function calculateModuleWorkDaysForFloor(
           item.dailyProductivity,
           dailyInputWorkers
         );
+      } else {
+        directWorkDays = 1;
       }
+    } else if (isQuantityBased) {
+      directWorkDays = 1;
     }
 
     totalDays += directWorkDays + item.indirectDays;

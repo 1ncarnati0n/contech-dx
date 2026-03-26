@@ -443,7 +443,7 @@ export function GanttChartPage({ projectId, projectNumber }: GanttChartPageProps
       for (const building of buildings) {
         try {
           const plan = await getProcessPlan(building.id);
-          if (plan && plan.totalDays > 0) {
+          if (plan) {
             processPlans.set(building.id, plan);
           }
         } catch {
