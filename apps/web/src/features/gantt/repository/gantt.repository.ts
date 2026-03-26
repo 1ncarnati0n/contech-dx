@@ -82,18 +82,30 @@ export class GanttRepository {
   // ── Tasks ──
 
   async loadTaskRows(): Promise<GanttTaskRow[]> {
-    const { data, error } = await this.supabase
-      .from('gantt_tasks')
-      .select('*')
-      .eq('project_id', this.projectId)
-      .order('sort_order', { ascending: true });
+    const PAGE_SIZE = 1000;
+    const allRows: GanttTaskRow[] = [];
+    let offset = 0;
 
-    if (error) {
-      logger.error('Failed to load tasks:', error);
-      throw error;
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('gantt_tasks')
+        .select('*')
+        .eq('project_id', this.projectId)
+        .order('sort_order', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) {
+        logger.error('Failed to load tasks:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
 
-    return data || [];
+    return allRows;
   }
 
   async deleteAllTaskRows(): Promise<number> {
@@ -117,22 +129,32 @@ export class GanttRepository {
   }
 
   async insertTaskRows(rows: Omit<GanttTaskRow, 'created_at' | 'updated_at'>[]): Promise<number> {
-    const { data, error } = await this.supabase
-      .from('gantt_tasks')
-      .insert(rows)
-      .select();
+    const BATCH_SIZE = 500;
+    let totalInserted = 0;
 
-    if (error) {
-      logger.error('Failed to insert tasks:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      });
-      throw error;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const { data, error } = await this.supabase
+        .from('gantt_tasks')
+        .insert(batch)
+        .select('id');
+
+      if (error) {
+        logger.error('Failed to insert tasks batch:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          batchStart: i,
+          batchSize: batch.length,
+        });
+        throw error;
+      }
+
+      totalInserted += data?.length || 0;
     }
 
-    return data?.length || 0;
+    return totalInserted;
   }
 
   async updateTaskRow(
