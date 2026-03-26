@@ -27,6 +27,10 @@ export function coresToBuildingMeta(
     if (!c.piloti || c.piloti.floor === 0) return 0;
     return c.piloti.floor;
   });
+  const corePilotisExcludeUnits = cores.map(c => {
+    if (!c.piloti || c.piloti.floor === 0) return [];
+    return [...c.piloti.excludeUnits];
+  });
 
   // 세대별 지상층 수 배열 (2차원: 코어별 > 세대별)
   const coreUnitGroundFloors = cores.map(c => {
@@ -74,6 +78,9 @@ export function coresToBuildingMeta(
       corePhFloors,
       corePilotisCounts,
       corePilotisHeights,
+      corePilotisExcludeUnits: corePilotisExcludeUnits.some(u => u.length > 0)
+        ? corePilotisExcludeUnits
+        : undefined,
       scaffoldingColumns: cores.some(c => c.scaffolding)
         ? cores.map(c => c.scaffolding?.columns ?? [])
         : undefined,
@@ -98,22 +105,28 @@ export function buildingMetaToCores(meta: BuildingMeta): CoreStructure[] {
     const unitsLeft = Math.ceil(totalUnitsPerFloor / 2);
     const unitsRight = totalUnitsPerFloor - unitsLeft;
 
-    // 층수
-    const groundFloors = meta.floorCount.coreGroundFloors?.[i] ?? meta.floorCount.ground;
+    // 층수 (세대별 지상층 수가 있으면 그 최대값을 groundFloors로 사용)
+    const unitGroundFloorsArr = meta.floorCount.coreUnitGroundFloors?.[i];
+    const groundFloorsFromUnits = unitGroundFloorsArr && unitGroundFloorsArr.length > 0
+      ? Math.max(...unitGroundFloorsArr)
+      : undefined;
+    const groundFloors = groundFloorsFromUnits
+      ?? meta.floorCount.coreGroundFloors?.[i]
+      ?? meta.floorCount.ground;
     const basementFloors = meta.floorCount.coreBasementFloors?.[i] ?? meta.floorCount.basement;
     const rooftopFloors = meta.floorCount.corePhFloors?.[i] ?? meta.floorCount.ph;
 
     // 필로티
     const pilotisCount = meta.floorCount.corePilotisCounts?.[i] ?? 0;
     const pilotisHeight = meta.floorCount.corePilotisHeights?.[i] ?? 0;
+    const savedExcludeUnits = meta.floorCount.corePilotisExcludeUnits?.[i];
 
     let piloti: CoreStructure['piloti'] = null;
     if (pilotisCount > 0 && pilotisHeight > 0) {
-      // 제외 세대 인덱스 복원 (기존에는 인덱스 정보가 없으므로 뒤에서부터 배정)
-      const excludeUnits: number[] = [];
-      for (let u = totalUnitsPerFloor - 1; u >= 0 && excludeUnits.length < pilotisCount; u--) {
-        excludeUnits.push(u);
-      }
+      // 저장된 인덱스가 있으면 그대로 사용, 없으면 뒤에서부터 배정 (기존 데이터 호환)
+      const excludeUnits = savedExcludeUnits && savedExcludeUnits.length > 0
+        ? [...savedExcludeUnits]
+        : Array.from({ length: pilotisCount }, (_, u) => totalUnitsPerFloor - 1 - u);
       piloti = { floor: pilotisHeight, excludeUnits };
     }
 
@@ -123,16 +136,13 @@ export function buildingMetaToCores(meta: BuildingMeta): CoreStructure[] {
       ? { columns: scaffoldingCols }
       : null;
 
-    // 세대별 지상층 수 복원
-    const unitGroundFloors = meta.floorCount.coreUnitGroundFloors?.[i];
-
     cores.push({
       id: coreId,
       unitsLeft,
       unitsRight,
       groundFloors,
-      unitGroundFloors: unitGroundFloors && unitGroundFloors.length === totalUnitsPerFloor
-        ? unitGroundFloors
+      unitGroundFloors: unitGroundFloorsArr && unitGroundFloorsArr.length === totalUnitsPerFloor
+        ? unitGroundFloorsArr
         : undefined,
       basementFloors,
       rooftopFloors,
