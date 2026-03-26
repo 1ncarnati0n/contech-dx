@@ -65,7 +65,7 @@ export function BuildingBasicInfo({
   });
 
   // 수동 저장 (층정보 생성 / 구성 저장)
-  const { handleSave, handleSaveUnitType, isSaving: isManualSaving } = useBuildingSave({
+  const { handleSave, isSaving: isManualSaving } = useBuildingSave({
     building,
     formData,
     totalUnitCount: formTotalUnitCount,
@@ -202,7 +202,7 @@ export function BuildingBasicInfo({
             totalUnitCount={formTotalUnitCount}
             hasHighCeilingEquipmentRoom={formData.hasHighCeilingEquipmentRoom}
             onHasHighCeilingEquipmentRoomChange={(v) => updateField('hasHighCeilingEquipmentRoom', v)}
-            onSaveConfig={handleSaveUnitType}
+            onSaveConfig={handleSave}
             onSaveGenerate={handleSave}
             isSaving={isSaving}
           />
