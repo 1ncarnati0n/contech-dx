@@ -3,20 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev": "npm -w @contech/web run dev",
-    "dev:lib": "npm -w sa-gantt-lib run build -- --watch",
     "build": "npm -w @contech/web run build",
-    "build:lib": "npm -w sa-gantt-lib run build",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "clean": "npm exec --workspaces -- rm -rf node_modules .next dist"
+    "clean": "node -e \"console.log('static HTML: nothing to clean')\""
   },
-  "devDependencies": {
-    "turbo": "^2.3.3"
-  },
-  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
+  "packageManager": "npm@11.6.2"
 }
