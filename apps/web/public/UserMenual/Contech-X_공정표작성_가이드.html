@@ -274,6 +274,11 @@
         position: relative;
       }
 
+      .pdf-options-shot {
+        max-width: 600px;
+        margin-inline: auto;
+      }
+
       .shot-viewport {
         overflow: hidden;
         border: 1px solid var(--line);
@@ -290,21 +295,21 @@
       }
 
       .print-preview-editor {
-        aspect-ratio: 1394 / 500;
+        aspect-ratio: 1280 / 370;
       }
 
       .print-preview-editor img {
-        width: 136%;
-        transform: translate(-26.4%, 0);
+        width: 100%;
+        transform: none;
       }
 
       .print-preview-body {
-        aspect-ratio: 1100 / 820;
+        aspect-ratio: 1280 / 493;
       }
 
       .print-preview-body img {
-        width: 172.2%;
-        transform: translate(-9.25%, -6.05%);
+        width: 100%;
+        transform: translateY(-31.53%);
       }
 
       .focus-box {
@@ -1001,7 +1006,7 @@
           <figure>
             <div class="annotated-shot">
               <img src="../img/13-1_PDF출력_버튼.png" alt="공정표 상단 오른쪽의 PDF 출력 버튼" />
-              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 96%; top: 8.2%; width: 2.8%; height: 4.4%"></span>
+              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 95.7%; top: 8.5%; width: 2.8%; height: 4.2%"></span>
             </div>
             <figcaption>공정표 화면 상단 오른쪽에서 PDF 출력 열기</figcaption>
           </figure>
@@ -1011,14 +1016,14 @@
 
           <h3>2. 출력 옵션 설정</h3>
           <figure>
-            <div class="annotated-shot">
+            <div class="annotated-shot pdf-options-shot">
               <img src="../img/13-2_PDF출력_옵션.png" alt="PDF 출력 용지, 타임스케일, 기간, WBS 범위와 컬럼 옵션" />
-              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 30.5%; top: 13.7%; width: 39.2%; height: 20%"></span>
-              <span class="focus-box" data-step="2" aria-hidden="true" style="left: 30.5%; top: 35.1%; width: 39.2%; height: 9.6%"></span>
-              <span class="focus-box" data-step="3" aria-hidden="true" style="left: 30.5%; top: 46.1%; width: 39.2%; height: 9%"></span>
-              <span class="focus-box" data-step="4" aria-hidden="true" style="left: 30.5%; top: 56.4%; width: 39.2%; height: 8.7%"></span>
-              <span class="focus-box" data-step="5" aria-hidden="true" style="left: 30.5%; top: 66.4%; width: 39.2%; height: 21%"></span>
-              <span class="focus-box" data-step="6" aria-hidden="true" style="left: 63.6%; top: 90.4%; width: 5.9%; height: 4.3%"></span>
+              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 8.5%; top: 12.1%; width: 83%; height: 15.8%"></span>
+              <span class="focus-box" data-step="2" aria-hidden="true" style="left: 8.5%; top: 30.2%; width: 83%; height: 10.3%"></span>
+              <span class="focus-box" data-step="3" aria-hidden="true" style="left: 8.5%; top: 42.7%; width: 83%; height: 9%"></span>
+              <span class="focus-box" data-step="4" aria-hidden="true" style="left: 8.5%; top: 54%; width: 83%; height: 10.3%"></span>
+              <span class="focus-box" data-step="5" aria-hidden="true" style="left: 8.5%; top: 65.2%; width: 83%; height: 23.6%"></span>
+              <span class="focus-box" data-step="6" aria-hidden="true" style="left: 79.1%; top: 90.3%; width: 12.7%; height: 5.2%"></span>
             </div>
             <figcaption>보고 목적에 맞게 출력 범위와 표시 정보를 지정</figcaption>
           </figure>
@@ -1054,8 +1059,8 @@
           <figure>
             <div class="annotated-shot shot-viewport print-preview-editor">
               <img src="../img/13-3_인쇄_편집미리보기.png" alt="문서 제목과 공정표 이름을 편집할 수 있는 인쇄 미리보기 표지" />
-              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 18.3%; top: 26.2%; width: 26.7%; height: 20%"></span>
-              <span class="focus-box" data-step="2" aria-hidden="true" style="left: 85.4%; top: 2.4%; width: 13.1%; height: 6.6%"></span>
+              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 49.2%; top: 61.4%; width: 24.6%; height: 28.1%"></span>
+              <span class="focus-box" data-step="2" aria-hidden="true" style="left: 84.1%; top: 2.7%; width: 14.5%; height: 10.3%"></span>
             </div>
             <figcaption>표지 문구를 확인하고 출력 작업을 제어</figcaption>
           </figure>
@@ -1067,9 +1072,9 @@
           <figure>
             <div class="annotated-shot shot-viewport print-preview-body">
               <img src="../img/13-4_인쇄_편집본문.png" alt="컬럼 제목과 작업명을 편집할 수 있는 공정표 인쇄 본문" />
-              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 0.9%; top: 2.8%; width: 13.4%; height: 3.9%"></span>
-              <span class="focus-box" data-step="2" aria-hidden="true" style="left: 0.2%; top: 12.9%; width: 47.7%; height: 3.5%"></span>
-              <span class="focus-box" data-step="3" aria-hidden="true" style="left: 2.7%; top: 19.5%; width: 15.8%; height: 33.8%"></span>
+              <span class="focus-box" data-step="1" aria-hidden="true" style="left: 2.4%; top: 3.4%; width: 10.4%; height: 6.1%"></span>
+              <span class="focus-box" data-step="2" aria-hidden="true" style="left: 1.9%; top: 18.3%; width: 41.2%; height: 6.9%"></span>
+              <span class="focus-box" data-step="3" aria-hidden="true" style="left: 3.8%; top: 31.6%; width: 19.4%; height: 64.5%"></span>
             </div>
             <figcaption>본문의 제목, 시트 컬럼명, Activity 이름 편집 위치</figcaption>
           </figure>
