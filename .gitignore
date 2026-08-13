@@ -55,5 +55,9 @@ GEMINI.md
 # cursor
 .cursor
 
+# Codex and local agent workspaces
+.codex/
+.agents/
+
 # pnpm
 pnpm-lock.yaml
