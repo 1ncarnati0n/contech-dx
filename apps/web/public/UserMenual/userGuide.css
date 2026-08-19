@@ -316,8 +316,8 @@ figcaption {
 .focus-box::before {
   content: attr(data-step);
   position: absolute;
-  top: -15px;
-  left: -15px;
+  top: var(--marker-top, -15px);
+  left: var(--marker-left, -15px);
   display: grid;
   width: 28px;
   height: 28px;
