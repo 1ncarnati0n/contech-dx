@@ -2719,37 +2719,530 @@
         <section id="s8">
           <h2 class="sec-title"><span class="no">8</span>마일스톤</h2>
           <p>
-            마일스톤은 공정표에서 특정 시점이나 완료 기준을 표시하는 기간 없는
-            일정 항목입니다. 프로젝트 착수, 주요 공정 완료, 검측·인계와 같은
-            기준점을 Activity 흐름 안에서 확인할 때 사용합니다.
+            이 장에서는 공정표의 시작·종료 마일스톤과 바 마일스톤(LOE)을 만들고,
+            날짜·관계·달성 상태를 확인하는 방법을 설명합니다. Contech-X의 일반
+            마일스톤은 기간이 0인 시점 Activity이며, Gantt에서는 ◆ 표식으로
+            구분됩니다.
+          </p>
+
+          <h3>8.1 마일스톤의 목적과 일반 작업과의 차이</h3>
+          <p>
+            마일스톤은 프로젝트 착수, 설계 승인, 주요 공정 완료, 검측·인계처럼
+            일정에서 반드시 확인해야 할 기준 시점을 표시합니다. 일반 작업처럼
+            여러 날을 차지하지 않으며, 관계를 통해 앞뒤 Activity의 일정 흐름에
+            포함됩니다.
           </p>
           <table>
             <thead>
               <tr>
                 <th>구분</th>
-                <th>사용 목적</th>
+                <th>일반 작업</th>
+                <th>시작·종료 마일스톤</th>
+                <th>바 마일스톤(LOE)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>착수 마일스톤</td>
-                <td>프로젝트 또는 주요 공정의 시작 기준을 표시합니다.</td>
+                <td>기간</td>
+                <td>1일 이상</td>
+                <td>0일</td>
+                <td>SS·FF 관계에서 자동 산정</td>
               </tr>
               <tr>
-                <td>완료 마일스톤</td>
-                <td>주요 공정의 완료·검측·인계 시점을 표시합니다.</td>
+                <td>캘린더</td>
+                <td>선택 가능</td>
+                <td>적용하지 않음</td>
+                <td>적용하지 않음</td>
               </tr>
               <tr>
-                <td>검증 기준점</td>
-                <td>스케쥴링 결과와 보고서에서 확인할 기준일을 제공합니다.</td>
+                <td>진척</td>
+                <td>기간·물량 등 산정방식에 따라 입력</td>
+                <td>미달성 0% / 달성 100%</td>
+                <td>Data Date 위치에서 자동 계산</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>8.2 시작·종료 마일스톤 유형과 명칭</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>화면 명칭</th>
+                <th>기준 날짜</th>
+                <th>사용 예</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>시작 마일스톤</td>
+                <td>계획 시작일 또는 실제 시작일</td>
+                <td>프로젝트 착수, 공종 착수, 승인 개시</td>
+              </tr>
+              <tr>
+                <td>종료 마일스톤</td>
+                <td>계획 완료일 또는 실제 완료일</td>
+                <td>공종 완료, 검측, 인계, 준공 기준</td>
+              </tr>
+              <tr>
+                <td>바 마일스톤(LOE)</td>
+                <td>SS 선행 관계의 시작점부터 FF 선행 관계의 완료점</td>
+                <td>관리·지원처럼 다른 Activity 기간을 따라가는 작업</td>
               </tr>
             </tbody>
           </table>
           <div class="concept">
-            <strong>이 장의 범위</strong>
-            마일스톤은 WBS별 항목 집계와 공정표 일정 흐름에서 함께 확인합니다.
-            실제 생성·수정 화면과 관계 연결 절차는 기능 검증 결과에 맞춰 이
-            공간에 보완합니다.
+            <strong>명칭 확인</strong>
+            일부 생성 화면에서는 종료 마일스톤이 <b>완료 마일스톤</b>으로
+            표시될 수 있습니다. 이 매뉴얼에서는 공정표 Grid의 명칭에 맞춰
+            <b>종료 마일스톤</b>으로 통일합니다.
+          </div>
+
+          <h3>8.3 Grid·Gantt·WBS에서 마일스톤 식별</h3>
+          <p>
+            공정표 Grid에서 Activity 이름 앞의 ◆, O/D와 C/D의 0, 시작 또는 완료
+            한쪽에만 표시되는 날짜를 확인합니다. Gantt에서는 같은 행의 다이아몬드
+            표식으로 위치를 확인합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/8-MS-1_milestone-identification.png"
+                alt="Grid와 Gantt에서 시작·종료 마일스톤을 확인하는 FHD 공정표 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 5.1%; top: 19%; width: 18%; height: 4.7%; --marker-left: -34px; --marker-top: 2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 47.4%; top: 19.1%; width: 1.3%; height: 4.5%; --marker-left: -34px; --marker-top: -16px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 23.5%; top: 19%; width: 4.7%; height: 4.7%; --marker-left: -14px; --marker-top: 29px"
+              ></span>
+            </div>
+            <figcaption>시작·종료 마일스톤의 Grid 행과 Gantt 표식</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>마일스톤 행</strong> — 이름 앞의 ◆와 시작·종료 날짜를 확인합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>Gantt 표식</strong> — 기간 바 대신 다이아몬드로 표시됩니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>기간 0</strong> — O/D와 C/D가 모두 0인지 확인합니다.</span>
+            </li>
+          </ol>
+
+          <h3>8.4 +작업에서 새 마일스톤 만들기</h3>
+          <p>
+            상단의 <strong>+작업</strong>은 일반 작업을 즉시 추가합니다. 추가된 행의
+            이름과 위치를 정한 뒤 우클릭하여 <strong>마일스톤으로 전환</strong>합니다.
+            전환된 첫 행은 시작 마일스톤이 되며, 필요한 경우 날짜 기준을 종료로
+            바꿉니다.
+          </p>
+          <ol class="workflow">
+            <li><strong>+작업</strong>을 선택해 일반 작업을 추가합니다.</li>
+            <li>새 행의 ID와 이름을 입력하고 배치할 WBS를 확인합니다.</li>
+            <li>행을 우클릭하고 <strong>마일스톤으로 전환</strong>을 선택합니다.</li>
+            <li>산정방식 열에서 시작 또는 종료 기준을 확인하고 날짜를 입력합니다.</li>
+          </ol>
+          <div class="warning">
+            <strong>즉시 추가 동작</strong>
+            +작업을 선택하면 별도 생성 창 없이 행이 바로 추가됩니다. 잘못 추가한
+            경우 저장 전에 실행 취소하거나 해당 행을 삭제합니다.
+          </div>
+
+          <h3>8.5 WBS의 시작·종료 마일스톤 일괄 생성</h3>
+          <p>
+            WBS를 우클릭하고 <strong>시작/종료 마일스톤 생성</strong>을 선택하면 해당
+            WBS 하위 Activity의 가장 이른 시작과 가장 늦은 완료를 기준으로 두
+            마일스톤이 함께 추가됩니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/8-MS-2_wbs-milestone-menu.png"
+                alt="WBS 우클릭 메뉴에서 LOE와 시작·종료 마일스톤 생성 명령을 확인하는 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 5.1%; top: 32.5%; width: 33.8%; height: 2.5%; --marker-left: -34px; --marker-top: -15px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 54.1%; top: 52.3%; width: 8.8%; height: 3%; --marker-left: 26px; --marker-top: -34px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 54.1%; top: 55.5%; width: 8.8%; height: 3%; --marker-left: 26px; --marker-top: 18px"
+              ></span>
+            </div>
+            <figcaption>WBS에서 마일스톤 생성 명령 선택</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>대상 WBS</strong> — 하위 Activity의 경계를 집계할 WBS입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>마일스톤(LOE) 추가</strong> — 바 마일스톤을 한 행 추가합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>시작/종료 마일스톤 생성</strong> — 0일 마일스톤 두 개를 만듭니다.</span>
+            </li>
+          </ol>
+          <div class="warning">
+            <strong>중복 확인</strong>
+            같은 명령을 반복하면 기존 마일스톤을 재사용하지 않고 새 행이 추가될 수
+            있습니다. 생성 전 해당 WBS에 시작·종료 마일스톤이 이미 있는지
+            확인합니다.
+          </div>
+
+          <h3>8.6 일반 작업을 마일스톤으로 전환</h3>
+          <p>
+            기존 작업의 이름과 관계를 유지한 채 기간 0의 마일스톤으로 바꿀 때
+            우클릭 메뉴의 <strong>마일스톤으로 전환</strong>을 사용합니다. 다시 일반
+            작업으로 바꾸면 1일 작업으로 시작하므로 기간을 재확인해야 합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/8-MS-3_task-convert-menu.png"
+                alt="일반 작업 우클릭 메뉴의 마일스톤 전환 명령"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 5.1%; top: 34.8%; width: 33.8%; height: 2.5%; --marker-left: -34px; --marker-top: -15px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 54.1%; top: 58.3%; width: 8.8%; height: 3.2%; --marker-left: 136px; --marker-top: 9px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 54.1%; top: 54.7%; width: 8.8%; height: 3.2%; --marker-left: 136px; --marker-top: -16px"
+              ></span>
+            </div>
+            <figcaption>일반 작업을 마일스톤 또는 LOE로 전환하는 명령</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>선택 작업</strong> — 전환할 일반 Activity입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>마일스톤으로 전환</strong> — 기간을 0으로 바꿉니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>LOE 추가</strong> — 현재 작업 아래에 바 마일스톤을 추가합니다.</span>
+            </li>
+          </ol>
+
+          <h3>8.7 다중 선택 전환과 행 순서 규칙</h3>
+          <p>
+            Command(macOS) 또는 Ctrl(Windows·Linux), Shift로 여러 일반 작업을
+            선택한 뒤 <strong>마일스톤으로 전환</strong>할 수 있습니다. 선택된 행은
+            화면의 위쪽부터 처리되며 첫 작업은 시작 마일스톤, 나머지는 종료
+            마일스톤으로 변환됩니다.
+          </p>
+          <div class="warning">
+            <strong>전환 전 확인</strong>
+            다중 전환은 기존 기간과 캘린더를 제거하고 날짜 기준을 바꿉니다. 행
+            순서가 의도한 시작·종료 구분과 맞는지 확인한 뒤 실행합니다.
+          </div>
+
+          <h3>8.8 계획일·기간 0·캘린더 미적용 원칙</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>시작 마일스톤</th>
+                <th>종료 마일스톤</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>사용 날짜</td>
+                <td>계획 시작 / 실제 시작</td>
+                <td>계획 완료 / 실제 완료</td>
+              </tr>
+              <tr>
+                <td>O/D·C/D</td>
+                <td>0</td>
+                <td>0</td>
+              </tr>
+              <tr>
+                <td>캘린더</td>
+                <td>선택하지 않음</td>
+                <td>선택하지 않음</td>
+              </tr>
+              <tr>
+                <td>달성 전 진척</td>
+                <td>0%</td>
+                <td>0%</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="concept">
+            <strong>왜 캘린더가 없는가</strong>
+            일반 마일스톤은 작업일 수를 계산하는 기간 Activity가 아니라 한 시점을
+            기록하는 Activity입니다. 따라서 캘린더 선택 대신 정확한 계획일과
+            관계 연결을 관리합니다.
+          </div>
+
+          <h3>8.9 마일스톤 날짜 수정</h3>
+          <ol>
+            <li>Grid에서 대상 마일스톤 행을 선택합니다.</li>
+            <li>시작 마일스톤은 <strong>시작</strong>, 종료 마일스톤은 <strong>완료</strong> 날짜를 수정합니다.</li>
+            <li>관계가 연결된 경우 10장의 절차에 따라 다시 스케쥴링합니다.</li>
+            <li>Gantt의 ◆ 위치와 계획일이 일치하는지 확인합니다.</li>
+          </ol>
+          <div class="warning">
+            <strong>실적 고정 상태</strong>
+            달성 처리된 마일스톤은 실제 날짜가 일정의 기준이 됩니다. 계획일을
+            바꾸기 전에 달성 상태와 실제 날짜를 먼저 확인합니다.
+          </div>
+
+          <h3>8.10 선행·후행 관계 연결</h3>
+          <p>
+            마일스톤도 일반 Activity와 같은 방식으로 관계 탭이나 Gantt 연결점을
+            사용해 선행·후행 관계를 연결합니다. 관계 유형과 Lag의 입력·수정·삭제는
+            <a href="#s7"><strong>7. 작업간 관계설정</strong></a>을 따릅니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>확인 항목</th>
+                <th>기준</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>시작 마일스톤</td>
+                <td>후행 작업의 시작 흐름을 여는 관계가 있는지 확인합니다.</td>
+              </tr>
+              <tr>
+                <td>종료 마일스톤</td>
+                <td>선행 작업의 완료 흐름을 받는 관계가 있는지 확인합니다.</td>
+              </tr>
+              <tr>
+                <td>고립 마일스톤</td>
+                <td>선행과 후행이 모두 없으면 검증에서 경고 대상으로 확인합니다.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>8.11 마일스톤 고정·고정 해제와 달성 처리</h3>
+          <p>
+            마일스톤의 <strong>고정</strong>은 단순 화면 잠금이 아니라 실제 날짜를
+            기록해 달성 상태로 만드는 기능입니다. 달성된 마일스톤은 진척률 100%로
+            표시되며, 우클릭 메뉴에서 고정을 해제할 수 있습니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/8-MS-4_fixed-milestone-menu.png"
+                alt="달성된 시작 마일스톤의 고정 해제 우클릭 메뉴"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 5.1%; top: 19%; width: 33.8%; height: 2.5%; --marker-left: -34px; --marker-top: -15px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 17.3%; top: 45.2%; width: 8.8%; height: 3%; --marker-left: 93px; --marker-top: -9px"
+              ></span>
+            </div>
+            <figcaption>달성된 마일스톤의 고정 해제 명령</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>고정 마일스톤</strong> — 실제 날짜가 기록된 완료 상태입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>마일스톤 고정 해제</strong> — 실제 날짜와 달성 상태를 해제합니다.</span>
+            </li>
+          </ol>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/8-MS-5_achievement-status.png"
+                alt="상태 탭에서 마일스톤 달성일과 진척률을 확인하는 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 5.1%; top: 19%; width: 33.8%; height: 2.5%; --marker-left: -34px; --marker-top: -15px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 25.4%; top: 77.3%; width: 2.7%; height: 3%; --marker-left: -34px; --marker-top: -16px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 32.8%; top: 86.4%; width: 27.5%; height: 3.3%; --marker-left: -34px; --marker-top: -12px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="4"
+                style="left: 37%; top: 90.3%; width: 23.3%; height: 2.9%; --marker-left: -19px; --marker-top: 13px"
+              ></span>
+            </div>
+            <figcaption>상태 탭에서 달성일과 100% 진척 확인</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>대상 행</strong> — 달성 상태를 확인할 마일스톤입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>상태</strong> — 마일스톤 실적 정보를 여는 탭입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>달성일</strong> — 체크와 함께 실제 날짜를 기록합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">4</span>
+              <span><strong>진척률</strong> — 달성 시 100%로 자동 표시됩니다.</span>
+            </li>
+          </ol>
+
+          <h3>8.12 바 마일스톤(LOE)의 기간과 자동 진척</h3>
+          <p>
+            바 마일스톤(LOE)은 일반 0일 마일스톤과 다릅니다. SS 선행 관계의
+            시작점과 FF 선행 관계의 완료점을 따라 기간이 정해지며, Data Date가
+            그 기간에서 차지하는 위치에 따라 진척률이 자동 계산됩니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/8-MS-6_loe-status.png"
+                alt="바 마일스톤 LOE의 계획기간과 자동 진척률을 확인하는 상태 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 5.1%; top: 23.5%; width: 33.8%; height: 2.5%; --marker-left: -34px; --marker-top: -15px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 36.8%; top: 83.5%; width: 23.4%; height: 3.2%; --marker-left: -34px; --marker-top: -15px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 32.8%; top: 87.1%; width: 27.4%; height: 2.9%; --marker-left: -34px; --marker-top: 2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="4"
+                style="left: 37%; top: 90.5%; width: 23.2%; height: 2.7%; --marker-left: -24px; --marker-top: 10px"
+              ></span>
+            </div>
+            <figcaption>바 마일스톤의 파생 계획기간과 자동 진척</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>LOE 행</strong> — 기간 바와 함께 표시되는 바 마일스톤입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>계획기간</strong> — SS·FF 관계 결과로 시작·완료가 정해집니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>실적 입력</strong> — 직접 입력하지 않도록 비활성화됩니다.</span>
+            </li>
+            <li>
+              <span class="key-no">4</span>
+              <span><strong>자동 진척</strong> — Data Date 기준으로 계산된 값입니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>관계 연결 전 임시 기간</strong>
+            새 LOE는 화면에서 조작할 수 있도록 임시 기간으로 나타날 수 있습니다.
+            SS·FF 관계를 연결한 뒤 스케쥴링한 결과가 실제 LOE 기간입니다.
+          </div>
+
+          <h3>8.13 검증 패널의 날짜·기간·관계 확인</h3>
+          <p>
+            상단의 <strong>검증 패널</strong>을 열어 마일스톤 오류와 경고를 확인합니다.
+            관계를 바꾸거나 마일스톤을 전환한 뒤에는 저장 전과 스케쥴링 후 각각
+            한 번씩 확인합니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>검증 항목</th>
+                <th>정상 기준</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>계획 날짜</td>
+                <td>유형에 맞는 계획 시작 또는 계획 완료 날짜가 있습니다.</td>
+              </tr>
+              <tr>
+                <td>기간</td>
+                <td>시작·종료 마일스톤의 기간이 0입니다.</td>
+              </tr>
+              <tr>
+                <td>관계</td>
+                <td>필요한 선행·후행이 연결되고 고립 경고가 없습니다.</td>
+              </tr>
+              <tr>
+                <td>LOE 관계</td>
+                <td>기간을 정할 SS와 FF 관계가 연결되어 있습니다.</td>
+              </tr>
+              <tr>
+                <td>달성 상태</td>
+                <td>실제 날짜와 0%·100% 진척 표시가 서로 일치합니다.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>8.14 마일스톤 설정 완료 기준</h3>
+          <ol>
+            <li>시작·종료 유형과 이름이 실제 관리 기준을 나타냅니다.</li>
+            <li>O/D와 C/D가 0이고 유형에 맞는 계획 날짜가 있습니다.</li>
+            <li>필요한 선행·후행 관계와 LOE의 SS·FF 관계가 연결되어 있습니다.</li>
+            <li>달성된 마일스톤에는 올바른 실제 날짜와 100%가 표시됩니다.</li>
+            <li>스케쥴링 후 Gantt 위치와 검증 결과를 확인했습니다.</li>
+            <li>화면 아래에 <strong>모든 변경 저장됨</strong>이 표시됩니다.</li>
+          </ol>
+          <div class="concept">
+            <strong>이 장의 완료 기준</strong>
+            마일스톤이 Grid와 Gantt에서 올바르게 식별되고, 날짜·관계·달성 상태가
+            일치하며, 검증과 서버 저장까지 완료되면 설정이 끝난 것입니다.
           </div>
         </section>
         <section id="s9">
@@ -3925,5 +4418,46 @@
         >
       </nav>
     </div>
+    <script>
+      const toc = document.querySelector(".toc");
+      const tocLinks = [...toc.querySelectorAll('a[href^="#s"]')];
+      const sections = tocLinks
+        .map((link) => document.querySelector(link.hash))
+        .filter(Boolean);
+
+      function showCurrentSection(id) {
+        const current = toc.querySelector(`a[href="#${id}"]`);
+        if (!current) return;
+
+        tocLinks.forEach((link) => {
+          const active = link === current;
+          link.classList.toggle("is-active", active);
+          if (active) link.setAttribute("aria-current", "location");
+          else link.removeAttribute("aria-current");
+        });
+
+        toc.style.setProperty("--active-y", `${current.offsetTop}px`);
+        toc.style.setProperty("--active-height", `${current.offsetHeight}px`);
+        toc.classList.add("has-active");
+      }
+
+      const visibleSection = new IntersectionObserver(
+        (entries) => {
+          const current = entries.find((entry) => entry.isIntersecting);
+          if (current) showCurrentSection(current.target.id);
+        },
+        { rootMargin: "-20% 0px -70%", threshold: 0 },
+      );
+
+      sections.forEach((section) => visibleSection.observe(section));
+      showCurrentSection(location.hash.slice(1) || sections[0].id);
+      tocLinks.forEach((link) =>
+        link.addEventListener("click", () => showCurrentSection(link.hash.slice(1))),
+      );
+      addEventListener("resize", () => {
+        const current = toc.querySelector("a.is-active");
+        if (current) showCurrentSection(current.hash.slice(1));
+      });
+    </script>
   </body>
 </html>
