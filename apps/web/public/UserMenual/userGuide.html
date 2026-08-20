@@ -1153,105 +1153,487 @@
           <h2 class="sec-title">
             <span class="no">5</span>WBS 생성, WBS 노드 인터페이스
           </h2>
-          <div class="concept">
-            <strong>WBS</strong>
-            Work Breakdown Structure. 공사를 작은 작업 묶음으로 나누는
-            뼈대입니다. 예: 공사 전체 &gt; 지하층 &gt; 골조공사 &gt; 철근 배근.
-          </div>
-          <h3>공정표 편집화면 구성</h3>
+
+          <h3 id="s5-1">5.1 WBS의 목적과 Activity 구분</h3>
           <p>
-            공정표 편집화면은 좌측 탐색 영역, 상단 명령 영역, 액티비티 표,
-            Gantt Chart와 하단 상세 패널로 구성됩니다. WBS 또는 액티비티를
-            선택하면 하단에서 상태·관계·자원·코드·단계를 관리할 수 있습니다.
+            WBS(Work Breakdown Structure)는 공정표를 관리 가능한 범위로 나누는
+            계층 구조입니다. WBS는 공정의 묶음과 위치를 정하고,
+            Activity는 그 아래에서 기간·날짜·관계·자원을 갖는 실제 일정
+            계산 대상입니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>역할</th>
+                <th>예시</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>WBS</td>
+                <td>공정 범위를 계층으로 분류하고 작업을 담습니다.</td>
+                <td>프로젝트 &gt; 시공 &gt; 지하공사</td>
+              </tr>
+              <tr>
+                <td>Activity</td>
+                <td>기간과 날짜를 갖고 스케줄링되는 실제 작업입니다.</td>
+                <td>지하 1층 벽체 철근 배근</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="concept">
+            <strong>이 장의 범위</strong>
+            이 장에서는 WBS 계층의 생성·편집·이동과 표준공정 불러오기를
+            설명합니다. Activity의 날짜·관계·캘린더·스케줄링은 뒤 장에서
+            설명합니다.
+          </div>
+
+          <h3 id="s5-2">5.2 WBS 화면 열기</h3>
+          <p>
+            프로젝트에서 작업할 공정표를 연 뒤 좌측 메뉴의
+            <strong>WBS</strong>를 선택합니다. WBS 화면이 열리면 현재
+            프로젝트와 공정표 이름을 상단 경로에서 확인합니다.
           </p>
           <figure>
             <div class="annotated-shot">
               <img
-                src="../img/5-0_공정표편집화면.png"
-                alt="FHD 기준 Contech-X 공정표 편집화면 구성"
+                src="../img/5-1_WBS화면진입.png"
+                alt="익명화된 FHD 기준 WBS 구성 화면"
               />
               <span
                 class="focus-box"
                 data-step="1"
-                style="left: 0.7%; top: 1%; width: 10%; height: 36%"
+                style="left: 0.8%; top: 28.2%; width: 16.4%; height: 3.8%; --marker-left: calc(100% + 5px); --marker-top: -4px"
               ></span>
               <span
                 class="focus-box"
                 data-step="2"
-                style="left: 11.3%; top: 0.8%; width: 87.8%; height: 7.4%"
+                style="left: 19%; top: 8.4%; width: 43.5%; height: 4%; --marker-left: calc(100% + 5px); --marker-top: -4px"
               ></span>
               <span
                 class="focus-box"
                 data-step="3"
-                style="left: 11.3%; top: 8.8%; width: 35.6%; height: 64.5%"
+                style="left: 24.5%; top: 46%; width: 10.5%; height: 18.8%; --marker-left: -36px; --marker-top: -2px"
               ></span>
               <span
                 class="focus-box"
                 data-step="4"
-                style="left: 47.1%; top: 8.8%; width: 52%; height: 64.5%"
-              ></span>
-              <span
-                class="focus-box"
-                data-step="5"
-                style="left: 11.3%; top: 73.7%; width: 87.8%; height: 23%"
+                style="left: 59.1%; top: 64.7%; width: 15.9%; height: 6%; --marker-left: -36px; --marker-top: -2px"
               ></span>
             </div>
-            <figcaption>공정표 편집화면 전체 구성 — FHD 1920×1080 기준</figcaption>
+            <figcaption>WBS 화면의 주요 영역 — FHD 1920×1080 기준</figcaption>
           </figure>
           <ol class="shot-key">
             <li>
               <span class="key-no">1</span>
-              <span><strong>탐색·현재 위치</strong> — 프로젝트, 공정표와 기능 메뉴를 전환합니다.</span>
+              <span><strong>WBS 메뉴</strong> — 현재 공정표의 WBS 구성 화면을 엽니다.</span>
             </li>
             <li>
               <span class="key-no">2</span>
-              <span><strong>상단 명령 영역</strong> — 표시 설정, 기준일, 스케줄링, PDF 출력 등을 실행합니다.</span>
+              <span><strong>상단 명령</strong> — 접기·펴기, 선택, 복사와 공정표 화면 전환을 실행합니다.</span>
             </li>
             <li>
               <span class="key-no">3</span>
-              <span><strong>액티비티 표</strong> — WBS·작업명·기간·날짜를 확인하고 편집합니다.</span>
+              <span><strong>공정표 요약</strong> — WBS·마일스톤·작업 수를 한눈에 확인합니다.</span>
             </li>
             <li>
               <span class="key-no">4</span>
-              <span><strong>Gantt Chart</strong> — 작업 기간, 순서와 관계선을 시간축에서 확인합니다.</span>
-            </li>
-            <li>
-              <span class="key-no">5</span>
-              <span><strong>상세 패널</strong> — 선택한 WBS 또는 액티비티의 상세 기능을 관리합니다.</span>
+              <span><strong>WBS 노드</strong> — 코드·이름·하위 작업 수와 계층을 확인합니다.</span>
             </li>
           </ol>
-          <h3>WBS 노드 인터페이스와 공정 라이브러리</h3>
+
+          <h3 id="s5-3">5.3 WBS 화면과 노드 정보</h3>
           <p>
-            WBS 노드는 공정표의 목차입니다. 노드를 먼저 만들고, 각 노드 아래에
-            실제 작업(Activity)을 배치하면 일정과 담당 범위가 명확해집니다.
+            공정표 요약 카드 오른쪽에 WBS 노드가 계층으로 연결됩니다. 각 노드에는
+            WBS 코드와 이름, 해당 WBS 아래의 작업·마일스톤 수가 표시됩니다.
+            노드를 선택하면 테두리가 강조되고 편집 명령이 나타납니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>화면 요소</th>
+                <th>의미와 동작</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>코드·이름</td>
+                <td>WBS를 식별하는 코드와 사용자에게 표시되는 이름입니다.</td>
+              </tr>
+              <tr>
+                <td>작업·마일스톤 수</td>
+                <td>현재 WBS와 하위 계층에 포함된 항목 수를 집계합니다.</td>
+              </tr>
+              <tr>
+                <td><strong>+</strong></td>
+                <td>선택 WBS 아래에 하위 WBS를 추가합니다.</td>
+              </tr>
+              <tr>
+                <td><strong>− / +</strong></td>
+                <td>해당 WBS의 하위 계층을 접거나 펼칩니다.</td>
+              </tr>
+              <tr>
+                <td><strong>×</strong></td>
+                <td>선택 WBS와 하위 범위의 삭제 확인 창을 엽니다.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 id="s5-4">5.4 최상위·하위 WBS 추가</h3>
+          <p>
+            공정표 요약 카드의 <strong>+</strong>를 선택하면 최상위 WBS가,
+            일반 WBS 노드의 <strong>+</strong>를 선택하면 선택 노드 아래에
+            하위 WBS가 추가됩니다. 새 노드는 임시 코드와
+            <strong>새 WBS</strong> 이름으로 만들어집니다.
+          </p>
+          <ol>
+            <li>새 WBS가 들어갈 상위 위치를 확인합니다.</li>
+            <li>최상위 또는 해당 노드의 <strong>+</strong>를 선택합니다.</li>
+            <li>생성된 노드의 코드와 이름을 현장 기준에 맞게 수정합니다.</li>
+          </ol>
+          <div class="concept">
+            <strong>즉시 생성</strong>
+            <strong>+</strong>를 선택하면 새 노드가 바로 생성되고 자동 저장이
+            시작됩니다. 잘못 추가했다면 해당 노드의 <strong>×</strong>를 눌러
+            삭제 범위를 확인한 뒤 처리합니다.
+          </div>
+
+          <h3 id="s5-5">5.5 WBS 코드·이름 수정</h3>
+          <p>
+            노드의 코드 또는 이름을 선택해 내용을 수정합니다. 입력을 마친 뒤
+            <strong>Enter</strong>를 누르거나 입력 영역 밖을 선택하면 변경이
+            확정되고 자동 저장됩니다.
+          </p>
+          <ul>
+            <li>코드는 같은 공정표 안에서 중복되지 않게 입력합니다.</li>
+            <li>이름은 작업 범위를 바로 이해할 수 있는 공종·구역 기준으로 작성합니다.</li>
+            <li>상위 코드 변경 시 하위 코드가 함께 조정될 수 있으므로 저장 결과를 확인합니다.</li>
+          </ul>
+
+          <h3 id="s5-6">5.6 접기·펴기와 캔버스 이동</h3>
+          <p>
+            상단의 <strong>접기</strong>와 <strong>펴기</strong>는 전체 WBS
+            계층을 한 번에 접거나 펼칩니다. 노드 옆의 <strong>− / +</strong>는
+            해당 노드의 하위 계층만 제어합니다.
+          </p>
+          <ul>
+            <li>빈 캔버스를 드래그해 넓은 조직도를 좌우·상하로 이동합니다.</li>
+            <li>하단 가로 스크롤을 사용해 화면 밖의 하위 WBS를 확인합니다.</li>
+            <li>큰 계층은 먼저 전체를 접은 뒤 필요한 가지부터 펼치면 찾기 쉽습니다.</li>
+          </ul>
+
+          <h3 id="s5-7">5.7 단일·다중 선택</h3>
+          <p>
+            노드를 일반 선택하면 기존 선택을 지우고 한 개만 선택합니다.
+            여러 노드를 선택하려면 macOS에서는 <strong>Command</strong>,
+            Windows·Linux에서는 <strong>Ctrl</strong>을 누른 채 노드를
+            선택합니다. <strong>Shift</strong>도 개별 노드의 선택 추가·해제에
+            사용할 수 있습니다.
           </p>
           <figure>
-            <img src="../img/4-1_WBS 노드.png" alt="WBS 노드 화면" />
-            <figcaption>WBS 노드: 공정표를 계층 구조로 작성</figcaption>
+            <div class="annotated-shot">
+              <img
+                src="../img/5-2_WBS다중선택.png"
+                alt="익명화된 FHD 기준 WBS 다중 선택 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 27.3%; top: 8.5%; width: 14.8%; height: 4%; --marker-left: calc(100% + 5px); --marker-top: -4px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 59%; top: 37.8%; width: 15.5%; height: 33%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 75.2%; top: 64%; width: 1.9%; height: 8%; --marker-left: calc(100% + 5px); --marker-top: 1px"
+              ></span>
+            </div>
+            <figcaption>여러 WBS를 선택한 상태와 선택 전용 명령</figcaption>
           </figure>
-          <figure>
-            <img
-              src="../img/4-2_WBS 노드 공정라이브러리.png"
-              alt="WBS 공정 라이브러리 화면"
-            />
-            <figcaption>
-              공정 라이브러리: 반복되는 표준 작업 묶음을 불러와 작성 속도 향상
-            </figcaption>
-          </figure>
-          <h3>스프레드시트 WBS</h3>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>선택 수·복사·선택 해제</strong> — 선택 개수를 확인하고 일괄 명령을 실행합니다.</br>1. ctrl + 마우스 클릭으로 다중 선택 가능</br>2. 복사 버튼을 누른 후 ctrl + v로 선택된 노드와 같은 레벨에 붙여넣기 가능</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>선택 노드</strong> — 선택된 WBS는 파란색 테두리로 구분됩니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>노드 명령</strong> — 선택 노드의 삭제(x)·접기(-)·하위 추가(+)를 실행합니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>Shift 선택 방식</strong>
+            WBS 화면의 Shift 선택은 연속 범위를 자동 선택하는 방식이 아니라,
+            클릭한 노드를 기존 선택에 추가하거나 해제하는 방식입니다.
+          </div>
+
+          <h3 id="s5-8">5.8 드래그로 계층·순서 이동</h3>
           <p>
-            표 형태로 WBS와 작업을 빠르게 입력합니다. 엑셀처럼 행 단위로 복사,
-            수정, 정렬하기 좋습니다.
+            이동할 WBS를 선택해 대상 노드로 드래그합니다. 놓는 위치에 따라 같은
+            계층의 순서 또는 상·하위 관계가 달라집니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>놓는 위치</th>
+                <th>결과</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>대상 노드 위쪽</td>
+                <td>대상과 같은 계층에서 대상 앞에 배치합니다.</td>
+              </tr>
+              <tr>
+                <td>대상 노드 가운데</td>
+                <td>대상의 하위 WBS로 이동합니다.</td>
+              </tr>
+              <tr>
+                <td>대상 노드 아래쪽</td>
+                <td>대상과 같은 계층에서 대상 뒤에 배치합니다.</td>
+              </tr>
+              <tr>
+                <td>공정표 요약·빈 최상위 영역</td>
+                <td>최상위 WBS로 이동합니다.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="concept">
+            <strong>이동 제한</strong>
+            자기 자신이나 자신의 하위 WBS 안으로는 이동할 수 없습니다. 여러
+            노드를 이동할 때는 선택 묶음 중 상위에 있는 WBS가 하위 트리와 함께
+            이동하므로, 이동 전 선택 수와 대상 위치를 확인합니다.
+          </div>
+
+          <h3 id="s5-9">5.9 WBS 하위 트리 복사·붙여넣기</h3>
+          <p>
+            반복되는 WBS 구조는 하위 작업과 함께 복사할 수 있습니다. 복사할
+            WBS를 하나 이상 선택하고 상단 <strong>복사</strong> 또는
+            <strong>Command/Ctrl+C</strong>를 사용합니다. 붙여넣을 위치의 기준
+            WBS를 선택한 뒤 <strong>Command/Ctrl+V</strong>를 누르면 선택 WBS와
+            같은 계층의 뒤쪽에 사본이 추가됩니다.
+          </p>
+          <ol>
+            <li>복사할 WBS를 선택하고 선택 수를 확인합니다.</li>
+            <li><strong>복사</strong>를 선택합니다.</li>
+            <li>같은 계층에서 바로 앞에 둘 기준 WBS를 선택한 뒤 <strong>Command/Ctrl+V</strong>를 누릅니다.</li>
+            <li>새 코드와 계층, 복사된 작업 수를 확인합니다.</li>
+          </ol>
+          <div class="concept warning">
+            <strong>관계 복사 범위</strong>
+            복사한 묶음 내부의 작업 관계는 확인 후 함께 복사할 수 있지만, 선택
+            범위 밖 작업과 연결된 외부 관계는 복사되지 않습니다. 붙여넣은 뒤
+            관계 화면에서 선후행 연결을 다시 확인합니다.
+          </div>
+
+          <h3 id="s5-10">5.10 삭제와 영향 범위 확인</h3>
+          <p>
+            삭제할 노드를 선택하고 노드의 <strong>×</strong> 또는
+            <strong>Delete</strong> 키를 사용합니다. 확인 창에는 삭제될 WBS와
+            하위 WBS, 작업·마일스톤 수가 표시됩니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>확인 항목</th>
+                <th>의미</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>WBS 수</td>
+                <td>선택 노드와 그 아래에서 함께 삭제될 WBS 범위입니다.</td>
+              </tr>
+              <tr>
+                <td>작업·마일스톤 수</td>
+                <td>삭제 WBS에 포함되어 함께 제거될 일정 항목 수입니다.</td>
+              </tr>
+              <tr>
+                <td>취소</td>
+                <td>아무 내용도 변경하지 않고 확인 창을 닫습니다.</td>
+              </tr>
+              <tr>
+                <td>삭제 확인</td>
+                <td>확정 후 자동 저장이 실행되어 서버에 반영됩니다.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="concept warning">
+            <strong>하위 범위까지 삭제</strong>
+            WBS 삭제는 해당 노드만 비우는 기능이 아닙니다. 하위 WBS와 그 안의
+            작업·마일스톤도 함께 삭제되므로 확인 창의 집계가 예상과 다르면
+            <strong>취소</strong>를 선택합니다.
+          </div>
+
+          <h3 id="s5-11">5.11 WBS 직속 작업 목록</h3>
+          <p>
+            WBS 노드를 더블클릭하면 이동 가능한
+            <strong>WBS 직속 작업 목록</strong>이 열립니다. 이 목록은 선택
+            WBS에 바로 소속된 작업과 마일스톤만 보여주며, 하위 WBS의 작업은
+            포함하지 않습니다.
+          </p>
+          <figure class="pdf-options-shot">
+            <div class="annotated-shot">
+              <img
+                src="../img/5-4_WBS직속작업팝업.jpg"
+                alt="WBS 직속 작업 목록 상세 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 7%; top: 28%; width: 53%; height: 17%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 6%; top: 48%; width: 91%; height: 43%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+            </div>
+            <figcaption>선택 WBS에 바로 소속된 작업·마일스톤 확인</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>집계</strong> — 직속 작업·마일스톤과 전체 수를 표시합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>작업 목록</strong> — 코드·작업명·유형·기간·일정을 확인합니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>용도</strong>
+            이 창은 WBS 배치 결과를 빠르게 확인하는 화면입니다. 팝업 상단의
+            WBS 코드·이름은 선택해 수정할 수 있지만, 목록에 표시된 작업의
+            날짜·관계·자원 편집은 <strong>공정표 보기</strong>에서 진행합니다.
+          </div>
+
+          <h3 id="s5-12">5.12 표준공정 모듈 불러오기</h3>
+          <p>
+            반복되는 표준 WBS·작업 묶음은 오른쪽
+            <strong>표준공정</strong> 패널에서 불러옵니다. 먼저 배치 기준이 될
+            WBS를 선택하고 모듈의 코드·이름·Activity 수를 확인합니다.
           </p>
           <figure>
-            <img
-              src="../img/4-3_WBS와 스프레드시트.png"
-              alt="WBS와 스프레드시트 화면"
-            />
-            <figcaption>
-              스프레드시트 방식: 대량 WBS와 Activity 편집에 적합
-            </figcaption>
+            <div class="annotated-shot">
+              <img
+                src="../img/5-5_표준공정패널.png"
+                alt="익명화된 FHD 기준 표준공정 모듈 패널"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 92.6%; top: 8.2%; width: 6%; height: 4%; --marker-left: -36px; --marker-top: -4px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 74.2%; top: 13.4%; width: 25.1%; height: 84%; --marker-left: -36px; --marker-top: 8px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 91.7%; top: 24%; width: 5%; height: 4%; --marker-left: -36px; --marker-top: -4px"
+              ></span>
+            </div>
+            <figcaption>표준공정 모듈을 확인하고 WBS에 배치하는 패널</figcaption>
           </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>표준공정</strong> — 모듈 패널을 열거나 닫습니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>모듈 목록</strong> — 코드·이름과 포함 Activity 수를 확인합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>불러오기</strong> — 선택 WBS를 기준으로 모듈을 같은 계층 뒤에 추가합니다.</span>
+            </li>
+          </ol>
+          <ol>
+            <li>모듈을 배치할 기준 WBS를 선택합니다.</li>
+            <li><strong>표준공정</strong>을 열고 사용할 모듈을 찾습니다.</li>
+            <li>
+              같은 계층 뒤에 추가하려면 <strong>불러오기</strong>를 선택하고,
+              특정 WBS 아래에 넣으려면 모듈을 해당 WBS 영역으로 드래그합니다.
+            </li>
+            <li>추가된 WBS 코드·이름·작업 수와 배치 위치를 확인합니다.</li>
+          </ol>
+          <div class="concept">
+            <strong>라이브러리 편집과 구분</strong>
+            이 화면에서는 준비된 표준공정 모듈을 공정표에 적용합니다. 모듈 자체의
+            생성·수정은 뒤의 <strong>공정 라이브러리 편집</strong> 장에서
+            설명합니다.
+          </div>
+
+          <h3 id="s5-13">5.13 자동 저장과 읽기 전용</h3>
+          <p>
+            WBS 추가·이름 변경·이동·복사·삭제와 표준공정 불러오기는 변경 직후
+            자동 저장됩니다. 별도의 저장 버튼을 찾기보다 작업을 마친 뒤 저장이
+            완료될 시간을 두고 다음 화면으로 이동합니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>상태</th>
+                <th>동작</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>편집 가능</td>
+                <td>추가·수정·이동·복사·삭제·표준공정 불러오기를 사용할 수 있습니다.</td>
+              </tr>
+              <tr>
+                <td>읽기 전용</td>
+                <td>WBS 구조와 집계는 볼 수 있지만 변경 명령은 비활성화되거나 표시되지 않습니다.</td>
+              </tr>
+              <tr>
+                <td>저장 실패</td>
+                <td>화면을 이동하지 말고 연결 상태를 확인한 뒤 다시 시도합니다.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 id="s5-14">5.14 공정표로 돌아가기와 두 화면의 역할</h3>
+          <p>
+            WBS 구성이 끝나면 상단의 <strong>공정표 보기</strong>를 선택해
+            액티비티 표와 Gantt Chart로 이동합니다.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>화면</th>
+                <th>주요 용도</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>WBS 화면</td>
+                <td>공정 범위의 계층, 코드·이름, 배치와 하위 작업 수를 관리합니다.</td>
+              </tr>
+              <tr>
+                <td>공정표 보기</td>
+                <td>Activity의 기간·날짜·관계·자원과 Gantt Chart를 편집합니다.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="concept">
+            <strong>이 장의 완료 기준</strong>
+            필요한 WBS 계층이 만들어지고 코드·이름·상하위 순서가 맞으며, 각
+            노드의 작업·마일스톤 집계가 예상 범위인지 확인하면 WBS 구성이
+            완료된 것입니다.
+          </div>
         </section>
         <section id="s6">
           <h2 class="sec-title"><span class="no">6</span>작업간 관계설정</h2>
@@ -2454,19 +2836,19 @@
         <a href="#s3">3. 프로젝트·공정표 생성</a>
         <a href="#s4">4. 조직도 OBS 작성</a>
         <a href="#s5">5. WBS 생성, WBS 노드</a>
-        <a href="#s5">5. 작업 Activity 🎯</a>
-        <a href="#s6">6. 작업간 관계 연결 🎯</a>
-        <a href="#s6">6. 마일스톤</a>
-        <a href="#s7">7. 캘린더 및 기상가동률 🎯</a>
-        <a href="#s8">8. CPM 스케쥴링</a>
-        <a href="#s9">9. 베이스라인 & 업데이트 🎯</a>
-        <a href="#s10">10. 공정표 편의기능 🎯</a>
-        <a href="#s11">11. PDF 출력 ✅</a>
+        <a href="#s5">6. 작업 Activity 🎯</a>
+        <a href="#s6">7. 작업간 관계 연결 🎯</a>
+        <a href="#s6">8. 마일스톤</a>
+        <a href="#s7">9. 캘린더 및 기상가동률 🎯</a>
+        <a href="#s8">10. CPM 스케쥴링</a>
+        <a href="#s9">11. 베이스라인 & 업데이트 🎯</a>
+        <a href="#s10">12. 공정표 편의기능 🎯</a>
+        <a href="#s11">13. PDF 출력 ✅</a>
 
-        <a href="#s12">12. 자원관리 <span class="badge badge-dev">ing</span></a>
-        <a href="#s13">13. 자원 실적입력 <span class="badge badge-dev">ing</span></a>
-        <a href="#s14">14. S-Curve <span class="badge badge-dev">ing</span></a>
-        <a href="#s15">15. 공정 라이브러리 편집 <span class="badge badge-dev">ing</span></a>
+        <a href="#s12">14. 자원관리 <span class="badge badge-dev">ing</span></a>
+        <a href="#s13">15. 자원 실적입력 <span class="badge badge-dev">ing</span></a>
+        <a href="#s14">16. S-Curve <span class="badge badge-dev">ing</span></a>
+        <a href="#s15">17. 공정 라이브러리 편집 <span class="badge badge-dev">ing</span></a>
 
         <a
           class="manual-open"

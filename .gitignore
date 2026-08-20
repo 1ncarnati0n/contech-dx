@@ -61,3 +61,6 @@ GEMINI.md
 
 # pnpm
 pnpm-lock.yaml
+
+# 삭제파일 보관 폴더
+to_delete/
