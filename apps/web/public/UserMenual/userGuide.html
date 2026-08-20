@@ -735,27 +735,419 @@
         </section>
         <section id="s4">
           <h2 class="sec-title"><span class="no">4</span>조직도 OBS 작성</h2>
+
+          <h3 id="s4-1">4.1 OBS의 목적과 적용 범위</h3>
           <div class="concept">
             <strong>OBS</strong>
             Organization Breakdown Structure. 프로젝트의 조직 단위와 구성원
             관계를 계층으로 표시하는 조직도입니다.
           </div>
           <p>
-            OBS는 프로젝트 참여 조직을 사용자가 한눈에 확인하도록 표시합니다.
-            WBS 또는 Activity의 수정 책임과 프로젝트 권한을 결정하는 화면은
-            아닙니다.
+            Contech-X의 OBS는 현장 조직과 직책, 상·하위 관계를 한눈에 확인하고
+            보기 좋은 조직도로 정리하는 기능입니다. 프로젝트 권한이나 WBS·작업의
+            수정 책임을 결정하는 화면은 아닙니다.
           </p>
-          <h3>OBS 조직도 작성</h3>
-          <ol>
-            <li>프로젝트 조직 단위를 만듭니다.</li>
-            <li>부서, 협력사, 구성원을 계층으로 정리합니다.</li>
-            <li>확대·축소·접기 기능으로 조직 구조를 확인합니다.</li>
-          </ol>
-          <h3>권한 관리 위치 <span class="badge badge-dev">개발중</span></h3>
+
+          <table>
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>관리하는 내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>OBS</td>
+                <td>현장 조직·직책과 상·하위 계층을 조직도로 표시합니다.</td>
+              </tr>
+              <tr>
+                <td>프로젝트 멤버</td>
+                <td>프로젝트 사용자와 역할·권한을 관리합니다.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="concept">
+            <strong>권한 관리 위치</strong>
+            사용자 추가와 프로젝트 역할 지정은 OBS가 아니라 프로젝트
+            <strong>멤버</strong> 화면에서 진행합니다. 자세한 방법은
+            <strong>3.5 프로젝트 멤버 추가와 역할 지정</strong>을 참고합니다.
+          </div>
+
+          <h3 id="s4-2">4.2 프로젝트 조직도 화면 열기</h3>
           <p>
-            프로젝트 조회·수정 권한과 역할은 OBS가 아니라 프로젝트 멤버 화면에서
-            관리합니다. 프로젝트 총괄이 멤버 구성과 역할을 관리합니다.
+            프로젝트를 연 뒤 상단 프로젝트 영역에서 <strong>조직도</strong>를
+            선택합니다. 조직도가 열리면 현재 프로젝트의 조직 구조와 선택한 조직
+            정보를 확인할 수 있습니다.
           </p>
+          <ol>
+            <li>프로젝트 목록에서 작업할 프로젝트를 엽니다.</li>
+            <li>프로젝트 상단의 <strong>조직도</strong> 탭을 선택합니다.</li>
+            <li><strong>프로젝트 조직도</strong> 화면이 표시되는지 확인합니다.</li>
+          </ol>
+
+          <h3 id="s4-3">4.3 조직도 화면 구성</h3>
+          <p>
+            조직도 화면은 상단 명령 영역, 가운데 조직도 영역, 오른쪽 조직 정보
+            영역으로 구성됩니다. 조직 박스를 선택하면 오른쪽에서 해당 조직의
+            경로·상위 조직·하위 조직·조직 코드를 확인합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/4-1_OBS기본화면.png"
+                alt="FHD 기준 프로젝트 조직도 화면 구성"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 9.7%; top: 5.5%; width: 3.7%; height: 3%; --marker-left: -36px; --marker-top: -6px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 4.2%; top: 15.3%; width: 50.7%; height: 4.2%; --marker-left: -36px; --marker-top: -6px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 5.3%; top: 21.5%; width: 74%; height: 39.8%; --marker-left: -36px; --marker-top: 12px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="4"
+                style="left: 81%; top: 19.4%; width: 18.3%; height: 29.5%; --marker-left: calc(50% - 14px); --marker-top: -36px"
+              ></span>
+            </div>
+            <figcaption>FHD 기준 프로젝트 조직도 기본 화면</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>조직도 탭</strong> — 프로젝트 조직도 화면을 엽니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>상단 명령</strong> — 조직 추가·수정·관계·배치·보기·인쇄 기능을 실행합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>조직도</strong> — 조직의 상·하위 계층과 관계선을 확인합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">4</span>
+              <span><strong>조직 정보</strong> — 선택 조직의 경로·상위·하위 조직과 코드를 확인합니다.</span>
+            </li>
+          </ol>
+
+          <h3 id="s4-4">4.4 조직 직접 추가</h3>
+          <p>
+            조직을 추가할 위치의 상위 조직을 먼저 선택한 뒤
+            <strong>조직 추가</strong>를 선택합니다. 새 조직 입력 상자가 나타나면
+            조직 또는 직책 이름을 입력하고 <strong>생성</strong>을 선택합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/4-2_OBS조직추가.jpg"
+                alt="FHD 기준 OBS 조직 직접 추가 입력 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 4.5%; top: 15.8%; width: 4.5%; height: 3%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 38.8%; top: 22.6%; width: 7%; height: 6.5%; --marker-left: calc(50% - 14px); --marker-top: -36px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 70.1%; top: 33.6%; width: 7%; height: 6.6%; --marker-left: calc(100% + 4px); --marker-top: -2px"
+              ></span>
+            </div>
+            <figcaption>선택한 상위 조직 아래에 새 조직을 입력하는 상태</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>조직 추가</strong> — 선택 조직 아래에 새 조직 입력 상자를 엽니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>상위 조직</strong> — 새 조직이 소속될 부모 조직입니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>새 조직</strong> — 이름을 입력한 뒤 생성하거나 취소합니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>저장 시점</strong>
+            입력 상자만 연 상태에서는 조직이 저장되지 않습니다.
+            <strong>생성</strong>을 선택하면 조직이 추가되고,
+            <strong>취소</strong>를 선택하면 변경 없이 입력을 끝냅니다.
+          </div>
+
+          <h3 id="s4-5">4.5 샘플 템플릿 적용</h3>
+          <p>
+            기본 조직도를 빠르게 구성하려면 <strong>샘플 템플릿</strong>을
+            선택합니다. 적용 대상과 생성될 계층, 조직 수를 확인한 뒤
+            <strong>샘플 템플릿 적용</strong>을 선택합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/4-3_OBS샘플템플릿.jpg"
+                alt="FHD 기준 OBS 샘플 템플릿 적용 안내"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 9.1%; top: 15.8%; width: 5.1%; height: 3%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 27%; top: 32%; width: 38%; height: 3%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 30.7%; top: 35.3%; width: 32.2%; height: 24.4%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="4"
+                style="left: 62.7%; top: 69.2%; width: 10.3%; height: 3.6%; --marker-left: calc(100% + 4px); --marker-top: -2px"
+              ></span>
+            </div>
+            <figcaption>샘플 템플릿의 적용 대상과 생성 구조 확인</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>샘플 템플릿</strong> — 템플릿 확인 창을 엽니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>적용 대상</strong> — 템플릿이 추가될 최상위 조직을 확인합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>미리보기</strong> — 생성될 계층과 조직 수를 확인합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">4</span>
+              <span><strong>취소·적용</strong> — 창을 닫거나 템플릿 조직을 생성합니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>중복 생성 방지</strong>
+            기존 조직은 유지되며 같은 상위 조직 아래에 같은 이름의 조직은 다시
+            만들지 않습니다. 템플릿은 조직 이름과 계층만 구성하므로 적용 후 현장에
+            맞게 조직 정보와 세부 구조를 수정합니다.
+          </div>
+
+          <h3 id="s4-6">4.6 조직 정보 수정</h3>
+          <p>
+            수정할 조직을 선택하고 상단 또는 오른쪽의 <strong>수정</strong>을
+            선택합니다. 조직 또는 직책 이름과 대표자, 소속, 연락처를 확인하고
+            필요한 항목을 변경한 뒤 <strong>저장</strong>을 선택합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/4-4_OBS조직수정.jpg"
+                alt="FHD 기준 OBS 조직 정보 수정 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 38.8%; top: 22.6%; width: 7%; height: 6.5%; --marker-left: calc(50% - 14px); --marker-top: -36px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 14.4%; top: 15.8%; width: 3.3%; height: 3%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 82%; top: 24.7%; width: 16.2%; height: 17.4%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="4"
+                style="left: 92.5%; top: 43.3%; width: 5.7%; height: 2.8%; --marker-left: calc(50% - 14px); --marker-top: calc(100% + 4px)"
+              ></span>
+            </div>
+            <figcaption>선택한 조직의 기본 정보를 수정하는 상태</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>선택 조직</strong> — 정보를 수정할 조직을 선택합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>수정</strong> — 오른쪽에 조직 정보 입력 영역을 엽니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>조직 정보</strong> — 조직명·대표자·소속·연락처를 입력합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">4</span>
+              <span><strong>취소·저장</strong> — 변경을 버리거나 서버에 저장합니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>확인 기준</strong>
+            저장 후 조직도 박스의 이름과 오른쪽 조직 정보가 변경되었는지
+            확인합니다. 상·하위 관계를 바꾸는 작업은 조직 정보 수정이 아니라
+            별도의 관계 설정 기능에서 진행합니다.
+          </div>
+
+          <h3 id="s4-7">4.7 조직 관계 설정</h3>
+          <p>
+            <strong>관계 설정</strong>에서는 조직을 추가·수정·삭제하고
+            상·하위 계층과 같은 계층 안의 표시 순서를 조정합니다. 왼쪽 조직
+            목록에서 대상을 선택한 뒤 상단의 조직 또는 배치 명령을 사용합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/4-5_OBS관계설정.jpg"
+                alt="FHD 기준 OBS 조직 관계 설정 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 10.3%; top: 16.3%; width: 30.5%; height: 8.4%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 42.3%; top: 16.3%; width: 27.7%; height: 8.4%; --marker-left: calc(50% - 14px); --marker-top: -36px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 10.3%; top: 26.1%; width: 23%; height: 58.3%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="4"
+                style="left: 34%; top: 26.1%; width: 53.4%; height: 58.3%; --marker-left: calc(100% + 4px); --marker-top: -2px"
+              ></span>
+            </div>
+            <figcaption>조직 관계와 같은 계층의 순서를 관리하는 화면</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>조직 명령</strong> — 최상위·하위 조직 추가, 수정, 삭제를 실행합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>배치 명령</strong> — 내어쓰기·들여쓰기와 위·아래 순서 이동을 실행합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>조직 목록</strong> — 조직을 검색하고 계층을 접거나 펼쳐 대상을 선택합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">4</span>
+              <span><strong>선택 조직</strong> — 현재 경로·조직 정보·직속 하위 조직을 확인합니다.</span>
+            </li>
+          </ol>
+          <table>
+            <thead>
+              <tr>
+                <th>명령</th>
+                <th>동작</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>내어쓰기</td>
+                <td>선택 조직을 한 단계 위 계층으로 이동합니다.</td>
+              </tr>
+              <tr>
+                <td>들여쓰기</td>
+                <td>선택 조직을 바로 위 조직의 하위로 이동합니다.</td>
+              </tr>
+              <tr>
+                <td>위로·아래로</td>
+                <td>같은 상위 조직 아래에서 표시 순서만 바꿉니다.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="concept">
+            <strong>즉시 반영</strong>
+            관계 설정에는 별도의 저장 버튼이 없습니다. 추가·수정·삭제와 계층
+            이동을 실행하면 서버에 바로 반영되며, <strong>닫기</strong>는 이미
+            반영된 변경을 되돌리지 않습니다. 하위 조직이 있는 조직은 하위를 먼저
+            이동하거나 삭제해야 삭제할 수 있으며, 연결된 공정 데이터가 있으면
+            삭제가 제한될 수 있습니다.
+          </div>
+
+          <h3 id="s4-8">4.8 조직도 구역 배치</h3>
+          <p>
+            조직도가 넓게 펼쳐질 때 <strong>구역 배치</strong>를 사용하면 최상위
+            조직의 직속 하위 조직을 여러 구역으로 나누어 표시할 수 있습니다.
+            하위 조직은 자신의 전체 하위 트리와 함께 이동합니다.
+          </p>
+          <figure>
+            <div class="annotated-shot">
+              <img
+                src="../img/4-6_OBS구역배치.jpg"
+                alt="FHD 기준 OBS 조직도 구역 배치 화면"
+              />
+              <span
+                class="focus-box"
+                data-step="1"
+                style="left: 13.5%; top: 20.7%; width: 71.8%; height: 6.6%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="2"
+                style="left: 14.4%; top: 28.5%; width: 71%; height: 13%; --marker-left: -36px; --marker-top: -2px"
+              ></span>
+              <span
+                class="focus-box"
+                data-step="3"
+                style="left: 69.3%; top: 86.1%; width: 17.2%; height: 5.2%; --marker-left: calc(100% + 4px); --marker-top: -2px"
+              ></span>
+            </div>
+            <figcaption>직속 하위 조직을 구역별로 나누어 표시하는 설정</figcaption>
+          </figure>
+          <ol class="shot-key">
+            <li>
+              <span class="key-no">1</span>
+              <span><strong>최상위 조직</strong> — 조직 색상을 정하고 새 구역을 추가합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">2</span>
+              <span><strong>구역별 조직</strong> — 각 직속 하위 조직의 구역과 구역 색상을 지정합니다.</span>
+            </li>
+            <li>
+              <span class="key-no">3</span>
+              <span><strong>배치 명령</strong> — 자동 배치로 복원하거나 취소·저장합니다.</span>
+            </li>
+          </ol>
+          <div class="concept">
+            <strong>관계와 배치의 차이</strong>
+            구역 배치는 조직도의 표시 위치와 색상만 바꾸며 저장된 상·하위 관계는
+            바꾸지 않습니다. 이 설정은 현재 브라우저에 저장되므로 다른 브라우저나
+            사용자의 화면과 다를 수 있습니다. <strong>저장</strong>은 수동 구역 배치를 적용하고,
+            <strong>취소</strong>는 이번 변경을 버립니다.
+            <strong>자동 배치</strong>는 저장된 수동 배치를 즉시 지우고 기본
+            배치로 돌아갑니다.
+          </div>
         </section>
         <section id="s5">
           <h2 class="sec-title">
